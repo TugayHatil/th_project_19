@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="project_project_form_inherit_critical_path" model="ir.ui.view">
+        <field name="name">project.project.form.inherit.critical.path</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_calculate_critical_paths"
+                        string="Calculate Critical Paths"
+                        type="object"
+                        class="btn-secondary"
+                        groups="project.group_project_manager"/>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page name="critical_paths" string="Critical Paths">
+                    <group>
+                        <group>
+                            <field name="critical_path_count"/>
+                        </group>
+                        <group>
+                            <field name="critical_path_duration" widget="float_time"/>
+                        </group>
+                    </group>
+                    <field name="critical_path_ids" nolabel="1" readonly="1">
+                        <list create="0" edit="0" delete="0">
+                            <field name="name"/>
+                            <field name="task_path"/>
+                            <field name="duration" widget="float_time"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
