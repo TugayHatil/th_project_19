@@ -45,23 +45,8 @@
                             <field name="critical_early_start"/>
                             <field name="critical_early_finish"/>
                         </group>
-                        <group string="Late Dates">
-                            <field name="critical_late_start"/>
-                            <field name="critical_late_finish"/>
-                            <field name="critical_slack"/>
-                        </group>
                     </group>
                 </page>
-            </xpath>
-        </field>
-    </record>
-    <record id="project_task_list_inherit_critical_path" model="ir.ui.view">
-        <field name="name">project.task.list.inherit.critical.path</field>
-        <field name="model">project.task</field>
-        <field name="inherit_id" ref="project.view_task_tree2"/>
-        <field name="arch" type="xml">
-            <xpath expr="//field[@name='name']" position="after">
-                <field name="critical_slack" optional="hide"/>
             </xpath>
         </field>
     </record>

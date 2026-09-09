@@ -129,10 +129,9 @@ class ProjectProject(models.Model):
         }
 
     def _calculate_task_schedule(self, graph):
-        """Run CPM forward/backward passes over the shared dependency graph."""
+        """Run the forward pass over the shared dependency graph."""
         task_by_id = graph["task_by_id"]
         predecessors = graph["predecessors"]
-        successors = graph["successors"]
         ordered_ids = graph["ordered_ids"]
         end_ids = graph["end_ids"]
 
@@ -145,13 +144,6 @@ class ProjectProject(models.Model):
             early_finish[task_id] = early_start[task_id] + (task_by_id[task_id].allocated_hours or 0.0)
 
         project_duration = max((early_finish[task_id] for task_id in end_ids), default=0.0)
-        late_start, late_finish = {}, {}
-        for task_id in reversed(ordered_ids):
-            late_finish[task_id] = min(
-                (late_start[successor_id] for successor_id in successors[task_id]),
-                default=project_duration,
-            )
-            late_start[task_id] = late_finish[task_id] - (task_by_id[task_id].allocated_hours or 0.0)
 
         return {
             "early_finish": early_finish,
@@ -160,9 +152,6 @@ class ProjectProject(models.Model):
                 task_id: {
                     "critical_early_start": early_start[task_id],
                     "critical_early_finish": early_finish[task_id],
-                    "critical_late_start": late_start[task_id],
-                    "critical_late_finish": late_finish[task_id],
-                    "critical_slack": late_start[task_id] - early_start[task_id],
                 }
                 for task_id in ordered_ids
             },

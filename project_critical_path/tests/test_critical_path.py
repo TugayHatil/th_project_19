@@ -19,10 +19,6 @@ class TestCriticalPath(TransactionCase):
         self.assertEqual(project.critical_path_ids.task_path, "Task 1 → Task 2 → Task 4 → Task 5")
         self.assertEqual(task_3.critical_early_start, 9)
         self.assertEqual(task_3.critical_early_finish, 14)
-        self.assertEqual(task_3.critical_late_start, 19)
-        self.assertEqual(task_3.critical_late_finish, 24)
-        self.assertEqual(task_3.critical_slack, 10)
-        self.assertEqual(task_4.critical_slack, 0)
 
     def test_equal_maximum_paths_are_all_saved(self):
         project = self.env["project.project"].create({"name": "Parallel critical paths"})
