@@ -14,10 +14,55 @@ class ProjectProject(models.Model):
     critical_path_ids = fields.One2many(
         "project.critical.path", "project_id", string="Critical Paths", readonly=True,
     )
+    critical_path_baseline_ids = fields.One2many(
+        "project.critical.path.baseline", "project_id", string="Baselines", readonly=True,
+    )
+    critical_path_baseline_count = fields.Integer(
+        string="Baseline Count", compute="_compute_critical_path_baseline_count",
+    )
+
+    def _compute_critical_path_baseline_count(self):
+        for project in self:
+            project.critical_path_baseline_count = len(project.critical_path_baseline_ids)
 
     def action_calculate_critical_paths(self):
         self._recalculate_critical_paths()
         return True
+
+    def action_create_critical_path_baseline(self):
+        """Freeze the calculated plan as the next immutable baseline revision."""
+        Baseline = self.env["project.critical.path.baseline"]
+        for project in self:
+            project._recalculate_critical_paths()
+            previous_baseline = Baseline.search(
+                [("project_id", "=", project.id)], order="revision_number desc, id desc", limit=1,
+            )
+            revision_number = previous_baseline.revision_number + 1 if previous_baseline else 0
+            baseline = Baseline.create({
+                "project_id": project.id,
+                "revision_number": revision_number,
+                "name": "v1.%d" % revision_number,
+                "project_duration": project.critical_path_duration,
+                "critical_path_duration": project.critical_path_duration,
+                "critical_path_signature": project._get_critical_path_signature(),
+            })
+            baseline._create_snapshot_lines()
+        return True
+
+    def action_view_critical_path_baselines(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Plan Baselines"),
+            "res_model": "project.critical.path.baseline",
+            "view_mode": "list,form",
+            "domain": [("project_id", "=", self.id)],
+            "context": {"default_project_id": self.id, "create": False},
+        }
+
+    def _get_critical_path_signature(self):
+        self.ensure_one()
+        return "\n".join(sorted(self.critical_path_ids.mapped("task_path")))
 
     def _recalculate_critical_paths(self):
         """Rebuild saved critical paths using only this project's task graph.
@@ -129,9 +174,10 @@ class ProjectProject(models.Model):
         }
 
     def _calculate_task_schedule(self, graph):
-        """Run the forward pass over the shared dependency graph."""
+        """Run CPM forward/backward passes over the shared dependency graph."""
         task_by_id = graph["task_by_id"]
         predecessors = graph["predecessors"]
+        successors = graph["successors"]
         ordered_ids = graph["ordered_ids"]
         end_ids = graph["end_ids"]
 
@@ -144,6 +190,13 @@ class ProjectProject(models.Model):
             early_finish[task_id] = early_start[task_id] + (task_by_id[task_id].allocated_hours or 0.0)
 
         project_duration = max((early_finish[task_id] for task_id in end_ids), default=0.0)
+        late_start, late_finish = {}, {}
+        for task_id in reversed(ordered_ids):
+            late_finish[task_id] = min(
+                (late_start[successor_id] for successor_id in successors[task_id]),
+                default=project_duration,
+            )
+            late_start[task_id] = late_finish[task_id] - (task_by_id[task_id].allocated_hours or 0.0)
 
         return {
             "early_finish": early_finish,
@@ -152,6 +205,10 @@ class ProjectProject(models.Model):
                 task_id: {
                     "critical_early_start": early_start[task_id],
                     "critical_early_finish": early_finish[task_id],
+                    "critical_late_start": late_start[task_id],
+                    "critical_late_finish": late_finish[task_id],
+                    "critical_slack": late_start[task_id] - early_start[task_id],
+                    "is_critical": abs(late_start[task_id] - early_start[task_id]) < 0.000001,
                 }
                 for task_id in ordered_ids
             },

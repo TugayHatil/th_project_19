@@ -22,6 +22,13 @@ class TestCriticalPath(TransactionCase):
         self.assertEqual((task_3.critical_early_start, task_3.critical_early_finish), (9, 14))
         self.assertEqual((task_4.critical_early_start, task_4.critical_early_finish), (9, 24))
         self.assertEqual((task_5.critical_early_start, task_5.critical_early_finish), (24, 27))
+        self.assertEqual((task_3.critical_late_start, task_3.critical_late_finish), (19, 24))
+        self.assertEqual(task_3.critical_slack, 10)
+        self.assertFalse(task_3.is_critical)
+        self.assertTrue(task_1.is_critical)
+        self.assertTrue(task_2.is_critical)
+        self.assertTrue(task_4.is_critical)
+        self.assertTrue(task_5.is_critical)
 
     def test_equal_maximum_paths_are_all_saved(self):
         project = self.env["project.project"].create({"name": "Parallel critical paths"})
@@ -33,3 +40,35 @@ class TestCriticalPath(TransactionCase):
 
         self.assertEqual(project.critical_path_count, 2)
         self.assertEqual(project.critical_path_duration, 6)
+
+    def test_baseline_is_an_immutable_plan_snapshot(self):
+        project = self.env["project.project"].create({"name": "Baseline test"})
+        first = self.env["project.task"].create({
+            "name": "First", "project_id": project.id, "allocated_hours": 3,
+        })
+        second = self.env["project.task"].create({
+            "name": "Second", "project_id": project.id, "allocated_hours": 5,
+            "depend_on_ids": [(4, first.id)],
+        })
+
+        project.action_create_critical_path_baseline()
+        baseline = project.critical_path_baseline_ids
+        self.assertEqual(baseline.name, "v1.0")
+        self.assertEqual(baseline.project_duration, 8)
+        line = baseline.line_ids.filtered(lambda snapshot: snapshot.task_id == second)
+        self.assertEqual(line.allocated_hours, 5)
+        self.assertEqual(line.early_finish, 8)
+        self.assertTrue(line.is_critical)
+
+        second.allocated_hours = 9
+        project.action_calculate_critical_paths()
+        self.assertEqual(line.allocated_hours, 5)
+        self.assertEqual(line.early_finish, 8)
+        self.assertEqual(line.current_allocated_hours, 9)
+        self.assertEqual(line.allocated_hours_delta, 4)
+        self.assertEqual(baseline.current_project_duration, 12)
+        self.assertEqual(baseline.project_duration_delta, 4)
+
+        project.action_create_critical_path_baseline()
+        self.assertEqual(project.critical_path_baseline_ids[0].name, "v1.1")
+        self.assertEqual(project.critical_path_baseline_ids[1].name, "v1.0")

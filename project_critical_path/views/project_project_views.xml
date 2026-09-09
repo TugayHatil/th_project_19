@@ -11,6 +11,11 @@
                         type="object"
                         class="btn-secondary"
                         groups="project.group_project_manager"/>
+                <button name="action_create_critical_path_baseline"
+                        string="Create Baseline"
+                        type="object"
+                        class="btn-secondary"
+                        groups="project.group_project_manager"/>
             </xpath>
             <xpath expr="//notebook" position="inside">
                 <page name="critical_paths" string="Critical Paths">
@@ -30,6 +35,28 @@
                         </list>
                     </field>
                 </page>
+                <page name="critical_path_baselines" string="Plan Baselines">
+                    <group>
+                        <group>
+                            <field name="critical_path_baseline_count"/>
+                        </group>
+                        <group>
+                            <button name="action_view_critical_path_baselines"
+                                    string="View Baselines" type="object"
+                                    class="btn-secondary"/>
+                        </group>
+                    </group>
+                    <field name="critical_path_baseline_ids" nolabel="1" readonly="1">
+                        <list create="0" edit="0" delete="0">
+                            <field name="name"/>
+                            <field name="created_on"/>
+                            <field name="created_by_id"/>
+                            <field name="project_duration" widget="float_time"/>
+                            <field name="critical_path_duration" widget="float_time"/>
+                            <field name="critical_path_changed"/>
+                        </list>
+                    </field>
+                </page>
             </xpath>
         </field>
     </record>
@@ -45,9 +72,91 @@
                             <field name="critical_early_start"/>
                             <field name="critical_early_finish"/>
                         </group>
+                        <group string="Late Dates">
+                            <field name="critical_late_start"/>
+                            <field name="critical_late_finish"/>
+                            <field name="critical_slack"/>
+                            <field name="is_critical"/>
+                        </group>
                     </group>
                 </page>
             </xpath>
+        </field>
+    </record>
+    <record id="project_task_list_inherit_critical_path" model="ir.ui.view">
+        <field name="name">project.task.list.inherit.critical.path</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_tree2"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="is_critical" optional="hide"/>
+                <field name="critical_slack" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="project_critical_path_baseline_list" model="ir.ui.view">
+        <field name="name">project.critical.path.baseline.list</field>
+        <field name="model">project.critical.path.baseline</field>
+        <field name="arch" type="xml">
+            <list create="0" edit="0" delete="0">
+                <field name="name"/>
+                <field name="project_id"/>
+                <field name="created_on"/>
+                <field name="created_by_id"/>
+                <field name="project_duration" widget="float_time"/>
+                <field name="critical_path_duration" widget="float_time"/>
+                <field name="critical_path_changed"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="project_critical_path_baseline_form" model="ir.ui.view">
+        <field name="name">project.critical.path.baseline.form</field>
+        <field name="model">project.critical.path.baseline</field>
+        <field name="arch" type="xml">
+            <form create="0" edit="0" delete="0">
+                <sheet>
+                    <group>
+                        <group string="Baseline">
+                            <field name="name"/>
+                            <field name="project_id"/>
+                            <field name="created_on"/>
+                            <field name="created_by_id"/>
+                        </group>
+                        <group string="Current Plan Comparison">
+                            <field name="project_duration" widget="float_time"/>
+                            <field name="current_project_duration" widget="float_time"/>
+                            <field name="project_duration_delta" widget="float_time"/>
+                            <field name="critical_path_duration" widget="float_time"/>
+                            <field name="current_critical_path_duration" widget="float_time"/>
+                            <field name="critical_path_duration_delta" widget="float_time"/>
+                            <field name="critical_path_changed"/>
+                        </group>
+                    </group>
+                    <group string="Critical Path Comparison">
+                        <field name="critical_path_signature" nolabel="1"/>
+                        <field name="current_critical_path_signature" nolabel="1"/>
+                    </group>
+                    <field name="line_ids" nolabel="1">
+                        <list create="0" edit="0" delete="0">
+                            <field name="task_name"/>
+                            <field name="parent_task_name" optional="hide"/>
+                            <field name="allocated_hours" widget="float_time"/>
+                            <field name="current_allocated_hours" widget="float_time"/>
+                            <field name="allocated_hours_delta" widget="float_time"/>
+                            <field name="early_start" optional="hide"/>
+                            <field name="early_finish" optional="hide"/>
+                            <field name="late_start" optional="hide"/>
+                            <field name="late_finish" optional="hide"/>
+                            <field name="slack"/>
+                            <field name="is_critical"/>
+                            <field name="current_slack" optional="hide"/>
+                            <field name="current_is_critical"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
         </field>
     </record>
 </odoo>
