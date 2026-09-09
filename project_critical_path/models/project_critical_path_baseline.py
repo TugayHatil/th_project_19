@@ -58,8 +58,11 @@ class ProjectCriticalPathBaseline(models.Model):
                     "task_name": task.display_name,
                     "parent_task_name": task.parent_id.display_name if task.parent_id else False,
                     "allocated_hours": task.allocated_hours,
-                    "planned_date_begin": task.planned_date_begin,
-                    "planned_date_end": task.planned_date_end,
+                    # Odoo Project exposes its scheduled dates as date_assign and
+                    # date_deadline.  Check the model fields for compatibility
+                    # with installations that do not provide a planned_date_* API.
+                    "planned_date_begin": task.date_assign if "date_assign" in task._fields else False,
+                    "planned_date_end": task.date_deadline if "date_deadline" in task._fields else False,
                     "dependency_task_names": ", ".join(task.depend_on_ids.mapped("display_name")),
                     "early_start": task.critical_early_start,
                     "early_finish": task.critical_early_finish,
