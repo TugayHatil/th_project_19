@@ -102,8 +102,7 @@
                         </field>
                     </group>
                     <group string="Task Resource Requirements">
-                        <field name="resource_requirement_ids" nolabel="1" readonly="1"
-                               context="{'group_by': 'role_id'}">
+                        <field name="resource_requirement_ids" nolabel="1" readonly="1">
                             <list create="0" edit="0" delete="0">
                                 <field name="role_id"/>
                                 <field name="task_id"/>
