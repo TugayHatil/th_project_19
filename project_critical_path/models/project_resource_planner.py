@@ -114,7 +114,13 @@ class ProjectResourcePlannerLine(models.TransientModel):
     available_hours = fields.Float(readonly=True)
     booked_hours = fields.Float(readonly=True)
     booking_summary = fields.Text(readonly=True)
-    assignment_ids = fields.Many2many("project.task.resource.assignment", readonly=True)
+    assignment_ids = fields.Many2many(
+        "project.task.resource.assignment",
+        "project_res_planner_assign_rel",
+        "planner_line_id",
+        "assignment_id",
+        readonly=True,
+    )
 
     @api.depends("employee_id", "equipment_id")
     def _compute_resource_name(self):
