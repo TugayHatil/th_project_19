@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from odoo import _, api, fields, models
+from odoo.tools import format_datetime
 
 
 class ProjectResourcePlanner(models.TransientModel):
@@ -61,8 +62,8 @@ class ProjectResourcePlanner(models.TransientModel):
                     "booking_summary": "\n".join(
                         "%s: %s – %s" % (
                             assignment.task_id.display_name,
-                            fields.Datetime.to_string(assignment.date_start),
-                            fields.Datetime.to_string(assignment.date_end),
+                            format_datetime(self.env, assignment.date_start),
+                            format_datetime(self.env, assignment.date_end),
                         )
                         for assignment in bookings
                     ) or _("Available"),

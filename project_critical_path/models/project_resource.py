@@ -23,6 +23,7 @@ class ProjectTaskResourceRequirement(models.Model):
     _name = "project.task.resource.requirement"
     _description = "Project Task Resource Requirement"
     _order = "date_start, role_id, id"
+    _rec_name = "name"
 
     task_id = fields.Many2one("project.task", required=True, ondelete="cascade", index=True)
     project_id = fields.Many2one(
@@ -34,6 +35,7 @@ class ProjectTaskResourceRequirement(models.Model):
     date_end = fields.Datetime(string="Requirement End")
     planned_hours = fields.Float(string="Planned Hours")
     description = fields.Text()
+    name = fields.Char(compute="_compute_name", store=True, readonly=True)
     assignment_ids = fields.One2many(
         "project.task.resource.assignment", "requirement_id", string="Assignments",
     )
@@ -44,6 +46,13 @@ class ProjectTaskResourceRequirement(models.Model):
         ("partial", "Partial"),
         ("assigned", "Assigned"),
     ], compute="_compute_assignment_summary", string="Assignment Status")
+
+    @api.depends("task_id.display_name", "role_id.name")
+    def _compute_name(self):
+        for requirement in self:
+            requirement.name = " - ".join(
+                value for value in (requirement.task_id.display_name, requirement.role_id.name) if value
+            )
 
     @api.depends("assignment_ids.employee_id", "assignment_ids.equipment_id", "assignment_ids.planned_hours")
     def _compute_assignment_summary(self):

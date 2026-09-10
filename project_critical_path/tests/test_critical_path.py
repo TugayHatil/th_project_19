@@ -186,3 +186,4 @@ class TestCriticalPath(TransactionCase):
             lambda line: line.employee_id == unassigned_employee
         )
         self.assertEqual(unassigned_line.availability_status, "fully_available")
+        self.assertIn("Task - Foreman", requirement.display_name)
