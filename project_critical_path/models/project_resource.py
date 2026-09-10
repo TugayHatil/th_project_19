@@ -34,6 +34,43 @@ class ProjectTaskResourceRequirement(models.Model):
     date_end = fields.Date(string="Requirement End")
     planned_hours = fields.Float(string="Planned Hours")
     description = fields.Text()
+    assignment_ids = fields.One2many(
+        "project.task.resource.assignment", "requirement_id", string="Assignments",
+    )
+    assigned_quantity = fields.Integer(compute="_compute_assignment_summary", string="Assigned Quantity")
+    assigned_hours = fields.Float(compute="_compute_assignment_summary", string="Assigned Hours")
+    assignment_status = fields.Selection([
+        ("waiting", "Waiting"),
+        ("partial", "Partial"),
+        ("assigned", "Assigned"),
+    ], compute="_compute_assignment_summary", string="Assignment Status")
+
+    @api.depends("assignment_ids.employee_id", "assignment_ids.equipment_id", "assignment_ids.planned_hours")
+    def _compute_assignment_summary(self):
+        for requirement in self:
+            assignments = requirement.assignment_ids
+            requirement.assigned_quantity = len(assignments)
+            requirement.assigned_hours = sum(assignments.mapped("planned_hours"))
+            if not assignments:
+                requirement.assignment_status = "waiting"
+            elif (
+                requirement.assigned_quantity >= requirement.quantity
+                and requirement.assigned_hours >= requirement.planned_hours
+            ):
+                requirement.assignment_status = "assigned"
+            else:
+                requirement.assignment_status = "partial"
+
+    def action_open_resource_assignments(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": "Resource Assignments",
+            "res_model": "project.task.resource.assignment",
+            "view_mode": "list,form",
+            "domain": [("requirement_id", "=", self.id)],
+            "context": {"default_requirement_id": self.id},
+        }
 
     @api.model_create_multi
     def create(self, vals_list):

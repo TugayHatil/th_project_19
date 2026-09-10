@@ -36,6 +36,9 @@ class ProjectProject(models.Model):
     resource_plan_summary_ids = fields.One2many(
         "project.resource.plan.summary", "project_id", string="Resource Summary", readonly=True,
     )
+    resource_assignment_ids = fields.One2many(
+        "project.task.resource.assignment", "project_id", string="Resource Assignments", readonly=True,
+    )
 
     def _compute_critical_path_baseline_count(self):
         for project in self:

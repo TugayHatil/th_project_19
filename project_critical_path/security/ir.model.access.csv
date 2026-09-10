@@ -7,3 +7,4 @@ access_project_critical_path_change_user,project.critical.path.change user,model
 access_project_resource_role_user,project.resource.role user,model_project_resource_role,base.group_user,1,1,1,1
 access_project_task_resource_requirement_user,project.task.resource.requirement user,model_project_task_resource_requirement,base.group_user,1,1,1,1
 access_project_resource_plan_summary_user,project.resource.plan.summary user,model_project_resource_plan_summary,base.group_user,1,1,1,1
+access_project_task_resource_assignment_user,project.task.resource.assignment user,model_project_task_resource_assignment,base.group_user,1,1,1,1
