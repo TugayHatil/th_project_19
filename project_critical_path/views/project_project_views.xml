@@ -224,7 +224,46 @@
                         <field name="date_start"/>
                         <field name="date_end"/>
                         <field name="planned_hours" widget="float_time" readonly="1"/>
+                        <button name="action_open_task" string="Open Task" type="object"
+                                class="btn-secondary"/>
                     </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="project_resource_planner_form" model="ir.ui.view">
+        <field name="name">project.resource.planner.form</field>
+        <field name="model">project.resource.planner</field>
+        <field name="arch" type="xml">
+            <form create="0" edit="0" delete="0">
+                <header>
+                    <button name="action_open_timeline" string="Open Assignment Timeline"
+                            type="object" class="btn-secondary"/>
+                </header>
+                <sheet>
+                    <group string="Requirement Window">
+                        <field name="requirement_id"/>
+                        <field name="resource_category"/>
+                        <field name="date_start"/>
+                        <field name="date_end"/>
+                    </group>
+                    <field name="line_ids" nolabel="1">
+                        <list create="0" edit="0" delete="0">
+                            <field name="resource_name"/>
+                            <field name="availability_status" widget="badge"
+                                   decoration-success="availability_status == 'fully_available'"
+                                   decoration-warning="availability_status == 'partially_available'"
+                                   decoration-danger="availability_status == 'unavailable'"/>
+                            <field name="available_hours" widget="float_time"/>
+                            <field name="booked_hours" widget="float_time"/>
+                            <field name="booking_summary"/>
+                            <button name="action_open_resource_timeline" string="Timeline"
+                                    type="object" class="btn-secondary"/>
+                            <button name="action_assign_resource" string="Assign"
+                                    type="object" class="btn-primary"/>
+                        </list>
+                    </field>
                 </sheet>
             </form>
         </field>

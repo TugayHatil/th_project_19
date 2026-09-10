@@ -8,3 +8,5 @@ access_project_resource_role_user,project.resource.role user,model_project_resou
 access_project_task_resource_requirement_user,project.task.resource.requirement user,model_project_task_resource_requirement,base.group_user,1,1,1,1
 access_project_resource_plan_summary_user,project.resource.plan.summary user,model_project_resource_plan_summary,base.group_user,1,1,1,1
 access_project_task_resource_assignment_user,project.task.resource.assignment user,model_project_task_resource_assignment,base.group_user,1,1,1,1
+access_project_resource_planner_user,project.resource.planner user,model_project_resource_planner,base.group_user,1,1,1,1
+access_project_resource_planner_line_user,project.resource.planner.line user,model_project_resource_planner_line,base.group_user,1,1,1,1

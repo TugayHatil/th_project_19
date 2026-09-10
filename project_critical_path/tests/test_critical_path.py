@@ -148,6 +148,7 @@ class TestCriticalPath(TransactionCase):
         role = self.env["project.resource.role"].create({"name": "Welder", "category": "human"})
         requirement = self.env["project.task.resource.requirement"].create({
             "task_id": task.id, "role_id": role.id, "quantity": 2, "planned_hours": 16,
+            "date_start": "2026-01-14 08:00:00", "date_end": "2026-01-15 17:00:00",
         })
         first = self.env["hr.employee"].create({"name": "First welder"})
         second = self.env["hr.employee"].create({"name": "Second welder"})
@@ -170,12 +171,18 @@ class TestCriticalPath(TransactionCase):
         project = self.env["project.project"].create({"name": "Planner test"})
         task = self.env["project.task"].create({"name": "Task", "project_id": project.id})
         role = self.env["project.resource.role"].create({"name": "Foreman", "category": "human"})
+        unassigned_employee = self.env["hr.employee"].create({"name": "Unassigned foreman"})
         requirement = self.env["project.task.resource.requirement"].create({
             "task_id": task.id, "role_id": role.id, "quantity": 1, "planned_hours": 8,
             "date_start": "2026-09-14 08:00:00", "date_end": "2026-09-19 18:00:00",
         })
 
         action = requirement.action_open_resource_planner()
-        self.assertEqual(action["view_mode"], "gantt,list,form")
-        self.assertEqual(action["context"]["default_requirement_id"], requirement.id)
-        self.assertIn(("resource_category", "=", "human"), action["domain"])
+        self.assertEqual(action["view_mode"], "form")
+        planner = self.env["project.resource.planner"].browse(action["res_id"])
+        self.assertEqual(planner.requirement_id, requirement)
+        self.assertTrue(planner.line_ids)
+        unassigned_line = planner.line_ids.filtered(
+            lambda line: line.employee_id == unassigned_employee
+        )
+        self.assertEqual(unassigned_line.availability_status, "fully_available")

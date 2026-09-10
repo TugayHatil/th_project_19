@@ -73,7 +73,20 @@ class ProjectTaskResourceRequirement(models.Model):
         }
 
     def action_open_resource_planner(self):
-        """Open the standard Gantt planner for this requirement's resource type."""
+        """Open the real-resource Team Planner, including unassigned resources."""
+        self.ensure_one()
+        planner = self.env["project.resource.planner"].create_for_requirement(self)
+        return {
+            "type": "ir.actions.act_window",
+            "name": "Resource Planner - %s" % self.role_id.display_name,
+            "res_model": "project.resource.planner",
+            "res_id": planner.id,
+            "view_mode": "form",
+            "target": "current",
+        }
+
+    def action_open_resource_timeline(self):
+        """Open the standard Gantt timeline of existing bookings."""
         self.ensure_one()
         category = self.role_id.category
         gantt_xmlid = (

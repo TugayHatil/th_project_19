@@ -8,6 +8,7 @@ class ProjectTaskResourceAssignment(models.Model):
     _name = "project.task.resource.assignment"
     _description = "Project Task Resource Assignment"
     _order = "date_start, id"
+    _rec_name = "name"
 
     requirement_id = fields.Many2one(
         "project.task.resource.requirement", required=True, ondelete="cascade", index=True,
@@ -22,6 +23,22 @@ class ProjectTaskResourceAssignment(models.Model):
     planned_hours = fields.Float(
         string="Assigned Hours", compute="_compute_planned_hours", store=True, readonly=True,
     )
+    name = fields.Char(compute="_compute_name", store=True, readonly=True)
+
+    @api.depends("task_id.display_name", "employee_id.name", "equipment_id.name")
+    def _compute_name(self):
+        for assignment in self:
+            assignment.name = assignment.task_id.display_name or assignment.employee_id.name or assignment.equipment_id.name
+
+    def action_open_task(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "res_model": "project.task",
+            "res_id": self.task_id.id,
+            "view_mode": "form",
+            "target": "current",
+        }
 
     @api.model_create_multi
     def create(self, vals_list):
