@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import json
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
@@ -22,9 +24,14 @@ class ProjectCriticalPathBaseline(models.Model):
     project_duration = fields.Float(required=True, readonly=True, copy=False)
     critical_path_duration = fields.Float(required=True, readonly=True, copy=False)
     critical_path_signature = fields.Text(readonly=True, copy=False)
+    critical_path_snapshot = fields.Text(readonly=True, copy=False)
     line_ids = fields.One2many(
         "project.critical.path.baseline.line", "baseline_id", string="Task Snapshots", readonly=True,
     )
+    critical_path_change_line_ids = fields.One2many(
+        "project.critical.path.change", "baseline_id", string="Critical Path Changes", readonly=True,
+    )
+    critical_path_change_summary = fields.Text(readonly=True, copy=False)
     current_project_duration = fields.Float(compute="_compute_current_comparison")
     current_critical_path_duration = fields.Float(compute="_compute_current_comparison")
     project_duration_delta = fields.Float(compute="_compute_current_comparison")
@@ -74,10 +81,84 @@ class ProjectCriticalPathBaseline(models.Model):
                 for task in tasks
             ])
 
+    def _recalculate_critical_path_changes(self):
+        """Compare saved critical-path membership with the current saved paths."""
+        Change = self.env["project.critical.path.change"]
+        for baseline in self:
+            project = baseline.project_id
+            current_paths = project.critical_path_ids
+            current_task_ids = set(current_paths.mapped("task_ids").ids)
+            current_by_id = {task.id: task for task in current_paths.mapped("task_ids")}
+            try:
+                baseline_paths = json.loads(baseline.critical_path_snapshot or "[]")
+            except (TypeError, ValueError):
+                baseline_paths = []
+            baseline_task_ids = {
+                task_id for path in baseline_paths for task_id in path.get("task_ids", [])
+            }
+            # Baselines made before BRD-07 only have the task snapshots.  This
+            # fallback preserves useful analysis for them until a new baseline is made.
+            if not baseline_task_ids:
+                baseline_task_ids = set(baseline.line_ids.filtered("is_critical").mapped("task_id").ids)
+            baseline_names = {
+                line.task_id.id: line.task_name for line in baseline.line_ids if line.task_id
+            }
+            added_ids = current_task_ids - baseline_task_ids
+            removed_ids = baseline_task_ids - current_task_ids
+            Change.search([("baseline_id", "=", baseline.id)]).unlink()
+            change_values = []
+            for task_id in sorted(added_ids):
+                task = current_by_id[task_id]
+                change_values.append({
+                    "baseline_id": baseline.id,
+                    "sequence": 10,
+                    "task_id": task.id,
+                    "task_name": task.display_name,
+                    "baseline_is_critical": False,
+                    "current_is_critical": task.is_critical,
+                    "change_type": "added",
+                })
+            for task_id in sorted(removed_ids):
+                task = self.env["project.task"].browse(task_id).exists()
+                change_values.append({
+                    "baseline_id": baseline.id,
+                    "sequence": 20,
+                    "task_id": task.id if task else False,
+                    "task_name": task.display_name if task else baseline_names.get(task_id, str(task_id)),
+                    "baseline_is_critical": True,
+                    "current_is_critical": task.is_critical if task else False,
+                    "change_type": "removed",
+                })
+            if change_values:
+                Change.create(change_values)
+            if not change_values:
+                summary = False
+            else:
+                added_names = [current_by_id[task_id].display_name for task_id in sorted(added_ids)]
+                removed_names = [
+                    (self.env["project.task"].browse(task_id).exists().display_name
+                     if self.env["project.task"].browse(task_id).exists()
+                     else baseline_names.get(task_id, str(task_id)))
+                    for task_id in sorted(removed_ids)
+                ]
+                messages = [_("Critical Path changed.")]
+                if added_names:
+                    messages.append(_("Entered Critical Path: %s") % ", ".join(added_names))
+                if removed_names:
+                    messages.append(_("Left Critical Path: %s") % ", ".join(removed_names))
+                messages.append(_("Duration: %(old).2f h → %(new).2f h (%(delta)+.2f h)") % {
+                    "old": baseline.critical_path_duration,
+                    "new": project.critical_path_duration,
+                    "delta": project.critical_path_duration - baseline.critical_path_duration,
+                })
+                summary = "\n".join(messages)
+            baseline.write({"critical_path_change_summary": summary})
+
     def write(self, vals):
         protected = {
             "project_id", "name", "revision_number", "created_on", "created_by_id",
-            "project_duration", "critical_path_duration", "critical_path_signature", "line_ids",
+            "project_duration", "critical_path_duration", "critical_path_signature",
+            "critical_path_snapshot", "line_ids", "critical_path_change_line_ids",
         }
         if protected.intersection(vals):
             raise UserError(_("Baseline snapshots cannot be modified."))

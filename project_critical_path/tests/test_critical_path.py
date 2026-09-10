@@ -47,6 +47,23 @@ class TestCriticalPath(TransactionCase):
         self.assertEqual(task_4.delay_impact_status, "critical_impact")
         self.assertIn("Task 5", task_4.delay_impact_chain)
 
+        task_3.allocated_hours = 21
+        baseline = project.critical_path_baseline_ids
+        self.assertTrue(baseline.critical_path_changed)
+        self.assertEqual(project.critical_path_duration, 33)
+        self.assertEqual(
+            baseline.critical_path_change_line_ids.filtered(
+                lambda change: change.task_id == task_3
+            ).change_type,
+            "added",
+        )
+        self.assertEqual(
+            baseline.critical_path_change_line_ids.filtered(
+                lambda change: change.task_id == task_4
+            ).change_type,
+            "removed",
+        )
+
     def test_equal_maximum_paths_are_all_saved(self):
         project = self.env["project.project"].create({"name": "Parallel critical paths"})
         first = self.env["project.task"].create({"name": "First", "project_id": project.id, "allocated_hours": 4})
