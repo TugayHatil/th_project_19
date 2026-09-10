@@ -20,6 +20,15 @@ class ProjectProject(models.Model):
     critical_path_baseline_count = fields.Integer(
         string="Baseline Count", compute="_compute_critical_path_baseline_count",
     )
+    delay_impact_baseline_id = fields.Many2one(
+        "project.critical.path.baseline", string="Impact Baseline", readonly=True,
+    )
+    delay_baseline_duration = fields.Float(string="Baseline Duration", readonly=True)
+    delay_current_duration = fields.Float(string="Current Duration", readonly=True)
+    delay_total = fields.Float(string="Total Delay", readonly=True)
+    delay_impact_line_ids = fields.One2many(
+        "project.task.delay.impact", "project_id", string="Delay Impact Summary", readonly=True,
+    )
 
     def _compute_critical_path_baseline_count(self):
         for project in self:
@@ -47,6 +56,7 @@ class ProjectProject(models.Model):
                 "critical_path_signature": project._get_critical_path_signature(),
             })
             baseline._create_snapshot_lines()
+            project._recalculate_delay_impacts()
         return True
 
     def action_view_critical_path_baselines(self):
@@ -134,6 +144,130 @@ class ProjectProject(models.Model):
                 "critical_path_count": len(critical_paths),
                 "critical_path_duration": maximum_duration,
             })
+            project._recalculate_delay_impacts()
+
+    def _recalculate_delay_impacts(self):
+        """Compare current task durations with the newest frozen plan revision."""
+        Impact = self.env["project.task.delay.impact"]
+        Baseline = self.env["project.critical.path.baseline"]
+        for project in self:
+            baseline = Baseline.search(
+                [("project_id", "=", project.id)], order="revision_number desc, id desc", limit=1,
+            )
+            tasks = self.env["project.task"].with_context(active_test=False).search(
+                [("project_id", "=", project.id)], order="id",
+            )
+            Impact.search([("project_id", "=", project.id)]).unlink()
+            if not baseline:
+                tasks.write({
+                    "delay_baseline_duration": 0.0,
+                    "delay_duration_variance": 0.0,
+                    "delay_project_impact": 0.0,
+                    "delay_impact_status": "no_impact",
+                    "delay_impact_chain": False,
+                })
+                project.write({
+                    "delay_impact_baseline_id": False,
+                    "delay_baseline_duration": 0.0,
+                    "delay_current_duration": project.critical_path_duration,
+                    "delay_total": 0.0,
+                })
+                continue
+
+            graph = project._get_task_dependency_graph()
+            task_by_id = graph["task_by_id"]
+            successors = graph["successors"]
+            baseline_by_task_id = {line.task_id.id: line for line in baseline.line_ids if line.task_id}
+            total_delay = project.critical_path_duration - baseline.project_duration
+            task_values, impact_values = {}, []
+            for task in tasks:
+                snapshot = baseline_by_task_id.get(task.id)
+                if not snapshot:
+                    values = {
+                        "delay_baseline_duration": 0.0,
+                        "delay_duration_variance": task.allocated_hours or 0.0,
+                        "delay_project_impact": 0.0,
+                        "delay_impact_status": "no_impact",
+                        "delay_impact_chain": False,
+                    }
+                else:
+                    variance = (task.allocated_hours or 0.0) - snapshot.allocated_hours
+                    if variance > 0.000001:
+                        impact = min(
+                            max(0.0, variance - max(0.0, snapshot.slack)),
+                            max(0.0, total_delay),
+                        )
+                        status = "critical_impact" if impact > 0.000001 else "within_slack"
+                    elif variance < -0.000001:
+                        impact = -min(abs(variance), max(0.0, -total_delay))
+                        status = "duration_reduced"
+                    else:
+                        impact, status = 0.0, "no_impact"
+                    values = {
+                        "delay_baseline_duration": snapshot.allocated_hours,
+                        "delay_duration_variance": variance,
+                        "delay_project_impact": impact,
+                        "delay_impact_status": status,
+                        "delay_impact_chain": project._get_delay_impact_chain(
+                            task.id, impact, graph, baseline_by_task_id,
+                        ) if abs(impact) > 0.000001 else False,
+                    }
+                task_values[task.id] = values
+
+            for task in tasks:
+                task.write(task_values[task.id])
+                values = task_values[task.id]
+                if task.id in baseline_by_task_id:
+                    impact_values.append({
+                        "project_id": project.id,
+                        "baseline_id": baseline.id,
+                        "task_id": task.id,
+                        "sequence": 0 if abs(values["delay_project_impact"]) > 0.000001 else 10,
+                        "baseline_duration": values["delay_baseline_duration"],
+                        "current_duration": task.allocated_hours or 0.0,
+                        "duration_variance": values["delay_duration_variance"],
+                        "project_impact": values["delay_project_impact"],
+                        "impact_status": values["delay_impact_status"],
+                        "impact_chain": values["delay_impact_chain"],
+                    })
+            if impact_values:
+                Impact.create(impact_values)
+            project.write({
+                "delay_impact_baseline_id": baseline.id,
+                "delay_baseline_duration": baseline.project_duration,
+                "delay_current_duration": project.critical_path_duration,
+                "delay_total": total_delay,
+            })
+
+    def _get_delay_impact_chain(self, task_id, impact, graph, baseline_by_task_id):
+        """Return one readable downstream chain for a task that changes the finish."""
+        self.ensure_one()
+        task_by_id = graph["task_by_id"]
+        successors = graph["successors"]
+        current_id = task_id
+        steps = ["%s (%+.2f h)" % (task_by_id[task_id].display_name, impact)]
+        seen = {task_id}
+        while successors[current_id]:
+            candidates = [
+                successor_id for successor_id in successors[current_id]
+                if successor_id not in seen
+                and successor_id in baseline_by_task_id
+                and task_by_id[successor_id].critical_early_start
+                > baseline_by_task_id[successor_id].early_start + 0.000001
+            ]
+            if not candidates:
+                break
+            current_id = max(
+                candidates, key=lambda successor_id: task_by_id[successor_id].critical_early_finish,
+            )
+            seen.add(current_id)
+            shift = (
+                task_by_id[current_id].critical_early_start
+                - baseline_by_task_id[current_id].early_start
+            )
+            steps.append("%s start %+.2f h" % (task_by_id[current_id].display_name, shift))
+        steps.append("Project finish %+.2f h" % impact)
+        return " → ".join(steps)
 
     def _get_task_dependency_graph(self):
         """Return the standard task dependency graph once for all calculations."""

@@ -30,6 +30,23 @@ class TestCriticalPath(TransactionCase):
         self.assertTrue(task_4.is_critical)
         self.assertTrue(task_5.is_critical)
 
+        project.action_create_critical_path_baseline()
+        task_3.allocated_hours = 8
+        self.assertEqual(task_3.delay_baseline_duration, 5)
+        self.assertEqual(task_3.delay_duration_variance, 3)
+        self.assertEqual(task_3.delay_project_impact, 0)
+        self.assertEqual(task_3.delay_impact_status, "within_slack")
+        self.assertEqual(project.delay_total, 0)
+
+        task_4.allocated_hours = 18
+        self.assertEqual(project.critical_path_duration, 30)
+        self.assertEqual(project.delay_total, 3)
+        self.assertEqual(task_4.delay_baseline_duration, 15)
+        self.assertEqual(task_4.delay_duration_variance, 3)
+        self.assertEqual(task_4.delay_project_impact, 3)
+        self.assertEqual(task_4.delay_impact_status, "critical_impact")
+        self.assertIn("Task 5", task_4.delay_impact_chain)
+
     def test_equal_maximum_paths_are_all_saved(self):
         project = self.env["project.project"].create({"name": "Parallel critical paths"})
         first = self.env["project.task"].create({"name": "First", "project_id": project.id, "allocated_hours": 4})

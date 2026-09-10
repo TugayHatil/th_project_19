@@ -57,6 +57,29 @@
                         </list>
                     </field>
                 </page>
+                <page name="task_delay_impact" string="Delay Impact">
+                    <group string="Project Impact Summary">
+                        <group>
+                            <field name="delay_impact_baseline_id"/>
+                            <field name="delay_baseline_duration" widget="float_time"/>
+                        </group>
+                        <group>
+                            <field name="delay_current_duration" widget="float_time"/>
+                            <field name="delay_total" widget="float_time"/>
+                        </group>
+                    </group>
+                    <field name="delay_impact_line_ids" nolabel="1" readonly="1">
+                        <list create="0" edit="0" delete="0">
+                            <field name="task_id"/>
+                            <field name="baseline_duration" widget="float_time"/>
+                            <field name="current_duration" widget="float_time"/>
+                            <field name="duration_variance" widget="float_time"/>
+                            <field name="project_impact" widget="float_time"/>
+                            <field name="impact_status"/>
+                            <field name="impact_chain"/>
+                        </list>
+                    </field>
+                </page>
             </xpath>
         </field>
     </record>
@@ -79,6 +102,18 @@
                             <field name="is_critical"/>
                         </group>
                     </group>
+                    <group string="Delay Impact Analysis">
+                        <group>
+                            <field name="delay_baseline_duration"/>
+                            <field name="allocated_hours"/>
+                            <field name="delay_duration_variance"/>
+                        </group>
+                        <group>
+                            <field name="delay_project_impact"/>
+                            <field name="delay_impact_status"/>
+                            <field name="delay_impact_chain"/>
+                        </group>
+                    </group>
                 </page>
             </xpath>
         </field>
@@ -91,6 +126,8 @@
             <xpath expr="//field[@name='name']" position="after">
                 <field name="is_critical" optional="hide"/>
                 <field name="critical_slack" optional="hide"/>
+                <field name="delay_project_impact" optional="hide"/>
+                <field name="delay_impact_status" optional="hide"/>
             </xpath>
         </field>
     </record>

@@ -12,6 +12,16 @@ class ProjectTask(models.Model):
     critical_late_finish = fields.Float(string="Late Finish", readonly=True)
     critical_slack = fields.Float(string="Slack", readonly=True)
     is_critical = fields.Boolean(string="Critical Task", readonly=True)
+    delay_baseline_duration = fields.Float(string="Baseline Duration", readonly=True)
+    delay_duration_variance = fields.Float(string="Duration Variance", readonly=True)
+    delay_project_impact = fields.Float(string="Project Impact", readonly=True)
+    delay_impact_status = fields.Selection([
+        ("critical_impact", "Critical Impact"),
+        ("within_slack", "Within Slack"),
+        ("duration_reduced", "Duration Reduced"),
+        ("no_impact", "No Impact"),
+    ], string="Impact Status", readonly=True)
+    delay_impact_chain = fields.Text(string="Impact Chain", readonly=True)
 
     @api.model_create_multi
     def create(self, vals_list):
