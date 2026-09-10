@@ -118,3 +118,26 @@ class TestCriticalPath(TransactionCase):
         self.assertFalse(project.critical_path_baseline_ids[1].history_critical_path_changed)
         self.assertEqual(project.critical_path_baseline_ids[0].history_project_duration_variance, 4)
         self.assertEqual(project.critical_path_baseline_ids[0].history_critical_path_changed, "no")
+
+    def test_task_resource_requirements_build_project_resource_plan(self):
+        project = self.env["project.project"].create({"name": "Resource plan test"})
+        task_1 = self.env["project.task"].create({"name": "Task 1", "project_id": project.id})
+        task_2 = self.env["project.task"].create({"name": "Task 2", "project_id": project.id})
+        welder = self.env["project.resource.role"].create({"name": "Welder", "category": "human"})
+        crane = self.env["project.resource.role"].create({"name": "Crane", "category": "equipment"})
+
+        self.env["project.task.resource.requirement"].create([
+            {"task_id": task_1.id, "role_id": welder.id, "quantity": 2, "planned_hours": 80},
+            {"task_id": task_2.id, "role_id": welder.id, "quantity": 1, "planned_hours": 40},
+            {"task_id": task_2.id, "role_id": crane.id, "quantity": 1, "planned_hours": 24},
+        ])
+
+        welder_summary = project.resource_plan_summary_ids.filtered(
+            lambda summary: summary.role_id == welder
+        )
+        crane_summary = project.resource_plan_summary_ids.filtered(
+            lambda summary: summary.role_id == crane
+        )
+        self.assertEqual((welder_summary.total_quantity, welder_summary.total_planned_hours), (3, 120))
+        self.assertEqual((crane_summary.total_quantity, crane_summary.total_planned_hours), (1, 24))
+        self.assertEqual(project.resource_requirement_ids.mapped("task_id"), task_1 | task_2)

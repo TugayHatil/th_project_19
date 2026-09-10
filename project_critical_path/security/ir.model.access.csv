@@ -4,3 +4,6 @@ access_project_critical_path_baseline_user,project.critical.path.baseline user,m
 access_project_critical_path_baseline_line_user,project.critical.path.baseline.line user,model_project_critical_path_baseline_line,base.group_user,1,1,1,1
 access_project_task_delay_impact_user,project.task.delay.impact user,model_project_task_delay_impact,base.group_user,1,1,1,1
 access_project_critical_path_change_user,project.critical.path.change user,model_project_critical_path_change,base.group_user,1,1,1,1
+access_project_resource_role_user,project.resource.role user,model_project_resource_role,base.group_user,1,1,1,1
+access_project_task_resource_requirement_user,project.task.resource.requirement user,model_project_task_resource_requirement,base.group_user,1,1,1,1
+access_project_resource_plan_summary_user,project.resource.plan.summary user,model_project_resource_plan_summary,base.group_user,1,1,1,1

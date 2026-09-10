@@ -85,6 +85,37 @@
                         </list>
                     </field>
                 </page>
+                <page name="resource_plan" string="Resource Plan">
+                    <group>
+                        <group string="Resource Roles">
+                            <button name="action_open_resource_roles" string="Manage Resource Roles"
+                                    type="object" class="btn-secondary"/>
+                        </group>
+                    </group>
+                    <group string="Resource Summary">
+                        <field name="resource_plan_summary_ids" nolabel="1" readonly="1">
+                            <list create="0" edit="0" delete="0">
+                                <field name="role_id"/>
+                                <field name="total_quantity"/>
+                                <field name="total_planned_hours" widget="float_time"/>
+                            </list>
+                        </field>
+                    </group>
+                    <group string="Task Resource Requirements">
+                        <field name="resource_requirement_ids" nolabel="1" readonly="1"
+                               context="{'group_by': 'role_id'}">
+                            <list create="0" edit="0" delete="0">
+                                <field name="role_id"/>
+                                <field name="task_id"/>
+                                <field name="quantity"/>
+                                <field name="date_start"/>
+                                <field name="date_end"/>
+                                <field name="planned_hours" widget="float_time"/>
+                                <field name="description" optional="hide"/>
+                            </list>
+                        </field>
+                    </group>
+                </page>
             </xpath>
         </field>
     </record>
@@ -119,6 +150,19 @@
                             <field name="delay_impact_chain"/>
                         </group>
                     </group>
+                </page>
+                <page name="resource_requirements" string="Resource Requirements">
+                    <field name="resource_requirement_ids" nolabel="1"
+                           context="{'default_task_id': id}">
+                        <list editable="bottom">
+                            <field name="role_id"/>
+                            <field name="quantity"/>
+                            <field name="date_start"/>
+                            <field name="date_end"/>
+                            <field name="planned_hours" widget="float_time"/>
+                            <field name="description" optional="hide"/>
+                        </list>
+                    </field>
                 </page>
             </xpath>
         </field>

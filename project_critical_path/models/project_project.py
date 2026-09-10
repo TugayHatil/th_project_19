@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import json
-from collections import deque
+from collections import defaultdict, deque
 
 from odoo import _, fields, models
 from odoo.exceptions import UserError
@@ -29,6 +29,12 @@ class ProjectProject(models.Model):
     delay_total = fields.Float(string="Total Delay", readonly=True)
     delay_impact_line_ids = fields.One2many(
         "project.task.delay.impact", "project_id", string="Delay Impact Summary", readonly=True,
+    )
+    resource_requirement_ids = fields.One2many(
+        "project.task.resource.requirement", "project_id", string="Resource Plan", readonly=True,
+    )
+    resource_plan_summary_ids = fields.One2many(
+        "project.resource.plan.summary", "project_id", string="Resource Summary", readonly=True,
     )
 
     def _compute_critical_path_baseline_count(self):
@@ -86,6 +92,34 @@ class ProjectProject(models.Model):
     def _get_critical_path_signature(self):
         self.ensure_one()
         return "\n".join(sorted(self.critical_path_ids.mapped("task_path")))
+
+    def action_open_resource_roles(self):
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Resource Roles"),
+            "res_model": "project.resource.role",
+            "view_mode": "list,form",
+        }
+
+    def _recalculate_resource_plan(self):
+        Summary = self.env["project.resource.plan.summary"]
+        Requirement = self.env["project.task.resource.requirement"]
+        for project in self:
+            requirements = Requirement.search([("project_id", "=", project.id)])
+            totals = defaultdict(lambda: {"quantity": 0.0, "planned_hours": 0.0})
+            for requirement in requirements:
+                totals[requirement.role_id.id]["quantity"] += requirement.quantity or 0.0
+                totals[requirement.role_id.id]["planned_hours"] += requirement.planned_hours or 0.0
+            Summary.search([("project_id", "=", project.id)]).unlink()
+            Summary.create([
+                {
+                    "project_id": project.id,
+                    "role_id": role_id,
+                    "total_quantity": values["quantity"],
+                    "total_planned_hours": values["planned_hours"],
+                }
+                for role_id, values in totals.items()
+            ])
 
     def _recalculate_critical_paths(self):
         """Rebuild saved critical paths using only this project's task graph.

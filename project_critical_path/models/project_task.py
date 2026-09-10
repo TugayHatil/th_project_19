@@ -22,6 +22,9 @@ class ProjectTask(models.Model):
         ("no_impact", "No Impact"),
     ], string="Impact Status", readonly=True)
     delay_impact_chain = fields.Text(string="Impact Chain", readonly=True)
+    resource_requirement_ids = fields.One2many(
+        "project.task.resource.requirement", "task_id", string="Resource Requirements",
+    )
 
     @api.model_create_multi
     def create(self, vals_list):
