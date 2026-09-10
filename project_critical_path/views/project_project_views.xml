@@ -53,6 +53,11 @@
                             <field name="created_by_id"/>
                             <field name="project_duration" widget="float_time"/>
                             <field name="critical_path_duration" widget="float_time"/>
+                            <field name="history_project_duration_variance" widget="float_time"/>
+                            <field name="history_critical_path_duration_variance" widget="float_time"/>
+                            <field name="history_critical_path_changed"/>
+                            <field name="history_added_task_names" optional="hide"/>
+                            <field name="history_removed_task_names" optional="hide"/>
                             <field name="critical_path_changed"/>
                         </list>
                     </field>
@@ -171,7 +176,22 @@
                             <field name="critical_path_changed"/>
                         </group>
                     </group>
-                        <group string="Critical Path Comparison">
+                    <group string="Previous Baseline Comparison">
+                        <group>
+                            <field name="previous_baseline_id"/>
+                            <field name="history_project_duration_variance" widget="float_time"/>
+                            <field name="history_critical_path_duration_variance" widget="float_time"/>
+                        </group>
+                        <group>
+                            <field name="history_critical_path_changed"/>
+                            <field name="history_added_task_names"/>
+                            <field name="history_removed_task_names"/>
+                        </group>
+                    </group>
+                    <group string="Previous Baseline Change Summary">
+                        <field name="history_change_summary" nolabel="1"/>
+                    </group>
+                    <group string="Critical Path Comparison">
                             <field name="critical_path_signature" nolabel="1"/>
                             <field name="current_critical_path_signature" nolabel="1"/>
                         </group>

@@ -63,6 +63,15 @@ class TestCriticalPath(TransactionCase):
             ).change_type,
             "removed",
         )
+        project.action_create_critical_path_baseline()
+        history_baseline = project.critical_path_baseline_ids[0]
+        self.assertEqual(history_baseline.name, "v1.1")
+        self.assertEqual(history_baseline.previous_baseline_id.name, "v1.0")
+        self.assertEqual(history_baseline.history_project_duration_variance, 6)
+        self.assertEqual(history_baseline.history_critical_path_duration_variance, 6)
+        self.assertEqual(history_baseline.history_critical_path_changed, "yes")
+        self.assertIn("Task 3", history_baseline.history_added_task_names)
+        self.assertIn("Task 4", history_baseline.history_removed_task_names)
 
     def test_equal_maximum_paths_are_all_saved(self):
         project = self.env["project.project"].create({"name": "Parallel critical paths"})
@@ -106,3 +115,6 @@ class TestCriticalPath(TransactionCase):
         project.action_create_critical_path_baseline()
         self.assertEqual(project.critical_path_baseline_ids[0].name, "v1.1")
         self.assertEqual(project.critical_path_baseline_ids[1].name, "v1.0")
+        self.assertFalse(project.critical_path_baseline_ids[1].history_critical_path_changed)
+        self.assertEqual(project.critical_path_baseline_ids[0].history_project_duration_variance, 4)
+        self.assertEqual(project.critical_path_baseline_ids[0].history_critical_path_changed, "no")

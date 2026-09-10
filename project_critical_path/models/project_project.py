@@ -56,13 +56,20 @@ class ProjectProject(models.Model):
                 "critical_path_duration": project.critical_path_duration,
                 "critical_path_signature": project._get_critical_path_signature(),
                 "critical_path_snapshot": json.dumps([
-                    {"task_ids": path.task_ids.ids, "task_path": path.task_path}
+                    {
+                        "task_ids": path.task_ids.ids,
+                        "task_path": path.task_path,
+                        "tasks": [
+                            {"id": task.id, "name": task.display_name} for task in path.task_ids
+                        ],
+                    }
                     for path in project.critical_path_ids
                 ]),
             })
             baseline._create_snapshot_lines()
             project._recalculate_delay_impacts()
             baseline._recalculate_critical_path_changes()
+            baseline._recalculate_history_comparisons()
         return True
 
     def action_view_critical_path_baselines(self):
@@ -152,6 +159,7 @@ class ProjectProject(models.Model):
             })
             project._recalculate_delay_impacts()
             project.critical_path_baseline_ids._recalculate_critical_path_changes()
+            project.critical_path_baseline_ids._recalculate_history_comparisons()
 
     def _recalculate_delay_impacts(self):
         """Compare current task durations with the newest frozen plan revision."""

@@ -32,6 +32,22 @@ class ProjectCriticalPathBaseline(models.Model):
         "project.critical.path.change", "baseline_id", string="Critical Path Changes", readonly=True,
     )
     critical_path_change_summary = fields.Text(readonly=True, copy=False)
+    previous_baseline_id = fields.Many2one(
+        "project.critical.path.baseline", string="Previous Baseline", readonly=True, copy=False,
+    )
+    history_project_duration_variance = fields.Float(
+        string="Project Duration Variance", readonly=True, copy=False,
+    )
+    history_critical_path_duration_variance = fields.Float(
+        string="Critical Path Duration Variance", readonly=True, copy=False,
+    )
+    history_critical_path_changed = fields.Selection([
+        ("yes", "Yes"),
+        ("no", "No"),
+    ], string="Previous Baseline CP Changed", readonly=True, copy=False)
+    history_added_task_names = fields.Text(string="Entered Critical Path", readonly=True, copy=False)
+    history_removed_task_names = fields.Text(string="Left Critical Path", readonly=True, copy=False)
+    history_change_summary = fields.Text(string="Previous Baseline Change Summary", readonly=True, copy=False)
     current_project_duration = fields.Float(compute="_compute_current_comparison")
     current_critical_path_duration = fields.Float(compute="_compute_current_comparison")
     project_duration_delta = fields.Float(compute="_compute_current_comparison")
@@ -153,6 +169,81 @@ class ProjectCriticalPathBaseline(models.Model):
                 })
                 summary = "\n".join(messages)
             baseline.write({"critical_path_change_summary": summary})
+
+    def _get_critical_path_snapshot_info(self):
+        """Return task membership and names using frozen baseline values only."""
+        self.ensure_one()
+        try:
+            paths = json.loads(self.critical_path_snapshot or "[]")
+        except (TypeError, ValueError):
+            paths = []
+        task_ids, task_names = set(), {}
+        for path in paths:
+            task_ids.update(path.get("task_ids", []))
+            for task in path.get("tasks", []):
+                task_ids.add(task["id"])
+                task_names[task["id"]] = task["name"]
+        for line in self.line_ids.filtered("is_critical"):
+            if line.task_id:
+                task_ids.add(line.task_id.id)
+                task_names.setdefault(line.task_id.id, line.task_name)
+        return task_ids, task_names
+
+    def _recalculate_history_comparisons(self):
+        """Build each baseline's immutable-history summary against its predecessor."""
+        for project in self.mapped("project_id"):
+            baselines = self.search(
+                [("project_id", "=", project.id)], order="revision_number, id",
+            )
+            previous = self.browse()
+            for baseline in baselines:
+                values = {
+                    "previous_baseline_id": previous.id or False,
+                    "history_project_duration_variance": 0.0,
+                    "history_critical_path_duration_variance": 0.0,
+                    "history_critical_path_changed": False,
+                    "history_added_task_names": False,
+                    "history_removed_task_names": False,
+                    "history_change_summary": False,
+                }
+                if previous:
+                    previous_ids, previous_names = previous._get_critical_path_snapshot_info()
+                    current_ids, current_names = baseline._get_critical_path_snapshot_info()
+                    added_ids = current_ids - previous_ids
+                    removed_ids = previous_ids - current_ids
+                    paths_changed = baseline.critical_path_signature != previous.critical_path_signature
+                    values.update({
+                        "history_project_duration_variance": (
+                            baseline.project_duration - previous.project_duration
+                        ),
+                        "history_critical_path_duration_variance": (
+                            baseline.critical_path_duration - previous.critical_path_duration
+                        ),
+                        "history_critical_path_changed": "yes" if paths_changed else "no",
+                        "history_added_task_names": ", ".join(
+                            current_names.get(task_id, str(task_id)) for task_id in sorted(added_ids)
+                        ) or False,
+                        "history_removed_task_names": ", ".join(
+                            previous_names.get(task_id, str(task_id)) for task_id in sorted(removed_ids)
+                        ) or False,
+                    })
+                    summary = [
+                        _("Compared with %s.") % previous.name,
+                        _("Project duration: %(old).2f h → %(new).2f h (%(delta)+.2f h)") % {
+                            "old": previous.project_duration,
+                            "new": baseline.project_duration,
+                            "delta": values["history_project_duration_variance"],
+                        },
+                    ]
+                    if paths_changed:
+                        summary.append(_("Critical Path changed."))
+                    if values["history_added_task_names"]:
+                        summary.append(_("Entered: %s") % values["history_added_task_names"])
+                    if values["history_removed_task_names"]:
+                        summary.append(_("Left: %s") % values["history_removed_task_names"])
+                    values["history_change_summary"] = "\n".join(summary)
+                baseline.write(values)
+                previous = baseline
 
     def write(self, vals):
         protected = {

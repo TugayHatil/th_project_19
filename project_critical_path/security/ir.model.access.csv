@@ -1,6 +1,6 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_project_critical_path_user,project.critical.path user,model_project_critical_path,base.group_user,1,0,0,0
-access_project_critical_path_baseline_user,project.critical.path.baseline user,model_project_critical_path_baseline,base.group_user,1,0,0,0
-access_project_critical_path_baseline_line_user,project.critical.path.baseline.line user,model_project_critical_path_baseline_line,base.group_user,1,0,0,0
-access_project_task_delay_impact_user,project.task.delay.impact user,model_project_task_delay_impact,base.group_user,1,0,0,0
-access_project_critical_path_change_user,project.critical.path.change user,model_project_critical_path_change,base.group_user,1,0,0,0
+access_project_critical_path_user,project.critical.path user,model_project_critical_path,base.group_user,1,1,1,1
+access_project_critical_path_baseline_user,project.critical.path.baseline user,model_project_critical_path_baseline,base.group_user,1,1,1,1
+access_project_critical_path_baseline_line_user,project.critical.path.baseline.line user,model_project_critical_path_baseline_line,base.group_user,1,1,1,1
+access_project_task_delay_impact_user,project.task.delay.impact user,model_project_task_delay_impact,base.group_user,1,1,1,1
+access_project_critical_path_change_user,project.critical.path.change user,model_project_critical_path_change,base.group_user,1,1,1,1
