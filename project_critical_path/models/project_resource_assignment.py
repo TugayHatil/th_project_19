@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from datetime import datetime, time
+
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
@@ -17,9 +19,11 @@ class ProjectTaskResourceAssignment(models.Model):
     resource_category = fields.Selection(related="requirement_id.role_id.category", readonly=True)
     employee_id = fields.Many2one("hr.employee", string="Employee")
     equipment_id = fields.Many2one("maintenance.equipment", string="Equipment")
-    date_start = fields.Date(string="Assignment Start")
-    date_end = fields.Date(string="Assignment End")
-    planned_hours = fields.Float(string="Planned Hours", required=True, default=0.0)
+    date_start = fields.Datetime(string="Assignment Start", required=True)
+    date_end = fields.Datetime(string="Assignment End", required=True)
+    planned_hours = fields.Float(
+        string="Assigned Hours", compute="_compute_planned_hours", store=True, readonly=True,
+    )
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -28,9 +32,26 @@ class ProjectTaskResourceAssignment(models.Model):
             requirement_id = vals.get("requirement_id") or self.env.context.get("default_requirement_id")
             if requirement_id:
                 requirement = Requirement.browse(requirement_id)
-                vals.setdefault("date_start", requirement.date_start)
-                vals.setdefault("date_end", requirement.date_end)
+                if "date_start" not in vals and requirement.date_start:
+                    vals["date_start"] = datetime.combine(requirement.date_start, time.min)
+                if "date_end" not in vals and requirement.date_end:
+                    vals["date_end"] = datetime.combine(requirement.date_end, time.max)
+            vals.pop("planned_hours", None)
         return super().create(vals_list)
+
+    @api.depends("date_start", "date_end", "employee_id.resource_calendar_id")
+    def _compute_planned_hours(self):
+        for assignment in self:
+            if not assignment.date_start or not assignment.date_end or assignment.date_end <= assignment.date_start:
+                assignment.planned_hours = 0.0
+                continue
+            calendar = assignment.employee_id.resource_calendar_id or self.env.company.resource_calendar_id
+            if calendar:
+                assignment.planned_hours = calendar.get_work_hours_count(
+                    assignment.date_start, assignment.date_end, compute_leaves=True,
+                )
+            else:
+                assignment.planned_hours = (assignment.date_end - assignment.date_start).total_seconds() / 3600.0
 
     @api.constrains(
         "requirement_id", "employee_id", "equipment_id", "date_start", "date_end", "planned_hours",
@@ -43,17 +64,13 @@ class ProjectTaskResourceAssignment(models.Model):
                 raise ValidationError(_("Human resource requirements require exactly one employee."))
             if not is_human and (not assignment.equipment_id or assignment.employee_id):
                 raise ValidationError(_("Equipment resource requirements require exactly one equipment record."))
-            if assignment.planned_hours < 0:
-                raise ValidationError(_("Planned hours cannot be negative."))
-            if assignment.date_start and assignment.date_end and assignment.date_start > assignment.date_end:
+            if assignment.date_end <= assignment.date_start:
                 raise ValidationError(_("Assignment end date must not be earlier than its start date."))
-            if requirement.date_start and not assignment.date_start:
-                raise ValidationError(_("Assignment start date is required for this resource requirement."))
-            if requirement.date_end and not assignment.date_end:
-                raise ValidationError(_("Assignment end date is required for this resource requirement."))
-            if requirement.date_start and assignment.date_start and assignment.date_start < requirement.date_start:
+            assignment_start_date = fields.Date.to_date(assignment.date_start)
+            assignment_end_date = fields.Date.to_date(assignment.date_end)
+            if requirement.date_start and assignment_start_date < requirement.date_start:
                 raise ValidationError(_("Assignment start must be within the requirement date range."))
-            if requirement.date_end and assignment.date_end and assignment.date_end > requirement.date_end:
+            if requirement.date_end and assignment_end_date > requirement.date_end:
                 raise ValidationError(_("Assignment end must be within the requirement date range."))
 
             assignments = requirement.assignment_ids

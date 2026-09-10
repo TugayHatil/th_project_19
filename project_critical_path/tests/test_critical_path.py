@@ -147,15 +147,21 @@ class TestCriticalPath(TransactionCase):
         task = self.env["project.task"].create({"name": "Task", "project_id": project.id})
         role = self.env["project.resource.role"].create({"name": "Welder", "category": "human"})
         requirement = self.env["project.task.resource.requirement"].create({
-            "task_id": task.id, "role_id": role.id, "quantity": 2, "planned_hours": 80,
+            "task_id": task.id, "role_id": role.id, "quantity": 2, "planned_hours": 16,
         })
         first = self.env["hr.employee"].create({"name": "First welder"})
         second = self.env["hr.employee"].create({"name": "Second welder"})
         Assignment = self.env["project.task.resource.assignment"]
 
-        Assignment.create({"requirement_id": requirement.id, "employee_id": first.id, "planned_hours": 40})
-        self.assertEqual((requirement.assigned_quantity, requirement.assigned_hours), (1, 40))
+        Assignment.create({
+            "requirement_id": requirement.id, "employee_id": first.id,
+            "date_start": "2026-01-14 08:00:00", "date_end": "2026-01-14 17:00:00",
+        })
+        self.assertEqual(requirement.assigned_quantity, 1)
         self.assertEqual(requirement.assignment_status, "partial")
-        Assignment.create({"requirement_id": requirement.id, "employee_id": second.id, "planned_hours": 40})
-        self.assertEqual((requirement.assigned_quantity, requirement.assigned_hours), (2, 80))
+        Assignment.create({
+            "requirement_id": requirement.id, "employee_id": second.id,
+            "date_start": "2026-01-15 08:00:00", "date_end": "2026-01-15 17:00:00",
+        })
+        self.assertEqual(requirement.assigned_quantity, 2)
         self.assertEqual(requirement.assignment_status, "assigned")

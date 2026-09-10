@@ -126,10 +126,9 @@
                                 <field name="employee_id" optional="hide"/>
                                 <field name="equipment_id" optional="hide"/>
                                 <field name="task_id"/>
-                                <field name="requirement_id"/>
                                 <field name="date_start"/>
                                 <field name="date_end"/>
-                                <field name="planned_hours" widget="float_time"/>
+                                <field name="planned_hours" widget="float_time" readonly="1"/>
                             </list>
                         </field>
                     </group>
@@ -199,7 +198,7 @@
         <field name="model">project.task.resource.assignment</field>
         <field name="arch" type="xml">
             <list>
-                <field name="requirement_id"/>
+                <field name="requirement_id" invisible="1"/>
                 <field name="employee_id" optional="hide"/>
                 <field name="equipment_id" optional="hide"/>
                 <field name="date_start"/>
@@ -216,13 +215,13 @@
             <form>
                 <sheet>
                     <group>
-                        <field name="requirement_id"/>
+                        <field name="requirement_id" invisible="1"/>
                         <field name="resource_category" invisible="1"/>
                         <field name="employee_id" invisible="resource_category != 'human'"/>
                         <field name="equipment_id" invisible="resource_category != 'equipment'"/>
                         <field name="date_start"/>
                         <field name="date_end"/>
-                        <field name="planned_hours" widget="float_time"/>
+                        <field name="planned_hours" widget="float_time" readonly="1"/>
                     </group>
                 </sheet>
             </form>
