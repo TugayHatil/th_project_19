@@ -16,6 +16,9 @@ class ProjectTaskResourceAssignment(models.Model):
     task_id = fields.Many2one(related="requirement_id.task_id", store=True, readonly=True, index=True)
     project_id = fields.Many2one(related="requirement_id.project_id", store=True, readonly=True, index=True)
     resource_category = fields.Selection(related="requirement_id.role_id.category", readonly=True)
+    requirement_role_id = fields.Many2one(
+        related="requirement_id.role_id", readonly=True,
+    )
     employee_id = fields.Many2one("hr.employee", string="Employee")
     equipment_id = fields.Many2one("maintenance.equipment", string="Equipment")
     date_start = fields.Datetime(string="Assignment Start", required=True)
@@ -77,6 +80,10 @@ class ProjectTaskResourceAssignment(models.Model):
             is_human = requirement.role_id.category == "human"
             if is_human and (not assignment.employee_id or assignment.equipment_id):
                 raise ValidationError(_("Human resource requirements require exactly one employee."))
+            if is_human and requirement.role_id not in assignment.employee_id.resource_role_ids:
+                raise ValidationError(
+                    _("Selected employee does not have the '%s' resource role.") % requirement.role_id.name
+                )
             if not is_human and (not assignment.equipment_id or assignment.employee_id):
                 raise ValidationError(_("Equipment resource requirements require exactly one equipment record."))
             if assignment.date_end <= assignment.date_start:

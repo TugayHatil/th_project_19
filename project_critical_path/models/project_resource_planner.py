@@ -30,7 +30,10 @@ class ProjectResourcePlanner(models.TransientModel):
         for planner in self:
             Line.search([("planner_id", "=", planner.id)]).unlink()
             if planner.resource_category == "human":
-                resources = self.env["hr.employee"].search([("active", "=", True)])
+                resources = self.env["hr.employee"].search([
+                    ("active", "=", True),
+                    ("resource_role_ids", "in", planner.requirement_id.role_id.ids),
+                ])
                 resource_field = "employee_id"
             else:
                 resources = self.env["maintenance.equipment"].search([("active", "=", True)])

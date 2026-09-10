@@ -150,8 +150,12 @@ class TestCriticalPath(TransactionCase):
             "task_id": task.id, "role_id": role.id, "quantity": 2, "planned_hours": 16,
             "date_start": "2026-01-14 08:00:00", "date_end": "2026-01-15 17:00:00",
         })
-        first = self.env["hr.employee"].create({"name": "First welder"})
-        second = self.env["hr.employee"].create({"name": "Second welder"})
+        first = self.env["hr.employee"].create({
+            "name": "First welder", "resource_role_ids": [(4, role.id)],
+        })
+        second = self.env["hr.employee"].create({
+            "name": "Second welder", "resource_role_ids": [(4, role.id)],
+        })
         Assignment = self.env["project.task.resource.assignment"]
 
         Assignment.create({
@@ -171,7 +175,14 @@ class TestCriticalPath(TransactionCase):
         project = self.env["project.project"].create({"name": "Planner test"})
         task = self.env["project.task"].create({"name": "Task", "project_id": project.id})
         role = self.env["project.resource.role"].create({"name": "Foreman", "category": "human"})
+        other_role = self.env["project.resource.role"].create({"name": "Welder", "category": "human"})
         unassigned_employee = self.env["hr.employee"].create({"name": "Unassigned foreman"})
+        qualified_employee = self.env["hr.employee"].create({
+            "name": "Qualified foreman", "resource_role_ids": [(4, role.id)],
+        })
+        unqualified_employee = self.env["hr.employee"].create({
+            "name": "Unqualified welder", "resource_role_ids": [(4, other_role.id)],
+        })
         requirement = self.env["project.task.resource.requirement"].create({
             "task_id": task.id, "role_id": role.id, "quantity": 1, "planned_hours": 8,
             "date_start": "2026-09-14 08:00:00", "date_end": "2026-09-19 18:00:00",
@@ -182,8 +193,8 @@ class TestCriticalPath(TransactionCase):
         planner = self.env["project.resource.planner"].browse(action["res_id"])
         self.assertEqual(planner.requirement_id, requirement)
         self.assertTrue(planner.line_ids)
-        unassigned_line = planner.line_ids.filtered(
-            lambda line: line.employee_id == unassigned_employee
-        )
-        self.assertEqual(unassigned_line.availability_status, "fully_available")
+        qualified_line = planner.line_ids.filtered(lambda line: line.employee_id == qualified_employee)
+        self.assertEqual(qualified_line.availability_status, "fully_available")
+        self.assertNotIn(unassigned_employee, planner.line_ids.mapped("employee_id"))
+        self.assertNotIn(unqualified_employee, planner.line_ids.mapped("employee_id"))
         self.assertIn("Task - Foreman", requirement.display_name)

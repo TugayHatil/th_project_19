@@ -219,7 +219,9 @@
                     <group>
                         <field name="requirement_id" invisible="1"/>
                         <field name="resource_category" invisible="1"/>
-                        <field name="employee_id" invisible="resource_category != 'human'"/>
+                        <field name="requirement_role_id" invisible="1"/>
+                        <field name="employee_id" invisible="resource_category != 'human'"
+                               domain="[('resource_role_ids', 'in', [requirement_role_id])]"/>
                         <field name="equipment_id" invisible="resource_category != 'equipment'"/>
                         <field name="date_start"/>
                         <field name="date_end"/>
@@ -229,6 +231,20 @@
                     </group>
                 </sheet>
             </form>
+        </field>
+    </record>
+
+    <record id="hr_employee_form_inherit_resource_roles" model="ir.ui.view">
+        <field name="name">hr.employee.form.inherit.resource.roles</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group string="Resource Planning">
+                    <field name="resource_role_ids" widget="many2many_tags"
+                           domain="[('category', '=', 'human')]"/>
+                </group>
+            </xpath>
         </field>
     </record>
 
