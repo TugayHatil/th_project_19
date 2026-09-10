@@ -30,8 +30,8 @@ class ProjectTaskResourceRequirement(models.Model):
     )
     role_id = fields.Many2one("project.resource.role", required=True, index=True)
     quantity = fields.Float(required=True, default=1.0)
-    date_start = fields.Date(string="Requirement Start")
-    date_end = fields.Date(string="Requirement End")
+    date_start = fields.Datetime(string="Requirement Start")
+    date_end = fields.Datetime(string="Requirement End")
     planned_hours = fields.Float(string="Planned Hours")
     description = fields.Text()
     assignment_ids = fields.One2many(
@@ -72,6 +72,37 @@ class ProjectTaskResourceRequirement(models.Model):
             "context": {"default_requirement_id": self.id},
         }
 
+    def action_open_resource_planner(self):
+        """Open the standard Gantt planner for this requirement's resource type."""
+        self.ensure_one()
+        category = self.role_id.category
+        gantt_xmlid = (
+            "project_task_resource_assignment_gantt_employee"
+            if category == "human"
+            else "project_task_resource_assignment_gantt_equipment"
+        )
+        return {
+            "type": "ir.actions.act_window",
+            "name": "Resource Planner - %s" % self.role_id.display_name,
+            "res_model": "project.task.resource.assignment",
+            "view_mode": "gantt,list,form",
+            "views": [
+                (self.env.ref("project_critical_path.%s" % gantt_xmlid).id, "gantt"),
+                (self.env.ref("project_critical_path.project_task_resource_assignment_list").id, "list"),
+                (self.env.ref("project_critical_path.project_task_resource_assignment_form").id, "form"),
+            ],
+            "domain": [
+                ("resource_category", "=", category),
+                ("date_start", "<=", self.date_end),
+                ("date_end", ">=", self.date_start),
+            ],
+            "context": {
+                "default_requirement_id": self.id,
+                "default_date_start": self.date_start,
+                "default_date_end": self.date_end,
+            },
+        }
+
     @api.model_create_multi
     def create(self, vals_list):
         Task = self.env["project.task"]
@@ -80,9 +111,9 @@ class ProjectTaskResourceRequirement(models.Model):
             if task_id:
                 task = Task.browse(task_id)
                 if "date_start" not in vals and "date_assign" in task._fields:
-                    vals["date_start"] = fields.Date.to_date(task.date_assign) if task.date_assign else False
+                    vals["date_start"] = task.date_assign if task.date_assign else False
                 if "date_end" not in vals and "date_deadline" in task._fields:
-                    vals["date_end"] = fields.Date.to_date(task.date_deadline) if task.date_deadline else False
+                    vals["date_end"] = task.date_deadline if task.date_deadline else False
         requirements = super().create(vals_list)
         requirements.mapped("project_id")._recalculate_resource_plan()
         return requirements

@@ -183,6 +183,8 @@
                                    decoration-success="assignment_status == 'assigned'"
                                    decoration-warning="assignment_status == 'partial'"
                                    decoration-danger="assignment_status == 'waiting'"/>
+                            <button name="action_open_resource_planner" string="Plan Resources"
+                                    type="object" class="btn-secondary"/>
                             <button name="action_open_resource_assignments" string="Assign Resources"
                                     type="object" class="btn-secondary"/>
                             <field name="description" optional="hide"/>
@@ -225,6 +227,34 @@
                     </group>
                 </sheet>
             </form>
+        </field>
+    </record>
+
+    <record id="project_task_resource_assignment_gantt_employee" model="ir.ui.view">
+        <field name="name">project.task.resource.assignment.gantt.employee</field>
+        <field name="model">project.task.resource.assignment</field>
+        <field name="arch" type="xml">
+            <gantt string="Team Planner" date_start="date_start" date_stop="date_end"
+                   default_group_by="employee_id" color="task_id">
+                <field name="employee_id"/>
+                <field name="task_id"/>
+                <field name="project_id"/>
+                <field name="planned_hours"/>
+            </gantt>
+        </field>
+    </record>
+
+    <record id="project_task_resource_assignment_gantt_equipment" model="ir.ui.view">
+        <field name="name">project.task.resource.assignment.gantt.equipment</field>
+        <field name="model">project.task.resource.assignment</field>
+        <field name="arch" type="xml">
+            <gantt string="Team Planner" date_start="date_start" date_stop="date_end"
+                   default_group_by="equipment_id" color="task_id">
+                <field name="equipment_id"/>
+                <field name="task_id"/>
+                <field name="project_id"/>
+                <field name="planned_hours"/>
+            </gantt>
         </field>
     </record>
     <record id="project_task_list_inherit_critical_path" model="ir.ui.view">

@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from datetime import datetime, time
-
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
@@ -33,9 +31,9 @@ class ProjectTaskResourceAssignment(models.Model):
             if requirement_id:
                 requirement = Requirement.browse(requirement_id)
                 if "date_start" not in vals and requirement.date_start:
-                    vals["date_start"] = datetime.combine(requirement.date_start, time.min)
+                    vals["date_start"] = requirement.date_start
                 if "date_end" not in vals and requirement.date_end:
-                    vals["date_end"] = datetime.combine(requirement.date_end, time.max)
+                    vals["date_end"] = requirement.date_end
             vals.pop("planned_hours", None)
         return super().create(vals_list)
 
@@ -66,11 +64,9 @@ class ProjectTaskResourceAssignment(models.Model):
                 raise ValidationError(_("Equipment resource requirements require exactly one equipment record."))
             if assignment.date_end <= assignment.date_start:
                 raise ValidationError(_("Assignment end date must not be earlier than its start date."))
-            assignment_start_date = fields.Date.to_date(assignment.date_start)
-            assignment_end_date = fields.Date.to_date(assignment.date_end)
-            if requirement.date_start and assignment_start_date < requirement.date_start:
+            if requirement.date_start and assignment.date_start < requirement.date_start:
                 raise ValidationError(_("Assignment start must be within the requirement date range."))
-            if requirement.date_end and assignment_end_date > requirement.date_end:
+            if requirement.date_end and assignment.date_end > requirement.date_end:
                 raise ValidationError(_("Assignment end must be within the requirement date range."))
 
             assignments = requirement.assignment_ids

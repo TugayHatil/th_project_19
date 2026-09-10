@@ -165,3 +165,17 @@ class TestCriticalPath(TransactionCase):
         })
         self.assertEqual(requirement.assigned_quantity, 2)
         self.assertEqual(requirement.assignment_status, "assigned")
+
+    def test_resource_planner_filters_assignments_by_requirement_category(self):
+        project = self.env["project.project"].create({"name": "Planner test"})
+        task = self.env["project.task"].create({"name": "Task", "project_id": project.id})
+        role = self.env["project.resource.role"].create({"name": "Foreman", "category": "human"})
+        requirement = self.env["project.task.resource.requirement"].create({
+            "task_id": task.id, "role_id": role.id, "quantity": 1, "planned_hours": 8,
+            "date_start": "2026-09-14 08:00:00", "date_end": "2026-09-19 18:00:00",
+        })
+
+        action = requirement.action_open_resource_planner()
+        self.assertEqual(action["view_mode"], "gantt,list,form")
+        self.assertEqual(action["context"]["default_requirement_id"], requirement.id)
+        self.assertIn(("resource_category", "=", "human"), action["domain"])
