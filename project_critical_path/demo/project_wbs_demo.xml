@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Demo EPC Project -->
+        <record id="demo_project_epc_wbs" model="project.project">
+            <field name="name">EPC Industrial Complex Construction</field>
+        </record>
+
+        <!-- Level 1 Tasks -->
+        <record id="demo_wbs_task_1" model="project.task">
+            <field name="name">1. Engineering</field>
+            <field name="project_id" ref="demo_project_epc_wbs"/>
+            <field name="sequence">10</field>
+        </record>
+
+        <record id="demo_wbs_task_2" model="project.task">
+            <field name="name">2. Procurement &amp; Supply Chain</field>
+            <field name="project_id" ref="demo_project_epc_wbs"/>
+            <field name="sequence">20</field>
+        </record>
+
+        <record id="demo_wbs_task_3" model="project.task">
+            <field name="name">3. Site Construction &amp; Commissioning</field>
+            <field name="project_id" ref="demo_project_epc_wbs"/>
+            <field name="sequence">30</field>
+        </record>
+
+        <!-- Level 2 Tasks -->
+        <record id="demo_wbs_task_1_1" model="project.task">
+            <field name="name">1.1 Layout &amp; Civil Design</field>
+            <field name="project_id" ref="demo_project_epc_wbs"/>
+            <field name="parent_id" ref="demo_wbs_task_1"/>
+            <field name="sequence">10</field>
+        </record>
+
+        <record id="demo_wbs_task_2_1" model="project.task">
+            <field name="name">2.1 Heavy Turbine Machinery Procurement</field>
+            <field name="project_id" ref="demo_project_epc_wbs"/>
+            <field name="parent_id" ref="demo_wbs_task_2"/>
+            <field name="sequence">10</field>
+            <field name="allocated_hours">120.0</field>
+        </record>
+
+        <!-- Level 3 Tasks -->
+        <record id="demo_wbs_task_1_1_1" model="project.task">
+            <field name="name">1.1.1 Structural Layout Drawings</field>
+            <field name="project_id" ref="demo_project_epc_wbs"/>
+            <field name="parent_id" ref="demo_wbs_task_1_1"/>
+            <field name="sequence">10</field>
+        </record>
+
+        <!-- Level 4 Tasks -->
+        <record id="demo_wbs_task_1_1_1_1" model="project.task">
+            <field name="name">1.1.1.1 Foundation Structural Survey</field>
+            <field name="project_id" ref="demo_project_epc_wbs"/>
+            <field name="parent_id" ref="demo_wbs_task_1_1_1"/>
+            <field name="sequence">10</field>
+        </record>
+
+        <record id="demo_wbs_task_1_1_1_2" model="project.task">
+            <field name="name">1.1.1.2 Concrete Load Calculations</field>
+            <field name="project_id" ref="demo_project_epc_wbs"/>
+            <field name="parent_id" ref="demo_wbs_task_1_1_1"/>
+            <field name="sequence">20</field>
+            <field name="allocated_hours">80.0</field>
+        </record>
+
+        <!-- Level 5 Tasks -->
+        <record id="demo_wbs_task_1_1_1_1_1" model="project.task">
+            <field name="name">1.1.1.1.1 Soil Testing &amp; Site Inspection</field>
+            <field name="project_id" ref="demo_project_epc_wbs"/>
+            <field name="parent_id" ref="demo_wbs_task_1_1_1_1"/>
+            <field name="sequence">10</field>
+            <field name="allocated_hours">40.0</field>
+        </record>
+
+        <record id="demo_wbs_task_1_1_1_1_2" model="project.task">
+            <field name="name">1.1.1.1.2 Geological Borehole Analysis</field>
+            <field name="project_id" ref="demo_project_epc_wbs"/>
+            <field name="parent_id" ref="demo_wbs_task_1_1_1_1"/>
+            <field name="sequence">20</field>
+            <field name="allocated_hours">60.0</field>
+        </record>
+    </data>
+</odoo>

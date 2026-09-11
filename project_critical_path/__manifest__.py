@@ -12,6 +12,10 @@
         "security/ir.model.access.csv",
         "views/project_project_views.xml",
     ],
+    "demo": [
+        "demo/project_wbs_demo.xml",
+    ],
     "installable": True,
+
     "application": False,
 }
