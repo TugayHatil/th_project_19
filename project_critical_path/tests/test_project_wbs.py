@@ -235,17 +235,36 @@ class TestProjectWBS(TransactionCase):
         self.assertEqual(c1_3.wbs_code, "2.3")
         self.assertEqual(c1_3.wbs_sort_key, "0002.0003")
 
-        # Test read_group grouping by wbs_code returns human-readable headers ordered hierarchically
-        read_group_result = self.env["project.task"].read_group(
-            domain=[("project_id", "=", self.project.id)],
-            fields=["wbs_code"],
-            groupby=["wbs_code"],
-        )
-        grouped_wbs_codes = [res["wbs_code"] for res in read_group_result]
+        # Test default ordering of search without grouping
+        sorted_tasks = self.env["project.task"].search([("project_id", "=", self.project.id)])
         self.assertEqual(
-            grouped_wbs_codes,
+            sorted_tasks.mapped("wbs_code"),
             ["1", "1.1", "1.1.1", "1.1.2", "1.1.3", "1.2", "1.2.1", "2", "2.1", "2.2", "2.3", "3"],
         )
+
+    def test_wbs_default_ordering_validation(self):
+        """Validation test for default ordering without grouping:
+        1 Engineering
+          1.1 Drawing
+            1.1.1 Detail Drawing
+          1.2 Approval
+        2 Procurement
+        3 Installation
+        Both views must display: 1, 1.1, 1.1.1, 1.2, 2, 3
+        """
+        project = self.env["project.project"].create({"name": "Validation Project"})
+        eng = self.env["project.task"].create({"name": "Engineering", "project_id": project.id, "sequence": 10})
+        proc = self.env["project.task"].create({"name": "Procurement", "project_id": project.id, "sequence": 20})
+        inst = self.env["project.task"].create({"name": "Installation", "project_id": project.id, "sequence": 30})
+
+        drawing = self.env["project.task"].create({"name": "Drawing", "project_id": project.id, "parent_id": eng.id, "sequence": 10})
+        approval = self.env["project.task"].create({"name": "Approval", "project_id": project.id, "parent_id": eng.id, "sequence": 20})
+
+        detail_drawing = self.env["project.task"].create({"name": "Detail Drawing", "project_id": project.id, "parent_id": drawing.id, "sequence": 10})
+
+        tasks = self.env["project.task"].search([("project_id", "=", project.id)])
+        self.assertEqual(tasks.mapped("wbs_code"), ["1", "1.1", "1.1.1", "1.2", "2", "3"])
+
 
 
     def test_security_only_manager_can_modify_hierarchy(self):

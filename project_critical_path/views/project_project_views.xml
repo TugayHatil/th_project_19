@@ -20,8 +20,9 @@
             <xpath expr="//notebook" position="inside">
                 <page name="wbs_structure" string="Work Breakdown Structure">
                     <field name="task_ids" nolabel="1" context="{'default_project_id': id}">
-                        <list string="Work Breakdown Structure" default_order="wbs_sort_key">
+                        <list string="Work Breakdown Structure" default_order="wbs_sort_key asc">
                             <field name="wbs_code" string="WBS"/>
+
 
 
                             <field name="wbs_level" string="Level" optional="hide"/>
@@ -346,6 +347,9 @@
         <field name="model">project.task</field>
         <field name="inherit_id" ref="project.view_task_tree2"/>
         <field name="arch" type="xml">
+            <xpath expr="//list" position="attributes">
+                <attribute name="default_order">wbs_sort_key asc</attribute>
+            </xpath>
             <xpath expr="//field[@name='name']" position="before">
                 <field name="wbs_code" string="WBS"/>
                 <field name="wbs_level" string="Level" optional="hide"/>
@@ -362,6 +366,7 @@
             </xpath>
         </field>
     </record>
+
 
     <record id="project_task_search_inherit_wbs" model="ir.ui.view">
         <field name="name">project.task.search.inherit.wbs</field>
