@@ -63,7 +63,19 @@ class ProjectTaskWBS(models.Model):
     def _compute_wbs_code_and_level(self):
         projects = self.mapped("project_id")
         for project in projects:
-            project._recalculate_wbs_codes()
+            project_tasks = self.env["project.task"].with_context(active_test=False).search(
+                [("project_id", "=", project.id)]
+            )
+            codes, levels = project._calculate_wbs_codes_map(project_tasks)
+            for task in project_tasks:
+                if task in self:
+                    task.wbs_code = codes.get(task.id, "")
+                    task.wbs_level = levels.get(task.id, 1)
+
+        for task in self:
+            if not task.project_id:
+                task.wbs_code = ""
+                task.wbs_level = 1
 
     @api.depends("child_ids")
     def _compute_is_work_package(self):
@@ -72,17 +84,33 @@ class ProjectTaskWBS(models.Model):
 
     @api.depends(
         "allocated_hours",
-        "effective_hours",
         "progress",
         "child_ids",
         "child_ids.planned_hours_rollup",
-        "child_ids.effective_hours_rollup",
         "child_ids.progress_rollup",
     )
     def _compute_wbs_rollups(self):
         projects = self.mapped("project_id")
         for project in projects:
-            project._recalculate_wbs_rollups()
+            project_tasks = self.env["project.task"].with_context(active_test=False).search(
+                [("project_id", "=", project.id)]
+            )
+            rollups = project._calculate_wbs_rollups_map(project_tasks)
+            for task in project_tasks:
+                if task in self:
+                    p, e, prog = rollups.get(task.id, (0.0, 0.0, 0.0))
+                    task.planned_hours_rollup = p
+                    task.effective_hours_rollup = e
+                    task.progress_rollup = prog
+
+        for task in self:
+            if not task.project_id:
+                p = task.allocated_hours or 0.0
+                e = getattr(task, "effective_hours", 0.0) or 0.0
+                prog = task.progress or 0.0
+                task.planned_hours_rollup = p
+                task.effective_hours_rollup = e
+                task.progress_rollup = round(prog, 2)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -108,7 +136,6 @@ class ProjectTaskWBS(models.Model):
             "sequence",
             "project_id",
             "allocated_hours",
-            "effective_hours",
             "progress",
         }
         if wbs_trigger_fields.intersection(vals):
@@ -127,115 +154,121 @@ class ProjectTaskWBS(models.Model):
 class ProjectProjectWBS(models.Model):
     _inherit = "project.project"
 
-    def _recalculate_wbs(self):
-        """Recalculate WBS numbering and roll-up values for all projects in self."""
-        for project in self:
-            project._recalculate_wbs_codes()
-            project._recalculate_wbs_rollups()
-
-    def _recalculate_wbs_codes(self):
-        """Rebuild sequential WBS codes and levels for all tasks in the project graph."""
-        for project in self:
+    def _calculate_wbs_codes_map(self, tasks=None):
+        self.ensure_one()
+        if tasks is None:
             tasks = self.env["project.task"].with_context(active_test=False).search(
-                [("project_id", "=", project.id)]
+                [("project_id", "=", self.id)]
             )
-            if not tasks:
-                continue
 
-            children_by_parent = defaultdict(list)
-            for task in tasks:
-                children_by_parent[task.parent_id.id].append(task)
+        children_by_parent = defaultdict(list)
+        for task in tasks:
+            children_by_parent[task.parent_id.id].append(task)
 
-            for parent_id in children_by_parent:
-                children_by_parent[parent_id].sort(key=lambda t: (t.sequence, t.id))
+        for parent_id in children_by_parent:
+            children_by_parent[parent_id].sort(key=lambda t: (t.sequence, t.id))
 
-            updates = {}
+        codes = {}
+        levels = {}
 
-            def assign_wbs(parent_task, parent_wbs, level):
-                parent_key = parent_task.id if parent_task else False
-                children = children_by_parent.get(parent_key, [])
-                for idx, child in enumerate(children, start=1):
-                    code = f"{parent_wbs}.{idx}" if parent_wbs else str(idx)
-                    has_children = bool(children_by_parent.get(child.id))
-                    updates[child.id] = {
-                        "wbs_code": code,
-                        "wbs_level": level,
-                        "is_work_package": has_children,
-                    }
-                    assign_wbs(child, code, level + 1)
+        def assign_wbs(parent_task, parent_wbs, level):
+            parent_key = parent_task.id if parent_task else False
+            children = children_by_parent.get(parent_key, [])
+            for idx, child in enumerate(children, start=1):
+                code = f"{parent_wbs}.{idx}" if parent_wbs else str(idx)
+                codes[child.id] = code
+                levels[child.id] = level
+                assign_wbs(child, code, level + 1)
 
-            assign_wbs(None, "", 1)
+        assign_wbs(None, "", 1)
+        return codes, levels
 
-            for task in tasks:
-                if task.id in updates:
-                    vals = updates[task.id]
-                    if (
-                        task.wbs_code != vals["wbs_code"]
-                        or task.wbs_level != vals["wbs_level"]
-                        or task.is_work_package != vals["is_work_package"]
-                    ):
-                        task.write(vals)
-
-    def _recalculate_wbs_rollups(self):
-        """Re-evaluate bottom-up roll-up calculations for planned hours, actual hours, and weighted progress."""
-        for project in self:
+    def _calculate_wbs_rollups_map(self, tasks=None):
+        self.ensure_one()
+        if tasks is None:
             tasks = self.env["project.task"].with_context(active_test=False).search(
-                [("project_id", "=", project.id)]
+                [("project_id", "=", self.id)]
             )
-            if not tasks:
-                continue
 
-            task_by_id = {t.id: t for t in tasks}
-            children_by_parent = defaultdict(list)
-            for t in tasks:
-                children_by_parent[t.parent_id.id].append(t.id)
+        task_by_id = {t.id: t for t in tasks}
+        children_by_parent = defaultdict(list)
+        for t in tasks:
+            children_by_parent[t.parent_id.id].append(t.id)
 
-            cache = {}
+        cache = {}
 
-            def compute_node(t_id):
-                if t_id in cache:
-                    return cache[t_id]
-
-                t = task_by_id[t_id]
-                p = t.allocated_hours or 0.0
-                e = t.effective_hours or 0.0
-                prog = t.progress or 0.0
-                wp = prog * p
-                sum_prog = prog
-                cnt = 1
-
-                for child_id in children_by_parent.get(t_id, []):
-                    cp, ce, cwp, csum_prog, ccnt = compute_node(child_id)
-                    p += cp
-                    e += ce
-                    wp += cwp
-                    sum_prog += csum_prog
-                    cnt += ccnt
-
-                cache[t_id] = (p, e, wp, sum_prog, cnt)
+        def compute_node(t_id):
+            if t_id in cache:
                 return cache[t_id]
 
-            for t_id in task_by_id:
-                compute_node(t_id)
+            t = task_by_id[t_id]
+            p = t.allocated_hours or 0.0
+            e = getattr(t, "effective_hours", 0.0) or 0.0
+            prog = t.progress or 0.0
+            wp = prog * p
+            sum_prog = prog
+            cnt = 1
 
-            for t_id, (p, e, wp, sum_prog, cnt) in cache.items():
-                task = task_by_id[t_id]
-                if p > 0:
-                    prog_rollup = wp / p
-                else:
-                    prog_rollup = (sum_prog / cnt) if cnt > 0 else 0.0
+            for child_id in children_by_parent.get(t_id, []):
+                cp, ce, cwp, csum_prog, ccnt = compute_node(child_id)
+                p += cp
+                e += ce
+                wp += cwp
+                sum_prog += csum_prog
+                cnt += ccnt
 
-                prog_rollup = round(prog_rollup, 2)
-                p = round(p, 2)
-                e = round(e, 2)
+            cache[t_id] = (p, e, wp, sum_prog, cnt)
+            return cache[t_id]
 
-                if (
-                    task.planned_hours_rollup != p
-                    or task.effective_hours_rollup != e
-                    or task.progress_rollup != prog_rollup
-                ):
-                    task.write({
-                        "planned_hours_rollup": p,
-                        "effective_hours_rollup": e,
-                        "progress_rollup": prog_rollup,
-                    })
+        for t_id in task_by_id:
+            compute_node(t_id)
+
+        rollups = {}
+        for t_id, (p, e, wp, sum_prog, cnt) in cache.items():
+            if p > 0:
+                prog_rollup = wp / p
+            else:
+                prog_rollup = (sum_prog / cnt) if cnt > 0 else 0.0
+
+            rollups[t_id] = (round(p, 2), round(e, 2), round(prog_rollup, 2))
+
+        return rollups
+
+    def _recalculate_wbs(self):
+        for project in self:
+            tasks = self.env["project.task"].with_context(active_test=False).search(
+                [("project_id", "=", project.id)]
+            )
+            if not tasks:
+                continue
+            codes, levels = project._calculate_wbs_codes_map(tasks)
+            rollups = project._calculate_wbs_rollups_map(tasks)
+
+            for task in tasks:
+                has_children = bool(task.child_ids)
+                p, e, prog = rollups.get(task.id, (0.0, 0.0, 0.0))
+                code = codes.get(task.id, "")
+                lvl = levels.get(task.id, 1)
+
+                vals = {}
+                if task.wbs_code != code:
+                    vals["wbs_code"] = code
+                if task.wbs_level != lvl:
+                    vals["wbs_level"] = lvl
+                if task.is_work_package != has_children:
+                    vals["is_work_package"] = has_children
+                if task.planned_hours_rollup != p:
+                    vals["planned_hours_rollup"] = p
+                if task.effective_hours_rollup != e:
+                    vals["effective_hours_rollup"] = e
+                if task.progress_rollup != prog:
+                    vals["progress_rollup"] = prog
+
+                if vals:
+                    task.write(vals)
+
+    def _recalculate_wbs_codes(self):
+        self._recalculate_wbs()
+
+    def _recalculate_wbs_rollups(self):
+        self._recalculate_wbs()

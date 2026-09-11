@@ -7,7 +7,8 @@
     "category": "Project",
     "author": "Projet Solutions",
     "license": "LGPL-3",
-    "depends": ["project", "hr", "maintenance"],
+    "depends": ["project", "hr", "hr_timesheet", "maintenance"],
+
     "data": [
         "security/ir.model.access.csv",
         "views/project_project_views.xml",
