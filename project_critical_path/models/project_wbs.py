@@ -161,6 +161,30 @@ class ProjectTaskWBS(models.Model):
             affected_projects._recalculate_wbs()
         return result
 
+    @api.model
+    def _wbs_code_to_sort_key(self, code):
+        if not code:
+            return ""
+        try:
+            return ".".join(f"{int(part):04d}" for part in str(code).split("."))
+        except (ValueError, AttributeError):
+            return str(code)
+
+    @api.model
+    def read_group(self, domain, fields, groupby, offset=0, limit=None, orderby=False, lazy=True):
+        result = super().read_group(
+            domain, fields, groupby, offset=offset, limit=limit, orderby=orderby, lazy=lazy
+        )
+        groupby_list = [groupby] if isinstance(groupby, str) else (groupby or [])
+        groupby_fields = [g.split(":")[0] for g in groupby_list]
+        if "wbs_code" in groupby_fields:
+            result = sorted(
+                result,
+                key=lambda res: self._wbs_code_to_sort_key(res.get("wbs_code")),
+            )
+        return result
+
+
 
 class ProjectProjectWBS(models.Model):
     _inherit = "project.project"

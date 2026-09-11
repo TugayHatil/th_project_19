@@ -235,6 +235,19 @@ class TestProjectWBS(TransactionCase):
         self.assertEqual(c1_3.wbs_code, "2.3")
         self.assertEqual(c1_3.wbs_sort_key, "0002.0003")
 
+        # Test read_group grouping by wbs_code returns human-readable headers ordered hierarchically
+        read_group_result = self.env["project.task"].read_group(
+            domain=[("project_id", "=", self.project.id)],
+            fields=["wbs_code"],
+            groupby=["wbs_code"],
+        )
+        grouped_wbs_codes = [res["wbs_code"] for res in read_group_result]
+        self.assertEqual(
+            grouped_wbs_codes,
+            ["1", "1.1", "1.1.1", "1.1.2", "1.1.3", "1.2", "1.2.1", "2", "2.1", "2.2", "2.3", "3"],
+        )
+
+
     def test_security_only_manager_can_modify_hierarchy(self):
         """Security: Non-manager users cannot change task hierarchy."""
         root = self.env["project.task"].create({"name": "Root", "project_id": self.project.id})

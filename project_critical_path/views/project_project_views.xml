@@ -21,8 +21,8 @@
                 <page name="wbs_structure" string="Work Breakdown Structure">
                     <field name="task_ids" nolabel="1" context="{'default_project_id': id}">
                         <list string="Work Breakdown Structure" default_order="wbs_sort_key">
-                            <field name="wbs_sort_key" column_invisible="1"/>
                             <field name="wbs_code" string="WBS"/>
+
 
                             <field name="wbs_level" string="Level" optional="hide"/>
                             <field name="name" string="Task Title"/>
@@ -378,9 +378,11 @@
                 <separator/>
             </xpath>
             <xpath expr="//group" position="inside">
+                <filter string="WBS Code" name="group_by_wbs_code" context="{'group_by': 'wbs_code'}"/>
                 <filter string="WBS Level" name="group_by_wbs_level" context="{'group_by': 'wbs_level'}"/>
                 <filter string="Parent Work Package" name="group_by_parent_id" context="{'group_by': 'parent_id'}"/>
             </xpath>
+
         </field>
     </record>
 
