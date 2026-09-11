@@ -35,6 +35,7 @@ class TestProjectWBS(TransactionCase):
             "sequence": 10,
         })
         self.assertEqual(task_1.wbs_code, "1")
+        self.assertEqual(task_1.wbs_sort_key, "0001")
         self.assertEqual(task_1.wbs_level, 1)
         self.assertFalse(task_1.is_work_package)
 
@@ -45,6 +46,7 @@ class TestProjectWBS(TransactionCase):
             "sequence": 20,
         })
         self.assertEqual(task_2.wbs_code, "2")
+        self.assertEqual(task_2.wbs_sort_key, "0002")
         self.assertEqual(task_2.wbs_level, 1)
         self.assertFalse(task_2.is_work_package)
 
@@ -56,6 +58,7 @@ class TestProjectWBS(TransactionCase):
             "sequence": 10,
         })
         self.assertEqual(child_2_1.wbs_code, "2.1")
+        self.assertEqual(child_2_1.wbs_sort_key, "0002.0001")
         self.assertEqual(child_2_1.wbs_level, 2)
         self.assertTrue(task_2.is_work_package)
 
@@ -66,6 +69,7 @@ class TestProjectWBS(TransactionCase):
             "sequence": 20,
         })
         self.assertEqual(child_2_2.wbs_code, "2.2")
+        self.assertEqual(child_2_2.wbs_sort_key, "0002.0002")
 
         grandchild_2_2_1 = self.env["project.task"].create({
             "name": "Component Specs",
@@ -74,6 +78,7 @@ class TestProjectWBS(TransactionCase):
             "sequence": 10,
         })
         self.assertEqual(grandchild_2_2_1.wbs_code, "2.2.1")
+        self.assertEqual(grandchild_2_2_1.wbs_sort_key, "0002.0002.0001")
         self.assertEqual(grandchild_2_2_1.wbs_level, 3)
         self.assertTrue(child_2_2.is_work_package)
 
@@ -86,14 +91,19 @@ class TestProjectWBS(TransactionCase):
         gc = self.env["project.task"].create({"name": "Grandchild 1.2.1", "project_id": self.project.id, "parent_id": c2.id, "sequence": 10})
 
         self.assertEqual(c2.wbs_code, "1.2")
+        self.assertEqual(c2.wbs_sort_key, "0001.0002")
         self.assertEqual(gc.wbs_code, "1.2.1")
+        self.assertEqual(gc.wbs_sort_key, "0001.0002.0001")
 
         # Move c2 under root_2 using manager user
         c2.with_user(self.manager).write({"parent_id": root_2.id})
 
         self.assertEqual(c2.wbs_code, "2.1")
+        self.assertEqual(c2.wbs_sort_key, "0002.0001")
         self.assertEqual(gc.wbs_code, "2.1.1")
+        self.assertEqual(gc.wbs_sort_key, "0002.0001.0001")
         self.assertEqual(c1.wbs_code, "1.1")
+        self.assertEqual(c1.wbs_sort_key, "0001.0001")
 
     def test_ac04_case5_delete_middle_task_closes_gaps(self):
         """AC-04 & Case 5: Delete middle task, remaining siblings close gaps."""
@@ -109,7 +119,9 @@ class TestProjectWBS(TransactionCase):
         self.project._recalculate_wbs()
 
         self.assertEqual(t1.wbs_code, "1")
+        self.assertEqual(t1.wbs_sort_key, "0001")
         self.assertEqual(t3.wbs_code, "2")
+        self.assertEqual(t3.wbs_sort_key, "0002")
 
     def test_ac05_ac06_rollup_calculations(self):
         """AC-05 & AC-06: Roll-up hours equal sum of descendants and weighted progress."""
@@ -165,10 +177,63 @@ class TestProjectWBS(TransactionCase):
             parent = task
 
         expected_code = "1"
+        expected_sort_key = "0001"
         for idx, task in enumerate(tasks, start=1):
             self.assertEqual(task.wbs_level, idx)
             self.assertEqual(task.wbs_code, expected_code)
+            self.assertEqual(task.wbs_sort_key, expected_sort_key)
             expected_code += ".1"
+            expected_sort_key += ".0001"
+
+    def test_wbs_hierarchical_sorting_and_gantt_order(self):
+        """Verify strict hierarchical sorting order: 1, 1.1, 1.1.1, 1.1.2, 1.2, 1.2.1, 1.3, 2, 2.1, 2.2, 3."""
+        r1 = self.env["project.task"].create({"name": "Root 1", "project_id": self.project.id, "sequence": 10})
+        r2 = self.env["project.task"].create({"name": "Root 2", "project_id": self.project.id, "sequence": 20})
+        r3 = self.env["project.task"].create({"name": "Root 3", "project_id": self.project.id, "sequence": 30})
+
+        c1_1 = self.env["project.task"].create({"name": "Child 1.1", "project_id": self.project.id, "parent_id": r1.id, "sequence": 10})
+        c1_2 = self.env["project.task"].create({"name": "Child 1.2", "project_id": self.project.id, "parent_id": r1.id, "sequence": 20})
+        c1_3 = self.env["project.task"].create({"name": "Child 1.3", "project_id": self.project.id, "parent_id": r1.id, "sequence": 30})
+
+        gc1_1_1 = self.env["project.task"].create({"name": "GC 1.1.1", "project_id": self.project.id, "parent_id": c1_1.id, "sequence": 10})
+        gc1_1_2 = self.env["project.task"].create({"name": "GC 1.1.2", "project_id": self.project.id, "parent_id": c1_1.id, "sequence": 20})
+        gc1_2_1 = self.env["project.task"].create({"name": "GC 1.2.1", "project_id": self.project.id, "parent_id": c1_2.id, "sequence": 10})
+
+        c2_1 = self.env["project.task"].create({"name": "Child 2.1", "project_id": self.project.id, "parent_id": r2.id, "sequence": 10})
+        c2_2 = self.env["project.task"].create({"name": "Child 2.2", "project_id": self.project.id, "parent_id": r2.id, "sequence": 20})
+
+        # Search tasks ordered by model default order (wbs_sort_key)
+        sorted_tasks = self.env["project.task"].search([("project_id", "=", self.project.id)])
+        wbs_order = sorted_tasks.mapped("wbs_code")
+        sort_key_order = sorted_tasks.mapped("wbs_sort_key")
+
+        expected_wbs_order = ["1", "1.1", "1.1.1", "1.1.2", "1.2", "1.2.1", "1.3", "2", "2.1", "2.2", "3"]
+        expected_sort_keys = [
+            "0001",
+            "0001.0001",
+            "0001.0001.0001",
+            "0001.0001.0002",
+            "0001.0002",
+            "0001.0002.0001",
+            "0001.0003",
+            "0002",
+            "0002.0001",
+            "0002.0002",
+            "0003",
+        ]
+
+        self.assertEqual(wbs_order, expected_wbs_order)
+        self.assertEqual(sort_key_order, expected_sort_keys)
+
+        # Test creating a new sibling (1.1.3)
+        gc1_1_3 = self.env["project.task"].create({"name": "GC 1.1.3", "project_id": self.project.id, "parent_id": c1_1.id, "sequence": 30})
+        self.assertEqual(gc1_1_3.wbs_code, "1.1.3")
+        self.assertEqual(gc1_1_3.wbs_sort_key, "0001.0001.0003")
+
+        # Test moving 1.3 under Root 2 -> becomes 2.3
+        c1_3.with_user(self.manager).write({"parent_id": r2.id})
+        self.assertEqual(c1_3.wbs_code, "2.3")
+        self.assertEqual(c1_3.wbs_sort_key, "0002.0003")
 
     def test_security_only_manager_can_modify_hierarchy(self):
         """Security: Non-manager users cannot change task hierarchy."""

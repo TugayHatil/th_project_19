@@ -20,8 +20,10 @@
             <xpath expr="//notebook" position="inside">
                 <page name="wbs_structure" string="Work Breakdown Structure">
                     <field name="task_ids" nolabel="1" context="{'default_project_id': id}">
-                        <list string="Work Breakdown Structure" default_order="wbs_code">
+                        <list string="Work Breakdown Structure" default_order="wbs_sort_key">
+                            <field name="wbs_sort_key" column_invisible="1"/>
                             <field name="wbs_code" string="WBS"/>
+
                             <field name="wbs_level" string="Level" optional="hide"/>
                             <field name="name" string="Task Title"/>
                             <field name="user_ids" widget="many2many_tags" optional="show"/>

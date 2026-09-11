@@ -7,6 +7,7 @@ from odoo.exceptions import UserError
 
 class ProjectTaskWBS(models.Model):
     _inherit = "project.task"
+    _order = "wbs_sort_key, sequence, id"
 
     wbs_code = fields.Char(
         string="WBS Code",
@@ -24,6 +25,14 @@ class ProjectTaskWBS(models.Model):
         index=True,
         copy=False,
         default=1,
+    )
+    wbs_sort_key = fields.Char(
+        string="WBS Sort Key",
+        compute="_compute_wbs_code_and_level",
+        store=True,
+        readonly=True,
+        index=True,
+        copy=False,
     )
     is_work_package = fields.Boolean(
         string="Work Package",
@@ -66,16 +75,18 @@ class ProjectTaskWBS(models.Model):
             project_tasks = self.env["project.task"].with_context(active_test=False).search(
                 [("project_id", "=", project.id)]
             )
-            codes, levels = project._calculate_wbs_codes_map(project_tasks)
+            codes, levels, sort_keys = project._calculate_wbs_codes_map(project_tasks)
             for task in project_tasks:
                 if task in self:
                     task.wbs_code = codes.get(task.id, "")
                     task.wbs_level = levels.get(task.id, 1)
+                    task.wbs_sort_key = sort_keys.get(task.id, "")
 
         for task in self:
             if not task.project_id:
                 task.wbs_code = ""
                 task.wbs_level = 1
+                task.wbs_sort_key = ""
 
     @api.depends("child_ids")
     def _compute_is_work_package(self):
@@ -170,18 +181,21 @@ class ProjectProjectWBS(models.Model):
 
         codes = {}
         levels = {}
+        sort_keys = {}
 
         def assign_wbs(parent_task, parent_wbs, level):
             parent_key = parent_task.id if parent_task else False
             children = children_by_parent.get(parent_key, [])
             for idx, child in enumerate(children, start=1):
                 code = f"{parent_wbs}.{idx}" if parent_wbs else str(idx)
+                sort_key = ".".join(f"{int(part):04d}" for part in code.split("."))
                 codes[child.id] = code
                 levels[child.id] = level
+                sort_keys[child.id] = sort_key
                 assign_wbs(child, code, level + 1)
 
         assign_wbs(None, "", 1)
-        return codes, levels
+        return codes, levels, sort_keys
 
     def _calculate_wbs_rollups_map(self, tasks=None):
         self.ensure_one()
@@ -241,7 +255,7 @@ class ProjectProjectWBS(models.Model):
             )
             if not tasks:
                 continue
-            codes, levels = project._calculate_wbs_codes_map(tasks)
+            codes, levels, sort_keys = project._calculate_wbs_codes_map(tasks)
             rollups = project._calculate_wbs_rollups_map(tasks)
 
             for task in tasks:
@@ -249,12 +263,15 @@ class ProjectProjectWBS(models.Model):
                 p, e, prog = rollups.get(task.id, (0.0, 0.0, 0.0))
                 code = codes.get(task.id, "")
                 lvl = levels.get(task.id, 1)
+                sort_key = sort_keys.get(task.id, "")
 
                 vals = {}
                 if task.wbs_code != code:
                     vals["wbs_code"] = code
                 if task.wbs_level != lvl:
                     vals["wbs_level"] = lvl
+                if task.wbs_sort_key != sort_key:
+                    vals["wbs_sort_key"] = sort_key
                 if task.is_work_package != has_children:
                     vals["is_work_package"] = has_children
                 if task.planned_hours_rollup != p:
