@@ -11,12 +11,12 @@
             </xpath>
             <!-- Add critical card class (keeps original opacity-50 logic) -->
             <xpath expr="//t[@t-name='card']/main" position="attributes">
-                <attribute name="t-att-class">(['1_done', '1_canceled'].includes(record.state.raw_value) ? 'opacity-50 ' : '') + (record.is_critical.raw_value ? 'o_project_ux_critical position-relative' : '')</attribute>
+                <attribute name="t-att-class">(['1_done', '1_canceled'].includes(record.state.raw_value) ? 'opacity-50 ' : '') + (record.is_critical.raw_value ? 'o_critical_path_kanban position-relative' : '')</attribute>
             </xpath>
             <!-- Top-right warning badge with "Critical Path" tooltip -->
             <xpath expr="//t[@t-name='card']/main/field[@name='name']" position="before">
                 <span t-if="record.is_critical.raw_value"
-                      class="o_project_ux_critical_badge position-absolute top-0 end-0 m-1"
+                      class="o_critical_path_kanban_badge position-absolute top-0 end-0 m-1"
                       title="Critical Path"
                       role="img"
                       aria-label="Critical Path">
