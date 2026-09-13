@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="project_task_kanban_inherit_critical_highlight" model="ir.ui.view">
+        <field name="name">project.task.kanban.inherit.critical.highlight</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_kanban"/>
+        <field name="arch" type="xml">
+            <!-- Expose is_critical to the kanban record -->
+            <xpath expr="//field[@name='is_template']" position="after">
+                <field name="is_critical"/>
+            </xpath>
+            <!-- Add critical card class + top-right warning badge -->
+            <xpath expr="//t[@t-name='card']/main" position="attributes">
+                <attribute name="t-att-class">[
+                    ['1_done', '1_canceled'].includes(record.state.raw_value) ? 'opacity-50' : '',
+                    record.is_critical.raw_value ? 'o_project_ux_critical' : ''
+                ]</attribute>
+            </xpath>
+            <xpath expr="//t[@t-name='card']/main/field[@name='name']" position="before">
+                <span t-if="record.is_critical.raw_value"
+                      class="o_project_ux_critical_badge position-absolute top-0 end-0 m-1"
+                      title="Critical Path"
+                      role="img"
+                      aria-label="Critical Path">
+                    <i class="fa fa-exclamation-triangle text-danger"/>
+                </span>
+            </xpath>
+        </field>
+    </record>
+</odoo>

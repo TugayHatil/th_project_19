@@ -1,0 +1,21 @@
+/* BRD-10: Critical Path Highlight in Project Kanban
+   Only applied to cards where is_critical=True (o_project_ux_critical class). */
+
+.o_kanban_project_tasks {
+    .o_project_ux_critical {
+        position: relative;
+        background-color: #FEF2F2;
+        border: 1px solid #FECACA;
+        border-radius: 4px;
+    }
+
+    .o_project_ux_critical_badge {
+        z-index: 1;
+        font-size: 14px;
+        line-height: 1;
+
+        .fa-exclamation-triangle {
+            text-shadow: 0 0 1px #B91C1C;
+        }
+    }
+}
