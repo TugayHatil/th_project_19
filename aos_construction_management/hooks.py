@@ -10,8 +10,8 @@ def post_init_hook(env):
     if not system_group:
         return
     admin_users = env['res.users'].search([
-        ('groups', 'in', [system_group.id]),
-        ('groups', 'not in', [admin_group.id]),
+        ('all_group_ids', 'in', [system_group.id]),
+        ('all_group_ids', 'not in', [admin_group.id]),
     ])
     if admin_users:
         env.cr.execute(
