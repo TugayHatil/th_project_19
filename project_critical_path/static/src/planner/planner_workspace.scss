@@ -135,6 +135,35 @@ $o_cp_planner_bar_critical: #e8a33d;
     line-height: inherit;
 }
 
+// Baseline ghost bar sits in the lower part of the row so date shifts stay
+// visible; its span that extends past the current bar marks removed time.
+.o_cp_planner_baseline_bar {
+    position: absolute;
+    top: 25px;
+    height: 5px;
+    border-radius: 2px;
+    background: #d0d5dd;
+    border: 1px solid #98a2b3;
+    box-sizing: border-box;
+    min-width: 2px;
+}
+
+// Hatched tail over the part of the current bar beyond the baseline finish.
+// Translucent stripes keep the underlying normal/critical bar color visible.
+.o_cp_planner_variance_bar {
+    position: absolute;
+    top: 7px;
+    height: $o_cp_planner_bar_height;
+    border-radius: 0 3px 3px 0;
+    background: repeating-linear-gradient(
+        45deg,
+        rgba(0, 0, 0, 0.28) 0,
+        rgba(0, 0, 0, 0.28) 3px,
+        transparent 3px,
+        transparent 7px
+    );
+}
+
 .o_cp_planner_gantt_rows {
     position: relative;
 }

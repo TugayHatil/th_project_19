@@ -82,11 +82,19 @@
                                      t-att-class="{selected: state.selectedId === task.id}"
                                      t-on-click="() => this.selectTask(task)"
                                      t-on-dblclick="() => this.openTask(task)">
+                                    <div t-if="task.baseline_start &amp;&amp; task.baseline_stop"
+                                         class="o_cp_planner_baseline_bar"
+                                         t-att-style="baselineStyle(task)"
+                                         t-att-title="baselineTooltip(task)"/>
                                     <div t-if="task.date_start &amp;&amp; task.date_stop"
                                          class="o_cp_planner_bar"
                                          t-att-class="{selected: state.selectedId === task.id, critical: task.is_critical}"
                                          t-att-style="barStyle(task)"
                                          t-att-title="task.is_critical ? task.name + ' — Critical Path' : task.name"/>
+                                    <div t-if="task.date_start &amp;&amp; task.date_stop &amp;&amp; task.baseline_stop &amp;&amp; task.date_stop &gt; task.baseline_stop"
+                                         class="o_cp_planner_variance_bar"
+                                         t-att-style="varianceStyle(task)"
+                                         t-att-title="varianceTooltip(task)"/>
                                 </div>
                                 <svg class="o_cp_planner_deps"
                                      t-att-width="timelineWidth"

@@ -208,6 +208,12 @@ class TestPlannerWorkspace(TransactionCase):
         self.assertIn("delay_duration_variance", impact)
         self.assertIn("delay_impact_status", impact)
 
+        # The planner list feeds the Gantt baseline ghost bar
+        row = next(r for r in project.get_planner_data()["tasks"] if r["id"] == task.id)
+        self.assertEqual(row["baseline_name"], "v1.0")
+        self.assertEqual(row["baseline_start"], "2026-03-01")
+        self.assertEqual(row["baseline_stop"], "2026-03-11")
+
     def test_get_planner_detail_without_baseline(self):
         project = self.env["project.project"].create({"name": "No baseline"})
         task = self._make_task(project, "Unbaselined task")

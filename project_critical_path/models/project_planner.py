@@ -48,6 +48,10 @@ class ProjectProjectPlanner(models.Model):
             [("project_id", "=", self.id)]
         )
         ordered = tasks.sorted(key=lambda task: (task.wbs_sort_key or "", task.sequence, task.id))
+        baseline = self.delay_impact_baseline_id
+        baseline_by_task = {
+            line.task_id.id: line for line in baseline.line_ids if line.task_id
+        } if baseline else {}
         return {
             "project": {"id": self.id, "name": self.display_name},
             "tasks": [
@@ -63,6 +67,15 @@ class ProjectProjectPlanner(models.Model):
                     "progress": task.progress or 0.0,
                     "is_critical": bool(task.is_critical),
                     "depend_on_ids": task.depend_on_ids.ids,
+                    "baseline_name": baseline.name if baseline_by_task.get(task.id) else False,
+                    "baseline_start": (
+                        _serialize_planner_day(self, baseline_by_task[task.id].planned_date_begin)
+                        if baseline_by_task.get(task.id) else False
+                    ),
+                    "baseline_stop": (
+                        _serialize_planner_day(self, baseline_by_task[task.id].planned_date_end)
+                        if baseline_by_task.get(task.id) else False
+                    ),
                 }
                 for task in ordered
             ],

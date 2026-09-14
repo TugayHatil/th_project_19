@@ -214,16 +214,64 @@ export class PlannerWorkspace extends Component {
         return dayDiff(this.origin, today) * this.state.pxPerDay;
     }
 
-    barGeometry(task) {
-        if (!task.date_start || !task.date_stop) {
+    spanGeometry(startStr, stopStr) {
+        if (!startStr || !stopStr) {
             return false;
         }
-        const start = parseDay(task.date_start);
-        const stop = parseDay(task.date_stop);
+        const start = parseDay(startStr);
+        const stop = parseDay(stopStr);
         return {
             left: dayDiff(this.origin, start) * this.state.pxPerDay,
             width: Math.max(dayDiff(start, stop) + 1, 1) * this.state.pxPerDay,
         };
+    }
+
+    barGeometry(task) {
+        return this.spanGeometry(task.date_start, task.date_stop);
+    }
+
+    baselineStyle(task) {
+        const bar = this.spanGeometry(task.baseline_start, task.baseline_stop);
+        if (!bar) {
+            return "display:none";
+        }
+        return `left:${bar.left}px;width:${bar.width}px`;
+    }
+
+    // Hatched tail: the part of the current bar beyond the baseline finish.
+    // A same-duration shift or a duration increase both surface as a tail,
+    // while a duration decrease shows only through the baseline ghost bar.
+    varianceGeometry(task) {
+        if (!task.date_start || !task.date_stop || !task.baseline_stop) {
+            return false;
+        }
+        const extra = dayDiff(parseDay(task.baseline_stop), parseDay(task.date_stop));
+        if (extra <= 0) {
+            return false;
+        }
+        const ppd = this.state.pxPerDay;
+        const left = (dayDiff(this.origin, parseDay(task.baseline_stop)) + 1) * ppd;
+        return { left, width: Math.max(extra * ppd, 1) };
+    }
+
+    varianceStyle(task) {
+        const bar = this.varianceGeometry(task);
+        if (!bar) {
+            return "display:none";
+        }
+        return `left:${bar.left}px;width:${bar.width}px`;
+    }
+
+    baselineTooltip(task) {
+        const days = dayDiff(parseDay(task.baseline_start), parseDay(task.baseline_stop));
+        return `Baseline ${task.baseline_name}\n`
+            + `${dayLabel(parseDay(task.baseline_start))} – ${dayLabel(parseDay(task.baseline_stop))}\n`
+            + `Duration: ${days}d`;
+    }
+
+    varianceTooltip(task) {
+        const days = dayDiff(parseDay(task.baseline_stop), parseDay(task.date_stop));
+        return `Current finish: ${dayLabel(parseDay(task.date_stop))}\nVariance: +${days}d`;
     }
 
     barStyle(task) {
