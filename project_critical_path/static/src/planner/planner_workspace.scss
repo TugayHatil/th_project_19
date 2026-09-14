@@ -4,22 +4,23 @@
 $o_cp_planner_row_height: 32px;
 $o_cp_planner_bar_height: 18px;
 $o_cp_planner_wbs_width: 340px;
+$o_cp_planner_header_height: 48px;
 
 .o_cp_planner_workspace {
-    background: $o-view-background-color;
+    background: #ffffff;
 }
 
 .o_cp_planner_wbs {
     width: $o_cp_planner_wbs_width;
     flex: 0 0 $o_cp_planner_wbs_width;
     min-width: 0;
-    background: $o-view-background-color;
+    background: #ffffff;
 }
 
 .o_cp_planner_wbs_header {
-    height: 48px; // matches the two gantt header rows (24px + 24px)
+    height: $o_cp_planner_header_height; // matches the two gantt header rows (24px + 24px)
     flex: 0 0 auto;
-    font-size: $o-font-size-base;
+    font-size: 0.875rem;
 }
 
 .o_cp_planner_wbs_rows {
@@ -32,14 +33,14 @@ $o_cp_planner_wbs_width: 340px;
     line-height: $o_cp_planner_row_height;
     white-space: nowrap;
     cursor: pointer;
-    border-bottom: 1px solid $border-color;
+    border-bottom: 1px solid #dee2e6;
 
     &:hover {
-        background: $o-list-group-hover-bg;
+        background: #f8f9fa;
     }
 
     &.selected {
-        background: mix($o-brand-primary, white, 12%);
+        background: #dbeafe;
     }
 }
 
@@ -50,7 +51,7 @@ $o_cp_planner_wbs_width: 340px;
 }
 
 .o_cp_planner_wbs_code {
-    font-family: $o-font-family-monospace;
+    font-family: monospace;
     font-size: 0.85em;
     min-width: 64px;
     flex: 0 0 auto;
@@ -66,7 +67,7 @@ $o_cp_planner_wbs_width: 340px;
 
 .o_cp_planner_gantt_header {
     z-index: 2;
-    background: $o-view-background-color;
+    background: #ffffff;
 }
 
 .o_cp_planner_gantt_group {
@@ -75,8 +76,8 @@ $o_cp_planner_wbs_width: 340px;
     padding: 0 6px;
     font-size: 0.75rem;
     font-weight: 700;
-    border-right: 1px solid $border-color;
-    border-bottom: 1px solid $border-color;
+    border-right: 1px solid #dee2e6;
+    border-bottom: 1px solid #dee2e6;
     overflow: hidden;
     box-sizing: border-box;
 }
@@ -85,9 +86,9 @@ $o_cp_planner_wbs_width: 340px;
     height: 24px;
     line-height: 24px;
     font-size: 0.75rem;
-    color: $text-muted;
-    border-right: 1px solid $border-color;
-    border-bottom: 1px solid $border-color;
+    color: #6c757d;
+    border-right: 1px solid #dee2e6;
+    border-bottom: 1px solid #dee2e6;
     overflow: hidden;
     box-sizing: border-box;
 }
@@ -95,37 +96,37 @@ $o_cp_planner_wbs_width: 340px;
 .o_cp_planner_gantt_row {
     position: relative;
     height: $o_cp_planner_row_height;
-    border-bottom: 1px solid $border-color;
+    border-bottom: 1px solid #dee2e6;
     cursor: pointer;
 
     &:hover {
-        background: $o-list-group-hover-bg;
+        background: #f8f9fa;
     }
 
     &.selected {
-        background: mix($o-brand-primary, white, 12%);
+        background: #dbeafe;
     }
 }
 
 .o_cp_planner_bar {
     position: absolute;
-    top: ($o_cp_planner_row_height - $o_cp_planner_bar_height) / 2;
+    top: 7px; // ($o_cp_planner_row_height - $o_cp_planner_bar_height) / 2
     height: $o_cp_planner_bar_height;
     border-radius: 3px;
-    background: $o-brand-primary;
+    background: #714b67; // Odoo brand purple
     min-width: 2px;
 
     &.selected {
-        outline: 2px solid darken($o-brand-primary, 20%);
+        outline: 2px solid #4a3244;
     }
 }
 
 .o_cp_planner_today {
     position: absolute;
-    top: 48px;
+    top: $o_cp_planner_header_height;
     bottom: 0;
     width: 1px;
-    background: $o-danger;
+    background: #dc3545;
     pointer-events: none;
 }
 
