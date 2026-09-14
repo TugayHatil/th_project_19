@@ -448,7 +448,10 @@ $o_cp_planner_inspector_width: 320px;
 
 .o_cp_res_overlay {
     position: fixed;
-    inset: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
     z-index: 1060;
     background: rgba(15, 23, 42, 0.4);
     display: flex;
@@ -457,8 +460,10 @@ $o_cp_planner_inspector_width: 320px;
 }
 
 .o_cp_res_dialog {
-    width: min(1200px, 94vw);
-    height: min(720px, 88vh);
+    width: 94vw;
+    max-width: 1200px;
+    height: 88vh;
+    max-height: 720px;
     background: #ffffff;
     border-radius: 8px;
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
