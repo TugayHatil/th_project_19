@@ -44,6 +44,22 @@ class TestPlannerWorkspace(TransactionCase):
         self.assertEqual(rows["1"]["date_stop"], "2026-03-31")
         self.assertEqual(rows["2"]["date_stop"], "2026-04-10")
 
+    def test_planner_data_includes_is_critical_flag(self):
+        project = self.env["project.project"].create({"name": "CP flag"})
+        first = self._make_task(project, "Long chain start", allocated_hours=8.0)
+        self._make_task(
+            project, "Long chain end", allocated_hours=8.0,
+            depend_on_ids=[(4, first.id)],
+        )
+        # A shorter parallel chain has slack, so it is not on the critical path.
+        short = self._make_task(project, "Short parallel", allocated_hours=4.0)
+
+        rows = {row["name"]: row for row in project.get_planner_data()["tasks"]}
+
+        self.assertTrue(rows["Long chain start"]["is_critical"])
+        self.assertTrue(rows["Long chain end"]["is_critical"])
+        self.assertFalse(rows["Short parallel"]["is_critical"])
+
     def test_planner_data_serializes_missing_dates_as_false(self):
         project = self.env["project.project"].create({"name": "Undated planner"})
         self._make_task(project, "No dates task")

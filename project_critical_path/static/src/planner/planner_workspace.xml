@@ -51,6 +51,9 @@
                             </span>
                             <span class="o_cp_planner_wbs_code text-muted me-2" t-esc="task.wbs_code"/>
                             <span class="text-truncate" t-esc="task.name"/>
+                            <i t-if="task.is_critical"
+                               class="fa fa-exclamation-triangle o_cp_planner_critical_icon ms-auto"
+                               title="Critical Path"/>
                         </div>
                         <div t-if="!state.loading &amp;&amp; !visibleTasks.length" class="p-3 text-muted">No tasks</div>
                     </div>
@@ -81,9 +84,9 @@
                                      t-on-dblclick="() => this.openTask(task)">
                                     <div t-if="task.date_start &amp;&amp; task.date_stop"
                                          class="o_cp_planner_bar"
-                                         t-att-class="{selected: state.selectedId === task.id}"
+                                         t-att-class="{selected: state.selectedId === task.id, critical: task.is_critical}"
                                          t-att-style="barStyle(task)"
-                                         t-att-title="task.name"/>
+                                         t-att-title="task.is_critical ? task.name + ' — Critical Path' : task.name"/>
                                 </div>
                             </div>
                             <div class="o_cp_planner_today" t-att-style="'left:' + todayLeft + 'px'"/>

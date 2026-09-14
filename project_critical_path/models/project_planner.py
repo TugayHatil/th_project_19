@@ -61,6 +61,7 @@ class ProjectProjectPlanner(models.Model):
                     "date_start": _serialize_planner_day(self, task.date_assign),
                     "date_stop": _serialize_planner_day(self, task.date_deadline),
                     "progress": task.progress or 0.0,
+                    "is_critical": bool(task.is_critical),
                 }
                 for task in ordered
             ],
