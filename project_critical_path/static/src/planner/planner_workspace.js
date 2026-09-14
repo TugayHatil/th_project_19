@@ -92,6 +92,8 @@ export class PlannerWorkspace extends Component {
             resWindow: null,
             resRequired: null,
             resSelOptKey: null,
+            resAssignFor: null,
+            resAssignForm: null,
         });
         this.scales = SCALES;
         useExternalListener(document.body, "keydown", (ev) => {
@@ -1030,6 +1032,8 @@ export class PlannerWorkspace extends Component {
     }
 
     async selectRequirement(req) {
+        this.state.resAssignFor = null;
+        this.state.resAssignForm = null;
         if (this.state.resSelReqId === req.id) {
             this.state.resSelReqId = null;
             this.state.resSelOptKey = null;
@@ -1043,6 +1047,8 @@ export class PlannerWorkspace extends Component {
     async loadResOptions(reqId) {
         this.state.resOptionsLoading = true;
         this.state.resSelOptKey = null;
+        this.state.resAssignFor = null;
+        this.state.resAssignForm = null;
         try {
             const data = await this.orm.call(
                 "project.task", "planner_get_assignment_options", [this.state.resTask.id],
@@ -1137,8 +1143,60 @@ export class PlannerWorkspace extends Component {
         this.state.resSelOptKey = this.state.resSelOptKey === key ? null : key;
     }
 
+    // Assign opens an inline form under the candidate row: date range inside
+    // the requirement period plus the calendar-hours cost of that range, so
+    // the user can fit the assignment into the remaining planned hours.
+    async openAssignForm(opt) {
+        const key = this.resCandidateKey(opt);
+        if (this.state.resAssignFor === key) {
+            this.state.resAssignFor = null;
+            return;
+        }
+        this.state.resAssignFor = key;
+        this.state.resSelOptKey = key;
+        const req = this.resSelectedReq;
+        this.state.resAssignForm = {
+            date_start: req?.date_start || "",
+            date_end: req?.date_end || "",
+            est_hours: null,
+        };
+        await this.updateAssignEstimate();
+    }
+
+    async updateAssignEstimate() {
+        const req = this.resSelectedReq;
+        const opt = this.resSelectedOption;
+        const form = this.state.resAssignForm;
+        if (!req || !opt || !form) {
+            return;
+        }
+        try {
+            form.est_hours = await this.orm.call(
+                "project.task", "planner_estimate_assignment_hours", [this.state.resTask.id],
+                {
+                    requirement_id: req.id,
+                    employee_id: opt.employee_id || false,
+                    equipment_id: opt.equipment_id || false,
+                    date_start: form.date_start || false,
+                    date_end: form.date_end || false,
+                },
+            );
+        } catch {
+            form.est_hours = null;
+        }
+    }
+
+    get resRemainingHours() {
+        const req = this.resSelectedReq;
+        if (!req) {
+            return 0;
+        }
+        return Math.max((req.planned_hours || 0) - (req.assigned_hours || 0), 0);
+    }
+
     async assignResource(opt) {
         const req = this.resSelectedReq;
+        const form = this.state.resAssignForm;
         if (!req) {
             return;
         }
@@ -1149,6 +1207,8 @@ export class PlannerWorkspace extends Component {
                     requirement_id: req.id,
                     employee_id: opt.employee_id || false,
                     equipment_id: opt.equipment_id || false,
+                    date_start: form?.date_start || false,
+                    date_end: form?.date_end || false,
                 },
             );
         } catch (error) {
@@ -1157,7 +1217,8 @@ export class PlannerWorkspace extends Component {
             );
             return;
         }
-        this.state.resSelOptKey = null;
+        this.state.resAssignFor = null;
+        this.state.resAssignForm = null;
         await this.refreshResources();
     }
 

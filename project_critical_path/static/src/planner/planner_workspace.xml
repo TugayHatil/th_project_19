@@ -638,9 +638,43 @@
                                                         t-esc="formatHours(opt.booked_hours)"/>
                                                     <td class="text-end">
                                                         <button type="button" class="btn btn-primary btn-sm"
-                                                                t-on-click.stop="() => this.assignResource(opt)">
+                                                                t-on-click.stop="() => this.openAssignForm(opt)">
                                                             Assign
                                                         </button>
+                                                    </td>
+                                                </tr>
+                                                <tr t-if="state.resAssignFor === resCandidateKey(opt)"
+                                                    class="o_cp_res_assignrow">
+                                                    <td colspan="5">
+                                                        <div class="d-flex align-items-center gap-1 flex-wrap py-1">
+                                                            <input type="date" class="form-control form-control-sm w-auto"
+                                                                   title="Assignment start"
+                                                                   t-att-min="resSelectedReq?.date_start || ''"
+                                                                   t-att-max="resSelectedReq?.date_end || ''"
+                                                                   t-att-value="state.resAssignForm?.date_start"
+                                                                   t-on-change="(ev) => { state.resAssignForm.date_start = ev.target.value; this.updateAssignEstimate(); }"/>
+                                                            <span class="text-muted small">→</span>
+                                                            <input type="date" class="form-control form-control-sm w-auto"
+                                                                   title="Assignment end"
+                                                                   t-att-min="resSelectedReq?.date_start || ''"
+                                                                   t-att-max="resSelectedReq?.date_end || ''"
+                                                                   t-att-value="state.resAssignForm?.date_end"
+                                                                   t-on-change="(ev) => { state.resAssignForm.date_end = ev.target.value; this.updateAssignEstimate(); }"/>
+                                                            <span t-if="state.resAssignForm?.est_hours !== null &amp;&amp; state.resAssignForm?.est_hours !== undefined"
+                                                                  class="small"
+                                                                  t-att-class="state.resAssignForm.est_hours > resRemainingHours ? 'text-danger fw-bold' : 'text-muted'">
+                                                                ≈ <t t-esc="formatHours(state.resAssignForm.est_hours)"/>
+                                                                / <t t-esc="formatHours(resRemainingHours)"/> remaining
+                                                            </span>
+                                                            <button type="button" class="btn btn-primary btn-sm ms-auto"
+                                                                    t-on-click="() => this.assignResource(opt)">
+                                                                Confirm
+                                                            </button>
+                                                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                                                    t-on-click="() => state.resAssignFor = null">
+                                                                Cancel
+                                                            </button>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             </tbody>

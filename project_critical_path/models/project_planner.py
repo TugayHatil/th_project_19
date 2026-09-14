@@ -487,13 +487,25 @@ class ProjectTaskPlanner(models.Model):
             },
         }
 
-    def planner_assign_resource(self, requirement_id, employee_id=False, equipment_id=False):
-        """Assign an employee or equipment to a requirement."""
+    def planner_assign_resource(
+        self, requirement_id, employee_id=False, equipment_id=False,
+        date_start=None, date_end=None,
+    ):
+        """Assign an employee or equipment to a requirement.
+
+        ``date_start``/``date_end`` are optional ``YYYY-MM-DD`` days picked in
+        the workspace; they default to the requirement range and must stay
+        inside it (enforced by the assignment model's constraints).
+        """
         self.ensure_one()
         requirement = self._get_planner_requirement(requirement_id)
-        date_start = requirement.date_start or self.date_assign
-        date_end = requirement.date_end or self.date_deadline
-        if not date_start or not date_end:
+        start = requirement.date_start or self.date_assign
+        end = requirement.date_end or self.date_deadline
+        if date_start:
+            start = _local_day_to_utc(self, date_start, start, 9)
+        if date_end:
+            end = _local_day_to_utc(self, date_end, end, 18)
+        if not start or not end:
             raise UserError(_(
                 "Set task or requirement dates before assigning resources."
             ))
@@ -501,10 +513,42 @@ class ProjectTaskPlanner(models.Model):
             "requirement_id": requirement.id,
             "employee_id": employee_id or False,
             "equipment_id": equipment_id or False,
-            "date_start": date_start,
-            "date_end": date_end,
+            "date_start": start,
+            "date_end": end,
         })
         return True
+
+    def planner_estimate_assignment_hours(
+        self, requirement_id, employee_id=False, equipment_id=False,
+        date_start=None, date_end=None,
+    ):
+        """Working hours an assignment would cover for the given day range —
+        same calendar logic as ``resource.assignment.planned_hours`` so the
+        workspace can show the cost before creating the record."""
+        self.ensure_one()
+        requirement = self._get_planner_requirement(requirement_id)
+        start = requirement.date_start or self.date_assign
+        end = requirement.date_end or self.date_deadline
+        if date_start:
+            start = _local_day_to_utc(self, date_start, start, 9)
+        if date_end:
+            end = _local_day_to_utc(self, date_end, end, 18)
+        if not start or not end or end <= start:
+            return 0.0
+        resource = False
+        if employee_id:
+            resource = self.env["hr.employee"].browse(employee_id).exists()
+        elif equipment_id:
+            resource = self.env["maintenance.equipment"].browse(
+                equipment_id
+            ).exists()
+        calendar = (
+            getattr(resource, "resource_calendar_id", False)
+            or self.env.company.resource_calendar_id
+        )
+        if calendar:
+            return calendar.get_work_hours_count(start, end, compute_leaves=True)
+        return (end - start).total_seconds() / 3600.0
 
     def planner_unassign_resource(self, assignment_id):
         self.ensure_one()

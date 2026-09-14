@@ -334,7 +334,18 @@ class TestPlannerWorkspace(TransactionCase):
         self.assertEqual(options_data["window"]["start"], "2026-02-28")
         self.assertEqual(options_data["window"]["end"], "2026-03-08")
 
-        task.planner_assign_resource(req["id"], employee_id=employee.id)
+        # The workspace lets the user narrow the assignment inside the
+        # requirement range and previews its calendar-hours cost.
+        hours = task.planner_estimate_assignment_hours(
+            req["id"], employee_id=employee.id,
+            date_start="2026-03-02", date_end="2026-03-03",
+        )
+        self.assertGreater(hours, 0)
+
+        task.planner_assign_resource(
+            req["id"], employee_id=employee.id,
+            date_start="2026-03-02", date_end="2026-03-04",
+        )
         req = task.get_planner_resources()["requirements"][0]
         self.assertEqual(req["assigned_quantity"], 1)
         self.assertEqual(req["status"], "partial")  # 1 of 2 assigned
