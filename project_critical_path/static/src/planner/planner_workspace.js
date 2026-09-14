@@ -28,6 +28,9 @@ const isoDay = (date) => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${p
 const PLANNER_ROW_H = 32;
 const PLANNER_BAR_CENTER = 16;
 const DEP_STUB = 12; // horizontal stub length next to each connected bar
+const DEP_LANE = 6; // x offset between parallel connector lanes
+const DEP_CORRIDOR_STEP = 4; // y fan-out step inside a row-gap corridor
+const DEP_CORRIDOR_MAX = 6; // corridor offsets stay clear of the bars
 
 export class PlannerWorkspace extends Component {
     static template = "project_critical_path.PlannerWorkspace";
@@ -233,18 +236,24 @@ export class PlannerWorkspace extends Component {
 
     // Finish-to-Start arrows between the rendered bars. Only edges whose two
     // endpoints are visible (not collapsed away) and scheduled are drawn.
+    //
+    // Routing: each connector leaves its predecessor on a distinct stub lane,
+    // travels along the row-gap corridor next to the predecessor (fanned out
+    // so parallel connectors do not share a horizontal), then drops on a
+    // distinct entry lane into the successor bar's left edge. This keeps the
+    // long runs inside empty channels instead of across task bars and stops
+    // same-direction arrows from overlapping.
     get dependencyEdges() {
         const visible = this.visibleTasks;
         const indexById = new Map(visible.map((task, i) => [task.id, i]));
         const byId = this.taskById;
         const selected = this.state.selectedId;
-        const edges = [];
+        const raw = [];
         for (const task of visible) {
             const toBar = this.barGeometry(task);
             if (!toBar) {
                 continue;
             }
-            const y2 = indexById.get(task.id) * PLANNER_ROW_H + PLANNER_BAR_CENTER;
             for (const predId of task.depend_on_ids || []) {
                 const predIdx = indexById.get(predId);
                 if (predIdx === undefined) {
@@ -254,32 +263,52 @@ export class PlannerWorkspace extends Component {
                 if (!fromBar) {
                     continue;
                 }
-                const x1 = fromBar.left + fromBar.width;
-                const y1 = predIdx * PLANNER_ROW_H + PLANNER_BAR_CENTER;
-                const x2 = toBar.left;
-                let d;
-                if (x2 - DEP_STUB >= x1 + DEP_STUB) {
-                    d = `M ${x1} ${y1} L ${x1 + DEP_STUB} ${y1} L ${x1 + DEP_STUB} ${y2} L ${x2} ${y2}`;
-                } else {
-                    // Successor starts at or before the predecessor's finish:
-                    // route around through the mid-gap so the arrow still
-                    // enters the bar's left edge pointing forward.
-                    const midY = (y1 + y2) / 2;
-                    d = `M ${x1} ${y1} L ${x1 + DEP_STUB} ${y1} L ${x1 + DEP_STUB} ${midY}`
-                        + ` L ${x2 - DEP_STUB} ${midY} L ${x2 - DEP_STUB} ${y2} L ${x2} ${y2}`;
-                }
-                const related = selected === task.id || selected === predId;
-                edges.push({
-                    key: `${predId}-${task.id}`,
-                    d,
-                    arrowD: `M ${x2} ${y2} l -7 -4 l 0 8 z`,
-                    dim: Boolean(selected && !related),
-                    highlight: Boolean(selected && related),
-                    critical: Boolean(task.is_critical && byId.get(predId)?.is_critical),
-                });
+                raw.push({ predId, task, predIdx, toIdx: indexById.get(task.id), fromBar, toBar });
             }
         }
-        return edges;
+        // Lane assignment: per-predecessor exit stubs, per-successor entry
+        // stubs and a per-corridor vertical offset (the gap below row k is
+        // shared by down-edges leaving row k and up-edges leaving row k+1).
+        const outLanes = new Map();
+        const inLanes = new Map();
+        const corridorLanes = new Map();
+        for (const edge of raw) {
+            edge.outLane = outLanes.get(edge.predId) || 0;
+            outLanes.set(edge.predId, edge.outLane + 1);
+            edge.inLane = inLanes.get(edge.task.id) || 0;
+            inLanes.set(edge.task.id, edge.inLane + 1);
+            edge.down = edge.toIdx > edge.predIdx;
+            edge.corridorKey = edge.down ? edge.predIdx : edge.predIdx - 1;
+            edge.corridorLane = corridorLanes.get(edge.corridorKey) || 0;
+            corridorLanes.set(edge.corridorKey, edge.corridorLane + 1);
+        }
+        const corridorCounts = new Map();
+        for (const edge of raw) {
+            corridorCounts.set(edge.corridorKey, (corridorCounts.get(edge.corridorKey) || 0) + 1);
+        }
+        return raw.map((edge) => {
+            const x1 = edge.fromBar.left + edge.fromBar.width;
+            const y1 = edge.predIdx * PLANNER_ROW_H + PLANNER_BAR_CENTER;
+            const x2 = edge.toBar.left;
+            const y2 = edge.toIdx * PLANNER_ROW_H + PLANNER_BAR_CENTER;
+            const exitX = x1 + DEP_STUB + edge.outLane * DEP_LANE;
+            const entryX = x2 - DEP_STUB - edge.inLane * DEP_LANE;
+            const count = corridorCounts.get(edge.corridorKey);
+            const offset = Math.max(-DEP_CORRIDOR_MAX, Math.min(
+                DEP_CORRIDOR_MAX, (edge.corridorLane - (count - 1) / 2) * DEP_CORRIDOR_STEP,
+            ));
+            const corridorY = y1 + (edge.down ? PLANNER_BAR_CENTER : -PLANNER_BAR_CENTER) + offset;
+            const d = `M ${x1} ${y1} H ${exitX} V ${corridorY} H ${entryX} V ${y2} H ${x2}`;
+            const related = selected === edge.task.id || selected === edge.predId;
+            return {
+                key: `${edge.predId}-${edge.task.id}`,
+                d,
+                arrowD: `M ${x2} ${y2} l -7 -4 l 0 8 z`,
+                dim: Boolean(selected && !related),
+                highlight: Boolean(selected && related),
+                critical: Boolean(edge.task.is_critical && byId.get(edge.predId)?.is_critical),
+            };
+        });
     }
 
     setScale(scale) {
