@@ -625,9 +625,9 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                <tr t-foreach="state.resOptions" t-as="opt"
-                                                    t-key="opt.employee_id || opt.equipment_id"
-                                                    class="o_cp_res_row" role="button"
+                                                <t t-foreach="state.resOptions" t-as="opt"
+                                                   t-key="opt.employee_id || opt.equipment_id">
+                                                <tr class="o_cp_res_row" role="button"
                                                     t-att-class="{selected: state.resSelOptKey === resCandidateKey(opt)}"
                                                     t-on-click="() => this.selectCandidate(opt)">
                                                     <td><span class="o_cp_res_dot" t-att-class="resAvailabilityDot(opt)"/></td>
@@ -677,6 +677,7 @@
                                                         </div>
                                                     </td>
                                                 </tr>
+                                                </t>
                                             </tbody>
                                         </table>
                                         <div t-if="!state.resOptions.length"
