@@ -77,6 +77,7 @@ class ProjectTaskResourceRequirement(models.Model):
             "name": "Resource Assignments",
             "res_model": "project.task.resource.assignment",
             "view_mode": "list,form",
+            "views": [[False, "list"], [False, "form"]],
             "domain": [("requirement_id", "=", self.id)],
             "context": {"default_requirement_id": self.id},
         }
@@ -91,6 +92,7 @@ class ProjectTaskResourceRequirement(models.Model):
             "res_model": "project.resource.planner",
             "res_id": planner.id,
             "view_mode": "form",
+            "views": [[False, "form"]],
             "target": "current",
         }
 

@@ -88,6 +88,7 @@ class ProjectProject(models.Model):
             "name": _("Plan Baselines"),
             "res_model": "project.critical.path.baseline",
             "view_mode": "list,form",
+            "views": [[False, "list"], [False, "form"]],
             "domain": [("project_id", "=", self.id)],
             "context": {"default_project_id": self.id, "create": False},
         }
@@ -102,6 +103,7 @@ class ProjectProject(models.Model):
             "name": _("Resource Roles"),
             "res_model": "project.resource.role",
             "view_mode": "list,form",
+            "views": [[False, "list"], [False, "form"]],
         }
 
     def _recalculate_resource_plan(self):

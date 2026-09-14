@@ -40,6 +40,7 @@ class ProjectTaskResourceAssignment(models.Model):
             "res_model": "project.task",
             "res_id": self.task_id.id,
             "view_mode": "form",
+            "views": [[False, "form"]],
             "target": "current",
         }
 

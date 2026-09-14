@@ -139,6 +139,7 @@ class ProjectResourcePlannerLine(models.TransientModel):
             "name": _("Assign Resource"),
             "res_model": "project.task.resource.assignment",
             "view_mode": "form",
+            "views": [[False, "form"]],
             "target": "current",
             "context": {
                 "default_requirement_id": requirement.id,
