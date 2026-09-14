@@ -74,6 +74,10 @@ export class PlannerWorkspace extends Component {
             historyDetail: null,
             historyDetailLoading: false,
             compareBaselineId: null,
+            // Optional WBS date columns (BRD-19) — hidden by default
+            colMenuOpen: false,
+            showStartCol: false,
+            showFinishCol: false,
         });
         this.scales = SCALES;
         useExternalListener(document.body, "keydown", (ev) => {
@@ -84,6 +88,13 @@ export class PlannerWorkspace extends Component {
                 this.state.inspectorOpen = false;
             } else if (this.state.historyOpen) {
                 this.toggleHistory();
+            } else if (this.state.colMenuOpen) {
+                this.state.colMenuOpen = false;
+            }
+        });
+        useExternalListener(document.body, "click", (ev) => {
+            if (this.state.colMenuOpen && !ev.target.closest(".o_cp_planner_colmenu")) {
+                this.state.colMenuOpen = false;
             }
         });
         onMounted(async () => {
@@ -902,6 +913,20 @@ export class PlannerWorkspace extends Component {
 
     formatHours(hours) {
         return `${Math.round((hours || 0) * 100) / 100}h`;
+    }
+
+    // ---- Optional WBS date columns -----------------------------------------
+
+    get wbsPanelWidth() {
+        return 340 + (this.state.showStartCol ? 88 : 0) + (this.state.showFinishCol ? 88 : 0);
+    }
+
+    formatColDate(str) {
+        if (!str) {
+            return "–";
+        }
+        const date = parseDay(str);
+        return `${pad2(date.getDate())}.${pad2(date.getMonth() + 1)}.${String(date.getFullYear()).slice(2)}`;
     }
 
     gripStyle(task, side) {

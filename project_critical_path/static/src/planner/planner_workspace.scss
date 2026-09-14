@@ -54,6 +54,24 @@ $o_cp_planner_header_height: 48px;
     min-width: 0; // lets text-truncate ellipsize inside the flex row
 }
 
+// Optional Start/Finish columns — fixed compact width so the task name keeps
+// the remaining space (the WBS panel widens to fit them, see wbsPanelWidth).
+.o_cp_planner_date_col {
+    flex: 0 0 88px;
+    width: 88px;
+    font-variant-numeric: tabular-nums;
+}
+
+// Lightweight visibility dropdown in the toolbar.
+.o_cp_planner_colmenu_pop {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 1050;
+    min-width: 120px;
+    white-space: nowrap;
+}
+
 .o_cp_planner_toggle {
     width: 18px;
     flex: 0 0 18px;

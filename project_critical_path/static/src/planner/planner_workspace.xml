@@ -32,13 +32,36 @@
                 <button type="button" class="btn btn-sm"
                         t-att-class="state.historyOpen ? 'btn-primary' : 'btn-outline-secondary'"
                         t-on-click="toggleHistory">Baseline History</button>
+                <div class="o_cp_planner_colmenu position-relative">
+                    <button type="button" class="btn btn-sm"
+                            t-att-class="state.showStartCol || state.showFinishCol ? 'btn-primary' : 'btn-outline-secondary'"
+                            t-on-click="() => state.colMenuOpen = !state.colMenuOpen">
+                        Columns <i class="fa fa-caret-down"/>
+                    </button>
+                    <div t-if="state.colMenuOpen" class="o_cp_planner_colmenu_pop border rounded shadow-sm bg-white p-2">
+                        <label class="d-flex align-items-center gap-2 small mb-1">
+                            <input type="checkbox" t-att-checked="state.showStartCol"
+                                   t-on-change="() => state.showStartCol = !state.showStartCol"/>
+                            Start
+                        </label>
+                        <label class="d-flex align-items-center gap-2 small mb-0">
+                            <input type="checkbox" t-att-checked="state.showFinishCol"
+                                   t-on-change="() => state.showFinishCol = !state.showFinishCol"/>
+                            Finish
+                        </label>
+                    </div>
+                </div>
             </div>
             <div class="o_cp_planner_body d-flex flex-grow-1 overflow-hidden">
-                <div class="o_cp_planner_wbs d-flex flex-column border-end">
+                <div class="o_cp_planner_wbs d-flex flex-column border-end"
+                     t-att-style="'width:' + wbsPanelWidth + 'px;flex-basis:' + wbsPanelWidth + 'px'">
                     <div class="o_cp_planner_wbs_header d-flex align-items-center px-2 border-bottom fw-bold">
                         <span class="o_cp_planner_toggle"/>
                         <span class="o_cp_planner_wbs_code me-2">WBS</span>
                         <span>Task</span>
+                        <span t-if="state.showStartCol" class="o_cp_planner_date_col ms-auto">Start</span>
+                        <span t-if="state.showFinishCol" class="o_cp_planner_date_col"
+                              t-att-class="{'ms-auto': !state.showStartCol}">Finish</span>
                     </div>
                     <div class="o_cp_planner_wbs_rows flex-grow-1 overflow-hidden" t-ref="wbsRows" t-on-scroll="onWbsScroll">
                         <div t-foreach="visibleTasks" t-as="task" t-key="task.id"
@@ -56,8 +79,14 @@
                                   t-att-style="'margin-left:' + (Math.max((task.wbs_level || 1) - 1, 0) * 18) + 'px'"
                                   t-esc="task.name"/>
                             <i t-if="task.is_critical"
-                               class="fa fa-exclamation-triangle o_cp_planner_critical_icon ms-auto"
+                               class="fa fa-exclamation-triangle o_cp_planner_critical_icon"
+                               t-att-class="{'ms-auto': !state.showStartCol &amp;&amp; !state.showFinishCol}"
                                title="Critical Path"/>
+                            <span t-if="state.showStartCol" class="o_cp_planner_date_col ms-auto small"
+                                  t-esc="formatColDate(currentDates(task).start)"/>
+                            <span t-if="state.showFinishCol" class="o_cp_planner_date_col small"
+                                  t-att-class="{'ms-auto': !state.showStartCol}"
+                                  t-esc="formatColDate(currentDates(task).stop)"/>
                         </div>
                         <div t-if="!state.loading &amp;&amp; !visibleTasks.length" class="p-3 text-muted">No tasks</div>
                     </div>
