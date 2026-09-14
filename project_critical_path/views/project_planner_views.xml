@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_project_planner_workspace" model="ir.actions.client">
+        <field name="name">Planner</field>
+        <field name="tag">project_critical_path.planner_workspace</field>
+    </record>
+
+    <record id="project_project_form_inherit_planner_workspace" model="ir.ui.view">
+        <field name="name">project.project.form.inherit.planner.workspace</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_open_planner_workspace"
+                        string="Planner"
+                        type="object"
+                        class="btn-primary"/>
+            </xpath>
+        </field>
+    </record>
+
+    <menuitem id="menu_project_planner_workspace"
+              name="Planner"
+              parent="project.menu_main_pm"
+              action="action_project_planner_workspace"
+              sequence="30"/>
+</odoo>

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="project_critical_path.DependencyToolbar" t-inherit="web_gantt.GanttRendererControls" t-inherit-mode="extension">
+        <xpath expr="//t[@t-slot='multi_selection_buttons']" position="before">
+            <button t-if="cpDependencyUI" class="btn btn-secondary o_cp_toggle_dependencies"
+                    t-att-aria-pressed="cpDependencyUI.visible ? 'true' : 'false'"
+                    t-on-click="() => cpDependencyUI.visible = !cpDependencyUI.visible">
+                <t t-if="cpDependencyUI.visible">Hide Dependencies</t>
+                <t t-else="">Show Dependencies</t>
+            </button>
+        </xpath>
+    </t>
+
+    <t t-name="project_critical_path.DependencyConnector" t-inherit="web_gantt.GanttConnector" t-inherit-mode="extension">
+        <xpath expr="//svg[@t-ref='root']" position="attributes">
+            <attribute name="t-on-click">cpEdit</attribute>
+            <attribute name="t-att-tabindex">props.reactive.cpData ? 0 : null</attribute>
+            <attribute name="t-att-role">props.reactive.cpData ? 'button' : null</attribute>
+            <attribute name="t-att-aria-label">props.reactive.cpData?.title</attribute>
+            <attribute name="t-on-keydown">(ev) => ['Enter', ' '].includes(ev.key) &amp;&amp; this.cpEdit(ev)</attribute>
+        </xpath>
+        <xpath expr="//svg[@t-ref='root']/defs" position="before">
+            <title t-if="props.reactive.cpData" t-esc="props.reactive.cpData.title"/>
+            <text t-if="props.reactive.cpData?.lag" class="o_cp_dependency_label" pointer-events="all">
+                <t t-esc="props.reactive.cpData.type"/>
+                <t t-esc="props.reactive.cpData.lag > 0 ? '+' : ''"/><t t-esc="props.reactive.cpData.lag"/> d
+            </text>
+        </xpath>
+    </t>
+
+    <t t-name="project_critical_path.DependencyMenu">
+        <div class="p-1 d-flex flex-column" role="menu">
+            <button class="btn btn-light text-start" role="menuitem" t-on-click="() => this.choose('add')">Add Dependency</button>
+            <button class="btn btn-light text-start" role="menuitem" t-on-click="() => this.choose('edit')">Edit Dependency</button>
+            <button class="btn btn-light text-start" role="menuitem" t-on-click="() => this.choose('remove')">Remove Dependency</button>
+        </div>
+    </t>
+
+    <t t-name="project_critical_path.DependencyDialog">
+        <Dialog title="'Task Dependency'" size="'md'">
+            <p class="text-muted">Type and lag affect visualization only. Scheduling, Critical Path and Baseline calculations are unchanged.</p>
+            <p class="small text-muted">Task selection is limited to tasks loaded in the current Gantt view.</p>
+            <div t-if="state.error" class="alert alert-danger" role="alert" t-esc="state.error"/>
+            <t t-if="props.mode !== 'add'">
+                <label class="form-label" for="cp-dependency-link">Dependency</label>
+                <select id="cp-dependency-link" class="form-select mb-3" t-on-change="selectLink" t-att-disabled="state.busy">
+                    <option t-if="!links.length" value="">No dependencies between the loaded tasks</option>
+                    <option t-foreach="links" t-as="link" t-key="link.key" t-att-value="link.key"
+                            t-att-selected="link.source === state.source &amp;&amp; link.target === state.target">
+                        <t t-esc="name(link.source)"/> → <t t-esc="name(link.target)"/>
+                    </option>
+                </select>
+            </t>
+            <t t-else="">
+                <label class="form-label" for="cp-dependency-source">Predecessor</label>
+                <select id="cp-dependency-source" class="form-select mb-3" t-model.number="state.source" t-att-disabled="state.busy">
+                    <option t-foreach="records" t-as="record" t-key="record.id" t-att-value="record.id" t-esc="record.display_name"/>
+                </select>
+                <label class="form-label" for="cp-dependency-target">Successor</label>
+                <select id="cp-dependency-target" class="form-select mb-3" t-model.number="state.target" t-att-disabled="state.busy">
+                    <option t-foreach="records" t-as="record" t-key="record.id" t-att-value="record.id" t-esc="record.display_name"/>
+                </select>
+            </t>
+            <label class="form-label" for="cp-dependency-type">Dependency Type</label>
+            <select id="cp-dependency-type" class="form-select mb-3" t-model="state.type" t-att-disabled="state.busy || props.mode === 'remove' || !props.model.metaData.canEdit">
+                <option t-foreach="Object.keys(types)" t-as="type" t-key="type" t-att-value="type"><t t-esc="type"/> — <t t-esc="types[type]"/></option>
+            </select>
+            <label class="form-label" for="cp-dependency-lag">Visual Lag (calendar days)</label>
+            <input id="cp-dependency-lag" type="number" step="any" class="form-control mb-3" t-model="state.lag"
+                   t-att-disabled="state.busy || props.mode === 'remove' || !props.model.metaData.canEdit"/>
+            <p t-if="props.mode === 'remove'" class="text-danger">Remove this native dependency? Other links will remain unchanged.</p>
+            <t t-set-slot="footer">
+                <button class="btn btn-primary" t-on-click="save" t-att-disabled="!canSave">
+                    <t t-if="props.mode === 'remove'">Remove Dependency</t>
+                    <t t-else="">Save</t>
+                </button>
+                <button class="btn btn-secondary" t-on-click="props.close" t-att-disabled="state.busy">Close</button>
+            </t>
+        </Dialog>
+    </t>
+</templates>

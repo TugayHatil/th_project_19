@@ -1,0 +1,135 @@
+/* Project Planner Workspace — BRD base UI
+   Layout: toolbar / (WBS list + Gantt timeline) / bottom placeholder. */
+
+$o_cp_planner_row_height: 32px;
+$o_cp_planner_bar_height: 18px;
+$o_cp_planner_wbs_width: 340px;
+
+.o_cp_planner_workspace {
+    background: $o-view-background-color;
+}
+
+.o_cp_planner_wbs {
+    width: $o_cp_planner_wbs_width;
+    flex: 0 0 $o_cp_planner_wbs_width;
+    min-width: 0;
+    background: $o-view-background-color;
+}
+
+.o_cp_planner_wbs_header {
+    height: 48px; // matches the two gantt header rows (24px + 24px)
+    flex: 0 0 auto;
+    font-size: $o-font-size-base;
+}
+
+.o_cp_planner_wbs_rows {
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.o_cp_planner_wbs_row {
+    height: $o_cp_planner_row_height;
+    line-height: $o_cp_planner_row_height;
+    white-space: nowrap;
+    cursor: pointer;
+    border-bottom: 1px solid $border-color;
+
+    &:hover {
+        background: $o-list-group-hover-bg;
+    }
+
+    &.selected {
+        background: mix($o-brand-primary, white, 12%);
+    }
+}
+
+.o_cp_planner_toggle {
+    width: 18px;
+    flex: 0 0 18px;
+    text-align: center;
+}
+
+.o_cp_planner_wbs_code {
+    font-family: $o-font-family-monospace;
+    font-size: 0.85em;
+    min-width: 64px;
+    flex: 0 0 auto;
+}
+
+.o_cp_planner_gantt_scroll {
+    overflow: auto;
+}
+
+.o_cp_planner_gantt_inner {
+    min-height: 100%;
+}
+
+.o_cp_planner_gantt_header {
+    z-index: 2;
+    background: $o-view-background-color;
+}
+
+.o_cp_planner_gantt_group {
+    height: 24px;
+    line-height: 24px;
+    padding: 0 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-right: 1px solid $border-color;
+    border-bottom: 1px solid $border-color;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.o_cp_planner_gantt_col {
+    height: 24px;
+    line-height: 24px;
+    font-size: 0.75rem;
+    color: $text-muted;
+    border-right: 1px solid $border-color;
+    border-bottom: 1px solid $border-color;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.o_cp_planner_gantt_row {
+    position: relative;
+    height: $o_cp_planner_row_height;
+    border-bottom: 1px solid $border-color;
+    cursor: pointer;
+
+    &:hover {
+        background: $o-list-group-hover-bg;
+    }
+
+    &.selected {
+        background: mix($o-brand-primary, white, 12%);
+    }
+}
+
+.o_cp_planner_bar {
+    position: absolute;
+    top: ($o_cp_planner_row_height - $o_cp_planner_bar_height) / 2;
+    height: $o_cp_planner_bar_height;
+    border-radius: 3px;
+    background: $o-brand-primary;
+    min-width: 2px;
+
+    &.selected {
+        outline: 2px solid darken($o-brand-primary, 20%);
+    }
+}
+
+.o_cp_planner_today {
+    position: absolute;
+    top: 48px;
+    bottom: 0;
+    width: 1px;
+    background: $o-danger;
+    pointer-events: none;
+}
+
+.o_cp_planner_bottom {
+    height: 24px;
+    flex: 0 0 auto;
+}

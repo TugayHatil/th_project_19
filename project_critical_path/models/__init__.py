@@ -11,4 +11,5 @@ from . import hr_employee
 from . import project_project
 from . import project_task
 from . import project_wbs
-
+from . import project_task_gantt
+from . import project_planner

@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="project_critical_path.PlannerWorkspace">
+        <div class="o_cp_planner_workspace d-flex flex-column h-100">
+            <div class="o_cp_planner_toolbar d-flex align-items-center gap-2 px-3 py-2 border-bottom">
+                <span class="fw-bold">Planner</span>
+                <t t-if="state.projects.length &amp;&amp; !props.action?.params?.project_id">
+                    <select class="form-select form-select-sm w-auto"
+                            t-on-change="onProjectChange">
+                        <option value="">Select a project…</option>
+                        <t t-foreach="state.projects" t-as="project" t-key="project.id">
+                            <option t-att-value="project.id"
+                                    t-att-selected="project.id === state.projectId"
+                                    t-esc="project.name"/>
+                        </t>
+                    </select>
+                </t>
+                <t t-else="">
+                    <span class="text-muted" t-esc="state.projectName"/>
+                </t>
+                <div class="btn-group ms-3">
+                    <t t-foreach="['day', 'week', 'month']" t-as="scale" t-key="scale">
+                        <button type="button"
+                                class="btn btn-sm"
+                                t-att-class="state.scale === scale ? 'btn-primary' : 'btn-outline-secondary'"
+                                t-on-click="() => this.setScale(scale)"
+                                t-esc="scales[scale].label"/>
+                    </t>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary" t-on-click="goToday">Today</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" t-on-click="fit">Fit</button>
+            </div>
+            <div class="o_cp_planner_body d-flex flex-grow-1 overflow-hidden">
+                <div class="o_cp_planner_wbs d-flex flex-column border-end">
+                    <div class="o_cp_planner_wbs_header d-flex align-items-center px-2 border-bottom fw-bold">
+                        <span class="o_cp_planner_toggle"/>
+                        <span class="o_cp_planner_wbs_code me-2">WBS</span>
+                        <span>Task</span>
+                    </div>
+                    <div class="o_cp_planner_wbs_rows flex-grow-1 overflow-hidden" t-ref="wbsRows" t-on-scroll="onWbsScroll">
+                        <div t-foreach="visibleTasks" t-as="task" t-key="task.id"
+                             class="o_cp_planner_wbs_row d-flex align-items-center px-2"
+                             t-att-class="{selected: state.selectedId === task.id}"
+                             t-att-style="'padding-left:' + (8 + (task.wbs_level - 1) * 18) + 'px'"
+                             t-on-click="() => this.selectTask(task)"
+                             t-on-dblclick="() => this.openTask(task)">
+                            <span class="o_cp_planner_toggle" t-on-click="(ev) => this.toggleCollapse(task, ev)">
+                                <i t-if="task.has_children"
+                                   class="fa fa-fw"
+                                   t-att-class="state.collapsedIds.has(task.id) ? 'fa-caret-right' : 'fa-caret-down'"/>
+                            </span>
+                            <span class="o_cp_planner_wbs_code text-muted me-2" t-esc="task.wbs_code"/>
+                            <span class="text-truncate" t-esc="task.name"/>
+                        </div>
+                        <div t-if="!state.loading &amp;&amp; !visibleTasks.length" class="p-3 text-muted">No tasks</div>
+                    </div>
+                </div>
+                <div class="o_cp_planner_gantt flex-grow-1 d-flex flex-column overflow-hidden">
+                    <div class="o_cp_planner_gantt_scroll flex-grow-1" t-ref="ganttScroll" t-on-scroll="onGanttScroll">
+                        <div class="o_cp_planner_gantt_inner position-relative"
+                             t-att-style="'width:' + timelineWidth + 'px'">
+                            <div class="o_cp_planner_gantt_header position-sticky top-0">
+                                <div class="o_cp_planner_gantt_groups d-flex">
+                                    <div t-foreach="columnGroups" t-as="group" t-key="group_index"
+                                         class="o_cp_planner_gantt_group text-truncate"
+                                         t-att-style="'width:' + group.width + 'px'"
+                                         t-esc="group.label"/>
+                                </div>
+                                <div class="o_cp_planner_gantt_cols d-flex">
+                                    <div t-foreach="columns" t-as="col" t-key="col_index"
+                                         class="o_cp_planner_gantt_col text-center text-truncate"
+                                         t-att-style="'width:' + (col.days * state.pxPerDay) + 'px'"
+                                         t-esc="col.label"/>
+                                </div>
+                            </div>
+                            <div class="o_cp_planner_gantt_rows">
+                                <div t-foreach="visibleTasks" t-as="task" t-key="task.id"
+                                     class="o_cp_planner_gantt_row"
+                                     t-att-class="{selected: state.selectedId === task.id}"
+                                     t-on-click="() => this.selectTask(task)"
+                                     t-on-dblclick="() => this.openTask(task)">
+                                    <div t-if="task.date_start &amp;&amp; task.date_stop"
+                                         class="o_cp_planner_bar"
+                                         t-att-class="{selected: state.selectedId === task.id}"
+                                         t-att-style="barStyle(task)"
+                                         t-att-title="task.name"/>
+                                </div>
+                            </div>
+                            <div class="o_cp_planner_today" t-att-style="'left:' + todayLeft + 'px'"/>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="o_cp_planner_bottom border-top"/>
+        </div>
+    </t>
+</templates>
