@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from pytz import UTC, timezone
 
@@ -431,6 +431,34 @@ class ProjectTaskPlanner(models.Model):
         self.ensure_one()
         requirement = self._get_planner_requirement(requirement_id)
         planner = self.env["project.resource.planner"].create_for_requirement(requirement)
+        req_start, req_end = requirement.date_start, requirement.date_end
+        window_start = req_start - timedelta(days=2) if req_start else False
+        window_end = req_end + timedelta(days=2) if req_end else False
+        # Every candidate's existing assignments inside the timeline window,
+        # fetched in one query so browsing candidates costs no extra RPC.
+        schedules = {}
+        if window_start and window_end:
+            res_field = (
+                "employee_id"
+                if requirement.role_id.category == "human"
+                else "equipment_id"
+            )
+            bookings = self.env["project.task.resource.assignment"].search([
+                ("resource_category", "=", requirement.role_id.category),
+                ("date_start", "<=", window_end),
+                ("date_end", ">=", window_start),
+            ], order="date_start, id")
+            for booking in bookings:
+                schedules.setdefault(booking[res_field].id, []).append({
+                    "task_name": booking.task_id.display_name,
+                    "date_start": _serialize_planner_day(self, booking.date_start),
+                    "date_end": _serialize_planner_day(self, booking.date_end),
+                    "overlaps": bool(
+                        req_start and req_end
+                        and booking.date_start <= req_end
+                        and booking.date_end >= req_start
+                    ),
+                })
         options = [
             {
                 "employee_id": line.employee_id.id or False,
@@ -440,11 +468,24 @@ class ProjectTaskPlanner(models.Model):
                 "booked_hours": line.booked_hours,
                 "available_hours": line.available_hours,
                 "booking_summary": line.booking_summary or "",
+                "schedule": schedules.get(
+                    (line.employee_id or line.equipment_id).id, []
+                ),
             }
             for line in planner.line_ids
         ]
         planner.unlink()
-        return options
+        return {
+            "options": options,
+            "window": {
+                "start": _serialize_planner_day(self, window_start),
+                "end": _serialize_planner_day(self, window_end),
+            },
+            "required": {
+                "start": _serialize_planner_day(self, req_start),
+                "end": _serialize_planner_day(self, req_end),
+            },
+        }
 
     def planner_assign_resource(self, requirement_id, employee_id=False, equipment_id=False):
         """Assign an employee or equipment to a requirement."""

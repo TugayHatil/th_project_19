@@ -87,21 +87,6 @@ $o_cp_planner_header_height: 48px;
     }
 }
 
-// Assignment picker: capped dropdown-style list with availability cues.
-.o_cp_planner_res_options {
-    max-height: 160px;
-    overflow-y: auto;
-    background: #ffffff;
-}
-
-.o_cp_planner_res_option {
-    cursor: pointer;
-
-    &:hover {
-        background: #f8f9fa;
-    }
-}
-
 // Lightweight visibility dropdown in the toolbar.
 .o_cp_planner_colmenu_pop {
     position: absolute;
@@ -456,4 +441,129 @@ $o_cp_planner_inspector_width: 320px;
 .o_cp_planner_dep_toggle {
     cursor: pointer;
     user-select: none;
+}
+
+/* Resource Planning workspace — large centered modal on top of the Planner.
+   Requirements table on the left, candidates + timeline on the right. */
+
+.o_cp_res_overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1060;
+    background: rgba(15, 23, 42, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.o_cp_res_dialog {
+    width: min(1200px, 94vw);
+    height: min(720px, 88vh);
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+}
+
+.o_cp_res_left {
+    width: 400px;
+    flex: 0 0 400px;
+    min-width: 0;
+}
+
+.o_cp_res_table {
+    th, td {
+        padding: 4px 6px;
+    }
+}
+
+.o_cp_res_col_icon {
+    width: 28px;
+}
+
+.o_cp_res_col_actions {
+    width: 70px;
+}
+
+.o_cp_res_row {
+    cursor: pointer;
+
+    &:hover td {
+        background: #f8f9fa;
+    }
+
+    &.selected td {
+        background: #dbeafe;
+    }
+}
+
+// Availability dot: green = free, amber = partially booked, red = conflict.
+.o_cp_res_dot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #98a2b3;
+
+    &.o_cp_res_dot_ok {
+        background: #198754;
+    }
+
+    &.o_cp_res_dot_warn {
+        background: #e8a33d;
+    }
+
+    &.o_cp_res_dot_conflict {
+        background: #dc3545;
+    }
+}
+
+// Candidate timeline: label column + proportional day tracks; the required
+// period is a hatched band, existing bookings are solid bars (red = overlap).
+$o_cp_res_tl_label: 140px;
+
+.o_cp_res_tl_label {
+    width: $o_cp_res_tl_label;
+    flex: 0 0 $o_cp_res_tl_label;
+    padding-right: 8px;
+    overflow: hidden;
+}
+
+.o_cp_res_tl_day {
+    flex: 1 1 0;
+    min-width: 0;
+    border-left: 1px solid #e9ecef;
+    font-size: 0.68rem;
+}
+
+.o_cp_res_tl_row {
+    margin-bottom: 2px;
+}
+
+.o_cp_res_tl_track {
+    position: relative;
+    height: 16px;
+    background: #f8f9fa;
+    border-radius: 2px;
+}
+
+.o_cp_res_tl_req {
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    border: 1px dashed #714b67;
+    background: rgba(113, 75, 103, 0.12);
+    border-radius: 2px;
+}
+
+.o_cp_res_tl_bar {
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    background: #98a2b3;
+    border-radius: 2px;
+
+    &.conflict {
+        background: #dc3545;
+    }
 }

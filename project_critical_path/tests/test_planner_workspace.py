@@ -321,10 +321,18 @@ class TestPlannerWorkspace(TransactionCase):
         self.assertEqual(req["date_start"], "2026-03-02")
         self.assertEqual(req["date_end"], "2026-03-06")
 
-        options = task.planner_get_assignment_options(req["id"])
+        options_data = task.planner_get_assignment_options(req["id"])
         self.assertTrue(
-            any(opt["employee_id"] == employee.id for opt in options)
+            any(
+                opt["employee_id"] == employee.id
+                for opt in options_data["options"]
+            )
         )
+        # The timeline window wraps the requirement dates with context days.
+        self.assertEqual(options_data["required"]["start"], "2026-03-02")
+        self.assertEqual(options_data["required"]["end"], "2026-03-06")
+        self.assertEqual(options_data["window"]["start"], "2026-02-28")
+        self.assertEqual(options_data["window"]["end"], "2026-03-08")
 
         task.planner_assign_resource(req["id"], employee_id=employee.id)
         req = task.get_planner_resources()["requirements"][0]

@@ -78,23 +78,29 @@ export class PlannerWorkspace extends Component {
             colMenuOpen: false,
             showStartCol: false,
             showFinishCol: false,
-            // Inspector Resources section (BRD-21)
-            resOpen: false,
+            // Resource Planning workspace modal (BRD-21)
+            resModalOpen: false,
+            resTask: null,
             resLoading: false,
             resData: null,
             resAddOpen: false,
             resEditingId: null,
             resForm: null,
-            resAssignFor: null,
+            resSelReqId: null,
             resOptions: [],
             resOptionsLoading: false,
+            resWindow: null,
+            resRequired: null,
+            resSelOptKey: null,
         });
         this.scales = SCALES;
         useExternalListener(document.body, "keydown", (ev) => {
             if (ev.key !== "Escape") {
                 return;
             }
-            if (this.state.inspectorOpen) {
+            if (this.state.resModalOpen) {
+                this.closeResourceWorkspace();
+            } else if (this.state.inspectorOpen) {
                 this.state.inspectorOpen = false;
             } else if (this.state.historyOpen) {
                 this.toggleHistory();
@@ -460,10 +466,6 @@ export class PlannerWorkspace extends Component {
             this.state.impact = detail.impact;
             this.state.options = detail.options;
             this.state.depOpen = false;
-            this.state.resOpen = false;
-            this.state.resData = null;
-            this.state.resAddOpen = false;
-            this.state.resAssignFor = null;
             const t = detail.task;
             this.state.form = {
                 name: t.name,
@@ -960,34 +962,42 @@ export class PlannerWorkspace extends Component {
         return `${pad2(date.getDate())}.${pad2(date.getMonth() + 1)}.${String(date.getFullYear()).slice(2)}`;
     }
 
-    // ---- Resources (BRD-21) -------------------------------------------------
+    // ---- Resource Planning workspace (BRD-21) ------------------------------
     // Requirements and assignments live in the existing resource models; the
     // Planner only serializes and mutates them through planner_* methods.
+    // The workspace is a large modal — the Quick Inspector only links to it.
 
-    async openTaskResources(task, ev) {
-        ev.stopPropagation();
+    async openResourceWorkspace(task, ev) {
+        ev?.stopPropagation();
         this.state.selectedId = task.id;
-        this.state.inspectorOpen = true;
-        await this.loadInspector(task.id);
-        this.state.resOpen = true;
+        this.state.resTask = {
+            id: task.id,
+            name: task.name || "",
+            wbs_code: task.wbs_code || "",
+        };
+        this.state.resModalOpen = true;
+        this.state.resSelReqId = null;
+        this.state.resSelOptKey = null;
+        this.state.resOptions = [];
+        this.state.resWindow = null;
+        this.state.resRequired = null;
+        this.state.resAddOpen = false;
+        this.state.resEditingId = null;
         await this.loadResources();
     }
 
-    async toggleResources() {
-        this.state.resOpen = !this.state.resOpen;
-        if (this.state.resOpen && !this.state.resData) {
-            await this.loadResources();
-        }
+    closeResourceWorkspace() {
+        this.state.resModalOpen = false;
     }
 
     async loadResources() {
-        if (!this.state.inspector?.id) {
+        if (!this.state.resTask?.id) {
             return;
         }
         this.state.resLoading = true;
         try {
             this.state.resData = await this.orm.call(
-                "project.task", "get_planner_resources", [this.state.inspector.id],
+                "project.task", "get_planner_resources", [this.state.resTask.id],
             );
         } catch (error) {
             this.notification.add(
@@ -999,11 +1009,56 @@ export class PlannerWorkspace extends Component {
         }
     }
 
-    // Resource mutations change the row badges, so both the inspector data
-    // and the planner rows refresh afterwards.
+    // Resource mutations change the row badges, the requirement list and the
+    // candidates' availability, so all three refresh afterwards.
     async refreshResources() {
+        const selReqId = this.state.resSelReqId;
         await this.loadResources();
+        if (selReqId && this.resSelectedReq) {
+            await this.loadResOptions(selReqId);
+        } else {
+            this.state.resSelReqId = null;
+            this.state.resOptions = [];
+        }
         await this.reloadPlannerData();
+    }
+
+    get resSelectedReq() {
+        return (this.state.resData?.requirements || []).find(
+            (req) => req.id === this.state.resSelReqId,
+        ) || null;
+    }
+
+    async selectRequirement(req) {
+        if (this.state.resSelReqId === req.id) {
+            this.state.resSelReqId = null;
+            this.state.resSelOptKey = null;
+            this.state.resOptions = [];
+            return;
+        }
+        this.state.resSelReqId = req.id;
+        await this.loadResOptions(req.id);
+    }
+
+    async loadResOptions(reqId) {
+        this.state.resOptionsLoading = true;
+        this.state.resSelOptKey = null;
+        try {
+            const data = await this.orm.call(
+                "project.task", "planner_get_assignment_options", [this.state.resTask.id],
+                { requirement_id: reqId },
+            );
+            this.state.resOptions = data.options || [];
+            this.state.resWindow = data.window || null;
+            this.state.resRequired = data.required || null;
+        } catch (error) {
+            this.state.resOptions = [];
+            this.notification.add(
+                error.data?.message || _t("Resources could not be loaded."), { type: "danger" },
+            );
+        } finally {
+            this.state.resOptionsLoading = false;
+        }
     }
 
     openRequirementForm(req = null) {
@@ -1028,7 +1083,7 @@ export class PlannerWorkspace extends Component {
         }
         try {
             await this.orm.call(
-                "project.task", "planner_save_requirement", [this.state.inspector.id],
+                "project.task", "planner_save_requirement", [this.state.resTask.id],
                 {
                     values: {
                         id: this.state.resEditingId || false,
@@ -1052,11 +1107,11 @@ export class PlannerWorkspace extends Component {
         await this.refreshResources();
     }
 
-    async deleteRequirement(reqId) {
+    async deleteRequirement(req) {
         try {
             await this.orm.call(
-                "project.task", "planner_delete_requirement", [this.state.inspector.id],
-                { requirement_id: reqId },
+                "project.task", "planner_delete_requirement", [this.state.resTask.id],
+                { requirement_id: req.id },
             );
         } catch (error) {
             this.notification.add(
@@ -1067,32 +1122,29 @@ export class PlannerWorkspace extends Component {
         await this.refreshResources();
     }
 
-    async toggleAssignPicker(req) {
-        if (this.state.resAssignFor === req.id) {
-            this.state.resAssignFor = null;
-            return;
-        }
-        this.state.resAssignFor = req.id;
-        this.state.resOptionsLoading = true;
-        try {
-            this.state.resOptions = await this.orm.call(
-                "project.task", "planner_get_assignment_options", [this.state.inspector.id],
-                { requirement_id: req.id },
-            );
-        } catch (error) {
-            this.state.resOptions = [];
-            this.notification.add(
-                error.data?.message || _t("Resources could not be loaded."), { type: "danger" },
-            );
-        } finally {
-            this.state.resOptionsLoading = false;
-        }
+    resCandidateKey(opt) {
+        return opt.employee_id ? `e${opt.employee_id}` : `q${opt.equipment_id}`;
     }
 
-    async assignResource(req, opt) {
+    get resSelectedOption() {
+        return this.state.resOptions.find(
+            (opt) => this.resCandidateKey(opt) === this.state.resSelOptKey,
+        ) || null;
+    }
+
+    selectCandidate(opt) {
+        const key = this.resCandidateKey(opt);
+        this.state.resSelOptKey = this.state.resSelOptKey === key ? null : key;
+    }
+
+    async assignResource(opt) {
+        const req = this.resSelectedReq;
+        if (!req) {
+            return;
+        }
         try {
             await this.orm.call(
-                "project.task", "planner_assign_resource", [this.state.inspector.id],
+                "project.task", "planner_assign_resource", [this.state.resTask.id],
                 {
                     requirement_id: req.id,
                     employee_id: opt.employee_id || false,
@@ -1105,14 +1157,14 @@ export class PlannerWorkspace extends Component {
             );
             return;
         }
-        this.state.resAssignFor = null;
+        this.state.resSelOptKey = null;
         await this.refreshResources();
     }
 
     async unassignResource(assignmentId) {
         try {
             await this.orm.call(
-                "project.task", "planner_unassign_resource", [this.state.inspector.id],
+                "project.task", "planner_unassign_resource", [this.state.resTask.id],
                 { assignment_id: assignmentId },
             );
         } catch (error) {
@@ -1129,22 +1181,93 @@ export class PlannerWorkspace extends Component {
         return names.length ? names.join("\n") : _t("Manage resources");
     }
 
-    resStatusIcon(req) {
-        if (req.status === "assigned") {
-            return "fa-check text-success";
+    // Compact summary shown in the Inspector and next to the Manage button.
+    resSummaryText(taskId) {
+        const res = this.taskById.get(taskId)?.resources;
+        if (!res || (!res.human && !res.equipment)) {
+            return _t("No resource requirements yet");
         }
-        if (req.status === "partial") {
-            return "fa-exclamation-triangle text-warning";
+        const parts = [];
+        if (res.human) {
+            parts.push(`${res.human} × person`);
         }
-        return "fa-exclamation-circle text-danger";
+        if (res.equipment) {
+            parts.push(`${res.equipment} × equipment`);
+        }
+        if (res.open) {
+            parts.push(_t("unassigned requirements"));
+        }
+        return parts.join(" · ");
     }
 
-    availabilityClass(status) {
+    resStatusLabel(req) {
         return {
-            fully_available: "text-success",
-            partially_available: "text-warning",
-            unavailable: "text-danger",
-        }[status] || "text-muted";
+            waiting: _t("Pending"),
+            partial: _t("Partial"),
+            assigned: _t("Assigned"),
+        }[req.status] || "—";
+    }
+
+    resStatusClass(req) {
+        return {
+            waiting: "text-bg-danger",
+            partial: "text-bg-warning",
+            assigned: "text-bg-success",
+        }[req.status] || "text-bg-secondary";
+    }
+
+    resAvailabilityLabel(opt) {
+        return {
+            fully_available: _t("Fully available"),
+            partially_available: _t("Partially occupied"),
+            unavailable: _t("Conflict"),
+        }[opt.availability] || "—";
+    }
+
+    resAvailabilityDot(opt) {
+        return {
+            fully_available: "o_cp_res_dot_ok",
+            partially_available: "o_cp_res_dot_warn",
+            unavailable: "o_cp_res_dot_conflict",
+        }[opt.availability] || "";
+    }
+
+    // ---- Candidate timeline -------------------------------------------------
+    // Requirement range ±2 days, one day per column; all data arrives with the
+    // options RPC so browsing candidates needs no extra calls.
+
+    get resTimelineDays() {
+        const win = this.state.resWindow;
+        if (!win?.start || !win?.end) {
+            return [];
+        }
+        const days = [];
+        for (let day = parseDay(win.start); day <= parseDay(win.end); day = addDays(day, 1)) {
+            days.push(day);
+        }
+        return days;
+    }
+
+    resBarStyle(item) {
+        const win = this.state.resWindow;
+        if (!win?.start || !win?.end || !item.date_start || !item.date_end) {
+            return "display:none";
+        }
+        const start = parseDay(win.start);
+        const total = dayDiff(start, parseDay(win.end)) + 1;
+        const left = Math.max(dayDiff(start, parseDay(item.date_start)), 0) / total * 100;
+        const span = dayDiff(parseDay(item.date_start), parseDay(item.date_end)) + 1;
+        const width = Math.min(span / total * 100, 100 - left);
+        return `left:${left}%;width:${Math.max(width, 2)}%`;
+    }
+
+    resRangeStyle() {
+        const win = this.state.resWindow;
+        const req = this.state.resRequired;
+        if (!win?.start || !win?.end || !req?.start || !req?.end) {
+            return "display:none";
+        }
+        return this.resBarStyle({ date_start: req.start, date_end: req.end });
     }
 
     gripStyle(task, side) {
