@@ -1124,6 +1124,11 @@ export class PlannerWorkspace extends Component {
         await this.refreshResources();
     }
 
+    resTooltip(task) {
+        const names = task.resources?.names || [];
+        return names.length ? names.join("\n") : _t("Manage resources");
+    }
+
     resStatusIcon(req) {
         if (req.status === "assigned") {
             return "fa-check text-success";

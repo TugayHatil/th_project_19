@@ -89,7 +89,7 @@
                                   t-esc="formatColDate(currentDates(task).stop)"/>
                             <span class="o_cp_planner_rescell" role="button"
                                   t-att-class="{'ms-auto': !task.is_critical &amp;&amp; !state.showStartCol &amp;&amp; !state.showFinishCol}"
-                                  t-att-title="task.resources?.names?.length ? task.resources.names.join('&#10;') : 'Manage resources'"
+                                  t-att-title="resTooltip(task)"
                                   t-on-click="(ev) => this.openTaskResources(task, ev)">
                                 <t t-if="task.resources &amp;&amp; (task.resources.human || task.resources.equipment)">
                                     <i class="fa fa-user"/><t t-esc="task.resources.human"/>
