@@ -71,3 +71,63 @@ class TestPlannerWorkspace(TransactionCase):
             {"id": project.id, "name": project.display_name},
             [{"id": entry["id"], "name": entry["name"]} for entry in projects],
         )
+
+    def test_get_planner_detail_returns_editable_fields_and_options(self):
+        project = self.env["project.project"].create({"name": "Inspector detail"})
+        first = self._make_task(
+            project, "Drawing",
+            date_assign="2026-03-01 09:00:00", date_deadline="2026-03-10 18:00:00",
+        )
+        second = self._make_task(
+            project, "Approval",
+            date_assign="2026-03-11 09:00:00", date_deadline="2026-03-15 18:00:00",
+            depend_on_ids=[(4, first.id)],
+        )
+
+        detail = second.get_planner_detail()
+        task = detail["task"]
+
+        self.assertEqual(task["id"], second.id)
+        self.assertEqual(task["name"], "Approval")
+        self.assertEqual(task["date_start"], "2026-03-11")
+        self.assertEqual(task["date_stop"], "2026-03-15")
+        self.assertEqual(task["depend_on_ids"], [first.id])
+        self.assertNotIn(first.id, task["dependent_ids"])
+        self.assertIn("progress", task)
+        self.assertIn("critical_slack", task)
+        self.assertIn("allocated_hours", task)
+        self.assertIn("effective_hours", task)
+        self.assertTrue(detail["options"]["users"], "users dropdown should not be empty")
+
+        # Progress is serialized as 0..100 for the inspector
+        self.assertGreaterEqual(task["progress"], 0)
+        self.assertLessEqual(task["progress"], 100)
+
+    def test_update_planner_task_writes_inspector_fields(self):
+        project = self.env["project.project"].create({"name": "Inspector update"})
+        first = self._make_task(project, "Drawing")
+        second = self._make_task(project, "Approval")
+        stage = self.env["project.task.type"].create(
+            {"name": "In Progress", "project_ids": [(4, project.id)]}
+        )
+
+        second.update_planner_task({
+            "name": "Approval v2",
+            "date_start": "2026-03-11",
+            "date_stop": "2026-03-15",
+            "progress": 45,
+            "stage_id": stage.id,
+            "user_ids": [self.env.user.id],
+            "depend_on_ids": [first.id],
+            "dependent_ids": [],
+        })
+
+        self.assertEqual(second.name, "Approval v2")
+        self.assertEqual(second.stage_id, stage)
+        self.assertEqual(second.user_ids, self.env.user)
+        self.assertEqual(second.depend_on_ids, first)
+        self.assertAlmostEqual(second.progress, 0.45, places=2)
+        # Dates round-trip through user timezone without shifting the day
+        detail = second.get_planner_detail()["task"]
+        self.assertEqual(detail["date_start"], "2026-03-11")
+        self.assertEqual(detail["date_stop"], "2026-03-15")

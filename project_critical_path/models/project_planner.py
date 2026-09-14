@@ -2,7 +2,18 @@
 
 from datetime import datetime
 
-from odoo import _, api, fields, models
+from pytz import UTC, timezone
+
+from odoo import Command, _, api, fields, models
+
+
+def _serialize_planner_day(record, value):
+    """Serialize a date/datetime field to a ``YYYY-MM-DD`` day in user tz."""
+    if not value:
+        return False
+    if isinstance(value, datetime):
+        return fields.Datetime.context_timestamp(record, value).date().isoformat()
+    return value.isoformat()
 
 
 class ProjectProjectPlanner(models.Model):
@@ -47,18 +58,86 @@ class ProjectProjectPlanner(models.Model):
                     "wbs_level": task.wbs_level or 1,
                     "parent_id": task.parent_id.id or False,
                     "has_children": bool(task.child_ids),
-                    "date_start": self._planner_serialize_date(task.date_assign),
-                    "date_stop": self._planner_serialize_date(task.date_deadline),
+                    "date_start": _serialize_planner_day(self, task.date_assign),
+                    "date_stop": _serialize_planner_day(self, task.date_deadline),
                     "progress": task.progress or 0.0,
                 }
                 for task in ordered
             ],
         }
 
-    def _planner_serialize_date(self, value):
-        """Serialize a task date/datetime to a ``YYYY-MM-DD`` day in user tz."""
-        if not value:
-            return False
-        if isinstance(value, datetime):
-            value = fields.Datetime.context_timestamp(self, value)
-        return value.date().isoformat() if isinstance(value, datetime) else value.isoformat()
+
+class ProjectTaskPlanner(models.Model):
+    _inherit = "project.task"
+
+    def get_planner_detail(self):
+        """Return the task fields and dropdown options for the Quick Inspector."""
+        self.ensure_one()
+        project = self.project_id
+        if project and "type_ids" in project._fields:
+            stages = project.type_ids
+        elif project:
+            stages = self.env["project.task.type"].search([("project_ids", "in", project.id)])
+        else:
+            stages = self.env["project.task.type"].search([])
+        users = self.env["res.users"].search([("share", "=", False)], order="name")
+        return {
+            "task": {
+                "id": self.id,
+                "name": self.name or "",
+                "wbs_code": self.wbs_code or "",
+                "is_critical": bool(self.is_critical),
+                "critical_slack": self.critical_slack or 0.0,
+                "date_start": _serialize_planner_day(self, self.date_assign),
+                "date_stop": _serialize_planner_day(self, self.date_deadline),
+                "allocated_hours": self.allocated_hours or 0.0,
+                "effective_hours": getattr(self, "effective_hours", 0.0) or 0.0,
+                # progress is stored as a 0..1 ratio; the inspector shows 0..100
+                "progress": round((self.progress or 0.0) * 100, 1),
+                "stage_id": self.stage_id.id or False,
+                "user_ids": self.user_ids.ids,
+                "depend_on_ids": self.depend_on_ids.ids,
+                "dependent_ids": self.dependent_ids.ids,
+            },
+            "options": {
+                "stages": [{"id": stage.id, "name": stage.name} for stage in stages],
+                "users": [{"id": user.id, "name": user.name} for user in users],
+            },
+        }
+
+    def update_planner_task(self, values):
+        """Write Quick Inspector edits to the task.
+
+        ``date_start``/``date_stop`` are local ``YYYY-MM-DD`` days; they are
+        stored at 09:00 / 18:00 in the user's timezone so the saved day never
+        shifts across timezones.
+        """
+        self.ensure_one()
+        vals = {}
+        if "name" in values:
+            vals["name"] = values["name"]
+        if "date_start" in values:
+            vals["date_assign"] = _local_day_to_utc(self, values["date_start"], 9)
+        if "date_stop" in values:
+            vals["date_deadline"] = _local_day_to_utc(self, values["date_stop"], 18)
+        if "progress" in values:
+            vals["progress"] = min(max(values["progress"] or 0.0, 0.0), 100.0) / 100.0
+        if "stage_id" in values:
+            vals["stage_id"] = values["stage_id"] or False
+        if "user_ids" in values:
+            vals["user_ids"] = [Command.set(values["user_ids"] or [])]
+        if "depend_on_ids" in values:
+            vals["depend_on_ids"] = [Command.set(values["depend_on_ids"] or [])]
+        if "dependent_ids" in values:
+            vals["dependent_ids"] = [Command.set(values["dependent_ids"] or [])]
+        self.write(vals)
+        return True
+
+
+def _local_day_to_utc(record, day_str, hour):
+    """Convert a local ``YYYY-MM-DD`` day at ``hour`` to a naive UTC datetime."""
+    if not day_str:
+        return False
+    local = datetime.strptime(day_str, "%Y-%m-%d").replace(hour=hour)
+    tz = timezone(record.env.user.tz or "UTC")
+    return tz.localize(local).astimezone(UTC).replace(tzinfo=None)

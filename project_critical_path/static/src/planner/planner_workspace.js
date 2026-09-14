@@ -1,4 +1,4 @@
-import { Component, onMounted, useRef, useState } from "@odoo/owl";
+import { Component, onMounted, useExternalListener, useRef, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { _t } from "@web/core/l10n/translation";
 import { useService } from "@web/core/utils/hooks";
@@ -22,6 +22,7 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 const pad2 = (n) => String(n).padStart(2, "0");
 const monthLabel = (date) => `${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
 const dayLabel = (date) => `${MONTHS[date.getMonth()]} ${pad2(date.getDate())}`;
+const isoDay = (date) => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
 
 export class PlannerWorkspace extends Component {
     static template = "project_critical_path.PlannerWorkspace";
@@ -47,8 +48,20 @@ export class PlannerWorkspace extends Component {
             pxPerDay: SCALES.week.pxPerDay,
             rangeStart: new Date(),
             rangeEnd: new Date(),
+            // Quick Inspector panel
+            inspectorOpen: false,
+            inspectorLoading: false,
+            inspector: null,
+            options: { stages: [], users: [] },
+            form: null,
+            saving: false,
         });
         this.scales = SCALES;
+        useExternalListener(document.body, "keydown", (ev) => {
+            if (ev.key === "Escape" && this.state.inspectorOpen) {
+                this.state.inspectorOpen = false;
+            }
+        });
         onMounted(async () => {
             try {
                 this.state.projects = await this.orm.call("project.project", "get_planner_projects", []);
@@ -67,6 +80,7 @@ export class PlannerWorkspace extends Component {
         this.state.loading = true;
         this.state.collapsedIds = new Set();
         this.state.selectedId = null;
+        this.state.inspectorOpen = false;
         try {
             const data = await this.orm.call("project.project", "get_planner_data", [projectId]);
             this.state.projectName = data.project.name;
@@ -234,8 +248,141 @@ export class PlannerWorkspace extends Component {
         this.state.collapsedIds = ids;
     }
 
-    selectTask(task) {
+    async selectTask(task) {
         this.state.selectedId = task.id;
+        this.state.inspectorOpen = true;
+        await this.loadInspector(task.id);
+    }
+
+    async loadInspector(taskId) {
+        this.state.inspectorLoading = true;
+        try {
+            const detail = await this.orm.call("project.task", "get_planner_detail", [taskId]);
+            this.state.inspector = detail.task;
+            this.state.options = detail.options;
+            const t = detail.task;
+            this.state.form = {
+                name: t.name,
+                date_start: t.date_start || "",
+                date_stop: t.date_stop || "",
+                duration_days: t.date_start && t.date_stop
+                    ? dayDiff(parseDay(t.date_start), parseDay(t.date_stop))
+                    : 0,
+                progress: t.progress,
+                stage_id: t.stage_id,
+                user_id: (t.user_ids && t.user_ids[0]) || false,
+                depend_on_ids: [...(t.depend_on_ids || [])],
+                dependent_ids: [...(t.dependent_ids || [])],
+                addPredecessorId: "",
+                addSuccessorId: "",
+            };
+        } catch (error) {
+            this.notification.add(error.data?.message || _t("The task could not be loaded."), { type: "danger" });
+            this.state.inspectorOpen = false;
+        } finally {
+            this.state.inspectorLoading = false;
+        }
+    }
+
+    closeInspector() {
+        this.state.inspectorOpen = false;
+    }
+
+    // ---- Quick Inspector form handlers ------------------------------------
+
+    onStartChange(ev) {
+        const form = this.state.form;
+        form.date_start = ev.target.value;
+        if (form.date_start) {
+            form.date_stop = isoDay(addDays(parseDay(form.date_start), form.duration_days || 0));
+        }
+    }
+
+    onStopChange(ev) {
+        const form = this.state.form;
+        form.date_stop = ev.target.value;
+        if (form.date_stop && form.date_start) {
+            form.duration_days = Math.max(dayDiff(parseDay(form.date_start), parseDay(form.date_stop)), 0);
+        }
+    }
+
+    onDurationChange(ev) {
+        const form = this.state.form;
+        form.duration_days = Math.max(Number(ev.target.value) || 0, 0);
+        if (form.date_start) {
+            form.date_stop = isoDay(addDays(parseDay(form.date_start), form.duration_days));
+        }
+    }
+
+    taskLabel(id) {
+        const task = this.taskById.get(id);
+        return task ? `${task.wbs_code} ${task.name}`.trim() : `#${id}`;
+    }
+
+    addPredecessor(ev) {
+        const form = this.state.form;
+        const id = Number(ev.target.value);
+        if (id && !form.depend_on_ids.includes(id)) {
+            form.depend_on_ids.push(id);
+        }
+        form.addPredecessorId = "";
+    }
+
+    removePredecessor(id) {
+        const form = this.state.form;
+        form.depend_on_ids = form.depend_on_ids.filter((depId) => depId !== id);
+    }
+
+    addSuccessor(ev) {
+        const form = this.state.form;
+        const id = Number(ev.target.value);
+        if (id && !form.dependent_ids.includes(id)) {
+            form.dependent_ids.push(id);
+        }
+        form.addSuccessorId = "";
+    }
+
+    removeSuccessor(id) {
+        const form = this.state.form;
+        form.dependent_ids = form.dependent_ids.filter((depId) => depId !== id);
+    }
+
+    async saveInspector() {
+        const form = this.state.form;
+        const taskId = this.state.inspector?.id;
+        if (!taskId || !form) {
+            return;
+        }
+        this.state.saving = true;
+        try {
+            await this.orm.call("project.task", "update_planner_task", [taskId], {
+                values: {
+                    name: form.name,
+                    date_start: form.date_start || false,
+                    date_stop: form.date_stop || false,
+                    progress: form.progress || 0,
+                    stage_id: form.stage_id || false,
+                    user_ids: form.user_id ? [form.user_id] : [],
+                    depend_on_ids: form.depend_on_ids,
+                    dependent_ids: form.dependent_ids,
+                },
+            });
+            const collapsed = this.state.collapsedIds;
+            await this.loadProject(this.state.projectId);
+            this.state.collapsedIds = collapsed;
+            this.state.selectedId = taskId;
+            await this.loadInspector(taskId);
+        } catch (error) {
+            this.notification.add(error.data?.message || _t("The task could not be saved."), { type: "danger" });
+        } finally {
+            this.state.saving = false;
+        }
+    }
+
+    openInspectorTask() {
+        if (this.state.inspector?.id) {
+            this.openTask({ id: this.state.inspector.id });
+        }
     }
 
     openTask(task) {

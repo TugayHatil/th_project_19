@@ -134,3 +134,49 @@ $o_cp_planner_header_height: 48px;
     height: 24px;
     flex: 0 0 auto;
 }
+
+/* Quick Inspector panel — slides in from the right, non-modal. */
+
+$o_cp_planner_inspector_width: 320px;
+
+@keyframes oCpPlannerInspectorSlide {
+    from {
+        transform: translateX(100%);
+    }
+    to {
+        transform: translateX(0);
+    }
+}
+
+.o_cp_planner_inspector {
+    width: $o_cp_planner_inspector_width;
+    flex: 0 0 $o_cp_planner_inspector_width;
+    min-width: 0;
+    background: #ffffff;
+    animation: oCpPlannerInspectorSlide 0.15s ease-out;
+}
+
+.o_cp_planner_inspector_label {
+    min-width: 64px;
+    flex: 0 0 64px;
+    font-size: 0.75rem;
+    color: #6c757d;
+}
+
+.o_cp_planner_dep_chip {
+    background: #f1f3f5;
+    border: 1px solid #dee2e6;
+    border-radius: 10px;
+    padding: 0 8px;
+    font-size: 0.75rem;
+    line-height: 20px;
+
+    .fa-times {
+        cursor: pointer;
+        color: #6c757d;
+
+        &:hover {
+            color: #dc3545;
+        }
+    }
+}

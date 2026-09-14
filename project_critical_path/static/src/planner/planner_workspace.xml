@@ -90,6 +90,154 @@
                         </div>
                     </div>
                 </div>
+                <div t-if="state.inspectorOpen" class="o_cp_planner_inspector d-flex flex-column border-start">
+                    <div class="o_cp_planner_inspector_header px-3 pt-3 pb-2 border-bottom">
+                        <div class="d-flex align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <span class="o_cp_planner_wbs_code text-muted" t-esc="state.inspector?.wbs_code"/>
+                                    <span t-if="state.inspector?.is_critical" class="badge bg-danger">
+                                        <i class="fa fa-exclamation-triangle me-1"/>Critical Path
+                                    </span>
+                                </div>
+                                <input type="text" class="form-control form-control-sm fw-bold"
+                                       t-att-value="state.form?.name"
+                                       t-on-change="(ev) => state.form.name = ev.target.value"/>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-link text-muted p-0 ms-2"
+                                    title="Close" t-on-click="closeInspector">
+                                <i class="fa fa-times"/>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="o_cp_planner_inspector_body flex-grow-1 overflow-auto px-3 py-2">
+                        <div t-if="state.inspectorLoading" class="text-muted small p-2">Loading…</div>
+                        <t t-else="">
+                            <div class="o_cp_planner_inspector_section mb-3">
+                                <div class="fw-bold small text-uppercase text-muted mb-2">Planning</div>
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <label class="o_cp_planner_inspector_label">Start</label>
+                                    <input type="date" class="form-control form-control-sm"
+                                           t-att-value="state.form?.date_start"
+                                           t-on-change="onStartChange"/>
+                                </div>
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <label class="o_cp_planner_inspector_label">Finish</label>
+                                    <input type="date" class="form-control form-control-sm"
+                                           t-att-value="state.form?.date_stop"
+                                           t-on-change="onStopChange"/>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <label class="o_cp_planner_inspector_label">Duration</label>
+                                    <input type="number" min="0" step="1" class="form-control form-control-sm"
+                                           t-att-value="state.form?.duration_days"
+                                           t-on-change="onDurationChange"/>
+                                    <span class="text-muted small">days</span>
+                                </div>
+                            </div>
+                            <div class="o_cp_planner_inspector_section mb-3">
+                                <div class="fw-bold small text-uppercase text-muted mb-2">Progress</div>
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <label class="o_cp_planner_inspector_label">Progress</label>
+                                    <input type="number" min="0" max="100" class="form-control form-control-sm"
+                                           t-att-value="state.form?.progress"
+                                           t-on-change="(ev) => state.form.progress = Number(ev.target.value)"/>
+                                    <span class="text-muted small">%</span>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <label class="o_cp_planner_inspector_label">Stage</label>
+                                    <select class="form-select form-select-sm"
+                                            t-on-change="(ev) => state.form.stage_id = Number(ev.target.value) || false">
+                                        <t t-foreach="state.options.stages" t-as="stage" t-key="stage.id">
+                                            <option t-att-value="stage.id"
+                                                    t-att-selected="stage.id === state.form?.stage_id"
+                                                    t-esc="stage.name"/>
+                                        </t>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="o_cp_planner_inspector_section mb-3">
+                                <div class="fw-bold small text-uppercase text-muted mb-2">Resource</div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <label class="o_cp_planner_inspector_label">Assignee</label>
+                                    <select class="form-select form-select-sm"
+                                            t-on-change="(ev) => state.form.user_id = Number(ev.target.value) || false">
+                                        <option value="">—</option>
+                                        <t t-foreach="state.options.users" t-as="user" t-key="user.id">
+                                            <option t-att-value="user.id"
+                                                    t-att-selected="user.id === state.form?.user_id"
+                                                    t-esc="user.name"/>
+                                        </t>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="o_cp_planner_inspector_section mb-3">
+                                <div class="fw-bold small text-uppercase text-muted mb-2">Dependencies</div>
+                                <div class="mb-2">
+                                    <div class="o_cp_planner_inspector_label mb-1">Predecessors</div>
+                                    <div t-foreach="state.form?.depend_on_ids || []" t-as="depId" t-key="depId"
+                                         class="o_cp_planner_dep_chip d-inline-flex align-items-center gap-1 me-1 mb-1">
+                                        <span t-esc="taskLabel(depId)"/>
+                                        <i class="fa fa-times" role="button" title="Remove"
+                                           t-on-click="() => this.removePredecessor(depId)"/>
+                                    </div>
+                                    <select class="form-select form-select-sm"
+                                            t-att-value="state.form?.addPredecessorId"
+                                            t-on-change="addPredecessor">
+                                        <option value="">Add predecessor…</option>
+                                        <t t-foreach="state.tasks" t-as="cand" t-key="cand.id">
+                                            <option t-if="cand.id !== state.inspector?.id &amp;&amp; !state.form?.depend_on_ids.includes(cand.id)"
+                                                    t-att-value="cand.id" t-esc="taskLabel(cand.id)"/>
+                                        </t>
+                                    </select>
+                                </div>
+                                <div>
+                                    <div class="o_cp_planner_inspector_label mb-1">Successors</div>
+                                    <div t-foreach="state.form?.dependent_ids || []" t-as="depId" t-key="depId"
+                                         class="o_cp_planner_dep_chip d-inline-flex align-items-center gap-1 me-1 mb-1">
+                                        <span t-esc="taskLabel(depId)"/>
+                                        <i class="fa fa-times" role="button" title="Remove"
+                                           t-on-click="() => this.removeSuccessor(depId)"/>
+                                    </div>
+                                    <select class="form-select form-select-sm"
+                                            t-att-value="state.form?.addSuccessorId"
+                                            t-on-change="addSuccessor">
+                                        <option value="">Add successor…</option>
+                                        <t t-foreach="state.tasks" t-as="cand" t-key="cand.id">
+                                            <option t-if="cand.id !== state.inspector?.id &amp;&amp; !state.form?.dependent_ids.includes(cand.id)"
+                                                    t-att-value="cand.id" t-esc="taskLabel(cand.id)"/>
+                                        </t>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="o_cp_planner_inspector_section mb-3">
+                                <div class="fw-bold small text-uppercase text-muted mb-2">Project Information</div>
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <span class="text-muted">Slack</span>
+                                    <span t-esc="(state.inspector?.critical_slack || 0) + ' days'"/>
+                                </div>
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <span class="text-muted">Planned Hours</span>
+                                    <span t-esc="(state.inspector?.allocated_hours || 0) + ' h'"/>
+                                </div>
+                                <div class="d-flex justify-content-between small">
+                                    <span class="text-muted">Actual Hours</span>
+                                    <span t-esc="(state.inspector?.effective_hours || 0) + ' h'"/>
+                                </div>
+                            </div>
+                        </t>
+                    </div>
+                    <div class="o_cp_planner_inspector_footer border-top px-3 py-2 d-flex gap-2">
+                        <button type="button" class="btn btn-primary btn-sm"
+                                t-att-disabled="state.saving"
+                                t-on-click="saveInspector">
+                            <t t-if="state.saving">Saving…</t>
+                            <t t-else="">Save</t>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                t-on-click="openInspectorTask">Open Full Task</button>
+                    </div>
+                </div>
             </div>
             <div class="o_cp_planner_bottom border-top"/>
         </div>
