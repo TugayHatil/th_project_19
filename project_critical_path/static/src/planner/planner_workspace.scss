@@ -2,7 +2,7 @@
    Layout: toolbar / (WBS list + Gantt timeline) / bottom placeholder. */
 
 $o_cp_planner_row_height: 32px;
-$o_cp_planner_bar_height: 18px;
+$o_cp_planner_bar_height: 10px;
 $o_cp_planner_wbs_width: 340px;
 $o_cp_planner_header_height: 48px;
 
@@ -112,7 +112,7 @@ $o_cp_planner_bar_critical: #e8a33d;
 
 .o_cp_planner_bar {
     position: absolute;
-    top: 7px; // ($o_cp_planner_row_height - $o_cp_planner_bar_height) / 2
+    top: 11px; // ($o_cp_planner_row_height - $o_cp_planner_bar_height) / 2
     height: $o_cp_planner_bar_height;
     border-radius: 3px;
     background: #714b67; // Odoo brand purple
@@ -136,10 +136,11 @@ $o_cp_planner_bar_critical: #e8a33d;
 }
 
 // Edge grips sit above the bar and the variance tail so both stay grabbable.
+// Taller than the thin bar so the resize target remains easy to catch.
 .o_cp_planner_grip {
     position: absolute;
-    top: 7px;
-    height: $o_cp_planner_bar_height;
+    top: 9px;
+    height: 14px;
     cursor: ew-resize;
     touch-action: none;
     z-index: 3;
@@ -182,7 +183,7 @@ $o_cp_planner_bar_critical: #e8a33d;
 // Translucent stripes keep the underlying normal/critical bar color visible.
 .o_cp_planner_variance_bar {
     position: absolute;
-    top: 7px;
+    top: 11px;
     height: $o_cp_planner_bar_height;
     border-radius: 0 3px 3px 0;
     background: repeating-linear-gradient(
