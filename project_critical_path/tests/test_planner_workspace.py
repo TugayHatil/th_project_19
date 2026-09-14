@@ -59,6 +59,11 @@ class TestPlannerWorkspace(TransactionCase):
         self.assertTrue(rows["Long chain start"]["is_critical"])
         self.assertTrue(rows["Long chain end"]["is_critical"])
         self.assertFalse(rows["Short parallel"]["is_critical"])
+        # dependency edges feed the Gantt FS arrows
+        self.assertEqual(
+            rows["Long chain end"]["depend_on_ids"], [rows["Long chain start"]["id"]],
+        )
+        self.assertEqual(rows["Long chain start"]["depend_on_ids"], [])
 
     def test_planner_data_serializes_missing_dates_as_false(self):
         project = self.env["project.project"].create({"name": "Undated planner"})

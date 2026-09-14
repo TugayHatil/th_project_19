@@ -24,6 +24,11 @@ const monthLabel = (date) => `${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
 const dayLabel = (date) => `${MONTHS[date.getMonth()]} ${pad2(date.getDate())}`;
 const isoDay = (date) => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
 
+// Must stay in sync with planner_workspace.scss row/bar metrics.
+const PLANNER_ROW_H = 32;
+const PLANNER_BAR_CENTER = 16;
+const DEP_STUB = 12; // horizontal stub length next to each connected bar
+
 export class PlannerWorkspace extends Component {
     static template = "project_critical_path.PlannerWorkspace";
     static props = { "*": true };
@@ -206,15 +211,75 @@ export class PlannerWorkspace extends Component {
         return dayDiff(this.origin, today) * this.state.pxPerDay;
     }
 
-    barStyle(task) {
+    barGeometry(task) {
         if (!task.date_start || !task.date_stop) {
-            return "display:none";
+            return false;
         }
         const start = parseDay(task.date_start);
         const stop = parseDay(task.date_stop);
-        const left = dayDiff(this.origin, start) * this.state.pxPerDay;
-        const width = Math.max(dayDiff(start, stop) + 1, 1) * this.state.pxPerDay;
-        return `left:${left}px;width:${width}px`;
+        return {
+            left: dayDiff(this.origin, start) * this.state.pxPerDay,
+            width: Math.max(dayDiff(start, stop) + 1, 1) * this.state.pxPerDay,
+        };
+    }
+
+    barStyle(task) {
+        const bar = this.barGeometry(task);
+        if (!bar) {
+            return "display:none";
+        }
+        return `left:${bar.left}px;width:${bar.width}px`;
+    }
+
+    // Finish-to-Start arrows between the rendered bars. Only edges whose two
+    // endpoints are visible (not collapsed away) and scheduled are drawn.
+    get dependencyEdges() {
+        const visible = this.visibleTasks;
+        const indexById = new Map(visible.map((task, i) => [task.id, i]));
+        const byId = this.taskById;
+        const selected = this.state.selectedId;
+        const edges = [];
+        for (const task of visible) {
+            const toBar = this.barGeometry(task);
+            if (!toBar) {
+                continue;
+            }
+            const y2 = indexById.get(task.id) * PLANNER_ROW_H + PLANNER_BAR_CENTER;
+            for (const predId of task.depend_on_ids || []) {
+                const predIdx = indexById.get(predId);
+                if (predIdx === undefined) {
+                    continue; // predecessor collapsed or outside this project
+                }
+                const fromBar = this.barGeometry(byId.get(predId));
+                if (!fromBar) {
+                    continue;
+                }
+                const x1 = fromBar.left + fromBar.width;
+                const y1 = predIdx * PLANNER_ROW_H + PLANNER_BAR_CENTER;
+                const x2 = toBar.left;
+                let d;
+                if (x2 - DEP_STUB >= x1 + DEP_STUB) {
+                    d = `M ${x1} ${y1} L ${x1 + DEP_STUB} ${y1} L ${x1 + DEP_STUB} ${y2} L ${x2} ${y2}`;
+                } else {
+                    // Successor starts at or before the predecessor's finish:
+                    // route around through the mid-gap so the arrow still
+                    // enters the bar's left edge pointing forward.
+                    const midY = (y1 + y2) / 2;
+                    d = `M ${x1} ${y1} L ${x1 + DEP_STUB} ${y1} L ${x1 + DEP_STUB} ${midY}`
+                        + ` L ${x2 - DEP_STUB} ${midY} L ${x2 - DEP_STUB} ${y2} L ${x2} ${y2}`;
+                }
+                const related = selected === task.id || selected === predId;
+                edges.push({
+                    key: `${predId}-${task.id}`,
+                    d,
+                    arrowD: `M ${x2} ${y2} l -7 -4 l 0 8 z`,
+                    dim: Boolean(selected && !related),
+                    highlight: Boolean(selected && related),
+                    critical: Boolean(task.is_critical && byId.get(predId)?.is_critical),
+                });
+            }
+        }
+        return edges;
     }
 
     setScale(scale) {

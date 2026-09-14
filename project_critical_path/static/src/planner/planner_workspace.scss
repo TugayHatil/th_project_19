@@ -135,6 +135,53 @@ $o_cp_planner_bar_critical: #e8a33d;
     line-height: inherit;
 }
 
+.o_cp_planner_gantt_rows {
+    position: relative;
+}
+
+// Finish-to-Start dependency overlay — drawn above the bars, never
+// intercepts clicks, thin enough not to hide bar content.
+.o_cp_planner_deps {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+}
+
+.o_cp_planner_dep_line {
+    stroke: #98a2b3;
+    stroke-width: 1.5;
+
+    &.critical {
+        stroke: $o_cp_planner_bar_critical;
+    }
+
+    &.highlight {
+        stroke: #3f3f46;
+        stroke-width: 2;
+    }
+
+    &.dim {
+        opacity: 0.2;
+    }
+}
+
+.o_cp_planner_dep_arrow {
+    fill: #98a2b3;
+
+    &.critical {
+        fill: $o_cp_planner_bar_critical;
+    }
+
+    &.highlight {
+        fill: #3f3f46;
+    }
+
+    &.dim {
+        opacity: 0.2;
+    }
+}
+
 .o_cp_planner_today {
     position: absolute;
     top: $o_cp_planner_header_height;

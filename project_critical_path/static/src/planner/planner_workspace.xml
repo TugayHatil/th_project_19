@@ -88,6 +88,18 @@
                                          t-att-style="barStyle(task)"
                                          t-att-title="task.is_critical ? task.name + ' — Critical Path' : task.name"/>
                                 </div>
+                                <svg class="o_cp_planner_deps"
+                                     t-att-width="timelineWidth"
+                                     t-att-height="visibleTasks.length * 32">
+                                    <t t-foreach="dependencyEdges" t-as="edge" t-key="edge.key">
+                                        <path class="o_cp_planner_dep_line"
+                                              t-att-class="{dim: edge.dim, highlight: edge.highlight, critical: edge.critical}"
+                                              t-att-d="edge.d" fill="none"/>
+                                        <path class="o_cp_planner_dep_arrow"
+                                              t-att-class="{dim: edge.dim, highlight: edge.highlight, critical: edge.critical}"
+                                              t-att-d="edge.arrowD"/>
+                                    </t>
+                                </svg>
                             </div>
                             <div class="o_cp_planner_today" t-att-style="'left:' + todayLeft + 'px'"/>
                         </div>
