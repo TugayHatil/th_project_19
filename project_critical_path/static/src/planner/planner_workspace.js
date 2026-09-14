@@ -462,6 +462,7 @@ export class PlannerWorkspace extends Component {
                     name: form.name,
                     date_start: form.date_start || false,
                     date_stop: form.date_stop || false,
+                    duration_days: form.duration_days,
                     progress: form.progress || 0,
                     stage_id: form.stage_id || false,
                     user_ids: form.user_id ? [form.user_id] : [],

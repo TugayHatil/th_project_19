@@ -146,6 +146,19 @@ class ProjectTaskPlanner(models.Model):
             vals["date_assign"] = _local_day_to_utc(self, values["date_start"], 9)
         if "date_stop" in values:
             vals["date_deadline"] = _local_day_to_utc(self, values["date_stop"], 18)
+        # Keep allocated_hours (the duration used by critical-path, delay-impact
+        # and baseline comparisons) in sync when the inspector duration changes.
+        days = values.get("duration_days")
+        if values.get("date_start") and values.get("date_stop") and days not in (None, False):
+            stored_start = _serialize_planner_day(self, self.date_assign)
+            stored_stop = _serialize_planner_day(self, self.date_deadline)
+            stored_days = (
+                (datetime.strptime(stored_stop, "%Y-%m-%d")
+                 - datetime.strptime(stored_start, "%Y-%m-%d")).days
+                if stored_start and stored_stop else None
+            )
+            if float(days) != stored_days:
+                vals["allocated_hours"] = max(float(days), 0.0) * _planner_hours_per_day(self)
         if "progress" in values:
             vals["progress"] = min(max(values["progress"] or 0.0, 0.0), 100.0) / 100.0
         if "stage_id" in values:
@@ -167,3 +180,14 @@ def _local_day_to_utc(record, day_str, hour):
     local = datetime.strptime(day_str, "%Y-%m-%d").replace(hour=hour)
     tz = timezone(record.env.user.tz or "UTC")
     return tz.localize(local).astimezone(UTC).replace(tzinfo=None)
+
+
+def _planner_hours_per_day(record):
+    """Working hours per calendar day used to sync duration with planned hours."""
+    project = record.project_id if "project_id" in record._fields else False
+    calendar = False
+    if project and "resource_calendar_id" in project._fields:
+        calendar = project.resource_calendar_id
+    if not calendar:
+        calendar = record.env.company.resource_calendar_id
+    return (calendar.hours_per_day if calendar else 0.0) or 8.0

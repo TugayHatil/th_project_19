@@ -131,6 +131,7 @@ class TestPlannerWorkspace(TransactionCase):
             "name": "Approval v2",
             "date_start": "2026-03-11",
             "date_stop": "2026-03-15",
+            "duration_days": 4,
             "progress": 45,
             "stage_id": stage.id,
             "user_ids": [self.env.user.id],
@@ -147,6 +148,33 @@ class TestPlannerWorkspace(TransactionCase):
         detail = second.get_planner_detail()["task"]
         self.assertEqual(detail["date_start"], "2026-03-11")
         self.assertEqual(detail["date_stop"], "2026-03-15")
+        # A duration change syncs allocated_hours, which the critical path,
+        # delay-impact and baseline comparisons all read.
+        from odoo.addons.project_critical_path.models.project_planner import (
+            _planner_hours_per_day,
+        )
+        self.assertAlmostEqual(
+            second.allocated_hours, 4 * _planner_hours_per_day(second), places=2,
+        )
+
+    def test_update_planner_task_keeps_allocated_hours_when_duration_unchanged(self):
+        project = self.env["project.project"].create({"name": "No clobber"})
+        task = self._make_task(
+            project, "Dated task",
+            date_assign="2026-03-01 09:00:00", date_deadline="2026-03-11 18:00:00",
+            allocated_hours=16.0,
+        )
+
+        # The form always sends the current dates and duration; unchanged
+        # values must not overwrite an independently-set allocated_hours.
+        task.update_planner_task({
+            "name": "Renamed only",
+            "date_start": "2026-03-01",
+            "date_stop": "2026-03-11",
+            "duration_days": 10,
+        })
+
+        self.assertAlmostEqual(task.allocated_hours, 16.0, places=2)
 
     def test_get_planner_detail_includes_baseline_and_impact(self):
         project = self.env["project.project"].create({"name": "Baseline detail"})
