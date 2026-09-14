@@ -113,6 +113,10 @@ export class PlannerWorkspace extends Component {
             resTlAnchor: null,
             resTlDrag: null,
             resTlPending: null,
+            // Selected existing assignment + its edit/delete sub-state (BRD-24)
+            resSelAssignId: null,
+            resAssignEdit: null,
+            resAssignDelConfirm: false,
         });
         this.scales = SCALES;
         this.resTlScales = { hour: _t("Hour"), day: _t("Day"), week: _t("Week") };
@@ -1008,6 +1012,9 @@ export class PlannerWorkspace extends Component {
         this.state.resTlAnchor = null;
         this.state.resTlDrag = null;
         this.state.resTlPending = null;
+        this.state.resSelAssignId = null;
+        this.state.resAssignEdit = null;
+        this.state.resAssignDelConfirm = false;
         await this.loadResources();
     }
 
@@ -1059,6 +1066,9 @@ export class PlannerWorkspace extends Component {
         this.state.resTlDrag = null;
         this.state.resTlPending = null;
         this.state.resSelOptKey = null;
+        this.state.resSelAssignId = null;
+        this.state.resAssignEdit = null;
+        this.state.resAssignDelConfirm = false;
         if (this.state.resSelReqId === req.id) {
             this.state.resSelReqId = null;
             this.state.resSelOptKey = null;
@@ -1171,6 +1181,9 @@ export class PlannerWorkspace extends Component {
     async selectCandidate(opt) {
         const key = this.resCandidateKey(opt);
         this.state.resSelOptKey = this.state.resSelOptKey === key ? null : key;
+        this.state.resSelAssignId = null;
+        this.state.resAssignEdit = null;
+        this.state.resAssignDelConfirm = false;
         const pend = this.state.resTlPending;
         if (pend) {
             pend.conflict = this.resTlConflict(pend.startMs, pend.endMs);
@@ -1567,6 +1580,119 @@ export class PlannerWorkspace extends Component {
         this.state.resTlPending = null;
     }
 
+    // ---- Existing assignment actions (BRD-24) ------------------------------
+    // Clicking a bar selects it and opens the detail card; only assignments
+    // of the selected requirement ("mine") can be edited or deleted — other
+    // bars belong to different tasks/requirements and are view-only.
+
+    selectResAssignment(item) {
+        this.state.resSelAssignId =
+            this.state.resSelAssignId === item.id ? null : item.id;
+        this.state.resAssignEdit = null;
+        this.state.resAssignDelConfirm = false;
+    }
+
+    get resSelectedAssignment() {
+        const opt = this.resSelectedOption;
+        if (!opt || !this.state.resSelAssignId) {
+            return null;
+        }
+        return (opt.schedule || []).find(
+            (item) => item.id === this.state.resSelAssignId
+        ) || null;
+    }
+
+    resAssignTypeLabel() {
+        const opt = this.resSelectedOption;
+        if (!opt) {
+            return "";
+        }
+        return opt.employee_id ? _t("Person") : _t("Equipment");
+    }
+
+    resAssignDurationText(item) {
+        const hrs = item.planned_hours
+            ?? (this.resTlItemMs(item).e - this.resTlItemMs(item).s) / 3600000;
+        return `${this.formatHours(hrs)} ${_t("planned")}`;
+    }
+
+    // "Düzenle" reveals precise datetime inputs; move/resize on the bar
+    // itself stays the primary interaction.
+    openResAssignEdit() {
+        const item = this.resSelectedAssignment;
+        if (!item?.mine) {
+            return;
+        }
+        this.state.resAssignEdit = {
+            date_start: (item.dt_start || "").replace(" ", "T"),
+            date_end: (item.dt_end || "").replace(" ", "T"),
+        };
+        this.state.resAssignDelConfirm = false;
+    }
+
+    cancelResAssignEdit() {
+        this.state.resAssignEdit = null;
+    }
+
+    async saveResAssignEdit() {
+        const item = this.resSelectedAssignment;
+        const edit = this.state.resAssignEdit;
+        if (!item || !edit?.date_start || !edit?.date_end) {
+            return;
+        }
+        const start = new Date(edit.date_start);
+        const end = new Date(edit.date_end);
+        if (!(start < end)) {
+            this.notification.add(
+                _t("Start must be before finish — the assignment was not changed."),
+                { type: "warning" },
+            );
+            this.state.resAssignEdit = null;
+            return;
+        }
+        try {
+            await this.orm.call(
+                "project.task", "planner_update_assignment", [this.state.resTask.id],
+                {
+                    assignment_id: item.id,
+                    date_start: fmtDt(start),
+                    date_end: fmtDt(end),
+                },
+            );
+        } catch (error) {
+            this.notification.add(
+                error.data?.message || _t("The assignment could not be updated."),
+                { type: "danger" },
+            );
+            return;
+        }
+        this.state.resAssignEdit = null;
+        await this.refreshResources();
+    }
+
+    askDeleteResAssignment() {
+        if (this.resSelectedAssignment?.mine) {
+            this.state.resAssignDelConfirm = true;
+            this.state.resAssignEdit = null;
+        }
+    }
+
+    cancelDeleteResAssignment() {
+        this.state.resAssignDelConfirm = false;
+    }
+
+    // Deletes only the assignment record — requirement, task and resource
+    // master data are untouched; refresh updates status and availability.
+    async confirmDeleteResAssignment() {
+        const item = this.resSelectedAssignment;
+        if (!item?.mine) {
+            return;
+        }
+        this.state.resAssignDelConfirm = false;
+        this.state.resSelAssignId = null;
+        await this.unassignResource(item.id);
+    }
+
     // ---- Timeline dragging -------------------------------------------------
 
     resTlPointMs(clientX, rect) {
@@ -1641,7 +1767,13 @@ export class PlannerWorkspace extends Component {
     }
 
     onResTlBarDown(item, ev) {
-        if (!item.mine || ev.button !== 0) {
+        if (ev.button !== 0) {
+            return;
+        }
+        if (!item.mine) {
+            // Other resources' bookings are view-only: a click still opens
+            // the detail card so conflicts can be inspected.
+            this.selectResAssignment(item);
             return;
         }
         ev.preventDefault();
@@ -1754,6 +1886,10 @@ export class PlannerWorkspace extends Component {
         this.resTlDragging = null;
         this.state.resTlDrag = null;
         if (!d?.moved) {
+            // Click without drag on an own bar → select for the detail card.
+            if (d?.item) {
+                this.selectResAssignment(d.item);
+            }
             return;
         }
         if (d.mode.startsWith("p")) {
@@ -1791,6 +1927,12 @@ export class PlannerWorkspace extends Component {
                 error.data?.message || _t("The assignment could not be updated."), { type: "danger" },
             );
             return;
+        }
+        if (drag.conflict) {
+            this.notification.add(
+                _t("Saved — the new position overlaps another assignment of this resource."),
+                { type: "warning" },
+            );
         }
         await this.refreshResources();
     }

@@ -474,6 +474,7 @@ class ProjectTaskPlanner(models.Model):
                     "requirement_id": booking.requirement_id.id,
                     "mine": booking.requirement_id == requirement,
                     "task_name": booking.task_id.display_name,
+                    "planned_hours": booking.planned_hours or 0.0,
                     "date_start": _serialize_planner_day(self, booking.date_start),
                     "date_end": _serialize_planner_day(self, booking.date_end),
                     "dt_start": _serialize_planner_dt(self, booking.date_start),

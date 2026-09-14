@@ -751,8 +751,62 @@
                                                         t-on-click="cancelResTlPending">İptal</button>
                                             </div>
                                         </div>
+                                        <div t-if="resSelectedAssignment"
+                                             class="o_cp_res_tl_confirm border rounded d-flex align-items-center gap-2 flex-wrap mt-2 px-2 py-2">
+                                            <div class="small">
+                                                <strong t-esc="resSelectedOption.name"/>
+                                                <span class="text-muted">
+                                                    · <t t-esc="resAssignTypeLabel()"/>
+                                                    · <t t-esc="resSelectedReq?.role_name"/>
+                                                </span>
+                                                <div class="text-muted">
+                                                    <t t-esc="resSelectedAssignment.task_name"/> —
+                                                    <t t-esc="resSelectedAssignment.dt_start || resSelectedAssignment.date_start"/>
+                                                    →
+                                                    <t t-esc="resSelectedAssignment.dt_end || resSelectedAssignment.date_end"/>
+                                                    · <t t-esc="resAssignDurationText(resSelectedAssignment)"/>
+                                                </div>
+                                                <div t-if="!resSelectedAssignment.mine" class="fst-italic">
+                                                    This assignment belongs to a different requirement — view only.
+                                                </div>
+                                            </div>
+                                            <div class="ms-auto" t-if="resSelectedAssignment.mine &amp;&amp; !state.resAssignEdit &amp;&amp; !state.resAssignDelConfirm">
+                                                <button type="button" class="btn btn-outline-primary btn-sm"
+                                                        t-on-click="openResAssignEdit">Düzenle</button>
+                                                <button type="button" class="btn btn-outline-danger btn-sm ms-1"
+                                                        t-on-click="askDeleteResAssignment">Sil</button>
+                                            </div>
+                                        </div>
+                                        <div t-if="resSelectedAssignment &amp;&amp; state.resAssignEdit"
+                                             class="o_cp_res_tl_confirm border rounded d-flex align-items-center gap-1 flex-wrap mt-1 px-2 py-2">
+                                            <input type="datetime-local" class="form-control form-control-sm w-auto"
+                                                   title="Assignment start"
+                                                   t-att-value="state.resAssignEdit.date_start"
+                                                   t-on-change="(ev) => state.resAssignEdit.date_start = ev.target.value"/>
+                                            <span class="text-muted small">→</span>
+                                            <input type="datetime-local" class="form-control form-control-sm w-auto"
+                                                   title="Assignment end"
+                                                   t-att-value="state.resAssignEdit.date_end"
+                                                   t-on-change="(ev) => state.resAssignEdit.date_end = ev.target.value"/>
+                                            <button type="button" class="btn btn-primary btn-sm ms-auto"
+                                                    t-on-click="saveResAssignEdit">Kaydet</button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                                    t-on-click="cancelResAssignEdit">İptal</button>
+                                        </div>
+                                        <div t-if="resSelectedAssignment &amp;&amp; state.resAssignDelConfirm"
+                                             class="o_cp_res_tl_confirm border border-danger rounded d-flex align-items-center gap-2 flex-wrap mt-1 px-2 py-2">
+                                            <span class="small text-danger fw-bold">
+                                                Bu kaynak atamasını silmek istediğinize emin misiniz?
+                                            </span>
+                                            <div class="ms-auto">
+                                                <button type="button" class="btn btn-danger btn-sm"
+                                                        t-on-click="confirmDeleteResAssignment">Sil</button>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm ms-1"
+                                                        t-on-click="cancelDeleteResAssignment">İptal</button>
+                                            </div>
+                                        </div>
                                         <div class="text-muted small mt-1">
-                                            Drag across the timeline to preview an assignment, then click Ata · drag or resize your own assignments.
+                                            Drag across the timeline to preview an assignment, then click Ata · click an assignment for details · drag or resize your own assignments.
                                             <t t-if="state.resTlDrag?.conflict" class="text-danger fw-bold">
                                                 Overlaps an existing assignment.</t>
                                             <t t-if="state.resTlDrag?.outside" class="text-danger fw-bold">
