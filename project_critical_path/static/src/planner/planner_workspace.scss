@@ -208,7 +208,9 @@ $o_cp_planner_bar_critical: #e8a33d;
 }
 
 .o_cp_planner_dep_line {
-    stroke: #98a2b3;
+    // Medium-contrast default — readable without selection, still clearly
+    // secondary to the filled task bars and distinct from the grid lines.
+    stroke: #667085;
     stroke-width: 1.5;
 
     &.critical {
@@ -217,16 +219,18 @@ $o_cp_planner_bar_critical: #e8a33d;
 
     &.highlight {
         stroke: #3f3f46;
-        stroke-width: 2;
+        stroke-width: 2.25;
     }
 
     &.dim {
-        opacity: 0.2;
+        // Related arrows stand out on selection, but unrelated ones stay
+        // readable instead of being washed out.
+        opacity: 0.45;
     }
 }
 
 .o_cp_planner_dep_arrow {
-    fill: #98a2b3;
+    fill: #667085;
 
     &.critical {
         fill: $o_cp_planner_bar_critical;
@@ -237,7 +241,7 @@ $o_cp_planner_bar_critical: #e8a33d;
     }
 
     &.dim {
-        opacity: 0.2;
+        opacity: 0.45;
     }
 }
 

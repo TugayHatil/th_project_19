@@ -365,7 +365,7 @@ export class PlannerWorkspace extends Component {
             return {
                 key: `${edge.predId}-${edge.task.id}`,
                 d,
-                arrowD: `M ${x2} ${y2} l -7 -4 l 0 8 z`,
+                arrowD: `M ${x2} ${y2} l -8 -4.5 l 0 9 z`,
                 dim: Boolean(selected && !related),
                 highlight: Boolean(selected && related),
                 critical: Boolean(edge.task.is_critical && byId.get(edge.predId)?.is_critical),
