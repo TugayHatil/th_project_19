@@ -550,6 +550,8 @@ $o_cp_res_tl_label: 140px;
     height: 16px;
     background: #f8f9fa;
     border-radius: 2px;
+    cursor: crosshair;
+    touch-action: none;
 }
 
 .o_cp_res_tl_req {
@@ -570,5 +572,37 @@ $o_cp_res_tl_label: 140px;
 
     &.conflict {
         background: #dc3545;
+    }
+
+    // Assignments of the selected requirement are movable/resizable.
+    &.mine {
+        background: #714b67;
+        cursor: move;
+
+        &.dragging {
+            opacity: 0.85;
+            outline: 1px solid #3f3f46;
+        }
+    }
+}
+
+// Live preview while drag-creating an assignment.
+.o_cp_res_tl_new {
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    background: rgba(113, 75, 103, 0.35);
+    border: 1px solid #714b67;
+    border-radius: 2px;
+
+    &.conflict {
+        background: rgba(220, 53, 69, 0.3);
+        border-color: #dc3545;
+    }
+
+    &.outside {
+        background: rgba(232, 163, 61, 0.3);
+        border-color: #e8a33d;
+        border-style: dashed;
     }
 }

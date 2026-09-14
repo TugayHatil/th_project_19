@@ -17,6 +17,16 @@ def _serialize_planner_day(record, value):
     return value.isoformat()
 
 
+def _serialize_planner_dt(record, value):
+    """Serialize a datetime to ``YYYY-MM-DD HH:MM`` in user tz — used by the
+    Resource Planning timeline where hour precision matters."""
+    if not value:
+        return False
+    return fields.Datetime.context_timestamp(record, value).strftime(
+        "%Y-%m-%d %H:%M"
+    )
+
+
 class ProjectProjectPlanner(models.Model):
     _inherit = "project.project"
 
@@ -421,19 +431,29 @@ class ProjectTaskPlanner(models.Model):
         self._get_planner_requirement(requirement_id).unlink()
         return True
 
-    def planner_get_assignment_options(self, requirement_id):
+    def planner_get_assignment_options(
+        self, requirement_id, window_start=None, window_end=None,
+    ):
         """Eligible employees/equipment with availability for one requirement.
 
         Reuses the existing transient Team Planner so availability, booked
         hours and conflict summaries come from the same logic as the task
-        form's resource planner.
+        form's resource planner. ``window_start``/``window_end`` are optional
+        ``YYYY-MM-DD`` days overriding the default requirement±2-day window
+        (the timeline requests its visible range on scale/navigation changes).
         """
         self.ensure_one()
         requirement = self._get_planner_requirement(requirement_id)
         planner = self.env["project.resource.planner"].create_for_requirement(requirement)
         req_start, req_end = requirement.date_start, requirement.date_end
-        window_start = req_start - timedelta(days=2) if req_start else False
-        window_end = req_end + timedelta(days=2) if req_end else False
+        if window_start:
+            window_start = _local_dt_to_utc(self, window_start, None, 0)
+        elif req_start:
+            window_start = req_start - timedelta(days=2)
+        if window_end:
+            window_end = _local_dt_to_utc(self, window_end, None, 23)
+        elif req_end:
+            window_end = req_end + timedelta(days=2)
         # Every candidate's existing assignments inside the timeline window,
         # fetched in one query so browsing candidates costs no extra RPC.
         schedules = {}
@@ -450,9 +470,14 @@ class ProjectTaskPlanner(models.Model):
             ], order="date_start, id")
             for booking in bookings:
                 schedules.setdefault(booking[res_field].id, []).append({
+                    "id": booking.id,
+                    "requirement_id": booking.requirement_id.id,
+                    "mine": booking.requirement_id == requirement,
                     "task_name": booking.task_id.display_name,
                     "date_start": _serialize_planner_day(self, booking.date_start),
                     "date_end": _serialize_planner_day(self, booking.date_end),
+                    "dt_start": _serialize_planner_dt(self, booking.date_start),
+                    "dt_end": _serialize_planner_dt(self, booking.date_end),
                     "overlaps": bool(
                         req_start and req_end
                         and booking.date_start <= req_end
@@ -484,6 +509,8 @@ class ProjectTaskPlanner(models.Model):
             "required": {
                 "start": _serialize_planner_day(self, req_start),
                 "end": _serialize_planner_day(self, req_end),
+                "start_dt": _serialize_planner_dt(self, req_start),
+                "end_dt": _serialize_planner_dt(self, req_end),
             },
         }
 
@@ -502,9 +529,9 @@ class ProjectTaskPlanner(models.Model):
         start = requirement.date_start or self.date_assign
         end = requirement.date_end or self.date_deadline
         if date_start:
-            start = _local_day_to_utc(self, date_start, start, 9)
+            start = _local_dt_to_utc(self, date_start, start, 9)
         if date_end:
-            end = _local_day_to_utc(self, date_end, end, 18)
+            end = _local_dt_to_utc(self, date_end, end, 18)
         if not start or not end:
             raise UserError(_(
                 "Set task or requirement dates before assigning resources."
@@ -530,9 +557,9 @@ class ProjectTaskPlanner(models.Model):
         start = requirement.date_start or self.date_assign
         end = requirement.date_end or self.date_deadline
         if date_start:
-            start = _local_day_to_utc(self, date_start, start, 9)
+            start = _local_dt_to_utc(self, date_start, start, 9)
         if date_end:
-            end = _local_day_to_utc(self, date_end, end, 18)
+            end = _local_dt_to_utc(self, date_end, end, 18)
         if not start or not end or end <= start:
             return 0.0
         resource = False
@@ -560,6 +587,30 @@ class ProjectTaskPlanner(models.Model):
         assignment.unlink()
         return True
 
+    def planner_update_assignment(
+        self, assignment_id, date_start=None, date_end=None
+    ):
+        """Move/resize an assignment from the timeline — same conversion and
+        model constraints as creation."""
+        self.ensure_one()
+        assignment = self.env["project.task.resource.assignment"].browse(
+            assignment_id
+        ).exists()
+        if not assignment or assignment.task_id != self:
+            raise UserError(_("This assignment does not belong to the task."))
+        vals = {}
+        if date_start:
+            vals["date_start"] = _local_dt_to_utc(
+                self, date_start, assignment.date_start, 9
+            )
+        if date_end:
+            vals["date_end"] = _local_dt_to_utc(
+                self, date_end, assignment.date_end, 18
+            )
+        if vals:
+            assignment.write(vals)
+        return True
+
 
 def _local_day_to_utc(record, day_str, existing_dt, fallback_hour):
     """Convert a local ``YYYY-MM-DD`` day to naive UTC, keeping the stored
@@ -572,6 +623,27 @@ def _local_day_to_utc(record, day_str, existing_dt, fallback_hour):
         local_existing = fields.Datetime.context_timestamp(record, existing_dt)
         hour, minute = local_existing.hour, local_existing.minute
     local = datetime.strptime(day_str, "%Y-%m-%d").replace(hour=hour, minute=minute)
+    tz = timezone(record.env.user.tz or "UTC")
+    return tz.localize(local).astimezone(UTC).replace(tzinfo=None)
+
+
+def _local_dt_to_utc(record, value, existing_dt=None, fallback_hour=9):
+    """Like ``_local_day_to_utc`` but also accepts ``YYYY-MM-DD HH:MM[:SS]``
+    local strings so timeline drags keep hour precision."""
+    if not value:
+        return False
+    value = value.strip()
+    if ":" in value:
+        fmt = "%Y-%m-%d %H:%M:%S" if value.count(":") == 2 else "%Y-%m-%d %H:%M"
+        local = datetime.strptime(value, fmt)
+    else:
+        hour, minute = fallback_hour, 0
+        if existing_dt:
+            local_existing = fields.Datetime.context_timestamp(record, existing_dt)
+            hour, minute = local_existing.hour, local_existing.minute
+        local = datetime.strptime(value, "%Y-%m-%d").replace(
+            hour=hour, minute=minute
+        )
     tz = timezone(record.env.user.tz or "UTC")
     return tz.localize(local).astimezone(UTC).replace(tzinfo=None)
 

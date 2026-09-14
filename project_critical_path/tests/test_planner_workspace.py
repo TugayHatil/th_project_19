@@ -351,6 +351,30 @@ class TestPlannerWorkspace(TransactionCase):
         self.assertEqual(req["status"], "partial")  # 1 of 2 assigned
         self.assertEqual(req["assignments"][0]["name"], "Ahmet Yilmaz")
 
+        # Timeline payloads carry ids, ownership flags and datetimes, and
+        # the window can be overridden for navigation.
+        options2 = task.planner_get_assignment_options(
+            req["id"], window_start="2026-03-01", window_end="2026-03-10",
+        )
+        emp_opt = next(
+            opt for opt in options2["options"]
+            if opt["employee_id"] == employee.id
+        )
+        mine = [item for item in emp_opt["schedule"] if item["mine"]]
+        self.assertEqual(len(mine), 1)
+        self.assertTrue(mine[0]["id"])
+        self.assertEqual(mine[0]["date_start"], "2026-03-02")
+        self.assertIn(":", mine[0]["dt_start"])
+
+        # Timeline move/resize writes through the same constraints.
+        asg_id = mine[0]["id"]
+        task.planner_update_assignment(
+            asg_id, date_start="2026-03-03", date_end="2026-03-05",
+        )
+        asg = self.env["project.task.resource.assignment"].browse(asg_id)
+        self.assertEqual(asg.date_start.day, 3)
+        self.assertEqual(asg.date_end.day, 5)
+
         # The compact row summary feeds the WBS badge.
         row = next(
             item for item in project.get_planner_data()["tasks"]

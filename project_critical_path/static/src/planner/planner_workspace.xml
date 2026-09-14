@@ -621,13 +621,12 @@
                                                     <th>Resource</th>
                                                     <th>Availability</th>
                                                     <th class="text-end">Booked</th>
-                                                    <th class="o_cp_res_col_actions"/>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                <t t-foreach="state.resOptions" t-as="opt"
-                                                   t-key="opt.employee_id || opt.equipment_id">
-                                                <tr class="o_cp_res_row" role="button"
+                                                <tr t-foreach="state.resOptions" t-as="opt"
+                                                    t-key="opt.employee_id || opt.equipment_id"
+                                                    class="o_cp_res_row" role="button"
                                                     t-att-class="{selected: state.resSelOptKey === resCandidateKey(opt)}"
                                                     t-on-click="() => this.selectCandidate(opt)">
                                                     <td><span class="o_cp_res_dot" t-att-class="resAvailabilityDot(opt)"/></td>
@@ -636,48 +635,7 @@
                                                         t-esc="resAvailabilityLabel(opt)"/>
                                                     <td class="text-end small text-muted"
                                                         t-esc="formatHours(opt.booked_hours)"/>
-                                                    <td class="text-end">
-                                                        <button type="button" class="btn btn-primary btn-sm"
-                                                                t-on-click.stop="() => this.openAssignForm(opt)">
-                                                            Assign
-                                                        </button>
-                                                    </td>
                                                 </tr>
-                                                <tr t-if="state.resAssignFor === resCandidateKey(opt)"
-                                                    class="o_cp_res_assignrow">
-                                                    <td colspan="5">
-                                                        <div class="d-flex align-items-center gap-1 flex-wrap py-1">
-                                                            <input type="date" class="form-control form-control-sm w-auto"
-                                                                   title="Assignment start"
-                                                                   t-att-min="resSelectedReq?.date_start || ''"
-                                                                   t-att-max="resSelectedReq?.date_end || ''"
-                                                                   t-att-value="state.resAssignForm?.date_start"
-                                                                   t-on-change="(ev) => { state.resAssignForm.date_start = ev.target.value; this.updateAssignEstimate(); }"/>
-                                                            <span class="text-muted small">→</span>
-                                                            <input type="date" class="form-control form-control-sm w-auto"
-                                                                   title="Assignment end"
-                                                                   t-att-min="resSelectedReq?.date_start || ''"
-                                                                   t-att-max="resSelectedReq?.date_end || ''"
-                                                                   t-att-value="state.resAssignForm?.date_end"
-                                                                   t-on-change="(ev) => { state.resAssignForm.date_end = ev.target.value; this.updateAssignEstimate(); }"/>
-                                                            <span t-if="state.resAssignForm?.est_hours !== null &amp;&amp; state.resAssignForm?.est_hours !== undefined"
-                                                                  class="small"
-                                                                  t-att-class="state.resAssignForm.est_hours > resRemainingHours ? 'text-danger fw-bold' : 'text-muted'">
-                                                                ≈ <t t-esc="formatHours(state.resAssignForm.est_hours)"/>
-                                                                / <t t-esc="formatHours(resRemainingHours)"/> remaining
-                                                            </span>
-                                                            <button type="button" class="btn btn-primary btn-sm ms-auto"
-                                                                    t-on-click="() => this.assignResource(opt)">
-                                                                Confirm
-                                                            </button>
-                                                            <button type="button" class="btn btn-outline-secondary btn-sm"
-                                                                    t-on-click="() => state.resAssignFor = null">
-                                                                Cancel
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                                </t>
                                             </tbody>
                                         </table>
                                         <div t-if="!state.resOptions.length"
@@ -686,39 +644,79 @@
                                         </div>
                                     </t>
                                     <div t-if="resSelectedOption" class="o_cp_res_timeline mt-3">
-                                        <div class="small fw-bold mb-1">
-                                            Timeline — <t t-esc="resSelectedOption.name"/>
+                                        <div class="d-flex align-items-center mb-1">
+                                            <div class="small fw-bold">
+                                                Timeline — <t t-esc="resSelectedOption.name"/>
+                                            </div>
+                                            <div class="btn-group btn-group-sm ms-auto">
+                                                <button type="button" class="btn btn-outline-secondary"
+                                                        title="Previous period"
+                                                        t-on-click="() => this.resTlNavigate(-1)">‹</button>
+                                                <button type="button" class="btn btn-outline-secondary"
+                                                        t-on-click="resTlToday">Today</button>
+                                                <button type="button" class="btn btn-outline-secondary"
+                                                        title="Next period"
+                                                        t-on-click="() => this.resTlNavigate(1)">›</button>
+                                            </div>
+                                            <div class="btn-group btn-group-sm ms-2">
+                                                <button t-foreach="['hour', 'day', 'week']" t-as="tlScale"
+                                                        t-key="tlScale" type="button"
+                                                        class="btn"
+                                                        t-att-class="state.resTlScale === tlScale ? 'btn-primary' : 'btn-outline-secondary'"
+                                                        t-on-click="() => this.setResTlScale(tlScale)"
+                                                        t-esc="resTlScales[tlScale]"/>
+                                            </div>
                                         </div>
                                         <div class="o_cp_res_tl_row d-flex small text-muted">
                                             <span class="o_cp_res_tl_label"/>
                                             <div class="o_cp_res_tl_days flex-grow-1 d-flex">
-                                                <span t-foreach="resTimelineDays" t-as="day" t-key="day_index"
+                                                <span t-foreach="resTlColumns" t-as="tlCol" t-key="tlCol_index"
                                                       class="o_cp_res_tl_day text-center"
-                                                      t-esc="day.getDate()"/>
+                                                      t-esc="tlCol.label"/>
                                             </div>
                                         </div>
                                         <div class="o_cp_res_tl_row d-flex align-items-center">
                                             <span class="o_cp_res_tl_label text-muted small">Required</span>
-                                            <div class="o_cp_res_tl_track flex-grow-1">
-                                                <div class="o_cp_res_tl_req" t-att-style="resRangeStyle()"
+                                            <div class="o_cp_res_tl_track flex-grow-1"
+                                                 t-on-pointerdown="onResTlTrackDown">
+                                                <div class="o_cp_res_tl_req" t-att-style="resTlRangeStyle()"
                                                      title="Required period"/>
                                             </div>
                                         </div>
                                         <div t-foreach="resSelectedOption.schedule" t-as="item"
-                                             t-key="item.task_name + item.date_start"
+                                             t-key="item.id"
                                              class="o_cp_res_tl_row d-flex align-items-center">
                                             <span class="o_cp_res_tl_label text-truncate small"
                                                   t-att-title="item.task_name" t-esc="item.task_name"/>
-                                            <div class="o_cp_res_tl_track flex-grow-1">
+                                            <div class="o_cp_res_tl_track flex-grow-1"
+                                                 t-on-pointerdown="onResTlTrackDown">
                                                 <div class="o_cp_res_tl_bar"
-                                                     t-att-class="{conflict: item.overlaps}"
-                                                     t-att-style="resBarStyle(item)"
-                                                     t-att-title="item.task_name + ': ' + formatDay(item.date_start) + ' – ' + formatDay(item.date_end)"/>
+                                                     t-att-class="resTlItemClass(item)"
+                                                     t-att-style="resTlItemStyle(item)"
+                                                     t-att-title="item.task_name + ': ' + (item.dt_start || '') + ' – ' + (item.dt_end || '')"
+                                                     t-on-pointerdown="(ev) => this.onResTlBarDown(item, ev)"/>
                                             </div>
                                         </div>
-                                        <div t-if="!resSelectedOption.schedule.length"
+                                        <div t-if="state.resTlDrag?.mode === 'create'"
+                                             class="o_cp_res_tl_row d-flex align-items-center">
+                                            <span class="o_cp_res_tl_label text-primary small text-truncate"
+                                                  t-esc="resTlDragText()"/>
+                                            <div class="o_cp_res_tl_track flex-grow-1">
+                                                <div class="o_cp_res_tl_new"
+                                                     t-att-class="resTlDragClass()"
+                                                     t-att-style="resTlDragStyle()"/>
+                                            </div>
+                                        </div>
+                                        <div t-if="!resSelectedOption.schedule.length &amp;&amp; !state.resTlDrag"
                                              class="text-muted small fst-italic mt-1">
                                             No existing assignments in this window — resource is free.
+                                        </div>
+                                        <div class="text-muted small mt-1">
+                                            Drag across the timeline to assign · drag or resize your own assignments.
+                                            <t t-if="state.resTlDrag?.conflict" class="text-danger fw-bold">
+                                                Overlaps an existing assignment.</t>
+                                            <t t-if="state.resTlDrag?.outside" class="text-danger fw-bold">
+                                                Outside the required period.</t>
                                         </div>
                                     </div>
                                 </div>
