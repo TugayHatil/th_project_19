@@ -181,6 +181,29 @@ class TestPlannerWorkspace(TransactionCase):
 
         self.assertAlmostEqual(task.allocated_hours, 16.0, places=2)
 
+    def test_update_planner_task_move_preserves_duration_and_time(self):
+        """A bar move shifts both dates, keeps duration, allocated_hours and
+        the stored time-of-day (drags must not reset hours)."""
+        project = self.env["project.project"].create({"name": "Bar move"})
+        task = self._make_task(
+            project, "Movable",
+            date_assign="2026-03-01 09:00:00", date_deadline="2026-03-11 18:00:00",
+            allocated_hours=16.0,
+        )
+
+        task.update_planner_task({
+            "date_start": "2026-03-03",
+            "date_stop": "2026-03-13",
+            "duration_days": 10,  # same span as before -> a move, not a resize
+        })
+
+        detail = task.get_planner_detail()["task"]
+        self.assertEqual(detail["date_start"], "2026-03-03")
+        self.assertEqual(detail["date_stop"], "2026-03-13")
+        self.assertAlmostEqual(task.allocated_hours, 16.0, places=2)
+        self.assertEqual(task.date_assign.hour, 9)
+        self.assertEqual(task.date_deadline.hour, 18)
+
     def test_get_planner_detail_includes_baseline_and_impact(self):
         project = self.env["project.project"].create({"name": "Baseline detail"})
         task = self._make_task(

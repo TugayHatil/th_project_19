@@ -157,9 +157,9 @@ class ProjectTaskPlanner(models.Model):
         if "name" in values:
             vals["name"] = values["name"]
         if "date_start" in values:
-            vals["date_assign"] = _local_day_to_utc(self, values["date_start"], 9)
+            vals["date_assign"] = _local_day_to_utc(self, values["date_start"], self.date_assign, 9)
         if "date_stop" in values:
-            vals["date_deadline"] = _local_day_to_utc(self, values["date_stop"], 18)
+            vals["date_deadline"] = _local_day_to_utc(self, values["date_stop"], self.date_deadline, 18)
         # Keep allocated_hours (the duration used by critical-path, delay-impact
         # and baseline comparisons) in sync when the inspector duration changes.
         days = values.get("duration_days")
@@ -187,11 +187,17 @@ class ProjectTaskPlanner(models.Model):
         return True
 
 
-def _local_day_to_utc(record, day_str, hour):
-    """Convert a local ``YYYY-MM-DD`` day at ``hour`` to a naive UTC datetime."""
+def _local_day_to_utc(record, day_str, existing_dt, fallback_hour):
+    """Convert a local ``YYYY-MM-DD`` day to naive UTC, keeping the stored
+    time-of-day when the task already had a date (so drags do not reset
+    hours) and falling back to ``fallback_hour`` otherwise."""
     if not day_str:
         return False
-    local = datetime.strptime(day_str, "%Y-%m-%d").replace(hour=hour)
+    hour, minute = fallback_hour, 0
+    if existing_dt:
+        local_existing = fields.Datetime.context_timestamp(record, existing_dt)
+        hour, minute = local_existing.hour, local_existing.minute
+    local = datetime.strptime(day_str, "%Y-%m-%d").replace(hour=hour, minute=minute)
     tz = timezone(record.env.user.tz or "UTC")
     return tz.localize(local).astimezone(UTC).replace(tzinfo=None)
 

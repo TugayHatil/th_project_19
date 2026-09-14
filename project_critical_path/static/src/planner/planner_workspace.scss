@@ -126,6 +126,36 @@ $o_cp_planner_bar_critical: #e8a33d;
     &.selected {
         outline: 2px solid #4a3244; // kept distinct from the amber critical fill
     }
+
+    cursor: move;
+    touch-action: none; // pointer drag must not scroll the timeline
+
+    &.dragging {
+        opacity: 0.9;
+    }
+}
+
+// Edge grips sit above the bar and the variance tail so both stay grabbable.
+.o_cp_planner_grip {
+    position: absolute;
+    top: 7px;
+    height: $o_cp_planner_bar_height;
+    cursor: ew-resize;
+    touch-action: none;
+    z-index: 3;
+}
+
+// Floating date label while dragging.
+.o_cp_planner_dragtip {
+    position: absolute;
+    z-index: 4;
+    background: #1f2937;
+    color: #ffffff;
+    font-size: 0.7rem;
+    padding: 1px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+    pointer-events: none;
 }
 
 .o_cp_planner_critical_icon {

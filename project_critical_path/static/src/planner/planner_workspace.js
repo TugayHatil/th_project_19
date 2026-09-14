@@ -66,6 +66,7 @@ export class PlannerWorkspace extends Component {
             options: { stages: [], users: [] },
             form: null,
             saving: false,
+            drag: null,
         });
         this.scales = SCALES;
         useExternalListener(document.body, "keydown", (ev) => {
@@ -226,8 +227,19 @@ export class PlannerWorkspace extends Component {
         };
     }
 
+    // The dates the bar currently shows — during a drag this is the live
+    // drag position so bars, variance tails and arrows follow the pointer.
+    currentDates(task) {
+        const drag = this.state.drag;
+        if (drag && drag.taskId === task.id) {
+            return { start: drag.start, stop: drag.stop };
+        }
+        return { start: task.date_start, stop: task.date_stop };
+    }
+
     barGeometry(task) {
-        return this.spanGeometry(task.date_start, task.date_stop);
+        const dates = this.currentDates(task);
+        return this.spanGeometry(dates.start, dates.stop);
     }
 
     baselineStyle(task) {
@@ -242,10 +254,11 @@ export class PlannerWorkspace extends Component {
     // A same-duration shift or a duration increase both surface as a tail,
     // while a duration decrease shows only through the baseline ghost bar.
     varianceGeometry(task) {
-        if (!task.date_start || !task.date_stop || !task.baseline_stop) {
+        const dates = this.currentDates(task);
+        if (!dates.start || !dates.stop || !task.baseline_stop) {
             return false;
         }
-        const extra = dayDiff(parseDay(task.baseline_stop), parseDay(task.date_stop));
+        const extra = dayDiff(parseDay(task.baseline_stop), parseDay(dates.stop));
         if (extra <= 0) {
             return false;
         }
@@ -270,8 +283,9 @@ export class PlannerWorkspace extends Component {
     }
 
     varianceTooltip(task) {
-        const days = dayDiff(parseDay(task.baseline_stop), parseDay(task.date_stop));
-        return `Current finish: ${dayLabel(parseDay(task.date_stop))}\nVariance: +${days}d`;
+        const stop = this.currentDates(task).stop;
+        const days = dayDiff(parseDay(task.baseline_stop), parseDay(stop));
+        return `Current finish: ${dayLabel(parseDay(stop))}\nVariance: +${days}d`;
     }
 
     barStyle(task) {
@@ -638,6 +652,143 @@ export class PlannerWorkspace extends Component {
             views: [[false, "form"]],
             target: "current",
         });
+    }
+
+    // ---- Task bar drag & resize -------------------------------------------
+
+    onBarPointerDown(task, mode, ev) {
+        if (!task.date_start || !task.date_stop || ev.button !== 0) {
+            return;
+        }
+        ev.preventDefault();
+        ev.stopPropagation();
+        this.dragging = {
+            task,
+            mode,
+            startX: ev.clientX,
+            moved: false,
+        };
+        const onMove = (e) => this.onDragMove(e);
+        const onUp = () => {
+            window.removeEventListener("pointermove", onMove);
+            window.removeEventListener("pointerup", onUp);
+            window.removeEventListener("pointercancel", onUp);
+            this.onDragEnd();
+        };
+        window.addEventListener("pointermove", onMove);
+        window.addEventListener("pointerup", onUp);
+        window.addEventListener("pointercancel", onUp);
+    }
+
+    onDragMove(ev) {
+        const dragging = this.dragging;
+        if (!dragging) {
+            return;
+        }
+        const dx = ev.clientX - dragging.startX;
+        if (!dragging.moved && Math.abs(dx) < 4) {
+            return; // click threshold — avoids accidental micro-drags
+        }
+        dragging.moved = true;
+        const delta = Math.round(dx / this.state.pxPerDay);
+        const task = dragging.task;
+        let start = parseDay(task.date_start);
+        let stop = parseDay(task.date_stop);
+        if (dragging.mode === "move") {
+            start = addDays(start, delta);
+            stop = addDays(stop, delta);
+        } else if (dragging.mode === "left") {
+            start = addDays(start, delta);
+            if (start > stop) {
+                start = stop;
+            }
+        } else {
+            stop = addDays(stop, delta);
+            if (stop < start) {
+                stop = start;
+            }
+        }
+        const rowIdx = this.visibleTasks.findIndex((row) => row.id === task.id);
+        this.state.drag = {
+            taskId: task.id,
+            rowIdx,
+            start: isoDay(start),
+            stop: isoDay(stop),
+        };
+    }
+
+    onDragEnd() {
+        const dragging = this.dragging;
+        const drag = this.state.drag;
+        this.dragging = null;
+        this.state.drag = null;
+        if (!dragging?.moved || !drag) {
+            return;
+        }
+        // Swallow the click that follows pointerup so a drag does not also
+        // re-open the inspector mid-write; a real next click clears it anyway.
+        this.suppressClick = true;
+        setTimeout(() => {
+            this.suppressClick = false;
+        }, 0);
+        this.persistTaskDates(dragging.task, drag.start, drag.stop);
+    }
+
+    async persistTaskDates(task, start, stop) {
+        try {
+            await this.orm.call("project.task", "update_planner_task", [task.id], {
+                values: {
+                    date_start: start,
+                    date_stop: stop,
+                    duration_days: dayDiff(parseDay(start), parseDay(stop)),
+                },
+            });
+        } catch (error) {
+            this.notification.add(
+                error.data?.message || _t("The task dates could not be saved."), { type: "danger" },
+            );
+            return;
+        }
+        const collapsed = this.state.collapsedIds;
+        const selectedId = this.state.selectedId;
+        await this.loadProject(this.state.projectId);
+        this.state.collapsedIds = collapsed;
+        this.state.selectedId = selectedId;
+        if (this.state.inspectorOpen && this.state.inspector?.id === task.id) {
+            await this.loadInspector(task.id);
+        }
+    }
+
+    gripStyle(task, side) {
+        const bar = this.barGeometry(task);
+        if (!bar) {
+            return "display:none";
+        }
+        const width = Math.min(8, bar.width);
+        const left = side === "left" ? bar.left - 2 : bar.left + bar.width - width + 2;
+        return `left:${left}px;width:${width}px`;
+    }
+
+    get dragTip() {
+        const drag = this.state.drag;
+        if (!drag) {
+            return false;
+        }
+        const bar = this.spanGeometry(drag.start, drag.stop);
+        const start = parseDay(drag.start);
+        const stop = parseDay(drag.stop);
+        return {
+            style: `left:${bar.left}px;top:${Math.max(drag.rowIdx * PLANNER_ROW_H - 22, 0)}px`,
+            text: `${dayLabel(start)} – ${dayLabel(stop)} · ${dayDiff(start, stop)}d`,
+        };
+    }
+
+    onRowClick(task) {
+        if (this.suppressClick) {
+            this.suppressClick = false;
+            return;
+        }
+        this.selectTask(task);
     }
 
     onGanttScroll() {

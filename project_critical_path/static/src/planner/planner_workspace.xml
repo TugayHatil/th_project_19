@@ -80,7 +80,7 @@
                                 <div t-foreach="visibleTasks" t-as="task" t-key="task.id"
                                      class="o_cp_planner_gantt_row"
                                      t-att-class="{selected: state.selectedId === task.id}"
-                                     t-on-click="() => this.selectTask(task)"
+                                     t-on-click="() => this.onRowClick(task)"
                                      t-on-dblclick="() => this.openTask(task)">
                                     <div t-if="task.baseline_start &amp;&amp; task.baseline_stop"
                                          class="o_cp_planner_baseline_bar"
@@ -88,14 +88,28 @@
                                          t-att-title="baselineTooltip(task)"/>
                                     <div t-if="task.date_start &amp;&amp; task.date_stop"
                                          class="o_cp_planner_bar"
-                                         t-att-class="{selected: state.selectedId === task.id, critical: task.is_critical}"
+                                         t-att-class="{selected: state.selectedId === task.id, critical: task.is_critical, dragging: state.drag?.taskId === task.id}"
                                          t-att-style="barStyle(task)"
-                                         t-att-title="task.is_critical ? task.name + ' — Critical Path' : task.name"/>
+                                         t-att-title="task.is_critical ? task.name + ' — Critical Path' : task.name"
+                                         t-on-pointerdown="(ev) => this.onBarPointerDown(task, 'move', ev)"/>
                                     <div t-if="task.date_start &amp;&amp; task.date_stop &amp;&amp; task.baseline_stop &amp;&amp; task.date_stop &gt; task.baseline_stop"
                                          class="o_cp_planner_variance_bar"
                                          t-att-style="varianceStyle(task)"
-                                         t-att-title="varianceTooltip(task)"/>
+                                         t-att-title="varianceTooltip(task)"
+                                         t-on-pointerdown="(ev) => this.onBarPointerDown(task, 'move', ev)"/>
+                                    <div t-if="task.date_start &amp;&amp; task.date_stop"
+                                         class="o_cp_planner_grip o_cp_planner_grip_left"
+                                         t-att-style="gripStyle(task, 'left')"
+                                         title="Change start"
+                                         t-on-pointerdown="(ev) => this.onBarPointerDown(task, 'left', ev)"/>
+                                    <div t-if="task.date_start &amp;&amp; task.date_stop"
+                                         class="o_cp_planner_grip o_cp_planner_grip_right"
+                                         t-att-style="gripStyle(task, 'right')"
+                                         title="Change finish"
+                                         t-on-pointerdown="(ev) => this.onBarPointerDown(task, 'right', ev)"/>
                                 </div>
+                                <div t-if="dragTip" class="o_cp_planner_dragtip"
+                                     t-att-style="dragTip.style" t-esc="dragTip.text"/>
                                 <svg class="o_cp_planner_deps"
                                      t-att-width="timelineWidth"
                                      t-att-height="visibleTasks.length * 32">
