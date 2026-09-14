@@ -174,6 +174,18 @@ $o_cp_planner_bar_critical: #e8a33d;
     z-index: 3;
 }
 
+// Execution info text immediately right of the bar; never blocks bar/grips.
+.o_cp_planner_bar_info {
+    position: absolute;
+    top: 0;
+    height: $o_cp_planner_row_height;
+    line-height: $o_cp_planner_row_height;
+    font-size: 0.72rem;
+    color: #667085;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
 // Floating date label while dragging.
 .o_cp_planner_dragtip {
     position: absolute;

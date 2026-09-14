@@ -73,6 +73,8 @@ class ProjectProjectPlanner(models.Model):
                     "date_start": _serialize_planner_day(self, task.date_assign),
                     "date_stop": _serialize_planner_day(self, task.date_deadline),
                     "progress": task.progress or 0.0,
+                    "allocated_hours": task.allocated_hours or 0.0,
+                    "effective_hours": getattr(task, "effective_hours", 0.0) or 0.0,
                     "is_critical": bool(task.is_critical),
                     "depend_on_ids": task.depend_on_ids.ids,
                     "baseline_name": baseline.name if baseline_by_task.get(task.id) else False,

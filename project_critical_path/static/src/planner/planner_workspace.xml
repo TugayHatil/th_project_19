@@ -136,6 +136,10 @@
                                          title="Change start"
                                          t-on-pointerdown="(ev) => this.onBarPointerDown(task, 'left', ev)"/>
                                     <div t-if="task.date_start &amp;&amp; task.date_stop"
+                                         class="o_cp_planner_bar_info"
+                                         t-att-style="barInfoStyle(task)"
+                                         t-esc="barInfoText(task)"/>
+                                    <div t-if="task.date_start &amp;&amp; task.date_stop"
                                          class="o_cp_planner_grip o_cp_planner_grip_right"
                                          t-att-style="gripStyle(task, 'right')"
                                          title="Change finish"

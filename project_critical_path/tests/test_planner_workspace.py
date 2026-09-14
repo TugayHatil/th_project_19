@@ -279,6 +279,21 @@ class TestPlannerWorkspace(TransactionCase):
         self.assertEqual(row["baseline_start"], "2026-03-01")
         self.assertEqual(row["baseline_stop"], "2026-03-05")
 
+    def test_planner_data_serializes_hours_and_progress(self):
+        """The bar-side info text reads Odoo's planned/timesheet/progress
+        fields — Planner adds no duplicate calculation."""
+        project = self.env["project.project"].create({"name": "Bar info"})
+        task = self._make_task(project, "Tracked task", allocated_hours=10.0)
+
+        row = next(
+            item for item in project.get_planner_data()["tasks"]
+            if item["id"] == task.id
+        )
+
+        self.assertAlmostEqual(row["allocated_hours"], 10.0)
+        self.assertEqual(row["effective_hours"], 0.0)  # no timesheets yet
+        self.assertIn("progress", row)
+
     def test_get_planner_detail_includes_baseline_and_impact(self):
         project = self.env["project.project"].create({"name": "Baseline detail"})
         task = self._make_task(

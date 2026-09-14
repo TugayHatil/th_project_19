@@ -682,6 +682,23 @@ export class PlannerWorkspace extends Component {
         });
     }
 
+    // Execution info rendered right after the bar: planned hours, timesheet
+    // hours and Odoo's progress — display-only, capped at 100% for display.
+    barInfoStyle(task) {
+        const bar = this.barGeometry(task);
+        if (!bar) {
+            return "display:none";
+        }
+        return `left:${bar.left + bar.width + 8}px`;
+    }
+
+    barInfoText(task) {
+        const plan = Math.round((task.allocated_hours || 0) * 100) / 100;
+        const actual = Math.round((task.effective_hours || 0) * 100) / 100;
+        const progress = Math.min(Math.round((task.progress || 0) * 100), 100);
+        return `Plan: ${plan}h | Actual: ${actual}h | ${progress}%`;
+    }
+
     // ---- Task bar drag & resize -------------------------------------------
 
     onBarPointerDown(task, mode, ev) {
