@@ -67,11 +67,23 @@ export class PlannerWorkspace extends Component {
             form: null,
             saving: false,
             drag: null,
+            // Baseline History panel
+            historyOpen: false,
+            historyLoading: false,
+            historyList: [],
+            historyDetail: null,
+            historyDetailLoading: false,
+            compareBaselineId: null,
         });
         this.scales = SCALES;
         useExternalListener(document.body, "keydown", (ev) => {
-            if (ev.key === "Escape" && this.state.inspectorOpen) {
+            if (ev.key !== "Escape") {
+                return;
+            }
+            if (this.state.inspectorOpen) {
                 this.state.inspectorOpen = false;
+            } else if (this.state.historyOpen) {
+                this.toggleHistory();
             }
         });
         onMounted(async () => {
@@ -94,7 +106,12 @@ export class PlannerWorkspace extends Component {
         this.state.selectedId = null;
         this.state.inspectorOpen = false;
         try {
-            const data = await this.orm.call("project.project", "get_planner_data", [projectId]);
+            const kwargs = this.state.compareBaselineId
+                ? { baseline_id: this.state.compareBaselineId }
+                : {};
+            const data = await this.orm.call(
+                "project.project", "get_planner_data", [projectId], kwargs,
+            );
             this.state.projectName = data.project.name;
             this.state.tasks = data.tasks;
             this.computeRange();
@@ -749,14 +766,142 @@ export class PlannerWorkspace extends Component {
             );
             return;
         }
-        const collapsed = this.state.collapsedIds;
-        const selectedId = this.state.selectedId;
-        await this.loadProject(this.state.projectId);
-        this.state.collapsedIds = collapsed;
-        this.state.selectedId = selectedId;
+        await this.reloadPlannerData();
         if (this.state.inspectorOpen && this.state.inspector?.id === task.id) {
             await this.loadInspector(task.id);
         }
+    }
+
+    // Reload tasks while keeping selection/collapse/inspector state — used by
+    // bar drags and by the baseline-compare switch in the history panel.
+    async reloadPlannerData() {
+        const collapsed = this.state.collapsedIds;
+        const selectedId = this.state.selectedId;
+        const inspectorOpen = this.state.inspectorOpen;
+        await this.loadProject(this.state.projectId);
+        this.state.collapsedIds = collapsed;
+        this.state.selectedId = selectedId;
+        this.state.inspectorOpen = inspectorOpen;
+    }
+
+    // ---- Baseline History panel -------------------------------------------
+
+    async toggleHistory() {
+        this.state.historyOpen = !this.state.historyOpen;
+        if (this.state.historyOpen) {
+            await this.loadBaselineHistory();
+            return;
+        }
+        this.state.historyDetail = null;
+        await this.clearBaselineCompare();
+    }
+
+    async loadBaselineHistory() {
+        if (!this.state.projectId) {
+            return;
+        }
+        this.state.historyLoading = true;
+        try {
+            this.state.historyList = await this.orm.call(
+                "project.project", "get_planner_baseline_history", [this.state.projectId],
+            );
+        } catch (error) {
+            this.state.historyList = [];
+            this.notification.add(
+                error.data?.message || _t("The baseline history could not be loaded."),
+                { type: "danger" },
+            );
+        } finally {
+            this.state.historyLoading = false;
+        }
+    }
+
+    async selectBaselineVersion(item) {
+        if (this.state.historyDetail?.id === item.id) {
+            this.state.historyDetail = null;
+            await this.clearBaselineCompare();
+            return;
+        }
+        this.state.historyDetailLoading = true;
+        try {
+            this.state.historyDetail = await this.orm.call(
+                "project.project", "get_planner_baseline_summary", [this.state.projectId],
+                { baseline_id: item.id },
+            );
+            // Show this historical baseline as the Gantt reference layer.
+            this.state.compareBaselineId = item.id;
+            await this.reloadPlannerData();
+        } catch (error) {
+            this.notification.add(
+                error.data?.message || _t("The baseline summary could not be loaded."),
+                { type: "danger" },
+            );
+        } finally {
+            this.state.historyDetailLoading = false;
+        }
+    }
+
+    async clearBaselineCompare() {
+        if (!this.state.compareBaselineId) {
+            return;
+        }
+        this.state.compareBaselineId = null;
+        await this.reloadPlannerData();
+    }
+
+    // History → changed task → Planner selection + Quick Inspector.
+    async openHistoryTask(change) {
+        const task = this.taskById.get(change.task_id);
+        if (!task) {
+            this.notification.add(
+                _t("This task is no longer part of the current project plan."),
+                { type: "warning" },
+            );
+            return;
+        }
+        // Expand collapsed ancestors so the row is actually visible.
+        if (this.state.collapsedIds.size) {
+            const ids = new Set(this.state.collapsedIds);
+            let current = task;
+            while (current && current.parent_id) {
+                ids.delete(current.parent_id);
+                current = this.taskById.get(current.parent_id);
+            }
+            this.state.collapsedIds = ids;
+        }
+        this.state.selectedId = task.id;
+        this.state.inspectorOpen = true;
+        await this.loadInspector(task.id);
+        const idx = this.visibleTasks.findIndex((row) => row.id === task.id);
+        const top = Math.max(idx * PLANNER_ROW_H - PLANNER_ROW_H * 2, 0);
+        if (this.wbsRowsRef.el) {
+            this.wbsRowsRef.el.scrollTop = top;
+        }
+        const scroll = this.ganttScrollRef.el;
+        if (scroll) {
+            scroll.scrollTop = top;
+            const bar = this.barGeometry(task);
+            if (bar) {
+                scroll.scrollLeft = Math.max(bar.left - 120, 0);
+            }
+        }
+    }
+
+    formatHistoryDate(str) {
+        if (!str) {
+            return "";
+        }
+        const date = new Date(str.replace(" ", "T"));
+        return `${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+    }
+
+    formatSignedHours(hours) {
+        const value = Math.round(hours * 100) / 100;
+        return `${value > 0 ? "+" : ""}${value}h`;
+    }
+
+    formatHours(hours) {
+        return `${Math.round((hours || 0) * 100) / 100}h`;
     }
 
     gripStyle(task, side) {

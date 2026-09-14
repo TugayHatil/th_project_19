@@ -204,6 +204,81 @@ class TestPlannerWorkspace(TransactionCase):
         self.assertEqual(task.date_assign.hour, 9)
         self.assertEqual(task.date_deadline.hour, 18)
 
+    def test_planner_baseline_history_lists_versions_newest_first(self):
+        project = self.env["project.project"].create({"name": "History list"})
+        task = self._make_task(project, "Evolving task", allocated_hours=8.0)
+        project.action_create_critical_path_baseline()
+        task.allocated_hours = 11.0
+        project.action_create_critical_path_baseline()
+
+        history = project.get_planner_baseline_history()
+
+        self.assertEqual(len(history), 2)
+        self.assertEqual(history[0]["name"], "v1.1")
+        self.assertEqual(history[1]["name"], "v1.0")
+        self.assertFalse(history[0]["is_initial"])
+        self.assertTrue(history[1]["is_initial"])
+        self.assertEqual(history[0]["previous_name"], "v1.0")
+        self.assertEqual(
+            history[0]["duration_variance"],
+            history[0]["project_duration"] - history[1]["project_duration"],
+        )
+
+    def test_planner_baseline_summary_reports_task_changes(self):
+        project = self.env["project.project"].create({"name": "Change summary"})
+        stable = self._make_task(project, "Stable task", allocated_hours=5.0)
+        growing = self._make_task(project, "Growing task", allocated_hours=8.0)
+        project.action_create_critical_path_baseline()
+        growing.allocated_hours = 11.0
+        project.action_create_critical_path_baseline()
+        latest = project.critical_path_baseline_ids[0]
+
+        summary = project.get_planner_baseline_summary(latest.id)
+
+        self.assertEqual(summary["name"], "v1.1")
+        self.assertEqual(summary["previous_name"], "v1.0")
+        change = next(
+            item for item in summary["changes"] if item["task_id"] == growing.id
+        )
+        self.assertAlmostEqual(change["delta_hours"], 3.0)
+        self.assertAlmostEqual(change["old_hours"], 8.0)
+        self.assertAlmostEqual(change["new_hours"], 11.0)
+        # Unchanged tasks are not reported as changes.
+        self.assertFalse(
+            any(item["task_id"] == stable.id for item in summary["changes"])
+        )
+
+    def test_planner_baseline_summary_initial_has_no_changes(self):
+        project = self.env["project.project"].create({"name": "Initial summary"})
+        self._make_task(project, "First task", allocated_hours=8.0)
+        project.action_create_critical_path_baseline()
+        baseline = project.critical_path_baseline_ids[0]
+
+        summary = project.get_planner_baseline_summary(baseline.id)
+
+        self.assertTrue(summary["is_initial"])
+        self.assertEqual(summary["changes"], [])
+        self.assertEqual(summary["tasks_changed"], 0)
+
+    def test_planner_data_baseline_override_uses_historical_snapshot(self):
+        project = self.env["project.project"].create({"name": "Compare override"})
+        task = self._make_task(
+            project, "Shifting task",
+            date_assign="2026-03-01 09:00:00", date_deadline="2026-03-05 18:00:00",
+        )
+        project.action_create_critical_path_baseline()
+        first = project.critical_path_baseline_ids[0]
+        task.date_assign = "2026-03-10 09:00:00"
+        task.date_deadline = "2026-03-14 18:00:00"
+        project.action_create_critical_path_baseline()
+
+        data = project.get_planner_data(baseline_id=first.id)
+        row = next(item for item in data["tasks"] if item["id"] == task.id)
+
+        self.assertEqual(row["baseline_name"], "v1.0")
+        self.assertEqual(row["baseline_start"], "2026-03-01")
+        self.assertEqual(row["baseline_stop"], "2026-03-05")
+
     def test_get_planner_detail_includes_baseline_and_impact(self):
         project = self.env["project.project"].create({"name": "Baseline detail"})
         task = self._make_task(

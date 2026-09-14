@@ -37,11 +37,15 @@ class ProjectProjectPlanner(models.Model):
             for project in self.search([], order="name")
         ]
 
-    def get_planner_data(self):
+    def get_planner_data(self, baseline_id=None):
         """Return the project's tasks in WBS order for the Planner Workspace.
 
         The list is already flattened in display order so the WBS panel and the
         Gantt timeline share the exact same row sequence.
+
+        ``baseline_id`` optionally overrides the comparison baseline used for
+        the ghost/variance layer so the Gantt can show a historical baseline
+        against the current plan without touching any baseline record.
         """
         self.ensure_one()
         tasks = self.env["project.task"].with_context(active_test=False).search(
@@ -49,6 +53,10 @@ class ProjectProjectPlanner(models.Model):
         )
         ordered = tasks.sorted(key=lambda task: (task.wbs_sort_key or "", task.sequence, task.id))
         baseline = self.delay_impact_baseline_id
+        if baseline_id:
+            override = self.env["project.critical.path.baseline"].browse(baseline_id).exists()
+            if override and override.project_id == self:
+                baseline = override
         baseline_by_task = {
             line.task_id.id: line for line in baseline.line_ids if line.task_id
         } if baseline else {}
@@ -79,6 +87,110 @@ class ProjectProjectPlanner(models.Model):
                 }
                 for task in ordered
             ],
+        }
+
+    def get_planner_baseline_history(self):
+        """Read-only list of this project's baseline versions, newest first.
+
+        Only stored snapshot/history fields are serialized — nothing is
+        recalculated, so opening the list stays cheap.
+        """
+        self.ensure_one()
+        baselines = self.env["project.critical.path.baseline"].search(
+            [("project_id", "=", self.id)]
+        )
+        return [
+            {
+                "id": baseline.id,
+                "name": baseline.name,
+                "created_on": fields.Datetime.to_string(baseline.created_on),
+                "project_duration": baseline.project_duration or 0.0,
+                "previous_id": baseline.previous_baseline_id.id or False,
+                "previous_name": baseline.previous_baseline_id.name or False,
+                "duration_variance": baseline.history_project_duration_variance or 0.0,
+                "is_initial": not baseline.previous_baseline_id,
+            }
+            for baseline in baselines
+        ]
+
+    def get_planner_baseline_summary(self, baseline_id):
+        """Read-only change summary of one baseline vs its previous version.
+
+        Task-level changes are derived by comparing the frozen snapshot lines
+        of the two consecutive baselines — no baseline or critical-path data
+        is recomputed or modified.
+        """
+        self.ensure_one()
+        baseline = self.env["project.critical.path.baseline"].browse(baseline_id).exists()
+        if not baseline or baseline.project_id != self:
+            return False
+        previous = baseline.previous_baseline_id
+        current_lines = {line.task_id.id: line for line in baseline.line_ids if line.task_id}
+        previous_lines = {
+            line.task_id.id: line for line in previous.line_ids if line.task_id
+        } if previous else {}
+        changes = []
+        cp_changes = 0
+        for task_id, line in current_lines.items():
+            if not previous:
+                break  # initial baseline has nothing to compare against
+            prev = previous_lines.get(task_id)
+            delta = round(
+                line.allocated_hours - (prev.allocated_hours if prev else 0.0), 2,
+            )
+            entered = bool(line.is_critical) and not (prev and prev.is_critical)
+            left = bool(prev and prev.is_critical) and not line.is_critical
+            dates_changed = bool(prev) and (
+                line.planned_date_begin != prev.planned_date_begin
+                or line.planned_date_end != prev.planned_date_end
+            )
+            if not (delta or entered or left or dates_changed):
+                continue
+            changes.append({
+                "task_id": task_id,
+                "task_name": line.task_name,
+                "delta_hours": delta,
+                "old_hours": prev.allocated_hours if prev else False,
+                "new_hours": line.allocated_hours,
+                "entered_cp": entered,
+                "left_cp": left,
+                "new_task": prev is None,
+                "removed_task": False,
+                "dates_changed": dates_changed,
+            })
+            cp_changes += int(entered) + int(left)
+        if previous:
+            for task_id in sorted(set(previous_lines) - set(current_lines)):
+                line = previous_lines[task_id]
+                changes.append({
+                    "task_id": task_id,
+                    "task_name": line.task_name,
+                    "delta_hours": False,
+                    "old_hours": line.allocated_hours,
+                    "new_hours": False,
+                    "entered_cp": False,
+                    "left_cp": False,
+                    "new_task": False,
+                    "removed_task": True,
+                    "dates_changed": False,
+                })
+        changes.sort(key=lambda item: (-abs(item["delta_hours"] or 0.0), item["task_name"]))
+        return {
+            "id": baseline.id,
+            "name": baseline.name,
+            "created_on": fields.Datetime.to_string(baseline.created_on),
+            "project_duration": baseline.project_duration or 0.0,
+            "critical_path_duration": baseline.critical_path_duration or 0.0,
+            "previous_id": previous.id or False,
+            "previous_name": previous.name or False,
+            "previous_duration": previous.project_duration if previous else False,
+            "duration_variance": baseline.history_project_duration_variance or 0.0,
+            "cp_duration_variance": baseline.history_critical_path_duration_variance or 0.0,
+            "is_initial": not previous,
+            "task_count": len(baseline.line_ids),
+            "tasks_changed": len(changes),
+            "cp_changes": cp_changes,
+            "changes": changes,
         }
 
 

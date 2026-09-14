@@ -349,6 +349,40 @@ $o_cp_planner_inspector_width: 320px;
     font-weight: 600;
 }
 
+// Project-level Baseline History panel — same right-side pattern as the
+// Quick Inspector, closable so it never permanently eats Gantt space.
+.o_cp_planner_history {
+    width: 340px;
+    flex: 0 0 340px;
+    background: #ffffff;
+    overflow: hidden;
+}
+
+.o_cp_planner_history_item {
+    padding: 6px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+
+    &:hover {
+        background: #f8f9fa;
+    }
+
+    &.selected {
+        background: #dbeafe;
+    }
+}
+
+.o_cp_planner_history_change {
+    padding: 5px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-bottom: 2px;
+
+    &:hover {
+        background: #f8f9fa;
+    }
+}
+
 .o_cp_planner_dep_toggle {
     cursor: pointer;
     user-select: none;

@@ -29,6 +29,9 @@
                 </div>
                 <button type="button" class="btn btn-sm btn-outline-secondary" t-on-click="goToday">Today</button>
                 <button type="button" class="btn btn-sm btn-outline-secondary" t-on-click="fit">Fit</button>
+                <button type="button" class="btn btn-sm"
+                        t-att-class="state.historyOpen ? 'btn-primary' : 'btn-outline-secondary'"
+                        t-on-click="toggleHistory">Baseline History</button>
             </div>
             <div class="o_cp_planner_body d-flex flex-grow-1 overflow-hidden">
                 <div class="o_cp_planner_wbs d-flex flex-column border-end">
@@ -307,6 +310,96 @@
                         </button>
                         <button type="button" class="btn btn-outline-secondary btn-sm"
                                 t-on-click="openInspectorTask">Open Full Task</button>
+                    </div>
+                </div>
+                <div t-if="state.historyOpen" class="o_cp_planner_history d-flex flex-column border-start">
+                    <div class="o_cp_planner_inspector_header px-3 pt-3 pb-2 border-bottom d-flex align-items-center justify-content-between">
+                        <span class="fw-bold">Baseline History</span>
+                        <button type="button" class="btn-close btn-sm" t-on-click="toggleHistory"/>
+                    </div>
+                    <div class="flex-grow-1 overflow-auto px-3 py-2">
+                        <div t-if="state.historyLoading" class="text-muted small py-2">Loading…</div>
+                        <div t-elif="!state.historyList.length" class="text-muted small py-2 fst-italic">
+                            No baselines exist for this project yet.
+                        </div>
+                        <div t-foreach="state.historyList" t-as="item" t-key="item.id"
+                             class="o_cp_planner_history_item"
+                             t-att-class="{selected: state.historyDetail?.id === item.id}"
+                             t-on-click="() => this.selectBaselineVersion(item)">
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-bold" t-esc="item.name"/>
+                                <span class="text-muted small" t-esc="formatHistoryDate(item.created_on)"/>
+                            </div>
+                            <div class="d-flex justify-content-between small">
+                                <span t-esc="formatHours(item.project_duration)"/>
+                                <span t-if="item.is_initial" class="text-muted fst-italic">Initial</span>
+                                <span t-else="" class="text-muted"
+                                      t-esc="formatSignedHours(item.duration_variance) + ' vs ' + item.previous_name"/>
+                            </div>
+                        </div>
+                        <div t-if="state.historyDetailLoading" class="text-muted small py-2">Loading…</div>
+                        <div t-if="state.historyDetail &amp;&amp; !state.historyDetailLoading"
+                             class="o_cp_planner_history_detail border-top mt-3 pt-2">
+                            <div class="fw-bold mb-2" t-esc="state.historyDetail.name"/>
+                            <div class="d-flex justify-content-between small">
+                                <span class="text-muted">Project Duration</span>
+                                <span t-esc="formatHours(state.historyDetail.project_duration)"/>
+                            </div>
+                            <div t-if="state.historyDetail.previous_name"
+                                 class="d-flex justify-content-between small">
+                                <span class="text-muted">Previous Baseline</span>
+                                <span><t t-esc="formatHours(state.historyDetail.previous_duration)"/>
+                                    (<t t-esc="state.historyDetail.previous_name"/>)</span>
+                            </div>
+                            <div t-if="!state.historyDetail.is_initial"
+                                 class="d-flex justify-content-between small">
+                                <span class="text-muted">Variance</span>
+                                <span t-esc="formatSignedHours(state.historyDetail.duration_variance)"/>
+                            </div>
+                            <div class="d-flex justify-content-between small">
+                                <span class="text-muted">Tasks Changed</span>
+                                <span t-esc="state.historyDetail.tasks_changed"/>
+                            </div>
+                            <div class="d-flex justify-content-between small">
+                                <span class="text-muted">Critical Path Changes</span>
+                                <span t-esc="state.historyDetail.cp_changes"/>
+                            </div>
+                            <div t-if="state.historyDetail.is_initial"
+                                 class="text-muted small fst-italic mt-2">
+                                Initial baseline — <t t-esc="state.historyDetail.task_count"/> task snapshots.
+                            </div>
+                            <t t-else="">
+                                <div class="fw-bold small text-uppercase text-muted mt-3 mb-1">Changes</div>
+                                <div class="text-muted small mb-2 fst-italic">
+                                    Gantt shows this baseline vs the current plan.
+                                </div>
+                                <div t-if="!state.historyDetail.changes.length"
+                                     class="text-muted small fst-italic">
+                                    No task changes in this baseline.
+                                </div>
+                                <div t-foreach="state.historyDetail.changes" t-as="change" t-key="change.task_id"
+                                     class="o_cp_planner_history_change" role="button"
+                                     t-on-click="() => this.openHistoryTask(change)">
+                                    <div class="d-flex justify-content-between">
+                                        <span class="text-truncate" t-esc="change.task_name"/>
+                                        <span t-if="change.delta_hours !== false" class="ms-2"
+                                              t-att-class="change.delta_hours > 0 ? 'text-danger' : 'text-success'"
+                                              t-esc="formatSignedHours(change.delta_hours)"/>
+                                    </div>
+                                    <div t-if="change.delta_hours !== false &amp;&amp; change.old_hours !== false"
+                                         class="text-muted small"
+                                         t-esc="formatHours(change.old_hours) + ' → ' + formatHours(change.new_hours)"/>
+                                    <div class="small">
+                                        <span t-if="change.entered_cp" class="badge text-bg-warning me-1">Entered Critical Path</span>
+                                        <span t-if="change.left_cp" class="badge text-bg-secondary me-1">Left Critical Path</span>
+                                        <span t-if="change.new_task" class="badge text-bg-info me-1">Added to plan</span>
+                                        <span t-if="change.removed_task" class="badge text-bg-dark me-1">Removed from plan</span>
+                                        <span t-if="change.delta_hours === 0 &amp;&amp; change.dates_changed"
+                                              class="text-muted">Dates shifted</span>
+                                    </div>
+                                </div>
+                            </t>
+                        </div>
                     </div>
                 </div>
             </div>
