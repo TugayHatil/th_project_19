@@ -220,3 +220,15 @@ $o_cp_planner_inspector_width: 320px;
     color: #198754;
     font-weight: 600;
 }
+
+.o_cp_planner_critical_badge {
+    background: #fdf3e3;
+    color: #9a6a0b;
+    border: 1px solid $o_cp_planner_bar_critical;
+    font-weight: 600;
+}
+
+.o_cp_planner_dep_toggle {
+    cursor: pointer;
+    user-select: none;
+}

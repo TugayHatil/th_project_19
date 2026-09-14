@@ -54,6 +54,7 @@ export class PlannerWorkspace extends Component {
             inspector: null,
             baseline: null,
             impact: null,
+            depOpen: false,
             options: { stages: [], users: [] },
             form: null,
             saving: false,
@@ -264,6 +265,7 @@ export class PlannerWorkspace extends Component {
             this.state.baseline = detail.baseline;
             this.state.impact = detail.impact;
             this.state.options = detail.options;
+            this.state.depOpen = false;
             const t = detail.task;
             this.state.form = {
                 name: t.name,
@@ -273,7 +275,6 @@ export class PlannerWorkspace extends Component {
                     ? dayDiff(parseDay(t.date_start), parseDay(t.date_stop))
                     : 0,
                 progress: t.progress,
-                stage_id: t.stage_id,
                 user_id: (t.user_ids && t.user_ids[0]) || false,
                 depend_on_ids: [...(t.depend_on_ids || [])],
                 dependent_ids: [...(t.dependent_ids || [])],
@@ -464,7 +465,6 @@ export class PlannerWorkspace extends Component {
                     date_stop: form.date_stop || false,
                     duration_days: form.duration_days,
                     progress: form.progress || 0,
-                    stage_id: form.stage_id || false,
                     user_ids: form.user_id ? [form.user_id] : [],
                     depend_on_ids: form.depend_on_ids,
                     dependent_ids: form.dependent_ids,

@@ -98,8 +98,8 @@
                         <div class="d-flex align-items-start">
                             <div class="flex-grow-1">
                                 <div class="d-flex align-items-center gap-2 mb-1">
-                                    <span class="o_cp_planner_wbs_code text-muted" t-esc="state.inspector?.wbs_code"/>
-                                    <span t-if="state.inspector?.is_critical" class="badge bg-danger">
+                                    <span class="o_cp_planner_wbs_code text-muted">WBS: <t t-esc="state.inspector?.wbs_code"/></span>
+                                    <span t-if="state.inspector?.is_critical" class="badge o_cp_planner_critical_badge">
                                         <i class="fa fa-exclamation-triangle me-1"/>Critical Path
                                     </span>
                                 </div>
@@ -117,7 +117,7 @@
                         <div t-if="state.inspectorLoading" class="text-muted small p-2">Loading…</div>
                         <t t-else="">
                             <div class="o_cp_planner_inspector_section mb-3">
-                                <div class="fw-bold small text-uppercase text-muted mb-2">Planning</div>
+                                <div class="fw-bold small text-uppercase text-muted mb-2">Current Plan</div>
                                 <div class="d-flex align-items-center gap-2 mb-1">
                                     <label class="o_cp_planner_inspector_label">Start</label>
                                     <input type="date" class="form-control form-control-sm"
@@ -130,16 +130,13 @@
                                            t-att-value="state.form?.date_stop"
                                            t-on-change="onStopChange"/>
                                 </div>
-                                <div class="d-flex align-items-center gap-2">
+                                <div class="d-flex align-items-center gap-2 mb-1">
                                     <label class="o_cp_planner_inspector_label">Duration</label>
                                     <input type="number" min="0" step="1" class="form-control form-control-sm"
                                            t-att-value="state.form?.duration_days"
                                            t-on-change="onDurationChange"/>
                                     <span class="text-muted small">days</span>
                                 </div>
-                            </div>
-                            <div class="o_cp_planner_inspector_section mb-3">
-                                <div class="fw-bold small text-uppercase text-muted mb-2">Progress</div>
                                 <div class="d-flex align-items-center gap-2 mb-1">
                                     <label class="o_cp_planner_inspector_label">Progress</label>
                                     <input type="number" min="0" max="100" class="form-control form-control-sm"
@@ -147,20 +144,6 @@
                                            t-on-change="(ev) => state.form.progress = Number(ev.target.value)"/>
                                     <span class="text-muted small">%</span>
                                 </div>
-                                <div class="d-flex align-items-center gap-2">
-                                    <label class="o_cp_planner_inspector_label">Stage</label>
-                                    <select class="form-select form-select-sm"
-                                            t-on-change="(ev) => state.form.stage_id = Number(ev.target.value) || false">
-                                        <t t-foreach="state.options.stages" t-as="stage" t-key="stage.id">
-                                            <option t-att-value="stage.id"
-                                                    t-att-selected="stage.id === state.form?.stage_id"
-                                                    t-esc="stage.name"/>
-                                        </t>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="o_cp_planner_inspector_section mb-3">
-                                <div class="fw-bold small text-uppercase text-muted mb-2">Resource</div>
                                 <div class="d-flex align-items-center gap-2">
                                     <label class="o_cp_planner_inspector_label">Assignee</label>
                                     <select class="form-select form-select-sm"
@@ -175,46 +158,11 @@
                                 </div>
                             </div>
                             <div class="o_cp_planner_inspector_section mb-3">
-                                <div class="fw-bold small text-uppercase text-muted mb-2">Dependencies</div>
-                                <div class="mb-2">
-                                    <div class="o_cp_planner_inspector_label mb-1">Predecessors</div>
-                                    <div t-foreach="state.form?.depend_on_ids || []" t-as="depId" t-key="depId"
-                                         class="o_cp_planner_dep_chip d-inline-flex align-items-center gap-1 me-1 mb-1">
-                                        <span t-esc="taskLabel(depId)"/>
-                                        <i class="fa fa-times" role="button" title="Remove"
-                                           t-on-click="() => this.removePredecessor(depId)"/>
-                                    </div>
-                                    <select class="form-select form-select-sm"
-                                            t-att-value="state.form?.addPredecessorId"
-                                            t-on-change="addPredecessor">
-                                        <option value="">Add predecessor…</option>
-                                        <t t-foreach="state.tasks" t-as="cand" t-key="cand.id">
-                                            <option t-if="cand.id !== state.inspector?.id &amp;&amp; !state.form?.depend_on_ids.includes(cand.id)"
-                                                    t-att-value="cand.id" t-esc="taskLabel(cand.id)"/>
-                                        </t>
-                                    </select>
+                                <div class="fw-bold small text-uppercase text-muted mb-2">
+                                    Baseline
+                                    <span t-if="state.baseline?.name" class="badge bg-secondary ms-1"
+                                          t-esc="state.baseline.name"/>
                                 </div>
-                                <div>
-                                    <div class="o_cp_planner_inspector_label mb-1">Successors</div>
-                                    <div t-foreach="state.form?.dependent_ids || []" t-as="depId" t-key="depId"
-                                         class="o_cp_planner_dep_chip d-inline-flex align-items-center gap-1 me-1 mb-1">
-                                        <span t-esc="taskLabel(depId)"/>
-                                        <i class="fa fa-times" role="button" title="Remove"
-                                           t-on-click="() => this.removeSuccessor(depId)"/>
-                                    </div>
-                                    <select class="form-select form-select-sm"
-                                            t-att-value="state.form?.addSuccessorId"
-                                            t-on-change="addSuccessor">
-                                        <option value="">Add successor…</option>
-                                        <t t-foreach="state.tasks" t-as="cand" t-key="cand.id">
-                                            <option t-if="cand.id !== state.inspector?.id &amp;&amp; !state.form?.dependent_ids.includes(cand.id)"
-                                                    t-att-value="cand.id" t-esc="taskLabel(cand.id)"/>
-                                        </t>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="o_cp_planner_inspector_section mb-3">
-                                <div class="fw-bold small text-uppercase text-muted mb-2">Baseline vs Current</div>
                                 <t t-if="state.baseline?.has_line">
                                     <table class="o_cp_planner_baseline_table w-100 small">
                                         <thead>
@@ -249,54 +197,68 @@
                                             </tr>
                                         </tbody>
                                     </table>
+                                    <div class="d-flex justify-content-between small mt-2">
+                                        <span class="text-muted">Total Delay</span>
+                                        <span t-att-class="varianceClass(state.impact?.delay_project_impact)"
+                                              t-att-title="state.impact?.delay_impact_chain || ''"
+                                              t-esc="formatHours(state.impact?.delay_project_impact)"/>
+                                    </div>
+                                    <div class="d-flex justify-content-between small">
+                                        <span class="text-muted">Impact</span>
+                                        <span t-esc="impactStatusLabel"/>
+                                    </div>
                                 </t>
                                 <div t-else="" class="text-muted small fst-italic">
                                     <t t-if="state.baseline?.name">Task was not part of <t t-esc="state.baseline.name"/>.</t>
                                     <t t-else="">No baseline exists for this project yet.</t>
                                 </div>
-                            </div>
-                            <div class="o_cp_planner_inspector_section mb-3">
-                                <div class="fw-bold small text-uppercase text-muted mb-2">Impact</div>
-                                <div class="d-flex justify-content-between small mb-1">
-                                    <span class="text-muted">Baseline</span>
-                                    <span t-esc="state.baseline?.name || '—'"/>
-                                </div>
-                                <div class="d-flex justify-content-between small mb-1">
-                                    <span class="text-muted">Critical Path</span>
-                                    <span t-att-class="state.inspector?.is_critical ? 'text-danger fw-bold' : ''"
-                                          t-esc="state.inspector?.is_critical ? 'Yes' : 'No'"/>
-                                </div>
-                                <div class="d-flex justify-content-between small mb-1">
-                                    <span class="text-muted">Duration Variance</span>
-                                    <span t-att-class="varianceClass(state.impact?.delay_duration_variance)"
-                                          t-esc="formatHours(state.impact?.delay_duration_variance)"/>
-                                </div>
-                                <div class="d-flex justify-content-between small mb-1">
-                                    <span class="text-muted">Total Delay</span>
-                                    <span t-att-class="varianceClass(state.impact?.delay_project_impact)"
-                                          t-att-title="state.impact?.delay_impact_chain || ''"
-                                          t-esc="formatHours(state.impact?.delay_project_impact)"/>
-                                </div>
-                                <div class="d-flex justify-content-between small mb-2">
-                                    <span class="text-muted">Impact Status</span>
-                                    <span t-esc="impactStatusLabel"/>
-                                </div>
-                                <button type="button" class="btn btn-outline-secondary btn-sm w-100"
+                                <button type="button" class="btn btn-outline-secondary btn-sm w-100 mt-2"
                                         t-on-click="openBaselineHistory">View Baseline History</button>
                             </div>
                             <div class="o_cp_planner_inspector_section mb-3">
-                                <div class="fw-bold small text-uppercase text-muted mb-2">Project Information</div>
-                                <div class="d-flex justify-content-between small mb-1">
-                                    <span class="text-muted">Slack</span>
-                                    <span t-esc="(state.inspector?.critical_slack || 0) + ' days'"/>
+                                <div class="fw-bold small text-uppercase text-muted o_cp_planner_dep_toggle"
+                                     role="button" t-on-click="() => state.depOpen = !state.depOpen">
+                                    <i class="fa fa-fw"
+                                       t-att-class="state.depOpen ? 'fa-caret-down' : 'fa-caret-right'"/>
+                                    Dependencies
                                 </div>
-                                <div class="d-flex justify-content-between small mb-1">
-                                    <span class="text-muted">Planned Hours</span>
-                                    <span t-esc="(state.inspector?.allocated_hours || 0) + ' h'"/>
-                                </div>
-                                <div class="d-flex justify-content-between small">
-                                    <span class="text-muted">Actual Hours</span>
-                                    <span t-esc="(state.inspector?.effective_hours || 0) + ' h'"/>
+                                <div t-if="state.depOpen" class="mt-2">
+                                    <div class="mb-2">
+                                        <div class="o_cp_planner_inspector_label mb-1">Predecessors</div>
+                                        <div t-foreach="state.form?.depend_on_ids || []" t-as="depId" t-key="depId"
+                                             class="o_cp_planner_dep_chip d-inline-flex align-items-center gap-1 me-1 mb-1">
+                                            <span t-esc="taskLabel(depId)"/>
+                                            <i class="fa fa-times" role="button" title="Remove"
+                                               t-on-click="() => this.removePredecessor(depId)"/>
+                                        </div>
+                                        <select class="form-select form-select-sm"
+                                                t-att-value="state.form?.addPredecessorId"
+                                                t-on-change="addPredecessor">
+                                            <option value="">Add predecessor…</option>
+                                            <t t-foreach="state.tasks" t-as="cand" t-key="cand.id">
+                                                <option t-if="cand.id !== state.inspector?.id &amp;&amp; !state.form?.depend_on_ids.includes(cand.id)"
+                                                        t-att-value="cand.id" t-esc="taskLabel(cand.id)"/>
+                                            </t>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <div class="o_cp_planner_inspector_label mb-1">Successors</div>
+                                        <div t-foreach="state.form?.dependent_ids || []" t-as="depId" t-key="depId"
+                                             class="o_cp_planner_dep_chip d-inline-flex align-items-center gap-1 me-1 mb-1">
+                                            <span t-esc="taskLabel(depId)"/>
+                                            <i class="fa fa-times" role="button" title="Remove"
+                                               t-on-click="() => this.removeSuccessor(depId)"/>
+                                        </div>
+                                        <select class="form-select form-select-sm"
+                                                t-att-value="state.form?.addSuccessorId"
+                                                t-on-change="addSuccessor">
+                                            <option value="">Add successor…</option>
+                                            <t t-foreach="state.tasks" t-as="cand" t-key="cand.id">
+                                                <option t-if="cand.id !== state.inspector?.id &amp;&amp; !state.form?.dependent_ids.includes(cand.id)"
+                                                        t-att-value="cand.id" t-esc="taskLabel(cand.id)"/>
+                                            </t>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                         </t>
