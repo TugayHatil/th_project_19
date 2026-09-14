@@ -595,6 +595,13 @@ $o_cp_res_tl_label: 140px;
     border: 1px solid #714b67;
     border-radius: 2px;
 
+    // The committed-pending preview can be moved/resized before "Ata".
+    &.pending {
+        cursor: move;
+        outline: 1px dashed #714b67;
+        outline-offset: 1px;
+    }
+
     &.conflict {
         background: rgba(220, 53, 69, 0.3);
         border-color: #dc3545;
@@ -605,4 +612,9 @@ $o_cp_res_tl_label: 140px;
         border-color: #e8a33d;
         border-style: dashed;
     }
+}
+
+.o_cp_res_tl_date {
+    width: auto;
+    min-width: 130px;
 }

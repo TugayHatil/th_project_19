@@ -107,10 +107,12 @@ export class PlannerWorkspace extends Component {
             resWindow: null,
             resRequired: null,
             resSelOptKey: null,
-            // Timeline: scale, navigation anchor and live drag preview
+            // Timeline: scale, navigation anchor, live drag preview and the
+            // pending assignment awaiting the explicit "Ata" commit (BRD-23)
             resTlScale: "day",
             resTlAnchor: null,
             resTlDrag: null,
+            resTlPending: null,
         });
         this.scales = SCALES;
         this.resTlScales = { hour: _t("Hour"), day: _t("Day"), week: _t("Week") };
@@ -1005,6 +1007,7 @@ export class PlannerWorkspace extends Component {
         this.state.resEditingId = null;
         this.state.resTlAnchor = null;
         this.state.resTlDrag = null;
+        this.state.resTlPending = null;
         await this.loadResources();
     }
 
@@ -1054,6 +1057,8 @@ export class PlannerWorkspace extends Component {
     async selectRequirement(req) {
         this.state.resTlAnchor = null;
         this.state.resTlDrag = null;
+        this.state.resTlPending = null;
+        this.state.resSelOptKey = null;
         if (this.state.resSelReqId === req.id) {
             this.state.resSelReqId = null;
             this.state.resSelOptKey = null;
@@ -1066,7 +1071,6 @@ export class PlannerWorkspace extends Component {
 
     async loadResOptions(reqId) {
         this.state.resOptionsLoading = true;
-        this.state.resSelOptKey = null;
         this.state.resTlDrag = null;
         const range = this.resTlRange;
         try {
@@ -1162,15 +1166,22 @@ export class PlannerWorkspace extends Component {
         ) || null;
     }
 
-    selectCandidate(opt) {
+    // Selecting a candidate never assigns; a pending preview simply moves to
+    // the newly selected resource (BRD-23 §11/§12).
+    async selectCandidate(opt) {
         const key = this.resCandidateKey(opt);
         this.state.resSelOptKey = this.state.resSelOptKey === key ? null : key;
+        const pend = this.state.resTlPending;
+        if (pend) {
+            pend.conflict = this.resTlConflict(pend.startMs, pend.endMs);
+            await this.updateResTlPendingEst();
+        }
     }
 
     async assignResource(opt, startDt, endDt) {
         const req = this.resSelectedReq;
         if (!req) {
-            return;
+            return false;
         }
         try {
             await this.orm.call(
@@ -1187,9 +1198,10 @@ export class PlannerWorkspace extends Component {
             this.notification.add(
                 error.data?.message || _t("The resource could not be assigned."), { type: "danger" },
             );
-            return;
+            return false;
         }
         await this.refreshResources();
+        return true;
     }
 
     async unassignResource(assignmentId) {
@@ -1338,12 +1350,44 @@ export class PlannerWorkspace extends Component {
         await this.loadResOptions(this.state.resSelReqId);
     }
 
+    // Scale switching keeps the visible period: the anchor is derived from
+    // the range shown under the previous scale instead of resetting to the
+    // requirement (BRD-23 §2/§3).
     async setResTlScale(scale) {
         if (this.state.resTlScale === scale) {
             return;
         }
+        const range = this.resTlRange;
+        const cur = range ? range.start : new Date();
         this.state.resTlScale = scale;
-        this.state.resTlAnchor = null;
+        this.state.resTlAnchor = scale === "week"
+            ? startOfWeek(cur)
+            : new Date(cur.getFullYear(), cur.getMonth(), cur.getDate());
+        await this.loadResOptions(this.state.resSelReqId);
+    }
+
+    get resTlPickerValue() {
+        const range = this.resTlRange;
+        return range ? isoDay(range.start) : "";
+    }
+
+    // Direct date jump: hour view opens that day, day view centers the
+    // picked date inside the span, week view opens its week (BRD-23 §7).
+    async onResTlDatePick(ev) {
+        const val = ev.target.value;
+        if (!val) {
+            return;
+        }
+        const picked = parseDay(val);
+        if (this.state.resTlScale === "week") {
+            this.state.resTlAnchor = startOfWeek(picked);
+        } else if (this.state.resTlScale === "day") {
+            const range = this.resTlRange;
+            const span = range ? dayDiff(range.start, range.end) : 7;
+            this.state.resTlAnchor = addDays(picked, -Math.floor(span / 2));
+        } else {
+            this.state.resTlAnchor = picked;
+        }
         await this.loadResOptions(this.state.resSelReqId);
     }
 
@@ -1426,6 +1470,103 @@ export class PlannerWorkspace extends Component {
             : `${fmt(s)} → ${fmt(e)}`;
     }
 
+    // ---- Pending assignment (BRD-23) ---------------------------------------
+    // A released drag only becomes a preview; the server write waits for the
+    // explicit "Ata" click. The preview itself stays draggable/resizable and
+    // follows whichever candidate is selected.
+
+    resTlPendingStyle() {
+        const pend = this.state.resTlPending;
+        if (!pend) {
+            return "display:none";
+        }
+        return this.resTlMsToStyle(pend.startMs, pend.endMs);
+    }
+
+    resTlPendingClass() {
+        const pend = this.state.resTlPending;
+        return {
+            conflict: pend?.conflict,
+            outside: pend?.outside,
+        };
+    }
+
+    resTlPendingText() {
+        const pend = this.state.resTlPending;
+        if (!pend) {
+            return "";
+        }
+        const s = new Date(pend.startMs);
+        const e = new Date(pend.endMs);
+        const sameDay = isoDay(s) === isoDay(e);
+        const fmt = (d) => `${dayLabel(d)} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+        return sameDay
+            ? `${dayLabel(s)} ${pad2(s.getHours())}:${pad2(s.getMinutes())} – ${pad2(e.getHours())}:${pad2(e.getMinutes())}`
+            : `${fmt(s)} → ${fmt(e)}`;
+    }
+
+    resTlPendingDurationText() {
+        const pend = this.state.resTlPending;
+        if (!pend) {
+            return "";
+        }
+        const hrs = pend.estHours ?? (pend.endMs - pend.startMs) / 3600000;
+        return `${this.formatHours(hrs)} ${_t("planned")}`;
+    }
+
+    resTlPendingSet(s, e) {
+        const pend = this.state.resTlPending;
+        if (!pend) {
+            return;
+        }
+        pend.startMs = Math.min(s, e);
+        pend.endMs = Math.max(s, e);
+        pend.conflict = this.resTlConflict(pend.startMs, pend.endMs);
+        pend.outside = this.resTlOutside(pend.startMs, pend.endMs);
+    }
+
+    async updateResTlPendingEst() {
+        const pend = this.state.resTlPending;
+        const opt = this.resSelectedOption;
+        const req = this.resSelectedReq;
+        if (!pend || !opt || !req) {
+            return;
+        }
+        try {
+            pend.estHours = await this.orm.call(
+                "project.task", "planner_estimate_assignment_hours",
+                [this.state.resTask.id],
+                {
+                    requirement_id: req.id,
+                    employee_id: opt.employee_id || false,
+                    equipment_id: opt.equipment_id || false,
+                    date_start: fmtDt(new Date(pend.startMs)),
+                    date_end: fmtDt(new Date(pend.endMs)),
+                },
+            );
+        } catch {
+            pend.estHours = null;
+        }
+    }
+
+    async confirmResTlPending() {
+        const pend = this.state.resTlPending;
+        const opt = this.resSelectedOption;
+        if (!pend || !opt || pend.outside) {
+            return;
+        }
+        const ok = await this.assignResource(
+            opt, fmtDt(new Date(pend.startMs)), fmtDt(new Date(pend.endMs)),
+        );
+        if (ok) {
+            this.state.resTlPending = null;
+        }
+    }
+
+    cancelResTlPending() {
+        this.state.resTlPending = null;
+    }
+
     // ---- Timeline dragging -------------------------------------------------
 
     resTlPointMs(clientX, rect) {
@@ -1483,7 +1624,7 @@ export class PlannerWorkspace extends Component {
         // pointerdown; the required band does not block creation).
         if (
             ev.button !== 0 || !this.resSelectedOption
-            || ev.target.closest(".o_cp_res_tl_bar, .o_cp_res_tl_new")
+            || ev.target.closest(".o_cp_res_tl_bar, .o_cp_res_tl_new, .o_cp_res_tl_pending")
         ) {
             return;
         }
@@ -1515,6 +1656,29 @@ export class PlannerWorkspace extends Component {
             mode, item, rect,
             startX: ev.clientX,
             origS: s, origE: e,
+            moved: false,
+        };
+        this.bindResTlDrag();
+    }
+
+    // The pending preview is itself movable/resizable before commit —
+    // modes "pmove"/"pleft"/"pright" update resTlPending instead of writing.
+    onResTlPendingDown(ev) {
+        const pend = this.state.resTlPending;
+        if (!pend || ev.button !== 0) {
+            return;
+        }
+        ev.preventDefault();
+        ev.stopPropagation();
+        const barRect = ev.currentTarget.getBoundingClientRect();
+        const rect = ev.currentTarget.parentElement.getBoundingClientRect();
+        const offset = ev.clientX - barRect.left;
+        const mode = offset <= 6 ? "pleft"
+            : barRect.width - offset <= 6 ? "pright" : "pmove";
+        this.resTlDragging = {
+            mode, rect,
+            startX: ev.clientX,
+            origS: pend.startMs, origE: pend.endMs,
             moved: false,
         };
         this.bindResTlDrag();
@@ -1553,6 +1717,22 @@ export class PlannerWorkspace extends Component {
             return;
         }
         const delta = dx * msPerPx;
+        if (d.mode === "pmove") {
+            const unit = this.resTlUnitMs();
+            const shift = Math.round(delta / unit) * unit;
+            this.resTlPendingSet(d.origS + shift, d.origE + shift);
+            return;
+        }
+        if (d.mode === "pleft") {
+            const s = Math.min(this.resTlSnap(d.origS + delta, "start"), d.origE - 3600000);
+            this.resTlPendingSet(s, d.origE);
+            return;
+        }
+        if (d.mode === "pright") {
+            const e = Math.max(this.resTlSnap(d.origE + delta, "end"), d.origS + 3600000);
+            this.resTlPendingSet(d.origS, e);
+            return;
+        }
         if (d.mode === "move") {
             const unit = this.resTlUnitMs();
             const shift = Math.round(delta / unit) * unit;
@@ -1573,13 +1753,28 @@ export class PlannerWorkspace extends Component {
         const drag = this.state.resTlDrag;
         this.resTlDragging = null;
         this.state.resTlDrag = null;
-        if (!d?.moved || !drag || drag.endMs <= drag.startMs) {
+        if (!d?.moved) {
+            return;
+        }
+        if (d.mode.startsWith("p")) {
+            await this.updateResTlPendingEst();
+            return;
+        }
+        if (!drag || drag.endMs <= drag.startMs) {
             return;
         }
         const startDt = fmtDt(new Date(drag.startMs));
         const endDt = fmtDt(new Date(drag.endMs));
         if (d.mode === "create") {
-            await this.assignResource(this.resSelectedOption, startDt, endDt);
+            // Dragging only stages a preview — the "Ata" button commits it.
+            this.state.resTlPending = {
+                startMs: drag.startMs,
+                endMs: drag.endMs,
+                conflict: drag.conflict,
+                outside: drag.outside,
+                estHours: null,
+            };
+            await this.updateResTlPendingEst();
             return;
         }
         try {

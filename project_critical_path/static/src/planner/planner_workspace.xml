@@ -658,6 +658,11 @@
                                                         title="Next period"
                                                         t-on-click="() => this.resTlNavigate(1)">›</button>
                                             </div>
+                                            <input type="date"
+                                                   class="form-control form-control-sm ms-2 o_cp_res_tl_date"
+                                                   title="Jump to date"
+                                                   t-att-value="resTlPickerValue"
+                                                   t-on-change="onResTlDatePick"/>
                                             <div class="btn-group btn-group-sm ms-2">
                                                 <button t-foreach="['hour', 'day', 'week']" t-as="tlScale"
                                                         t-key="tlScale" type="button"
@@ -707,12 +712,47 @@
                                                      t-att-style="resTlDragStyle()"/>
                                             </div>
                                         </div>
+                                        <div t-if="state.resTlPending"
+                                             class="o_cp_res_tl_row d-flex align-items-center">
+                                            <span class="o_cp_res_tl_label text-primary small text-truncate"
+                                                  t-esc="resTlPendingText()"/>
+                                            <div class="o_cp_res_tl_track flex-grow-1">
+                                                <div class="o_cp_res_tl_new pending"
+                                                     t-att-class="resTlPendingClass()"
+                                                     t-att-style="resTlPendingStyle()"
+                                                     t-att-title="resTlPendingText()"
+                                                     t-on-pointerdown="onResTlPendingDown"/>
+                                            </div>
+                                        </div>
                                         <div t-if="!resSelectedOption.schedule.length &amp;&amp; !state.resTlDrag"
                                              class="text-muted small fst-italic mt-1">
                                             No existing assignments in this window — resource is free.
                                         </div>
+                                        <div t-if="state.resTlPending"
+                                             class="o_cp_res_tl_confirm border rounded d-flex align-items-center gap-2 flex-wrap mt-2 px-2 py-2">
+                                            <div class="small">
+                                                <strong>Planned assignment</strong> —
+                                                <t t-esc="resTlPendingText()"/>
+                                                <span class="text-muted"> · <t t-esc="resTlPendingDurationText()"/></span>
+                                                <div t-if="state.resTlPending.conflict"
+                                                     class="text-danger fw-bold">
+                                                    Overlaps an existing assignment of this resource.
+                                                </div>
+                                                <div t-if="state.resTlPending.outside"
+                                                     class="text-danger fw-bold">
+                                                    Outside the required period — the assignment cannot be saved.
+                                                </div>
+                                            </div>
+                                            <div class="ms-auto">
+                                                <button type="button" class="btn btn-primary btn-sm"
+                                                        t-att-disabled="state.resTlPending.outside"
+                                                        t-on-click="confirmResTlPending">Ata</button>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm ms-1"
+                                                        t-on-click="cancelResTlPending">İptal</button>
+                                            </div>
+                                        </div>
                                         <div class="text-muted small mt-1">
-                                            Drag across the timeline to assign · drag or resize your own assignments.
+                                            Drag across the timeline to preview an assignment, then click Ata · drag or resize your own assignments.
                                             <t t-if="state.resTlDrag?.conflict" class="text-danger fw-bold">
                                                 Overlaps an existing assignment.</t>
                                             <t t-if="state.resTlDrag?.outside" class="text-danger fw-bold">
