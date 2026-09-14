@@ -42,6 +42,16 @@ $o_cp_planner_header_height: 48px;
     &.selected {
         background: #dbeafe;
     }
+
+    &.parent .o_cp_planner_task_name {
+        font-weight: 700;
+    }
+}
+
+// Indented per WBS level (see template margin); the code column itself
+// stays fixed so hierarchy reads from the name area.
+.o_cp_planner_task_name {
+    min-width: 0; // lets text-truncate ellipsize inside the flex row
 }
 
 .o_cp_planner_toggle {

@@ -40,8 +40,7 @@
                     <div class="o_cp_planner_wbs_rows flex-grow-1 overflow-hidden" t-ref="wbsRows" t-on-scroll="onWbsScroll">
                         <div t-foreach="visibleTasks" t-as="task" t-key="task.id"
                              class="o_cp_planner_wbs_row d-flex align-items-center px-2"
-                             t-att-class="{selected: state.selectedId === task.id}"
-                             t-att-style="'padding-left:' + (8 + (task.wbs_level - 1) * 18) + 'px'"
+                             t-att-class="{selected: state.selectedId === task.id, parent: task.has_children}"
                              t-on-click="() => this.selectTask(task)"
                              t-on-dblclick="() => this.openTask(task)">
                             <span class="o_cp_planner_toggle" t-on-click="(ev) => this.toggleCollapse(task, ev)">
@@ -50,7 +49,9 @@
                                    t-att-class="state.collapsedIds.has(task.id) ? 'fa-caret-right' : 'fa-caret-down'"/>
                             </span>
                             <span class="o_cp_planner_wbs_code text-muted me-2" t-esc="task.wbs_code"/>
-                            <span class="text-truncate" t-esc="task.name"/>
+                            <span class="o_cp_planner_task_name text-truncate"
+                                  t-att-style="'margin-left:' + (Math.max((task.wbs_level || 1) - 1, 0) * 18) + 'px'"
+                                  t-esc="task.name"/>
                             <i t-if="task.is_critical"
                                class="fa fa-exclamation-triangle o_cp_planner_critical_icon ms-auto"
                                title="Critical Path"/>
