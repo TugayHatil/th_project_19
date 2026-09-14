@@ -131,3 +131,41 @@ class TestPlannerWorkspace(TransactionCase):
         detail = second.get_planner_detail()["task"]
         self.assertEqual(detail["date_start"], "2026-03-11")
         self.assertEqual(detail["date_stop"], "2026-03-15")
+
+    def test_get_planner_detail_includes_baseline_and_impact(self):
+        project = self.env["project.project"].create({"name": "Baseline detail"})
+        task = self._make_task(
+            project, "Baseline task",
+            date_assign="2026-03-01 09:00:00", date_deadline="2026-03-11 18:00:00",
+            allocated_hours=16.0,
+        )
+        project.action_create_critical_path_baseline()
+        # Current plan moves later; baseline snapshot must stay frozen.
+        task.write({"date_deadline": "2026-03-14 18:00:00"})
+
+        detail = task.get_planner_detail()
+        baseline = detail["baseline"]
+        impact = detail["impact"]
+
+        self.assertTrue(baseline["has_line"])
+        self.assertEqual(baseline["name"], "v1.0")
+        self.assertEqual(baseline["date_start"], "2026-03-01")
+        self.assertEqual(baseline["date_stop"], "2026-03-11")
+        self.assertEqual(baseline["duration_days"], 10)
+        self.assertEqual(baseline["allocated_hours"], 16.0)
+        # Current values still come from the live task
+        self.assertEqual(detail["task"]["date_stop"], "2026-03-14")
+        self.assertIn("delay_project_impact", impact)
+        self.assertIn("delay_duration_variance", impact)
+        self.assertIn("delay_impact_status", impact)
+
+    def test_get_planner_detail_without_baseline(self):
+        project = self.env["project.project"].create({"name": "No baseline"})
+        task = self._make_task(project, "Unbaselined task")
+
+        baseline = task.get_planner_detail()["baseline"]
+
+        self.assertFalse(baseline["name"])
+        self.assertFalse(baseline["has_line"])
+        self.assertFalse(baseline["date_start"])
+        self.assertFalse(baseline["duration_days"])

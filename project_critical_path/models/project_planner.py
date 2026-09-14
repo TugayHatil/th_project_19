@@ -81,6 +81,10 @@ class ProjectTaskPlanner(models.Model):
         else:
             stages = self.env["project.task.type"].search([])
         users = self.env["res.users"].search([("share", "=", False)], order="name")
+        baseline = project.delay_impact_baseline_id if project else self.env["project.critical.path.baseline"]
+        line = baseline.line_ids.filtered(lambda item: item.task_id == self)[:1] if baseline else False
+        baseline_start = _serialize_planner_day(line, line.planned_date_begin) if line else False
+        baseline_stop = _serialize_planner_day(line, line.planned_date_end) if line else False
         return {
             "task": {
                 "id": self.id,
@@ -98,6 +102,27 @@ class ProjectTaskPlanner(models.Model):
                 "user_ids": self.user_ids.ids,
                 "depend_on_ids": self.depend_on_ids.ids,
                 "dependent_ids": self.dependent_ids.ids,
+            },
+            "baseline": {
+                "name": baseline.name if baseline else False,
+                "has_line": bool(line),
+                "date_start": baseline_start,
+                "date_stop": baseline_stop,
+                # day-based duration, same convention as the inspector duration
+                "duration_days": (
+                    (datetime.strptime(baseline_stop, "%Y-%m-%d")
+                     - datetime.strptime(baseline_start, "%Y-%m-%d")).days
+                    if baseline_start and baseline_stop else False
+                ),
+                "allocated_hours": line.allocated_hours if line else False,
+                "is_critical": line.is_critical if line else None,
+            },
+            "impact": {
+                "delay_baseline_duration": self.delay_baseline_duration or 0.0,
+                "delay_duration_variance": self.delay_duration_variance or 0.0,
+                "delay_project_impact": self.delay_project_impact or 0.0,
+                "delay_impact_status": self.delay_impact_status or False,
+                "delay_impact_chain": self.delay_impact_chain or False,
             },
             "options": {
                 "stages": [{"id": stage.id, "name": stage.name} for stage in stages],

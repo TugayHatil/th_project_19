@@ -211,6 +211,77 @@
                                 </div>
                             </div>
                             <div class="o_cp_planner_inspector_section mb-3">
+                                <div class="fw-bold small text-uppercase text-muted mb-2">Baseline vs Current</div>
+                                <t t-if="state.baseline?.has_line">
+                                    <table class="o_cp_planner_baseline_table w-100 small">
+                                        <thead>
+                                            <tr class="text-muted">
+                                                <th/>
+                                                <th class="text-end">Baseline</th>
+                                                <th class="text-end">Current</th>
+                                                <th class="text-end">Variance</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td class="text-muted">Start</td>
+                                                <td class="text-end" t-esc="formatDay(state.baseline.date_start)"/>
+                                                <td class="text-end" t-esc="formatDay(state.form?.date_start)"/>
+                                                <td class="text-end" t-att-class="varianceClass(baselineStartVariance)"
+                                                    t-esc="formatDayVariance(baselineStartVariance)"/>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-muted">Finish</td>
+                                                <td class="text-end" t-esc="formatDay(state.baseline.date_stop)"/>
+                                                <td class="text-end" t-esc="formatDay(state.form?.date_stop)"/>
+                                                <td class="text-end" t-att-class="varianceClass(baselineStopVariance)"
+                                                    t-esc="formatDayVariance(baselineStopVariance)"/>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-muted">Duration</td>
+                                                <td class="text-end" t-esc="formatDayCount(state.baseline.duration_days)"/>
+                                                <td class="text-end" t-esc="formatDayCount(state.form?.duration_days)"/>
+                                                <td class="text-end" t-att-class="varianceClass(baselineDurationVariance)"
+                                                    t-esc="formatDayVariance(baselineDurationVariance)"/>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </t>
+                                <div t-else="" class="text-muted small fst-italic">
+                                    <t t-if="state.baseline?.name">Task was not part of <t t-esc="state.baseline.name"/>.</t>
+                                    <t t-else="">No baseline exists for this project yet.</t>
+                                </div>
+                            </div>
+                            <div class="o_cp_planner_inspector_section mb-3">
+                                <div class="fw-bold small text-uppercase text-muted mb-2">Impact</div>
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <span class="text-muted">Baseline</span>
+                                    <span t-esc="state.baseline?.name || '—'"/>
+                                </div>
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <span class="text-muted">Critical Path</span>
+                                    <span t-att-class="state.inspector?.is_critical ? 'text-danger fw-bold' : ''"
+                                          t-esc="state.inspector?.is_critical ? 'Yes' : 'No'"/>
+                                </div>
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <span class="text-muted">Duration Variance</span>
+                                    <span t-att-class="varianceClass(state.impact?.delay_duration_variance)"
+                                          t-esc="formatHours(state.impact?.delay_duration_variance)"/>
+                                </div>
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <span class="text-muted">Total Delay</span>
+                                    <span t-att-class="varianceClass(state.impact?.delay_project_impact)"
+                                          t-att-title="state.impact?.delay_impact_chain || ''"
+                                          t-esc="formatHours(state.impact?.delay_project_impact)"/>
+                                </div>
+                                <div class="d-flex justify-content-between small mb-2">
+                                    <span class="text-muted">Impact Status</span>
+                                    <span t-esc="impactStatusLabel"/>
+                                </div>
+                                <button type="button" class="btn btn-outline-secondary btn-sm w-100"
+                                        t-on-click="openBaselineHistory">View Baseline History</button>
+                            </div>
+                            <div class="o_cp_planner_inspector_section mb-3">
                                 <div class="fw-bold small text-uppercase text-muted mb-2">Project Information</div>
                                 <div class="d-flex justify-content-between small mb-1">
                                     <span class="text-muted">Slack</span>

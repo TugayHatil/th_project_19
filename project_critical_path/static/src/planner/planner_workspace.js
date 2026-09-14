@@ -52,6 +52,8 @@ export class PlannerWorkspace extends Component {
             inspectorOpen: false,
             inspectorLoading: false,
             inspector: null,
+            baseline: null,
+            impact: null,
             options: { stages: [], users: [] },
             form: null,
             saving: false,
@@ -259,6 +261,8 @@ export class PlannerWorkspace extends Component {
         try {
             const detail = await this.orm.call("project.task", "get_planner_detail", [taskId]);
             this.state.inspector = detail.task;
+            this.state.baseline = detail.baseline;
+            this.state.impact = detail.impact;
             this.state.options = detail.options;
             const t = detail.task;
             this.state.form = {
@@ -286,6 +290,104 @@ export class PlannerWorkspace extends Component {
 
     closeInspector() {
         this.state.inspectorOpen = false;
+    }
+
+    // ---- Baseline vs Current ----------------------------------------------
+
+    formatDay(str) {
+        if (!str) {
+            return "—";
+        }
+        return dayLabel(parseDay(str));
+    }
+
+    formatDayCount(days) {
+        if (days === false || days === null || days === undefined || Number.isNaN(days)) {
+            return "—";
+        }
+        return `${days}d`;
+    }
+
+    formatDayVariance(days) {
+        if (days === false || days === null || days === undefined || Number.isNaN(days)) {
+            return "—";
+        }
+        if (days > 0) {
+            return `+${days}d`;
+        }
+        if (days < 0) {
+            return `−${Math.abs(days)}d`;
+        }
+        return "0d";
+    }
+
+    // A positive schedule variance means a delay: highlight it; a negative one
+    // means the task moved earlier or got shorter.
+    varianceClass(days) {
+        if (days > 0) {
+            return "o_cp_planner_var_delay";
+        }
+        if (days < 0) {
+            return "o_cp_planner_var_gain";
+        }
+        return "text-muted";
+    }
+
+    get baselineStartVariance() {
+        const { form, baseline } = this.state;
+        if (!form?.date_start || !baseline?.date_start) {
+            return false;
+        }
+        return dayDiff(parseDay(baseline.date_start), parseDay(form.date_start));
+    }
+
+    get baselineStopVariance() {
+        const { form, baseline } = this.state;
+        if (!form?.date_stop || !baseline?.date_stop) {
+            return false;
+        }
+        return dayDiff(parseDay(baseline.date_stop), parseDay(form.date_stop));
+    }
+
+    get baselineDurationVariance() {
+        const { form, baseline } = this.state;
+        if (form?.duration_days === undefined || baseline?.duration_days === false || baseline?.duration_days === undefined) {
+            return false;
+        }
+        return form.duration_days - baseline.duration_days;
+    }
+
+    formatHours(hours) {
+        if (hours === false || hours === null || hours === undefined) {
+            return "—";
+        }
+        const sign = hours > 0 ? "+" : hours < 0 ? "−" : "";
+        const abs = Math.abs(hours);
+        return `${sign}${Math.round(abs * 10) / 10}h`;
+    }
+
+    get impactStatusLabel() {
+        const labels = {
+            critical_impact: _t("Critical Impact"),
+            within_slack: _t("Within Slack"),
+            duration_reduced: _t("Duration Reduced"),
+            no_impact: _t("No Impact"),
+        };
+        return labels[this.state.impact?.delay_impact_status] || "—";
+    }
+
+    async openBaselineHistory() {
+        if (!this.state.projectId) {
+            return;
+        }
+        try {
+            const action = await this.orm.call(
+                "project.project", "action_view_critical_path_baselines", [this.state.projectId],
+            );
+            this.action.doAction(action);
+        } catch (error) {
+            this.notification.add(error.data?.message || _t("Baseline history could not be opened."), { type: "danger" });
+        }
     }
 
     // ---- Quick Inspector form handlers ------------------------------------

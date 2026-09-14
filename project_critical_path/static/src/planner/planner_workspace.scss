@@ -180,3 +180,29 @@ $o_cp_planner_inspector_width: 320px;
         }
     }
 }
+
+/* Baseline vs Current table + variance feedback */
+
+.o_cp_planner_baseline_table {
+    th, td {
+        padding: 2px 4px;
+        font-weight: normal;
+    }
+
+    thead th {
+        border-bottom: 1px solid #dee2e6;
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+}
+
+.o_cp_planner_var_delay {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+.o_cp_planner_var_gain {
+    color: #198754;
+    font-weight: 600;
+}
