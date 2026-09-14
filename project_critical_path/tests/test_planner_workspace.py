@@ -294,6 +294,57 @@ class TestPlannerWorkspace(TransactionCase):
         self.assertEqual(row["effective_hours"], 0.0)  # no timesheets yet
         self.assertIn("progress", row)
 
+    def test_planner_resources_requirement_and_assignment_flow(self):
+        """Planner resource APIs wrap the existing requirement/assignment
+        models — create, assign, summarize and unassign."""
+        project = self.env["project.project"].create({"name": "Planner resources"})
+        task = self._make_task(
+            project, "Resourced task",
+            date_assign="2026-03-02 09:00:00", date_deadline="2026-03-06 18:00:00",
+        )
+        role = self.env["project.resource.role"].create(
+            {"name": "Formen", "category": "human"}
+        )
+        employee = self.env["hr.employee"].create(
+            {"name": "Ahmet Yilmaz", "resource_role_ids": [(4, role.id)]}
+        )
+
+        task.planner_save_requirement({
+            "role_id": role.id, "quantity": 2, "planned_hours": 80.0,
+        })
+        res = task.get_planner_resources()
+        self.assertEqual(len(res["requirements"]), 1)
+        req = res["requirements"][0]
+        self.assertEqual(req["status"], "waiting")
+        self.assertEqual(req["assigned_quantity"], 0)
+        # Requirement dates default to the task dates via the create hook.
+        self.assertEqual(req["date_start"], "2026-03-02")
+        self.assertEqual(req["date_end"], "2026-03-06")
+
+        options = task.planner_get_assignment_options(req["id"])
+        self.assertTrue(
+            any(opt["employee_id"] == employee.id for opt in options)
+        )
+
+        task.planner_assign_resource(req["id"], employee_id=employee.id)
+        req = task.get_planner_resources()["requirements"][0]
+        self.assertEqual(req["assigned_quantity"], 1)
+        self.assertEqual(req["status"], "partial")  # 1 of 2 assigned
+        self.assertEqual(req["assignments"][0]["name"], "Ahmet Yilmaz")
+
+        # The compact row summary feeds the WBS badge.
+        row = next(
+            item for item in project.get_planner_data()["tasks"]
+            if item["id"] == task.id
+        )
+        self.assertEqual(row["resources"]["human"], 1)
+        self.assertEqual(row["resources"]["open"], 1)
+
+        task.planner_unassign_resource(req["assignments"][0]["id"])
+        req = task.get_planner_resources()["requirements"][0]
+        self.assertEqual(req["assigned_quantity"], 0)
+        self.assertEqual(req["status"], "waiting")
+
     def test_get_planner_detail_includes_baseline_and_impact(self):
         project = self.env["project.project"].create({"name": "Baseline detail"})
         task = self._make_task(

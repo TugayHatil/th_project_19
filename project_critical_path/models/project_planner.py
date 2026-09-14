@@ -5,6 +5,7 @@ from datetime import datetime
 from pytz import UTC, timezone
 
 from odoo import Command, _, api, fields, models
+from odoo.exceptions import UserError
 
 
 def _serialize_planner_day(record, value):
@@ -60,6 +61,24 @@ class ProjectProjectPlanner(models.Model):
         baseline_by_task = {
             line.task_id.id: line for line in baseline.line_ids if line.task_id
         } if baseline else {}
+        # Compact per-task resource summary for the row badges.
+        requirements = self.env["project.task.resource.requirement"].search(
+            [("project_id", "=", self.id)]
+        )
+        resources_by_task = {}
+        for requirement in requirements:
+            entry = resources_by_task.setdefault(
+                requirement.task_id.id,
+                {"human": 0, "equipment": 0, "open": 0, "names": []},
+            )
+            if requirement.assignment_status != "assigned":
+                entry["open"] += 1
+            for assignment in requirement.assignment_ids:
+                key = "human" if requirement.role_id.category == "human" else "equipment"
+                entry[key] += 1
+                entry["names"].append(
+                    (assignment.employee_id or assignment.equipment_id).display_name
+                )
         return {
             "project": {"id": self.id, "name": self.display_name},
             "tasks": [
@@ -85,6 +104,9 @@ class ProjectProjectPlanner(models.Model):
                     "baseline_stop": (
                         _serialize_planner_day(self, baseline_by_task[task.id].planned_date_end)
                         if baseline_by_task.get(task.id) else False
+                    ),
+                    "resources": resources_by_task.get(
+                        task.id, {"human": 0, "equipment": 0, "open": 0, "names": []},
                     ),
                 }
                 for task in ordered
@@ -298,6 +320,159 @@ class ProjectTaskPlanner(models.Model):
         if "dependent_ids" in values:
             vals["dependent_ids"] = [Command.set(values["dependent_ids"] or [])]
         self.write(vals)
+        return True
+
+    # ---- Planner Resources (BRD-21) ---------------------------------------
+    # Thin serialization/mutation over the existing resource models
+    # (project.task.resource.requirement / .assignment / project.resource.planner).
+
+    def get_planner_resources(self):
+        """Requirements, assignments and role options for the Resources
+        section of the Quick Inspector."""
+        self.ensure_one()
+        Requirement = self.env["project.task.resource.requirement"]
+        roles = self.env["project.resource.role"].search([("active", "=", True)])
+        return {
+            "requirements": [
+                {
+                    "id": requirement.id,
+                    "role_id": requirement.role_id.id,
+                    "role_name": requirement.role_id.name or "",
+                    "category": requirement.role_id.category,
+                    "quantity": requirement.quantity or 0.0,
+                    "planned_hours": requirement.planned_hours or 0.0,
+                    "date_start": _serialize_planner_day(self, requirement.date_start),
+                    "date_end": _serialize_planner_day(self, requirement.date_end),
+                    "description": requirement.description or "",
+                    "assigned_quantity": requirement.assigned_quantity,
+                    "assigned_hours": requirement.assigned_hours,
+                    "status": requirement.assignment_status,
+                    "assignments": [
+                        {
+                            "id": assignment.id,
+                            "employee_id": assignment.employee_id.id or False,
+                            "equipment_id": assignment.equipment_id.id or False,
+                            "name": (
+                                assignment.employee_id or assignment.equipment_id
+                            ).display_name,
+                            "planned_hours": assignment.planned_hours or 0.0,
+                        }
+                        for assignment in requirement.assignment_ids
+                    ],
+                }
+                for requirement in Requirement.search([("task_id", "=", self.id)])
+            ],
+            "roles": [
+                {"id": role.id, "name": role.name, "category": role.category}
+                for role in roles
+            ],
+            "task_dates": {
+                "date_start": _serialize_planner_day(self, self.date_assign),
+                "date_stop": _serialize_planner_day(self, self.date_deadline),
+            },
+        }
+
+    def _get_planner_requirement(self, requirement_id):
+        requirement = self.env["project.task.resource.requirement"].browse(
+            requirement_id
+        ).exists()
+        if not requirement or requirement.task_id != self:
+            raise UserError(_("This resource requirement does not belong to the task."))
+        return requirement
+
+    def planner_save_requirement(self, values):
+        """Create or update a requirement from the Planner resource section."""
+        self.ensure_one()
+        Requirement = self.env["project.task.resource.requirement"]
+        vals = {}
+        if "role_id" in values:
+            vals["role_id"] = values["role_id"] or False
+        if "quantity" in values:
+            vals["quantity"] = values["quantity"] or 1.0
+        if "planned_hours" in values:
+            vals["planned_hours"] = values["planned_hours"] or 0.0
+        if "description" in values:
+            vals["description"] = values["description"]
+        if "date_start" in values:
+            vals["date_start"] = (
+                _local_day_to_utc(self, values["date_start"], None, 9)
+                if values["date_start"] else False
+            )
+        if "date_end" in values:
+            vals["date_end"] = (
+                _local_day_to_utc(self, values["date_end"], None, 18)
+                if values["date_end"] else False
+            )
+        req_id = values.get("id")
+        if req_id:
+            requirement = self._get_planner_requirement(req_id)
+            requirement.write(vals)
+            return True
+        vals["task_id"] = self.id
+        # Empty dates fall back to the task dates via the model's create hook.
+        for key in ("date_start", "date_end"):
+            if key in vals and not vals[key]:
+                vals.pop(key)
+        Requirement.create(vals)
+        return True
+
+    def planner_delete_requirement(self, requirement_id):
+        self.ensure_one()
+        self._get_planner_requirement(requirement_id).unlink()
+        return True
+
+    def planner_get_assignment_options(self, requirement_id):
+        """Eligible employees/equipment with availability for one requirement.
+
+        Reuses the existing transient Team Planner so availability, booked
+        hours and conflict summaries come from the same logic as the task
+        form's resource planner.
+        """
+        self.ensure_one()
+        requirement = self._get_planner_requirement(requirement_id)
+        planner = self.env["project.resource.planner"].create_for_requirement(requirement)
+        options = [
+            {
+                "employee_id": line.employee_id.id or False,
+                "equipment_id": line.equipment_id.id or False,
+                "name": line.resource_name,
+                "availability": line.availability_status,
+                "booked_hours": line.booked_hours,
+                "available_hours": line.available_hours,
+                "booking_summary": line.booking_summary or "",
+            }
+            for line in planner.line_ids
+        ]
+        planner.unlink()
+        return options
+
+    def planner_assign_resource(self, requirement_id, employee_id=False, equipment_id=False):
+        """Assign an employee or equipment to a requirement."""
+        self.ensure_one()
+        requirement = self._get_planner_requirement(requirement_id)
+        date_start = requirement.date_start or self.date_assign
+        date_end = requirement.date_end or self.date_deadline
+        if not date_start or not date_end:
+            raise UserError(_(
+                "Set task or requirement dates before assigning resources."
+            ))
+        self.env["project.task.resource.assignment"].create({
+            "requirement_id": requirement.id,
+            "employee_id": employee_id or False,
+            "equipment_id": equipment_id or False,
+            "date_start": date_start,
+            "date_end": date_end,
+        })
+        return True
+
+    def planner_unassign_resource(self, assignment_id):
+        self.ensure_one()
+        assignment = self.env["project.task.resource.assignment"].browse(
+            assignment_id
+        ).exists()
+        if not assignment or assignment.task_id != self:
+            raise UserError(_("This assignment does not belong to the task."))
+        assignment.unlink()
         return True
 
 

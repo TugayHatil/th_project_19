@@ -87,6 +87,21 @@
                             <span t-if="state.showFinishCol" class="o_cp_planner_date_col small"
                                   t-att-class="{'ms-auto': !state.showStartCol}"
                                   t-esc="formatColDate(currentDates(task).stop)"/>
+                            <span class="o_cp_planner_rescell" role="button"
+                                  t-att-class="{'ms-auto': !task.is_critical &amp;&amp; !state.showStartCol &amp;&amp; !state.showFinishCol}"
+                                  t-att-title="task.resources?.names?.length ? task.resources.names.join('&#10;') : 'Manage resources'"
+                                  t-on-click="(ev) => this.openTaskResources(task, ev)">
+                                <t t-if="task.resources &amp;&amp; (task.resources.human || task.resources.equipment)">
+                                    <i class="fa fa-user"/><t t-esc="task.resources.human"/>
+                                    <t t-if="task.resources.equipment">
+                                        <i class="fa fa-wrench ms-1"/><t t-esc="task.resources.equipment"/>
+                                    </t>
+                                    <i t-if="task.resources.open"
+                                       class="fa fa-exclamation-circle o_cp_planner_res_warn ms-1"
+                                       title="Unassigned or partially assigned requirements"/>
+                                </t>
+                                <i t-else="" class="fa fa-plus"/>
+                            </span>
                         </div>
                         <div t-if="!state.loading &amp;&amp; !visibleTasks.length" class="p-3 text-muted">No tasks</div>
                     </div>
@@ -330,6 +345,119 @@
                                             </t>
                                         </select>
                                     </div>
+                                </div>
+                            </div>
+                            <div class="o_cp_planner_inspector_section mb-3">
+                                <div class="fw-bold small text-uppercase text-muted o_cp_planner_dep_toggle"
+                                     role="button" t-on-click="toggleResources">
+                                    <i class="fa fa-fw"
+                                       t-att-class="state.resOpen ? 'fa-caret-down' : 'fa-caret-right'"/>
+                                    Resources
+                                </div>
+                                <div t-if="state.resOpen" class="mt-2">
+                                    <div t-if="state.resLoading" class="text-muted small">Loading…</div>
+                                    <t t-else="">
+                                        <div t-foreach="state.resData?.requirements || []" t-as="req" t-key="req.id"
+                                             class="o_cp_planner_res_req mb-2">
+                                            <div class="d-flex align-items-center gap-1">
+                                                <i class="fa fa-fw"
+                                                   t-att-class="req.category === 'human' ? 'fa-user' : 'fa-wrench'"/>
+                                                <span class="small fw-bold flex-grow-1 text-truncate"
+                                                      t-esc="req.role_name"/>
+                                                <span class="small text-muted"
+                                                      t-esc="req.assigned_quantity + ' / ' + req.quantity"/>
+                                                <i class="fa" t-att-class="resStatusIcon(req)"/>
+                                                <i class="fa fa-pencil o_cp_planner_res_action" role="button"
+                                                   title="Edit requirement"
+                                                   t-on-click="() => this.openRequirementForm(req)"/>
+                                                <i class="fa fa-times o_cp_planner_res_action" role="button"
+                                                   title="Remove requirement"
+                                                   t-on-click="() => this.deleteRequirement(req.id)"/>
+                                            </div>
+                                            <div class="text-muted small">
+                                                <t t-if="req.planned_hours"><t t-esc="formatHours(req.planned_hours)"/> · </t>
+                                                <t t-esc="formatDay(req.date_start)"/> – <t t-esc="formatDay(req.date_end)"/>
+                                            </div>
+                                            <div class="mt-1">
+                                                <div t-foreach="req.assignments" t-as="asg" t-key="asg.id"
+                                                     class="o_cp_planner_dep_chip d-inline-flex align-items-center gap-1 me-1 mb-1">
+                                                    <span t-esc="asg.name"/>
+                                                    <i class="fa fa-times" role="button" title="Unassign"
+                                                       t-on-click="() => this.unassignResource(asg.id)"/>
+                                                </div>
+                                                <span class="small text-primary" role="button"
+                                                      t-on-click="() => this.toggleAssignPicker(req)">+ Assign</span>
+                                            </div>
+                                            <div t-if="state.resAssignFor === req.id"
+                                                 class="o_cp_planner_res_options border rounded mt-1">
+                                                <div t-if="state.resOptionsLoading" class="text-muted small p-2">Loading…</div>
+                                                <t t-else="" t-foreach="state.resOptions" t-as="opt"
+                                                   t-key="opt.employee_id || opt.equipment_id">
+                                                    <div class="o_cp_planner_res_option d-flex align-items-center gap-2 px-2 py-1"
+                                                         role="button" t-att-title="opt.booking_summary"
+                                                         t-on-click="() => this.assignResource(req, opt)">
+                                                        <i class="fa fa-fw"
+                                                           t-att-class="availabilityClass(opt.availability) + ' ' + (req.category === 'human' ? 'fa-user' : 'fa-wrench')"/>
+                                                        <span class="small text-truncate flex-grow-1" t-esc="opt.name"/>
+                                                        <i t-if="opt.availability !== 'fully_available'"
+                                                           class="fa fa-exclamation-triangle text-warning"
+                                                           title="Booked in this period"/>
+                                                    </div>
+                                                </t>
+                                                <div t-if="!state.resOptionsLoading &amp;&amp; !state.resOptions.length"
+                                                     class="text-muted small p-2 fst-italic">
+                                                    No matching resources for this role.
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div t-if="!state.resData?.requirements?.length &amp;&amp; !state.resAddOpen"
+                                             class="text-muted small fst-italic mb-1">
+                                            No resource requirements for this task.
+                                        </div>
+                                        <span t-if="!state.resAddOpen" class="small text-primary" role="button"
+                                              t-on-click="() => this.openRequirementForm()">+ Add Requirement</span>
+                                        <div t-else="" class="o_cp_planner_res_form border rounded p-2 mt-2">
+                                            <select class="form-select form-select-sm mb-1"
+                                                    t-att-value="state.resForm.role_id"
+                                                    t-on-change="(ev) => state.resForm.role_id = ev.target.value">
+                                                <option value="">Resource role…</option>
+                                                <t t-foreach="state.resData?.roles || []" t-as="role" t-key="role.id">
+                                                    <option t-att-value="role.id"
+                                                            t-esc="role.name + (role.category === 'equipment' ? ' (Equipment)' : '')"/>
+                                                </t>
+                                            </select>
+                                            <div class="d-flex gap-1 mb-1">
+                                                <input type="number" class="form-control form-control-sm"
+                                                       placeholder="Qty" min="0" step="1"
+                                                       t-att-value="state.resForm.quantity"
+                                                       t-on-change="(ev) => state.resForm.quantity = ev.target.value"/>
+                                                <input type="number" class="form-control form-control-sm"
+                                                       placeholder="Planned hours" min="0" step="0.5"
+                                                       t-att-value="state.resForm.planned_hours"
+                                                       t-on-change="(ev) => state.resForm.planned_hours = ev.target.value"/>
+                                            </div>
+                                            <div class="d-flex gap-1 mb-1">
+                                                <input type="date" class="form-control form-control-sm"
+                                                       title="Start (defaults to task start)"
+                                                       t-att-value="state.resForm.date_start"
+                                                       t-on-change="(ev) => state.resForm.date_start = ev.target.value"/>
+                                                <input type="date" class="form-control form-control-sm"
+                                                       title="End (defaults to task finish)"
+                                                       t-att-value="state.resForm.date_end"
+                                                       t-on-change="(ev) => state.resForm.date_end = ev.target.value"/>
+                                            </div>
+                                            <input type="text" class="form-control form-control-sm mb-2"
+                                                   placeholder="Description (optional)"
+                                                   t-att-value="state.resForm.description"
+                                                   t-on-change="(ev) => state.resForm.description = ev.target.value"/>
+                                            <div class="d-flex gap-1">
+                                                <button type="button" class="btn btn-primary btn-sm"
+                                                        t-on-click="saveRequirement">Save</button>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm"
+                                                        t-on-click="() => { state.resAddOpen = false; state.resEditingId = null; }">Cancel</button>
+                                            </div>
+                                        </div>
+                                    </t>
                                 </div>
                             </div>
                         </t>

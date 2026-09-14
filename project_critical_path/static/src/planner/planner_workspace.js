@@ -78,6 +78,16 @@ export class PlannerWorkspace extends Component {
             colMenuOpen: false,
             showStartCol: false,
             showFinishCol: false,
+            // Inspector Resources section (BRD-21)
+            resOpen: false,
+            resLoading: false,
+            resData: null,
+            resAddOpen: false,
+            resEditingId: null,
+            resForm: null,
+            resAssignFor: null,
+            resOptions: [],
+            resOptionsLoading: false,
         });
         this.scales = SCALES;
         useExternalListener(document.body, "keydown", (ev) => {
@@ -450,6 +460,10 @@ export class PlannerWorkspace extends Component {
             this.state.impact = detail.impact;
             this.state.options = detail.options;
             this.state.depOpen = false;
+            this.state.resOpen = false;
+            this.state.resData = null;
+            this.state.resAddOpen = false;
+            this.state.resAssignFor = null;
             const t = detail.task;
             this.state.form = {
                 name: t.name,
@@ -944,6 +958,188 @@ export class PlannerWorkspace extends Component {
         }
         const date = parseDay(str);
         return `${pad2(date.getDate())}.${pad2(date.getMonth() + 1)}.${String(date.getFullYear()).slice(2)}`;
+    }
+
+    // ---- Resources (BRD-21) -------------------------------------------------
+    // Requirements and assignments live in the existing resource models; the
+    // Planner only serializes and mutates them through planner_* methods.
+
+    async openTaskResources(task, ev) {
+        ev.stopPropagation();
+        this.state.selectedId = task.id;
+        this.state.inspectorOpen = true;
+        await this.loadInspector(task.id);
+        this.state.resOpen = true;
+        await this.loadResources();
+    }
+
+    async toggleResources() {
+        this.state.resOpen = !this.state.resOpen;
+        if (this.state.resOpen && !this.state.resData) {
+            await this.loadResources();
+        }
+    }
+
+    async loadResources() {
+        if (!this.state.inspector?.id) {
+            return;
+        }
+        this.state.resLoading = true;
+        try {
+            this.state.resData = await this.orm.call(
+                "project.task", "get_planner_resources", [this.state.inspector.id],
+            );
+        } catch (error) {
+            this.notification.add(
+                error.data?.message || _t("Resources could not be loaded."), { type: "danger" },
+            );
+            this.state.resData = { requirements: [], roles: [], task_dates: {} };
+        } finally {
+            this.state.resLoading = false;
+        }
+    }
+
+    // Resource mutations change the row badges, so both the inspector data
+    // and the planner rows refresh afterwards.
+    async refreshResources() {
+        await this.loadResources();
+        await this.reloadPlannerData();
+    }
+
+    openRequirementForm(req = null) {
+        const dates = this.state.resData?.task_dates || {};
+        this.state.resEditingId = req?.id || null;
+        this.state.resForm = {
+            role_id: req?.role_id || "",
+            quantity: req?.quantity ?? 1,
+            planned_hours: req?.planned_hours ?? 0,
+            description: req?.description || "",
+            date_start: req?.date_start || dates.date_start || "",
+            date_end: req?.date_end || dates.date_stop || "",
+        };
+        this.state.resAddOpen = true;
+    }
+
+    async saveRequirement() {
+        const form = this.state.resForm;
+        if (!form?.role_id) {
+            this.notification.add(_t("Select a resource role first."), { type: "warning" });
+            return;
+        }
+        try {
+            await this.orm.call(
+                "project.task", "planner_save_requirement", [this.state.inspector.id],
+                {
+                    values: {
+                        id: this.state.resEditingId || false,
+                        role_id: parseInt(form.role_id, 10),
+                        quantity: parseFloat(form.quantity) || 1,
+                        planned_hours: parseFloat(form.planned_hours) || 0,
+                        description: form.description || "",
+                        date_start: form.date_start || false,
+                        date_end: form.date_end || false,
+                    },
+                },
+            );
+        } catch (error) {
+            this.notification.add(
+                error.data?.message || _t("The requirement could not be saved."), { type: "danger" },
+            );
+            return;
+        }
+        this.state.resAddOpen = false;
+        this.state.resEditingId = null;
+        await this.refreshResources();
+    }
+
+    async deleteRequirement(reqId) {
+        try {
+            await this.orm.call(
+                "project.task", "planner_delete_requirement", [this.state.inspector.id],
+                { requirement_id: reqId },
+            );
+        } catch (error) {
+            this.notification.add(
+                error.data?.message || _t("The requirement could not be removed."), { type: "danger" },
+            );
+            return;
+        }
+        await this.refreshResources();
+    }
+
+    async toggleAssignPicker(req) {
+        if (this.state.resAssignFor === req.id) {
+            this.state.resAssignFor = null;
+            return;
+        }
+        this.state.resAssignFor = req.id;
+        this.state.resOptionsLoading = true;
+        try {
+            this.state.resOptions = await this.orm.call(
+                "project.task", "planner_get_assignment_options", [this.state.inspector.id],
+                { requirement_id: req.id },
+            );
+        } catch (error) {
+            this.state.resOptions = [];
+            this.notification.add(
+                error.data?.message || _t("Resources could not be loaded."), { type: "danger" },
+            );
+        } finally {
+            this.state.resOptionsLoading = false;
+        }
+    }
+
+    async assignResource(req, opt) {
+        try {
+            await this.orm.call(
+                "project.task", "planner_assign_resource", [this.state.inspector.id],
+                {
+                    requirement_id: req.id,
+                    employee_id: opt.employee_id || false,
+                    equipment_id: opt.equipment_id || false,
+                },
+            );
+        } catch (error) {
+            this.notification.add(
+                error.data?.message || _t("The resource could not be assigned."), { type: "danger" },
+            );
+            return;
+        }
+        this.state.resAssignFor = null;
+        await this.refreshResources();
+    }
+
+    async unassignResource(assignmentId) {
+        try {
+            await this.orm.call(
+                "project.task", "planner_unassign_resource", [this.state.inspector.id],
+                { assignment_id: assignmentId },
+            );
+        } catch (error) {
+            this.notification.add(
+                error.data?.message || _t("The assignment could not be removed."), { type: "danger" },
+            );
+            return;
+        }
+        await this.refreshResources();
+    }
+
+    resStatusIcon(req) {
+        if (req.status === "assigned") {
+            return "fa-check text-success";
+        }
+        if (req.status === "partial") {
+            return "fa-exclamation-triangle text-warning";
+        }
+        return "fa-exclamation-circle text-danger";
+    }
+
+    availabilityClass(status) {
+        return {
+            fully_available: "text-success",
+            partially_available: "text-warning",
+            unavailable: "text-danger",
+        }[status] || "text-muted";
     }
 
     gripStyle(task, side) {
