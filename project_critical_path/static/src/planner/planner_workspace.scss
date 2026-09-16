@@ -289,13 +289,6 @@ $o_cp_planner_bar_critical: #e8a33d;
     pointer-events: none;
 }
 
-.o_cp_planner_critical_icon {
-    color: $o_cp_planner_bar_critical;
-    font-size: 0.7rem;
-    flex: 0 0 auto;
-    line-height: inherit;
-}
-
 // Baseline ghost bar sits in the lower part of the row so date shifts stay
 // visible; its span that extends past the current bar marks removed time.
 .o_cp_planner_baseline_bar {

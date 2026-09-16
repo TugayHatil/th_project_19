@@ -84,17 +84,13 @@
                                   t-att-class="{done: task.is_done}"
                                   t-att-style="'margin-left:' + (Math.max((task.wbs_level || 1) - 1, 0) * 18) + 'px'"
                                   t-esc="task.name"/>
-                            <i t-if="task.is_critical"
-                               class="fa fa-exclamation-triangle o_cp_planner_critical_icon"
-                               t-att-class="{'ms-auto': !state.showStartCol &amp;&amp; !state.showFinishCol}"
-                               title="Critical Path"/>
                             <span t-if="state.showStartCol" class="o_cp_planner_date_col ms-auto small"
                                   t-esc="formatColDate(currentDates(task).start)"/>
                             <span t-if="state.showFinishCol" class="o_cp_planner_date_col small"
                                   t-att-class="{'ms-auto': !state.showStartCol}"
                                   t-esc="formatColDate(currentDates(task).stop)"/>
                             <span class="o_cp_planner_rescell" role="button"
-                                  t-att-class="{'ms-auto': !task.is_critical &amp;&amp; !state.showStartCol &amp;&amp; !state.showFinishCol}"
+                                  t-att-class="{'ms-auto': !state.showStartCol &amp;&amp; !state.showFinishCol}"
                                   t-att-title="resTooltip(task)"
                                   t-on-click="(ev) => this.openResourceWorkspace(task, ev)">
                                 <t t-if="task.resources &amp;&amp; (task.resources.human || task.resources.equipment)">
