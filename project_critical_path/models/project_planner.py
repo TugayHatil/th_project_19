@@ -186,6 +186,9 @@ class ProjectProjectPlanner(models.Model):
                 "delta_hours": delta,
                 "old_hours": prev.allocated_hours if prev else False,
                 "new_hours": line.allocated_hours,
+                # Strictly longer than the frozen previous snapshot — drives
+                # the light-red row highlight in Baseline History.
+                "duration_increased": prev is not None and delta > 0,
                 "entered_cp": entered,
                 "left_cp": left,
                 "new_task": prev is None,
@@ -202,6 +205,7 @@ class ProjectProjectPlanner(models.Model):
                     "delta_hours": False,
                     "old_hours": line.allocated_hours,
                     "new_hours": False,
+                    "duration_increased": False,
                     "entered_cp": False,
                     "left_cp": False,
                     "new_task": False,

@@ -278,6 +278,32 @@ class TestPlannerWorkspace(TransactionCase):
             any(item["task_id"] == stable.id for item in summary["changes"])
         )
 
+    def test_planner_baseline_summary_flags_only_grown_durations(self):
+        """The light-red row highlight follows frozen snapshot durations:
+        grown → flagged, unchanged → no row, shrunk → row without flag,
+        brand-new tasks have no previous duration so they are not flagged."""
+        project = self.env["project.project"].create({"name": "Grown durations"})
+        grew = self._make_task(project, "Task A", allocated_hours=8.0)
+        stable = self._make_task(project, "Task B", allocated_hours=10.0)
+        shrank = self._make_task(project, "Task C", allocated_hours=12.0)
+        project.action_create_critical_path_baseline()
+
+        grew.allocated_hours = 11.0
+        shrank.allocated_hours = 10.0
+        added = self._make_task(project, "Task D", allocated_hours=5.0)
+        project.action_create_critical_path_baseline()
+        latest = project.critical_path_baseline_ids[0]
+
+        summary = project.get_planner_baseline_summary(latest.id)
+        by_task = {item["task_id"]: item for item in summary["changes"]}
+
+        self.assertTrue(by_task[grew.id]["duration_increased"])
+        self.assertNotIn(stable.id, by_task)
+        self.assertIn(shrank.id, by_task)
+        self.assertFalse(by_task[shrank.id]["duration_increased"])
+        self.assertIn(added.id, by_task)
+        self.assertFalse(by_task[added.id]["duration_increased"])
+
     def test_planner_baseline_summary_initial_has_no_changes(self):
         project = self.env["project.project"].create({"name": "Initial summary"})
         self._make_task(project, "First task", allocated_hours=8.0)

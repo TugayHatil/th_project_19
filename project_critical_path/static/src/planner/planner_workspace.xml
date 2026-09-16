@@ -438,6 +438,7 @@
                                 </div>
                                 <div t-foreach="state.historyDetail.changes" t-as="change" t-key="change.task_id"
                                      class="o_cp_planner_history_change" role="button"
+                                     t-att-class="{'o_cp_planner_history_change_grew': change.duration_increased}"
                                      t-on-click="() => this.openHistoryTask(change)">
                                     <div class="d-flex justify-content-between">
                                         <span class="text-truncate" t-esc="change.task_name"/>

@@ -436,6 +436,16 @@ $o_cp_planner_inspector_width: 320px;
     &:hover {
         background: #f8f9fa;
     }
+
+    // Pastel red: the task's duration grew vs the previous baseline. Meant
+    // to visually separate longer tasks, not to read as an alarm.
+    &.o_cp_planner_history_change_grew {
+        background: #fdeeef;
+
+        &:hover {
+            background: #fae3e5;
+        }
+    }
 }
 
 .o_cp_planner_dep_toggle {
