@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="project_resource_role_list" model="ir.ui.view">
+        <field name="name">project.resource.role.list</field>
+        <field name="model">project.resource.role</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="category"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="project_resource_role_form" model="ir.ui.view">
+        <field name="name">project.resource.role.form</field>
+        <field name="model">project.resource.role</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="category"/>
+                        <field name="active" invisible="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_project_resource_role" model="ir.actions.act_window">
+        <field name="name">Resource Roles</field>
+        <field name="res_model">project.resource.role</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_project_resource_role"
+              name="Resource Roles"
+              parent="project.menu_project_config"
+              action="action_project_resource_role"
+              sequence="40"/>
+</odoo>

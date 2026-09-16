@@ -768,3 +768,9 @@ msgstr "Gespeichert — die neue Position überschneidet sich mit einer anderen 
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
 msgid "Current finish"
 msgstr "Aktuelles Ende"
+
+#. module: project_critical_path
+#: model:ir.actions.act_window,name:project_critical_path.action_project_resource_role
+#: model:ir.ui.menu,name:project_critical_path.menu_project_resource_role
+msgid "Resource Roles"
+msgstr "Ressourcenrollen"

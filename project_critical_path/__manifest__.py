@@ -14,6 +14,7 @@
         "views/project_project_views.xml",
         "views/project_task_kanban.xml",
         "views/project_planner_views.xml",
+        "views/project_resource_role_views.xml",
     ],
     "demo": [
         "demo/project_wbs_demo.xml",

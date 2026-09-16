@@ -768,3 +768,9 @@ msgstr "Kaydedildi — yeni konum bu kaynağın başka bir atamasıyla çakış�
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
 msgid "Current finish"
 msgstr "Güncel bitiş"
+
+#. module: project_critical_path
+#: model:ir.actions.act_window,name:project_critical_path.action_project_resource_role
+#: model:ir.ui.menu,name:project_critical_path.menu_project_resource_role
+msgid "Resource Roles"
+msgstr "Kaynak Rolleri"
