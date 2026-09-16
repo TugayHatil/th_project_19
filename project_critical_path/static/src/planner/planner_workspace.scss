@@ -231,19 +231,22 @@ $o_cp_planner_bar_critical: #e8a33d;
     }
 }
 
-// Completed tasks keep their dates/labels but read as passive: the bar is
-// faded one step further (over both the purple and the amber critical
-// fill) and the WBS name muted — still legible, clearly not active. The
-// CP/slack chip and the green check keep their full-strength colors.
+// Completed tasks keep their dates/labels but read as passive: a pale
+// pastel-green bar (desaturated, so it never competes with the critical
+// amber or the red CP chip) and a muted WBS name — still legible, clearly
+// not active. The CP/slack chip and the green check keep their
+// full-strength colors.
 .o_cp_planner_bar.done {
-    opacity: 0.5;
     cursor: default;
-    // Faded diagonal texture over the original purple/amber fill — reads as
-    // "inactive" at first glance without losing the bar color entirely.
+    background: #dff0dc;
+    border: 1px solid #c3dcc0;
+    box-sizing: border-box;
+    box-shadow: none; // drop the critical inner shadow — it muddies the pastel fill
+    // Faint diagonal texture keeps the "finished" look without extra ink.
     background-image: repeating-linear-gradient(
         45deg,
-        rgba(255, 255, 255, 0.65) 0,
-        rgba(255, 255, 255, 0.65) 4px,
+        rgba(255, 255, 255, 0.55) 0,
+        rgba(255, 255, 255, 0.55) 4px,
         transparent 4px,
         transparent 8px
     );
