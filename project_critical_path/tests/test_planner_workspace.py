@@ -122,6 +122,26 @@ class TestPlannerWorkspace(TransactionCase):
         self.assertAlmostEqual(rows["2.1"]["critical_slack"], 2.0)
         self.assertFalse(rows["2.1"]["is_critical"])
 
+    def test_planner_data_marks_done_tasks_by_state(self):
+        """Done is decided by the Odoo task state ('1_done'), never by
+        progress — a 100% active task stays active, a done task at 80%
+        stays done."""
+        project = self.env["project.project"].create({"name": "Done flags"})
+        done = self._make_task(project, "Finished task")
+        done.state = "1_done"
+        partial = self._make_task(project, "Done state, partial progress", progress=0.8)
+        partial.state = "1_done"
+        full = self._make_task(project, "Full progress, still active", progress=1.0)
+
+        rows = {row["name"]: row for row in project.get_planner_data()["tasks"]}
+
+        self.assertTrue(rows["Finished task"]["is_done"])
+        self.assertTrue(rows["Done state, partial progress"]["is_done"])
+        self.assertFalse(rows["Full progress, still active"]["is_done"])
+
+        # Done tasks still take part in the critical-path calculation.
+        self.assertIn("critical_slack", rows["Finished task"])
+
     def test_planner_data_serializes_missing_dates_as_false(self):
         project = self.env["project.project"].create({"name": "Undated planner"})
         self._make_task(project, "No dates task")

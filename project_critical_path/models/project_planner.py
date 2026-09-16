@@ -106,6 +106,8 @@ class ProjectProjectPlanner(models.Model):
                     "effective_hours": getattr(task, "effective_hours", 0.0) or 0.0,
                     "is_critical": bool(task.is_critical),
                     "critical_slack": task.critical_slack or 0.0,
+                    # Done is the Odoo task state, never a progress threshold
+                    "is_done": task.state == "1_done",
                     "depend_on_ids": task.depend_on_ids.ids,
                     "baseline_name": baseline.name if baseline_by_task.get(task.id) else False,
                     "baseline_start": (

@@ -903,9 +903,9 @@ export class PlannerWorkspace extends Component {
         return `+${slack}h`;
     }
 
-    // Right edge of the chip anchored just before the bar — translateX(-100%)
-    // keeps it outside the bar without measuring the chip width.
-    slackStyle(task) {
+    // Right edge of the lead-in cluster anchored just before the bar —
+    // translateX(-100%) keeps it outside the bar without measuring widths.
+    barLeadStyle(task) {
         const bar = this.barGeometry(task);
         if (!bar) {
             return "display:none";
@@ -916,7 +916,7 @@ export class PlannerWorkspace extends Component {
     // ---- Task bar drag & resize -------------------------------------------
 
     onBarPointerDown(task, mode, ev) {
-        if (!task.date_start || !task.date_stop || ev.button !== 0) {
+        if (!task.date_start || !task.date_stop || task.is_done || ev.button !== 0) {
             return;
         }
         ev.preventDefault();

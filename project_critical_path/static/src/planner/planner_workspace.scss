@@ -199,12 +199,22 @@ $o_cp_planner_bar_critical: #e8a33d;
     z-index: 3;
 }
 
-// Slack/float chip anchored to the left edge of the bar: a light-blue
-// "+Nh" for non-critical tasks, a light-red "CP" on the critical path.
-// pointer-events:none so it never blocks the left resize grip.
-.o_cp_planner_slack {
+// Lead-in cluster pinned just before the bar: the slack chip followed by
+// the done checkmark. pointer-events:none so it never blocks the grips.
+.o_cp_planner_barlead {
     position: absolute;
     top: 9px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+// Slack/float chip: light-blue "+Nh" for non-critical tasks, light-red
+// "CP" on the critical path.
+.o_cp_planner_slack {
     height: 14px;
     line-height: 14px;
     font-size: 0.62rem;
@@ -212,7 +222,6 @@ $o_cp_planner_bar_critical: #e8a33d;
     padding: 0 4px;
     border-radius: 3px;
     white-space: nowrap;
-    pointer-events: none;
     background: #e8f0fb;
     color: #2b6cb0;
 
@@ -220,6 +229,24 @@ $o_cp_planner_bar_critical: #e8a33d;
         background: #fdecec;
         color: #c0392b;
     }
+}
+
+// Completed tasks keep their dates/labels but read as passive: dimmed
+// bar (over both the purple and the amber critical fill), muted WBS name,
+// green check in the lead-in cluster.
+.o_cp_planner_bar.done {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.o_cp_planner_task_name.done {
+    color: #98a2b3;
+}
+
+.o_cp_planner_done_icon {
+    color: #198754;
+    font-size: 0.7rem;
+    line-height: 14px;
 }
 
 // Execution info text immediately right of the bar; never blocks bar/grips.

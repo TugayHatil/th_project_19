@@ -81,6 +81,7 @@
                             </span>
                             <span class="o_cp_planner_wbs_code text-muted me-2" t-esc="task.wbs_code"/>
                             <span class="o_cp_planner_task_name text-truncate"
+                                  t-att-class="{done: task.is_done}"
                                   t-att-style="'margin-left:' + (Math.max((task.wbs_level || 1) - 1, 0) * 18) + 'px'"
                                   t-esc="task.name"/>
                             <i t-if="task.is_critical"
@@ -139,15 +140,19 @@
                                          class="o_cp_planner_baseline_bar"
                                          t-att-style="baselineStyle(task)"
                                          t-att-title="baselineTooltip(task)"/>
-                                    <div t-if="state.slackVisible &amp;&amp; task.date_start &amp;&amp; task.date_stop"
-                                         class="o_cp_planner_slack"
-                                         t-att-class="{critical: task.is_critical}"
-                                         t-att-style="slackStyle(task)"
-                                         t-att-title="slackText(task)"
-                                         t-esc="slackText(task)"/>
+                                    <div t-if="task.date_start &amp;&amp; task.date_stop &amp;&amp; (state.slackVisible || task.is_done)"
+                                         class="o_cp_planner_barlead"
+                                         t-att-style="barLeadStyle(task)">
+                                        <span t-if="state.slackVisible"
+                                              class="o_cp_planner_slack"
+                                              t-att-class="{critical: task.is_critical}"
+                                              t-att-title="slackText(task)"
+                                              t-esc="slackText(task)"/>
+                                        <i t-if="task.is_done" class="fa fa-check o_cp_planner_done_icon"/>
+                                    </div>
                                     <div t-if="task.date_start &amp;&amp; task.date_stop"
                                          class="o_cp_planner_bar"
-                                         t-att-class="{selected: state.selectedId === task.id, critical: task.is_critical, dragging: state.drag?.taskId === task.id}"
+                                         t-att-class="{selected: state.selectedId === task.id, critical: task.is_critical, done: task.is_done, dragging: state.drag?.taskId === task.id}"
                                          t-att-style="barStyle(task)"
                                          t-att-title="task.is_critical ? task.name + ' — Critical Path' : task.name"
                                          t-on-pointerdown="(ev) => this.onBarPointerDown(task, 'move', ev)"/>
@@ -156,7 +161,7 @@
                                          t-att-style="varianceStyle(task)"
                                          t-att-title="varianceTooltip(task)"
                                          t-on-pointerdown="(ev) => this.onBarPointerDown(task, 'move', ev)"/>
-                                    <div t-if="task.date_start &amp;&amp; task.date_stop"
+                                    <div t-if="task.date_start &amp;&amp; task.date_stop &amp;&amp; !task.is_done"
                                          class="o_cp_planner_grip o_cp_planner_grip_left"
                                          t-att-style="gripStyle(task, 'left')"
                                          title="Change start"
@@ -165,7 +170,7 @@
                                          class="o_cp_planner_bar_info"
                                          t-att-style="barInfoStyle(task)"
                                          t-esc="barInfoText(task)"/>
-                                    <div t-if="task.date_start &amp;&amp; task.date_stop"
+                                    <div t-if="task.date_start &amp;&amp; task.date_stop &amp;&amp; !task.is_done"
                                          class="o_cp_planner_grip o_cp_planner_grip_right"
                                          t-att-style="gripStyle(task, 'right')"
                                          title="Change finish"
