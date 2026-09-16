@@ -49,9 +49,12 @@ $o_cp_planner_header_height: 48px;
 }
 
 // Indented per WBS level (see template margin); the code column itself
-// stays fixed so hierarchy reads from the name area.
+// stays fixed so hierarchy reads from the name area. Same font as the
+// WBS code so the row reads as one uniform line.
 .o_cp_planner_task_name {
     min-width: 0; // lets text-truncate ellipsize inside the flex row
+    font-family: monospace;
+    font-size: 0.85em;
 }
 
 // Optional Start/Finish columns — fixed compact width so the task name keeps
