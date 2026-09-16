@@ -341,22 +341,44 @@ class ProjectProject(models.Model):
         """Return the standard task dependency graph once for all calculations.
 
         WBS work packages (tasks with children) are summary containers: only
-        leaf tasks and their real dependencies drive the schedule, so a parent
-        can never become a fake critical task (BRD-25). Dependencies pointing
-        at parents are dropped with the parent itself.
+        leaf tasks drive the schedule, so a parent can never become a fake
+        critical task (BRD-25). A dependency declared on a container is not
+        dropped though — it is redirected to the leaf descendants on both
+        sides, so "Phase A → Phase B" still chains the real work.
         """
         self.ensure_one()
         tasks = self.env["project.task"].with_context(active_test=False).search(
             [("project_id", "=", self.id)], order="id",
         )
-        parent_ids = {task.parent_id.id for task in tasks if task.parent_id}
         task_by_id = {task.id: task for task in tasks}
-        schedulable = tasks.filtered(lambda task: task.id not in parent_ids)
-        task_ids = {task.id for task in schedulable}
-        predecessors = {
-            task.id: {dependency.id for dependency in task.depend_on_ids if dependency.id in task_ids}
-            for task in schedulable
-        }
+        children_map = {}
+        for task in tasks:
+            if task.parent_id:
+                children_map.setdefault(task.parent_id.id, []).append(task.id)
+        parent_ids = set(children_map)
+        task_ids = set(task_by_id) - parent_ids
+
+        def leaf_ids(task_id):
+            """Leaf descendants of a task inside the project (itself if leaf)."""
+            leaves, stack = set(), [task_id]
+            while stack:
+                current = stack.pop()
+                if current in children_map:
+                    stack.extend(children_map[current])
+                elif current in task_by_id:
+                    leaves.add(current)
+            return leaves
+
+        predecessors = {task_id: set() for task_id in task_ids}
+        for task in tasks:
+            expanded_preds = {
+                leaf_id
+                for dependency in task.depend_on_ids
+                for leaf_id in leaf_ids(dependency.id)
+            }
+            targets = leaf_ids(task.id) if task.id in parent_ids else {task.id}
+            for target_id in targets & task_ids:
+                predecessors[target_id] |= expanded_preds - {target_id}
         successors = {task_id: set() for task_id in task_ids}
         for task_id, dependency_ids in predecessors.items():
             for dependency_id in dependency_ids:

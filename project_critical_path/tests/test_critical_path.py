@@ -133,6 +133,28 @@ class TestCriticalPath(TransactionCase):
         self.assertTrue(task_b.is_critical)
         self.assertNotIn(parent.id, project.critical_path_ids.task_ids.ids)
 
+    def test_dependencies_on_parents_flow_down_to_leaf_children(self):
+        """BRD-25: a dependency declared on a WBS container is redirected to
+        its leaf descendants, so phase-level links still chain the real work."""
+        project = self.env["project.project"].create({"name": "Phase deps"})
+        phase_a = self.env["project.task"].create({"name": "Phase A", "project_id": project.id})
+        phase_b = self.env["project.task"].create({"name": "Phase B", "project_id": project.id, "depend_on_ids": [(4, phase_a.id)]})
+        a1 = self.env["project.task"].create({"name": "A1", "project_id": project.id, "parent_id": phase_a.id, "allocated_hours": 4})
+        a2 = self.env["project.task"].create({"name": "A2", "project_id": project.id, "parent_id": phase_a.id, "allocated_hours": 6})
+        b1 = self.env["project.task"].create({"name": "B1", "project_id": project.id, "parent_id": phase_b.id, "allocated_hours": 5})
+
+        project.action_calculate_critical_paths()
+
+        # Phase B waits for all of Phase A: B1's predecessors are A1 and A2.
+        self.assertEqual(set(b1.depend_on_ids.ids), {phase_a.id})  # untouched record
+        self.assertEqual(project.critical_path_duration, 11)
+        self.assertEqual(project.critical_path_ids.task_path, "A2 → B1")
+        self.assertTrue(a2.is_critical)
+        self.assertTrue(b1.is_critical)
+        self.assertFalse(a1.is_critical)  # 2h of slack next to A2
+        self.assertFalse(phase_a.is_critical)
+        self.assertFalse(phase_b.is_critical)
+
     def test_baseline_is_an_immutable_plan_snapshot(self):
         project = self.env["project.project"].create({"name": "Baseline test"})
         first = self.env["project.task"].create({
