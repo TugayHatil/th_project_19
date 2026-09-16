@@ -497,8 +497,11 @@ export class PlannerWorkspace extends Component {
                 name: t.name,
                 date_start: t.date_start || "",
                 date_stop: t.date_stop || "",
+                // duration_days counts inclusive days — a bar covering N day
+                // cells is an N-day task (BRD-25 keeps it synced to
+                // allocated_hours via hours_per_day).
                 duration_days: t.date_start && t.date_stop
-                    ? dayDiff(parseDay(t.date_start), parseDay(t.date_stop))
+                    ? dayDiff(parseDay(t.date_start), parseDay(t.date_stop)) + 1
                     : 0,
                 progress: t.progress,
                 user_id: (t.user_ids && t.user_ids[0]) || false,
@@ -623,7 +626,9 @@ export class PlannerWorkspace extends Component {
         const form = this.state.form;
         form.date_start = ev.target.value;
         if (form.date_start) {
-            form.date_stop = isoDay(addDays(parseDay(form.date_start), form.duration_days || 0));
+            form.date_stop = isoDay(addDays(
+                parseDay(form.date_start), Math.max((form.duration_days || 1) - 1, 0),
+            ));
         }
     }
 
@@ -631,7 +636,9 @@ export class PlannerWorkspace extends Component {
         const form = this.state.form;
         form.date_stop = ev.target.value;
         if (form.date_stop && form.date_start) {
-            form.duration_days = Math.max(dayDiff(parseDay(form.date_start), parseDay(form.date_stop)), 0);
+            form.duration_days = Math.max(
+                dayDiff(parseDay(form.date_start), parseDay(form.date_stop)) + 1, 0,
+            );
         }
     }
 
@@ -639,7 +646,9 @@ export class PlannerWorkspace extends Component {
         const form = this.state.form;
         form.duration_days = Math.max(Number(ev.target.value) || 0, 0);
         if (form.date_start) {
-            form.date_stop = isoDay(addDays(parseDay(form.date_start), form.duration_days));
+            form.date_stop = isoDay(addDays(
+                parseDay(form.date_start), Math.max(form.duration_days - 1, 0),
+            ));
         }
     }
 
@@ -827,7 +836,7 @@ export class PlannerWorkspace extends Component {
                 values: {
                     date_start: start,
                     date_stop: stop,
-                    duration_days: dayDiff(parseDay(start), parseDay(stop)),
+                    duration_days: dayDiff(parseDay(start), parseDay(stop)) + 1,
                 },
             });
         } catch (error) {
@@ -1957,7 +1966,7 @@ export class PlannerWorkspace extends Component {
         const stop = parseDay(drag.stop);
         return {
             style: `left:${bar.left}px;top:${Math.max(drag.rowIdx * PLANNER_ROW_H - 22, 0)}px`,
-            text: `${dayLabel(start)} – ${dayLabel(stop)} · ${dayDiff(start, stop)}d`,
+            text: `${dayLabel(start)} – ${dayLabel(stop)} · ${dayDiff(start, stop) + 1}d`,
         };
     }
 

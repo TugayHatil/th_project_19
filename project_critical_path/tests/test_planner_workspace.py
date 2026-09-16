@@ -136,7 +136,7 @@ class TestPlannerWorkspace(TransactionCase):
             "name": "Approval v2",
             "date_start": "2026-03-11",
             "date_stop": "2026-03-15",
-            "duration_days": 4,
+            "duration_days": 5,
             "progress": 45,
             "stage_id": stage.id,
             "user_ids": [self.env.user.id],
@@ -159,7 +159,7 @@ class TestPlannerWorkspace(TransactionCase):
             _planner_hours_per_day,
         )
         self.assertAlmostEqual(
-            second.allocated_hours, 4 * _planner_hours_per_day(second), places=2,
+            second.allocated_hours, 5 * _planner_hours_per_day(second), places=2,
         )
 
     def test_update_planner_task_keeps_allocated_hours_when_duration_unchanged(self):
@@ -176,7 +176,7 @@ class TestPlannerWorkspace(TransactionCase):
             "name": "Renamed only",
             "date_start": "2026-03-01",
             "date_stop": "2026-03-11",
-            "duration_days": 10,
+            "duration_days": 11,  # inclusive span 2026-03-01 → 2026-03-11
         })
 
         self.assertAlmostEqual(task.allocated_hours, 16.0, places=2)
@@ -194,7 +194,7 @@ class TestPlannerWorkspace(TransactionCase):
         task.update_planner_task({
             "date_start": "2026-03-03",
             "date_stop": "2026-03-13",
-            "duration_days": 10,  # same span as before -> a move, not a resize
+            "duration_days": 11,  # same inclusive span as before -> a move
         })
 
         detail = task.get_planner_detail()["task"]
@@ -407,7 +407,7 @@ class TestPlannerWorkspace(TransactionCase):
         self.assertEqual(baseline["name"], "v1.0")
         self.assertEqual(baseline["date_start"], "2026-03-01")
         self.assertEqual(baseline["date_stop"], "2026-03-11")
-        self.assertEqual(baseline["duration_days"], 10)
+        self.assertEqual(baseline["duration_days"], 11)
         self.assertEqual(baseline["allocated_hours"], 16.0)
         # Current values still come from the live task
         self.assertEqual(detail["task"]["date_stop"], "2026-03-14")

@@ -269,10 +269,11 @@ class ProjectTaskPlanner(models.Model):
                 "has_line": bool(line),
                 "date_start": baseline_start,
                 "date_stop": baseline_stop,
-                # day-based duration, same convention as the inspector duration
+                # inclusive day-based duration, same convention as the
+                # inspector duration field
                 "duration_days": (
                     (datetime.strptime(baseline_stop, "%Y-%m-%d")
-                     - datetime.strptime(baseline_start, "%Y-%m-%d")).days
+                     - datetime.strptime(baseline_start, "%Y-%m-%d")).days + 1
                     if baseline_start and baseline_stop else False
                 ),
                 "allocated_hours": line.allocated_hours if line else False,
@@ -308,13 +309,15 @@ class ProjectTaskPlanner(models.Model):
             vals["date_deadline"] = _local_day_to_utc(self, values["date_stop"], self.date_deadline, 18)
         # Keep allocated_hours (the duration used by critical-path, delay-impact
         # and baseline comparisons) in sync when the inspector duration changes.
+        # ``duration_days`` is inclusive — a bar covering N day cells is an
+        # N-day task, matching how the Gantt renders it.
         days = values.get("duration_days")
         if values.get("date_start") and values.get("date_stop") and days not in (None, False):
             stored_start = _serialize_planner_day(self, self.date_assign)
             stored_stop = _serialize_planner_day(self, self.date_deadline)
             stored_days = (
                 (datetime.strptime(stored_stop, "%Y-%m-%d")
-                 - datetime.strptime(stored_start, "%Y-%m-%d")).days
+                 - datetime.strptime(stored_start, "%Y-%m-%d")).days + 1
                 if stored_start and stored_stop else None
             )
             if float(days) != stored_days:

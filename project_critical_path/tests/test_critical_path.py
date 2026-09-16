@@ -155,6 +155,48 @@ class TestCriticalPath(TransactionCase):
         self.assertFalse(phase_a.is_critical)
         self.assertFalse(phase_b.is_critical)
 
+    def test_planner_resize_syncs_duration_and_recalculates_path(self):
+        """BRD-25 AC: resizing a bar writes the new span to allocated_hours
+        so the critical path immediately recalculates from the current
+        planned duration — the GTR parallel-branch scenario."""
+        project = self.env["project.project"].create({"name": "GTR scenario"})
+        task_a = self.env["project.task"].create({"name": "A", "project_id": project.id, "allocated_hours": 8})
+        task_b = self.env["project.task"].create({"name": "B", "project_id": project.id, "allocated_hours": 16, "depend_on_ids": [(4, task_a.id)]})
+        task_c = self.env["project.task"].create({"name": "C", "project_id": project.id, "allocated_hours": 8, "depend_on_ids": [(4, task_a.id)]})
+        task_d = self.env["project.task"].create({
+            "name": "D", "project_id": project.id, "allocated_hours": 8,
+            "depend_on_ids": [(4, task_b.id)],
+            "date_assign": "2026-03-16 09:00:00", "date_deadline": "2026-03-16 18:00:00",
+        })
+        task_e = self.env["project.task"].create({"name": "E", "project_id": project.id, "allocated_hours": 8, "depend_on_ids": [(4, task_c.id)]})
+        task_f = self.env["project.task"].create({"name": "F", "project_id": project.id, "allocated_hours": 8, "depend_on_ids": [(4, task_d.id), (4, task_e.id)]})
+
+        project.action_calculate_critical_paths()
+
+        # A→B→D→F = 40h beats A→C→E→F = 32h — entry task A starts the path,
+        # exit task F ends it, every step is a real dependency.
+        self.assertEqual(project.critical_path_duration, 40)
+        self.assertEqual(project.critical_path_ids.task_path, "A → B → D → F")
+        self.assertFalse(task_c.is_critical)
+        self.assertFalse(task_e.is_critical)
+
+        # Planner right-resize: D grows from 1 day to 3 days.
+        from odoo.addons.project_critical_path.models.project_planner import (
+            _planner_hours_per_day,
+        )
+        hours_per_day = _planner_hours_per_day(task_d)
+        task_d.update_planner_task({
+            "date_start": "2026-03-16",
+            "date_stop": "2026-03-18",
+            "duration_days": 3,
+        })
+
+        self.assertAlmostEqual(task_d.allocated_hours, 3 * hours_per_day, places=2)
+        # The write hook already recalculated the whole graph: 8+16+24+8 = 56.
+        self.assertEqual(project.critical_path_duration, 56)
+        self.assertEqual(project.critical_path_ids.task_path, "A → B → D → F")
+        self.assertTrue(task_f.is_critical)
+
     def test_baseline_is_an_immutable_plan_snapshot(self):
         project = self.env["project.project"].create({"name": "Baseline test"})
         first = self.env["project.task"].create({
