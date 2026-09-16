@@ -373,12 +373,18 @@ class ProjectProject(models.Model):
 
         predecessors = {task_id: set() for task_id in task_ids}
         for task in tasks:
-            expanded_preds = {
-                leaf_id
-                for dependency in task.depend_on_ids
-                for leaf_id in leaf_ids(dependency.id)
-            }
             targets = leaf_ids(task.id) if task.id in parent_ids else {task.id}
+            expanded_preds = set()
+            for dependency in task.depend_on_ids:
+                dependency_leaves = leaf_ids(dependency.id)
+                # A container holding the dependent task itself — an
+                # ancestor, a descendant or the task itself — can never be a
+                # real predecessor: the link is circular by WBS definition.
+                # Skipping it avoids inventing mutual sibling dependencies
+                # that would surface as a false dependency cycle.
+                if dependency_leaves & targets:
+                    continue
+                expanded_preds |= dependency_leaves
             for target_id in targets & task_ids:
                 predecessors[target_id] |= expanded_preds - {target_id}
         successors = {task_id: set() for task_id in task_ids}

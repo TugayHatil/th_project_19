@@ -3,7 +3,7 @@
 {
     "name": "Project Critical Path",
     "summary": "Calculate and store critical paths from task dependencies",
-    "version": "19.0.1.34.0",
+    "version": "19.0.1.35.0",
     "category": "Project",
     "author": "Projet Solutions",
     "license": "LGPL-3",

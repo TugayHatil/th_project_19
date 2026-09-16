@@ -172,6 +172,29 @@ class TestCriticalPath(TransactionCase):
         self.assertIn("Phase", parent.delay_impact_chain)
         self.assertIn("Project finish", parent.delay_impact_chain)
 
+    def test_dependency_on_own_wbs_container_is_skipped_not_a_cycle(self):
+        """A leaf cannot depend on the WBS container that holds it — the link
+        is circular by definition and is ignored for scheduling instead of
+        failing the whole calculation. Two siblings each linked to their own
+        parent must not create a false mutual-dependency cycle."""
+        project = self.env["project.project"].create({"name": "Self-parent dep"})
+        phase = self.env["project.task"].create({"name": "Phase", "project_id": project.id})
+        task_1 = self.env["project.task"].create({"name": "T1", "project_id": project.id, "parent_id": phase.id, "allocated_hours": 4, "depend_on_ids": [(4, phase.id)]})
+        task_2 = self.env["project.task"].create({"name": "T2", "project_id": project.id, "parent_id": phase.id, "allocated_hours": 6, "depend_on_ids": [(4, phase.id)]})
+
+        project.action_calculate_critical_paths()
+
+        # Both leaves end up independent: the longest chain is T2 alone.
+        self.assertEqual(project.critical_path_duration, 6)
+        self.assertTrue(task_2.is_critical)
+        self.assertFalse(task_1.is_critical)
+
+        # The mirror case — a container depending on its own child — is
+        # circular the same way and must be skipped too.
+        phase.depend_on_ids = [(4, task_1.id)]
+        project.action_calculate_critical_paths()
+        self.assertEqual(project.critical_path_duration, 6)
+
     def test_planner_resize_syncs_duration_and_recalculates_path(self):
         """BRD-25 AC: resizing a bar writes the new span to allocated_hours
         so the critical path immediately recalculates from the current
