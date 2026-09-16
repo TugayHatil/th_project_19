@@ -111,3 +111,8 @@ msgstr "Abbrechen"
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
 msgid "Are you sure you want to delete this resource assignment?"
 msgstr "Möchten Sie diese Ressourcenzuweisung wirklich löschen?"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Overdue"
+msgstr "Überfällig"

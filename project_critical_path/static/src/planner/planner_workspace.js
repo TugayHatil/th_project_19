@@ -348,6 +348,22 @@ export class PlannerWorkspace extends Component {
         };
     }
 
+    // Overdue = planned finish before today (calendar-day granularity,
+    // user-local) and the task is not Done. Progress never factors in;
+    // during a drag the live stop date is used so the marker tracks.
+    isOverdue(task) {
+        if (task.is_done) {
+            return false;
+        }
+        const stopStr = this.currentDates(task).stop;
+        if (!stopStr) {
+            return false;
+        }
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return parseDay(stopStr) < today;
+    }
+
     // The dates the bar currently shows — during a drag this is the live
     // drag position so bars, variance tails and arrows follow the pointer.
     currentDates(task) {

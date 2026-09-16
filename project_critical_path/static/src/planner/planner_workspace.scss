@@ -258,6 +258,13 @@ $o_cp_planner_bar_critical: #e8a33d;
     color: #b3bac3;
 }
 
+// Overdue marker: a compact red "!" after the slack chip. Done tasks
+// never show it (isOverdue excludes them), so it never meets the check.
+.o_cp_planner_overdue_icon {
+    color: #c0392b;
+    font-size: 0.7rem;
+}
+
 .o_cp_planner_done_icon {
     color: #198754;
     font-size: 0.7rem;

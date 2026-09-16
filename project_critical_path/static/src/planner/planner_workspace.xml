@@ -135,7 +135,7 @@
                                          class="o_cp_planner_baseline_bar"
                                          t-att-style="baselineStyle(task)"
                                          t-att-title="baselineTooltip(task)"/>
-                                    <div t-if="task.date_start &amp;&amp; task.date_stop &amp;&amp; (state.slackVisible || task.is_done)"
+                                    <div t-if="task.date_start &amp;&amp; task.date_stop &amp;&amp; (state.slackVisible || task.is_done || isOverdue(task))"
                                          class="o_cp_planner_barlead"
                                          t-att-style="barLeadStyle(task)">
                                         <span t-if="state.slackVisible"
@@ -143,6 +143,9 @@
                                               t-att-class="{critical: task.is_critical}"
                                               t-att-title="slackText(task)"
                                               t-esc="slackText(task)"/>
+                                        <i t-if="isOverdue(task)"
+                                           class="fa fa-exclamation o_cp_planner_overdue_icon"
+                                           title="Overdue"/>
                                         <i t-if="task.is_done" class="fa fa-check o_cp_planner_done_icon"/>
                                     </div>
                                     <div t-if="task.date_start &amp;&amp; task.date_stop"
