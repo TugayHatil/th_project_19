@@ -12,6 +12,20 @@ const SCALES = {
     month: { pxPerDay: 1.6, label: _t("Month") },
 };
 
+// Selectable bar-info fields (BRD-17): at most BAR_INFO_MAX may be picked,
+// the choice is remembered per project in localStorage.
+const BAR_INFO_MAX = 3;
+const BAR_INFO_STORE_KEY = "cp_planner_bar_info";
+const BAR_INFO_DEFAULT = ["allocated_hours", "effective_hours", "progress"];
+const BAR_INFO_FIELDS = [
+    { key: "allocated_hours", label: _t("Planned Hours") },
+    { key: "effective_hours", label: _t("Actual Hours") },
+    { key: "progress", label: _t("Progress %") },
+    { key: "date_start", label: _t("Start Date") },
+    { key: "date_stop", label: _t("End Date") },
+    { key: "name", label: _t("Task Name") },
+];
+
 const parseDay = (str) => {
     const [y, m, d] = str.split("-").map(Number);
     return new Date(y, m - 1, d);
@@ -49,6 +63,7 @@ function getCalendarFormats() {
             fullDay: new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "short" }),
             mediumDate: new Intl.DateTimeFormat(locale, { dateStyle: "medium" }),
             compactDate: new Intl.DateTimeFormat(locale, { day: "2-digit", month: "2-digit", year: "2-digit" }),
+            percent: new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 0 }),
         };
     }
     return calendarFormats;
@@ -117,6 +132,9 @@ export class PlannerWorkspace extends Component {
             colMenuOpen: false,
             showStartCol: false,
             showFinishCol: false,
+            // Bar info field selector (BRD-17) — per-project selection
+            barInfoOpen: false,
+            barInfoKeys: [...BAR_INFO_DEFAULT],
             // Resource Planning workspace modal (BRD-21)
             resModalOpen: false,
             resTask: null,
@@ -143,6 +161,7 @@ export class PlannerWorkspace extends Component {
             resAssignDelConfirm: false,
         });
         this.scales = SCALES;
+        this.barInfoFields = BAR_INFO_FIELDS;
         this.resTlScales = { hour: _t("Hour"), day: _t("Day"), week: _t("Week") };
         useExternalListener(document.body, "keydown", (ev) => {
             if (ev.key !== "Escape") {
@@ -152,6 +171,8 @@ export class PlannerWorkspace extends Component {
                 this.closeResourceWorkspace();
             } else if (this.state.inspectorOpen) {
                 this.state.inspectorOpen = false;
+            } else if (this.state.barInfoOpen) {
+                this.state.barInfoOpen = false;
             } else if (this.state.historyOpen) {
                 this.toggleHistory();
             } else if (this.state.colMenuOpen) {
@@ -179,6 +200,7 @@ export class PlannerWorkspace extends Component {
 
     async loadProject(projectId) {
         this.state.loading = true;
+        this.loadBarInfoKeys();
         this.state.collapsedIds = new Set();
         this.state.selectedId = null;
         this.state.inspectorOpen = false;
@@ -770,8 +792,8 @@ export class PlannerWorkspace extends Component {
         });
     }
 
-    // Execution info rendered right after the bar: planned hours, timesheet
-    // hours and Odoo's progress — display-only, capped at 100% for display.
+    // Execution info rendered right after the bar. Which values appear is
+    // chosen per project via the Bar Info panel (BRD-17), max BAR_INFO_MAX.
     barInfoStyle(task) {
         const bar = this.barGeometry(task);
         if (!bar) {
@@ -780,11 +802,79 @@ export class PlannerWorkspace extends Component {
         return `left:${bar.left + bar.width + 8}px`;
     }
 
+    barInfoValue(task, key) {
+        const hours = (v) => `${Math.round((v || 0) * 100) / 100}h`;
+        switch (key) {
+            case "name":
+                return task.name || "";
+            case "allocated_hours":
+                return hours(task.allocated_hours);
+            case "effective_hours":
+                return hours(task.effective_hours);
+            case "progress":
+                // progress arrives as a 0..1 ratio, capped at 100% for display
+                return getCalendarFormats().percent.format(Math.min(task.progress || 0, 1));
+            case "date_start":
+                return task.date_start ? dayLabel(parseDay(task.date_start)) : "";
+            case "date_stop":
+                return task.date_stop ? dayLabel(parseDay(task.date_stop)) : "";
+            default:
+                return "";
+        }
+    }
+
     barInfoText(task) {
-        const plan = Math.round((task.allocated_hours || 0) * 100) / 100;
-        const actual = Math.round((task.effective_hours || 0) * 100) / 100;
-        const progress = Math.min(Math.round((task.progress || 0) * 100), 100);
-        return `Plan: ${plan}h | Actual: ${actual}h | ${progress}%`;
+        return this.state.barInfoKeys
+            .map((key) => this.barInfoValue(task, key))
+            .filter(Boolean)
+            .join(" • ");
+    }
+
+    // The selected keys live in a {projectId: [keys]} map so each project
+    // keeps its own bar labels across reloads.
+    loadBarInfoKeys() {
+        try {
+            const all = JSON.parse(localStorage.getItem(BAR_INFO_STORE_KEY) || "{}");
+            const saved = all[this.state.projectId];
+            if (Array.isArray(saved)) {
+                const valid = new Set(BAR_INFO_FIELDS.map((f) => f.key));
+                this.state.barInfoKeys = saved.filter((k) => valid.has(k)).slice(0, BAR_INFO_MAX);
+                return;
+            }
+        } catch {
+            // corrupted storage — fall through to the defaults
+        }
+        this.state.barInfoKeys = [...BAR_INFO_DEFAULT];
+    }
+
+    persistBarInfoKeys() {
+        let all = {};
+        try {
+            all = JSON.parse(localStorage.getItem(BAR_INFO_STORE_KEY) || "{}");
+        } catch {
+            // corrupted storage — start over
+        }
+        all[this.state.projectId] = this.state.barInfoKeys;
+        try {
+            localStorage.setItem(BAR_INFO_STORE_KEY, JSON.stringify(all));
+        } catch {
+            // storage unavailable — the choice just will not persist
+        }
+    }
+
+    toggleBarInfoField(key) {
+        const keys = [...this.state.barInfoKeys];
+        const idx = keys.indexOf(key);
+        if (idx >= 0) {
+            keys.splice(idx, 1);
+        } else if (keys.length >= BAR_INFO_MAX) {
+            this.notification.add(_t("You can select up to 3 fields."), { type: "warning" });
+            return;
+        } else {
+            keys.push(key);
+        }
+        this.state.barInfoKeys = keys;
+        this.persistBarInfoKeys();
     }
 
     // ---- Task bar drag & resize -------------------------------------------

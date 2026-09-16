@@ -51,6 +51,11 @@
                         </label>
                     </div>
                 </div>
+                <button type="button" class="btn btn-sm"
+                        t-att-class="state.barInfoOpen ? 'btn-primary' : 'btn-outline-secondary'"
+                        t-on-click="() => state.barInfoOpen = !state.barInfoOpen">
+                    <i class="fa fa-tags me-1"/>Bar Info
+                </button>
             </div>
             <div class="o_cp_planner_body d-flex flex-grow-1 overflow-hidden">
                 <div class="o_cp_planner_wbs d-flex flex-column border-end"
@@ -452,6 +457,28 @@
                                     </div>
                                 </div>
                             </t>
+                        </div>
+                    </div>
+                </div>
+                <div t-if="state.barInfoOpen" class="o_cp_planner_barinfo d-flex flex-column border-start">
+                    <div class="o_cp_planner_inspector_header px-3 pt-3 pb-2 border-bottom d-flex align-items-center justify-content-between">
+                        <span class="fw-bold">Bar Info</span>
+                        <button type="button" class="btn-close btn-sm"
+                                t-on-click="() => state.barInfoOpen = false"/>
+                    </div>
+                    <div class="flex-grow-1 overflow-auto px-3 py-2">
+                        <div class="text-muted small mb-2">
+                            Select the information shown next to the task bars.
+                        </div>
+                        <div class="d-flex flex-wrap gap-1 mb-2">
+                            <span t-foreach="barInfoFields" t-as="field" t-key="field.key"
+                                  class="o_cp_planner_barchip" role="button"
+                                  t-att-class="{selected: state.barInfoKeys.includes(field.key)}"
+                                  t-esc="field.label"
+                                  t-on-click="() => this.toggleBarInfoField(field.key)"/>
+                        </div>
+                        <div class="text-muted small">
+                            Selected <t t-esc="state.barInfoKeys.length"/>/3
                         </div>
                     </div>
                 </div>
