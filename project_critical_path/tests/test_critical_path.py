@@ -155,6 +155,23 @@ class TestCriticalPath(TransactionCase):
         self.assertFalse(phase_a.is_critical)
         self.assertFalse(phase_b.is_critical)
 
+    def test_delay_impact_on_wbs_parent_does_not_crash(self):
+        """A WBS container keeps a baseline snapshot like any task but sits
+        outside the leaf-only dependency graph — a duration change on it must
+        not crash the delay-impact chain walk (KeyError on ``successors``)."""
+        project = self.env["project.project"].create({"name": "Parent impact"})
+        parent = self.env["project.task"].create({"name": "Phase", "project_id": project.id, "allocated_hours": 8})
+        task_a = self.env["project.task"].create({"name": "A", "project_id": project.id, "parent_id": parent.id, "allocated_hours": 4})
+        task_b = self.env["project.task"].create({"name": "B", "project_id": project.id, "parent_id": parent.id, "allocated_hours": 6, "depend_on_ids": [(4, task_a.id)]})
+
+        project.action_create_critical_path_baseline()
+        task_b.allocated_hours = 10  # pushes the project finish: total_delay > 0
+        parent.allocated_hours = 20  # parent variance exceeds its zero slack
+
+        self.assertEqual(parent.delay_impact_status, "critical_impact")
+        self.assertIn("Phase", parent.delay_impact_chain)
+        self.assertIn("Project finish", parent.delay_impact_chain)
+
     def test_planner_resize_syncs_duration_and_recalculates_path(self):
         """BRD-25 AC: resizing a bar writes the new span to allocated_hours
         so the critical path immediately recalculates from the current

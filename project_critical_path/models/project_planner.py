@@ -256,6 +256,7 @@ class ProjectTaskPlanner(models.Model):
                 "date_start": _serialize_planner_day(self, self.date_assign),
                 "date_stop": _serialize_planner_day(self, self.date_deadline),
                 "allocated_hours": self.allocated_hours or 0.0,
+                "hours_per_day": _planner_hours_per_day(self),
                 "effective_hours": getattr(self, "effective_hours", 0.0) or 0.0,
                 # progress is stored as a 0..1 ratio; the inspector shows 0..100
                 "progress": round((self.progress or 0.0) * 100, 1),
@@ -322,6 +323,11 @@ class ProjectTaskPlanner(models.Model):
             )
             if float(days) != stored_days:
                 vals["allocated_hours"] = max(float(days), 0.0) * _planner_hours_per_day(self)
+        # The inspector edits duration in hours: an explicit allocated_hours
+        # is authoritative and wins over the day-span derivation above, so
+        # fractional-day durations (e.g. 20 h over a 3-day window) survive.
+        if "allocated_hours" in values:
+            vals["allocated_hours"] = max(float(values["allocated_hours"] or 0.0), 0.0)
         if "progress" in values:
             vals["progress"] = min(max(values["progress"] or 0.0, 0.0), 100.0) / 100.0
         if "stage_id" in values:

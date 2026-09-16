@@ -503,6 +503,9 @@ export class PlannerWorkspace extends Component {
                 duration_days: t.date_start && t.date_stop
                     ? dayDiff(parseDay(t.date_start), parseDay(t.date_stop)) + 1
                     : 0,
+                // The inspector edits duration in hours (allocated_hours);
+                // the Start/Finish window stays a separate, explicit input.
+                allocated_hours: t.allocated_hours,
                 progress: t.progress,
                 user_id: (t.user_ids && t.user_ids[0]) || false,
                 depend_on_ids: [...(t.depend_on_ids || [])],
@@ -531,13 +534,6 @@ export class PlannerWorkspace extends Component {
         return dayLabel(parseDay(str));
     }
 
-    formatDayCount(days) {
-        if (days === false || days === null || days === undefined || Number.isNaN(days)) {
-            return "—";
-        }
-        return `${days}d`;
-    }
-
     formatDayVariance(days) {
         if (days === false || days === null || days === undefined || Number.isNaN(days)) {
             return "—";
@@ -549,6 +545,27 @@ export class PlannerWorkspace extends Component {
             return `−${Math.abs(days)}d`;
         }
         return "0d";
+    }
+
+    formatHoursCount(hours) {
+        if (hours === false || hours === null || hours === undefined || Number.isNaN(hours)) {
+            return "—";
+        }
+        return `${Math.round(hours * 100) / 100}h`;
+    }
+
+    formatHoursVariance(hours) {
+        if (hours === false || hours === null || hours === undefined || Number.isNaN(hours)) {
+            return "—";
+        }
+        const abs = Math.round(Math.abs(hours) * 100) / 100;
+        if (hours > 0) {
+            return `+${abs}h`;
+        }
+        if (hours < 0) {
+            return `−${abs}h`;
+        }
+        return "0h";
     }
 
     // A positive schedule variance means a delay: highlight it; a negative one
@@ -581,10 +598,10 @@ export class PlannerWorkspace extends Component {
 
     get baselineDurationVariance() {
         const { form, baseline } = this.state;
-        if (form?.duration_days === undefined || baseline?.duration_days === false || baseline?.duration_days === undefined) {
+        if (form?.allocated_hours === undefined || baseline?.allocated_hours === false || baseline?.allocated_hours === undefined) {
             return false;
         }
-        return form.duration_days - baseline.duration_days;
+        return form.allocated_hours - baseline.allocated_hours;
     }
 
     formatHours(hours) {
@@ -644,12 +661,7 @@ export class PlannerWorkspace extends Component {
 
     onDurationChange(ev) {
         const form = this.state.form;
-        form.duration_days = Math.max(Number(ev.target.value) || 0, 0);
-        if (form.date_start) {
-            form.date_stop = isoDay(addDays(
-                parseDay(form.date_start), Math.max(form.duration_days - 1, 0),
-            ));
-        }
+        form.allocated_hours = Math.max(Number(ev.target.value) || 0, 0);
     }
 
     taskLabel(id) {
@@ -699,6 +711,7 @@ export class PlannerWorkspace extends Component {
                     date_start: form.date_start || false,
                     date_stop: form.date_stop || false,
                     duration_days: form.duration_days,
+                    allocated_hours: form.allocated_hours,
                     progress: form.progress || 0,
                     user_ids: form.user_id ? [form.user_id] : [],
                     depend_on_ids: form.depend_on_ids,

@@ -181,6 +181,36 @@ class TestPlannerWorkspace(TransactionCase):
 
         self.assertAlmostEqual(task.allocated_hours, 16.0, places=2)
 
+    def test_update_planner_task_explicit_allocated_hours_wins_over_span(self):
+        """The inspector edits duration in hours: an explicit allocated_hours
+        is authoritative even when the day span would derive a different
+        value (fractional-day effort like 20 h over a 9-day window)."""
+        project = self.env["project.project"].create({"name": "Hour duration"})
+        task = self._make_task(
+            project, "Effort",
+            date_assign="2026-03-01 09:00:00", date_deadline="2026-03-05 18:00:00",
+            allocated_hours=16.0,
+        )
+
+        task.update_planner_task({
+            "date_start": "2026-03-01",
+            "date_stop": "2026-03-09",
+            "duration_days": 9,
+            "allocated_hours": 20.0,
+        })
+
+        self.assertAlmostEqual(task.allocated_hours, 20.0, places=2)
+
+    def test_get_planner_detail_exposes_hours_per_day(self):
+        """The inspector converts between hours and day spans client-side."""
+        project = self.env["project.project"].create({"name": "Hours per day"})
+        task = self._make_task(project, "Task")
+
+        detail = task.get_planner_detail()["task"]
+
+        self.assertGreater(detail["hours_per_day"], 0)
+        self.assertIn("allocated_hours", detail)
+
     def test_update_planner_task_move_preserves_duration_and_time(self):
         """A bar move shifts both dates, keeps duration, allocated_hours and
         the stored time-of-day (drags must not reset hours)."""

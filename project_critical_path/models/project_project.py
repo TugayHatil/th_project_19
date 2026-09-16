@@ -315,7 +315,9 @@ class ProjectProject(models.Model):
         current_id = task_id
         steps = ["%s (%+.2f h)" % (task_by_id[task_id].display_name, impact)]
         seen = {task_id}
-        while successors[current_id]:
+        # WBS parents keep a baseline snapshot but are excluded from the
+        # leaf-only schedule graph, so they have no ``successors`` entry.
+        while successors.get(current_id):
             candidates = [
                 successor_id for successor_id in successors[current_id]
                 if successor_id not in seen
