@@ -523,7 +523,9 @@ export class PlannerWorkspace extends Component {
 
     setScale(scale) {
         this.state.scale = scale;
-        this.state.pxPerDay = SCALES[scale].pxPerDay;
+        // Refit instead of the fixed pxPerDay — the scale buttons only
+        // change column granularity, the timeline always fills the viewport.
+        this.fit();
     }
 
     goToday() {
