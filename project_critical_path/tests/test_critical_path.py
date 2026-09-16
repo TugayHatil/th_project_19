@@ -84,6 +84,55 @@ class TestCriticalPath(TransactionCase):
         self.assertEqual(project.critical_path_count, 2)
         self.assertEqual(project.critical_path_duration, 6)
 
+    def test_critical_path_runs_from_entry_to_completion(self):
+        """BRD-25 Test 3/4: implicit virtual start/finish nodes — the stored
+        path must begin at a real entry task and end at the latest
+        completion, with every consecutive pair linked by a dependency."""
+        project = self.env["project.project"].create({"name": "End-to-end"})
+        task_a = self.env["project.task"].create({"name": "A", "project_id": project.id, "allocated_hours": 2})
+        task_b = self.env["project.task"].create({"name": "B", "project_id": project.id, "allocated_hours": 3})
+        task_c = self.env["project.task"].create({"name": "C", "project_id": project.id, "allocated_hours": 4, "depend_on_ids": [(4, task_a.id)]})
+        task_d = self.env["project.task"].create({"name": "D", "project_id": project.id, "allocated_hours": 1, "depend_on_ids": [(4, task_b.id)]})
+        task_e = self.env["project.task"].create({"name": "E", "project_id": project.id, "allocated_hours": 5, "depend_on_ids": [(4, task_c.id), (4, task_d.id)]})
+        task_f = self.env["project.task"].create({"name": "F", "project_id": project.id, "allocated_hours": 1, "depend_on_ids": [(4, task_e.id)]})
+
+        project.action_calculate_critical_paths()
+
+        # Longest chain: A(2) → C(4) → E(5) → F(1) = 12 beats B→D→E→F = 10.
+        self.assertEqual(project.critical_path_duration, 12)
+        name_by_id = {task.name: task for task in (task_a, task_b, task_c, task_d, task_e, task_f)}
+        for path in project.critical_path_ids:
+            names = path.task_path.split(" → ")
+            self.assertEqual(names[0], "A")
+            self.assertEqual(names[-1], "F")
+            for previous, following in zip(names, names[1:]):
+                self.assertIn(
+                    name_by_id[previous],
+                    name_by_id[following].depend_on_ids,
+                    msg="Critical path contains a non-dependency step %s → %s" % (previous, following),
+                )
+        self.assertFalse(task_b.is_critical)
+        self.assertFalse(task_d.is_critical)
+        self.assertTrue(task_b.critical_slack > 0)
+
+    def test_wbs_parents_stay_off_the_critical_path(self):
+        """BRD-25 Test 6: a WBS work package is a container — even with a
+        large duration it must not become the critical path by itself."""
+        project = self.env["project.project"].create({"name": "WBS test"})
+        parent = self.env["project.task"].create({"name": "Phase", "project_id": project.id, "allocated_hours": 100})
+        task_a = self.env["project.task"].create({"name": "A", "project_id": project.id, "parent_id": parent.id, "allocated_hours": 4})
+        task_b = self.env["project.task"].create({"name": "B", "project_id": project.id, "parent_id": parent.id, "allocated_hours": 6, "depend_on_ids": [(4, task_a.id)]})
+
+        project.action_calculate_critical_paths()
+
+        self.assertEqual(project.critical_path_duration, 10)
+        self.assertEqual(project.critical_path_ids.task_path, "A → B")
+        self.assertFalse(parent.is_critical)
+        self.assertFalse(parent.critical_early_finish)
+        self.assertTrue(task_a.is_critical)
+        self.assertTrue(task_b.is_critical)
+        self.assertNotIn(parent.id, project.critical_path_ids.task_ids.ids)
+
     def test_baseline_is_an_immutable_plan_snapshot(self):
         project = self.env["project.project"].create({"name": "Baseline test"})
         first = self.env["project.task"].create({

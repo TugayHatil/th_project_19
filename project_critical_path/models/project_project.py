@@ -143,6 +143,20 @@ class ProjectProject(models.Model):
             schedule = project._calculate_task_schedule(graph)
             for task_id, values in schedule["task_values"].items():
                 task_by_id[task_id].write(values)
+            # WBS parents stay out of the schedule — clear any stale
+            # critical values they may still carry from older calculations.
+            if graph["excluded_ids"]:
+                task_by_id_excluded = self.env["project.task"].browse(
+                    graph["excluded_ids"]
+                )
+                task_by_id_excluded.write({
+                    "critical_early_start": 0.0,
+                    "critical_early_finish": 0.0,
+                    "critical_late_start": 0.0,
+                    "critical_late_finish": 0.0,
+                    "critical_slack": 0.0,
+                    "is_critical": False,
+                })
 
             # duration_by_task is the longest duration ending at each task;
             # best_predecessors retains every predecessor that yields that value.
@@ -324,16 +338,24 @@ class ProjectProject(models.Model):
         return " → ".join(steps)
 
     def _get_task_dependency_graph(self):
-        """Return the standard task dependency graph once for all calculations."""
+        """Return the standard task dependency graph once for all calculations.
+
+        WBS work packages (tasks with children) are summary containers: only
+        leaf tasks and their real dependencies drive the schedule, so a parent
+        can never become a fake critical task (BRD-25). Dependencies pointing
+        at parents are dropped with the parent itself.
+        """
         self.ensure_one()
         tasks = self.env["project.task"].with_context(active_test=False).search(
             [("project_id", "=", self.id)], order="id",
         )
+        parent_ids = {task.parent_id.id for task in tasks if task.parent_id}
         task_by_id = {task.id: task for task in tasks}
-        task_ids = set(task_by_id)
+        schedulable = tasks.filtered(lambda task: task.id not in parent_ids)
+        task_ids = {task.id for task in schedulable}
         predecessors = {
             task.id: {dependency.id for dependency in task.depend_on_ids if dependency.id in task_ids}
-            for task in tasks
+            for task in schedulable
         }
         successors = {task_id: set() for task_id in task_ids}
         for task_id, dependency_ids in predecessors.items():
@@ -350,7 +372,7 @@ class ProjectProject(models.Model):
                 in_degree[successor_id] -= 1
                 if not in_degree[successor_id]:
                     queue.append(successor_id)
-        if len(ordered_ids) != len(tasks):
+        if len(ordered_ids) != len(schedulable):
             raise UserError(_("Critical paths cannot be calculated because task dependencies contain a cycle."))
 
         return {
@@ -359,6 +381,9 @@ class ProjectProject(models.Model):
             "successors": successors,
             "ordered_ids": ordered_ids,
             "end_ids": [task_id for task_id in ordered_ids if not successors[task_id]],
+            "excluded_ids": [
+                task.id for task in tasks if task.id not in task_ids
+            ],
         }
 
     def _calculate_task_schedule(self, graph):

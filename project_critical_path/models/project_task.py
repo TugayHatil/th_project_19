@@ -35,7 +35,7 @@ class ProjectTask(models.Model):
     def write(self, vals):
         affected_projects = self.mapped("project_id")
         result = super().write(vals)
-        if {"project_id", "allocated_hours", "depend_on_ids", "dependent_ids"}.intersection(vals):
+        if {"project_id", "parent_id", "allocated_hours", "depend_on_ids", "dependent_ids"}.intersection(vals):
             (affected_projects | self.mapped("project_id"))._recalculate_critical_paths()
         return result
 
