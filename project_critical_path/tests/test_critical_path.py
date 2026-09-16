@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from odoo.exceptions import UserError
 from odoo.tests.common import TransactionCase
 
 
@@ -115,9 +116,10 @@ class TestCriticalPath(TransactionCase):
         self.assertFalse(task_d.is_critical)
         self.assertTrue(task_b.critical_slack > 0)
 
-    def test_wbs_parents_stay_off_the_critical_path(self):
-        """BRD-25 Test 6: a WBS work package is a container — even with a
-        large duration it must not become the critical path by itself."""
+    def test_wbs_parents_are_ordinary_schedulable_tasks(self):
+        """WBS hierarchy must not change CPM: a parent keeps its own
+        allocated_hours and dependencies like any other node, so a 100h
+        standalone container simply outlasts its children's chain."""
         project = self.env["project.project"].create({"name": "WBS test"})
         parent = self.env["project.task"].create({"name": "Phase", "project_id": project.id, "allocated_hours": 100})
         task_a = self.env["project.task"].create({"name": "A", "project_id": project.id, "parent_id": parent.id, "allocated_hours": 4})
@@ -125,35 +127,49 @@ class TestCriticalPath(TransactionCase):
 
         project.action_calculate_critical_paths()
 
-        self.assertEqual(project.critical_path_duration, 10)
-        self.assertEqual(project.critical_path_ids.task_path, "A → B")
-        self.assertFalse(parent.is_critical)
-        self.assertFalse(parent.critical_early_finish)
-        self.assertTrue(task_a.is_critical)
-        self.assertTrue(task_b.is_critical)
-        self.assertNotIn(parent.id, project.critical_path_ids.task_ids.ids)
+        self.assertEqual(project.critical_path_duration, 100)
+        self.assertEqual(project.critical_path_ids.task_path, "Phase")
+        self.assertTrue(parent.is_critical)
+        self.assertFalse(task_a.is_critical)
+        self.assertFalse(task_b.is_critical)
+        self.assertEqual(task_b.critical_slack, 90)
+        self.assertIn(parent.id, project.critical_path_ids.task_ids.ids)
 
-    def test_dependencies_on_parents_flow_down_to_leaf_children(self):
-        """BRD-25: a dependency declared on a WBS container is redirected to
-        its leaf descendants, so phase-level links still chain the real work."""
-        project = self.env["project.project"].create({"name": "Phase deps"})
-        phase_a = self.env["project.task"].create({"name": "Phase A", "project_id": project.id})
-        phase_b = self.env["project.task"].create({"name": "Phase B", "project_id": project.id, "depend_on_ids": [(4, phase_a.id)]})
-        a1 = self.env["project.task"].create({"name": "A1", "project_id": project.id, "parent_id": phase_a.id, "allocated_hours": 4})
-        a2 = self.env["project.task"].create({"name": "A2", "project_id": project.id, "parent_id": phase_a.id, "allocated_hours": 6})
-        b1 = self.env["project.task"].create({"name": "B1", "project_id": project.id, "parent_id": phase_b.id, "allocated_hours": 5})
+    def test_cpm_chains_real_dependencies_through_wbs_parents(self):
+        """Reported bug: every task — container or leaf — joins CPM with its
+        own allocated_hours and depend_on_ids. With 1.1/1.2 nested under "1",
+        2.1 under "2" and 3.1 under "3", the critical path is
+        1 → 1.2 → 2.1 → 3 → 3.1 = 24h and slack comes from the backward
+        pass, not from the hierarchy."""
+        project = self.env["project.project"].create({"name": "Nested CPM"})
+        t1 = self.env["project.task"].create({"name": "1", "project_id": project.id, "allocated_hours": 2})
+        t11 = self.env["project.task"].create({"name": "1.1", "project_id": project.id, "parent_id": t1.id, "allocated_hours": 8, "depend_on_ids": [(4, t1.id)]})
+        t12 = self.env["project.task"].create({"name": "1.2", "project_id": project.id, "parent_id": t1.id, "allocated_hours": 5, "depend_on_ids": [(4, t1.id)]})
+        t2 = self.env["project.task"].create({"name": "2", "project_id": project.id, "allocated_hours": 6, "depend_on_ids": [(4, t11.id)]})
+        t21 = self.env["project.task"].create({"name": "2.1", "project_id": project.id, "parent_id": t2.id, "allocated_hours": 10, "depend_on_ids": [(4, t12.id)]})
+        t3 = self.env["project.task"].create({"name": "3", "project_id": project.id, "allocated_hours": 4, "depend_on_ids": [(4, t2.id), (4, t21.id)]})
+        t31 = self.env["project.task"].create({"name": "3.1", "project_id": project.id, "parent_id": t3.id, "allocated_hours": 3, "depend_on_ids": [(4, t3.id)]})
 
         project.action_calculate_critical_paths()
 
-        # Phase B waits for all of Phase A: B1's predecessors are A1 and A2.
-        self.assertEqual(set(b1.depend_on_ids.ids), {phase_a.id})  # untouched record
-        self.assertEqual(project.critical_path_duration, 11)
-        self.assertEqual(project.critical_path_ids.task_path, "A2 → B1")
-        self.assertTrue(a2.is_critical)
-        self.assertTrue(b1.is_critical)
-        self.assertFalse(a1.is_critical)  # 2h of slack next to A2
-        self.assertFalse(phase_a.is_critical)
-        self.assertFalse(phase_b.is_critical)
+        self.assertEqual(project.critical_path_duration, 24)
+        self.assertEqual(project.critical_path_ids.task_path, "1 → 1.2 → 2.1 → 3 → 3.1")
+        # Forward pass: a successor waits for the MAX of its predecessors.
+        self.assertEqual(t3.critical_early_start, 17)  # max(EF 16 of "2", EF 17 of "2.1")
+        self.assertEqual(t3.critical_early_finish, 21)
+        self.assertEqual(t31.critical_early_finish, 24)
+        # Backward pass slack = LS - ES; only the critical chain is zero.
+        self.assertEqual(t1.critical_slack, 0)
+        self.assertEqual(t11.critical_slack, 1)
+        self.assertEqual(t12.critical_slack, 0)
+        self.assertEqual(t2.critical_slack, 1)
+        self.assertEqual(t21.critical_slack, 0)
+        self.assertEqual(t3.critical_slack, 0)
+        self.assertEqual(t31.critical_slack, 0)
+        for task in (t1, t12, t21, t3, t31):
+            self.assertTrue(task.is_critical, task.name)
+        for task in (t11, t2):
+            self.assertFalse(task.is_critical, task.name)
 
     def test_delay_impact_on_wbs_parent_does_not_crash(self):
         """A WBS container keeps a baseline snapshot like any task but sits
@@ -172,28 +188,29 @@ class TestCriticalPath(TransactionCase):
         self.assertIn("Phase", parent.delay_impact_chain)
         self.assertIn("Project finish", parent.delay_impact_chain)
 
-    def test_dependency_on_own_wbs_container_is_skipped_not_a_cycle(self):
-        """A leaf cannot depend on the WBS container that holds it — the link
-        is circular by definition and is ignored for scheduling instead of
-        failing the whole calculation. Two siblings each linked to their own
-        parent must not create a false mutual-dependency cycle."""
-        project = self.env["project.project"].create({"name": "Self-parent dep"})
-        phase = self.env["project.task"].create({"name": "Phase", "project_id": project.id})
+    def test_dependency_on_own_wbs_parent_is_a_real_edge(self):
+        """A leaf depending on its own WBS container is a normal FS edge —
+        the parent is a schedulable node with its own duration. Only a
+        genuine loop (parent → child on top of child → parent) is rejected
+        as a cycle."""
+        project = self.env["project.project"].create({"name": "Parent dep"})
+        phase = self.env["project.task"].create({"name": "Phase", "project_id": project.id, "allocated_hours": 2})
         task_1 = self.env["project.task"].create({"name": "T1", "project_id": project.id, "parent_id": phase.id, "allocated_hours": 4, "depend_on_ids": [(4, phase.id)]})
         task_2 = self.env["project.task"].create({"name": "T2", "project_id": project.id, "parent_id": phase.id, "allocated_hours": 6, "depend_on_ids": [(4, phase.id)]})
 
         project.action_calculate_critical_paths()
 
-        # Both leaves end up independent: the longest chain is T2 alone.
-        self.assertEqual(project.critical_path_duration, 6)
+        # Phase → T2 = 8h beats Phase → T1 = 6h.
+        self.assertEqual(project.critical_path_duration, 8)
+        self.assertEqual(project.critical_path_ids.task_path, "Phase → T2")
+        self.assertTrue(phase.is_critical)
         self.assertTrue(task_2.is_critical)
         self.assertFalse(task_1.is_critical)
 
-        # The mirror case — a container depending on its own child — is
-        # circular the same way and must be skipped too.
-        phase.depend_on_ids = [(4, task_1.id)]
-        project.action_calculate_critical_paths()
-        self.assertEqual(project.critical_path_duration, 6)
+        # The mirror case — a container depending on its own child — closes
+        # a genuine cycle and is still rejected.
+        with self.assertRaises(UserError):
+            phase.depend_on_ids = [(4, task_1.id)]
 
     def test_planner_resize_syncs_duration_and_recalculates_path(self):
         """BRD-25 AC: resizing a bar writes the new span to allocated_hours

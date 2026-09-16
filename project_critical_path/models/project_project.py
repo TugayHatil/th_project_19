@@ -143,20 +143,6 @@ class ProjectProject(models.Model):
             schedule = project._calculate_task_schedule(graph)
             for task_id, values in schedule["task_values"].items():
                 task_by_id[task_id].write(values)
-            # WBS parents stay out of the schedule — clear any stale
-            # critical values they may still carry from older calculations.
-            if graph["excluded_ids"]:
-                task_by_id_excluded = self.env["project.task"].browse(
-                    graph["excluded_ids"]
-                )
-                task_by_id_excluded.write({
-                    "critical_early_start": 0.0,
-                    "critical_early_finish": 0.0,
-                    "critical_late_start": 0.0,
-                    "critical_late_finish": 0.0,
-                    "critical_slack": 0.0,
-                    "is_critical": False,
-                })
 
             # duration_by_task is the longest duration ending at each task;
             # best_predecessors retains every predecessor that yields that value.
@@ -342,51 +328,27 @@ class ProjectProject(models.Model):
     def _get_task_dependency_graph(self):
         """Return the standard task dependency graph once for all calculations.
 
-        WBS work packages (tasks with children) are summary containers: only
-        leaf tasks drive the schedule, so a parent can never become a fake
-        critical task (BRD-25). A dependency declared on a container is not
-        dropped though — it is redirected to the leaf descendants on both
-        sides, so "Phase A → Phase B" still chains the real work.
+        Every task is a schedulable node carrying its own allocated_hours and
+        its own dependencies — WBS hierarchy is a presentation concern only
+        and must not change the critical path. Edges are the plain
+        ``depend_on_ids`` links restricted to this project; a self-link is
+        dropped since it can never affect the schedule.
         """
         self.ensure_one()
         tasks = self.env["project.task"].with_context(active_test=False).search(
             [("project_id", "=", self.id)], order="id",
         )
         task_by_id = {task.id: task for task in tasks}
-        children_map = {}
-        for task in tasks:
-            if task.parent_id:
-                children_map.setdefault(task.parent_id.id, []).append(task.id)
-        parent_ids = set(children_map)
-        task_ids = set(task_by_id) - parent_ids
+        task_ids = set(task_by_id)
 
-        def leaf_ids(task_id):
-            """Leaf descendants of a task inside the project (itself if leaf)."""
-            leaves, stack = set(), [task_id]
-            while stack:
-                current = stack.pop()
-                if current in children_map:
-                    stack.extend(children_map[current])
-                elif current in task_by_id:
-                    leaves.add(current)
-            return leaves
-
-        predecessors = {task_id: set() for task_id in task_ids}
-        for task in tasks:
-            targets = leaf_ids(task.id) if task.id in parent_ids else {task.id}
-            expanded_preds = set()
-            for dependency in task.depend_on_ids:
-                dependency_leaves = leaf_ids(dependency.id)
-                # A container holding the dependent task itself — an
-                # ancestor, a descendant or the task itself — can never be a
-                # real predecessor: the link is circular by WBS definition.
-                # Skipping it avoids inventing mutual sibling dependencies
-                # that would surface as a false dependency cycle.
-                if dependency_leaves & targets:
-                    continue
-                expanded_preds |= dependency_leaves
-            for target_id in targets & task_ids:
-                predecessors[target_id] |= expanded_preds - {target_id}
+        predecessors = {
+            task.id: {
+                dependency.id
+                for dependency in task.depend_on_ids
+                if dependency.id in task_by_id and dependency.id != task.id
+            }
+            for task in tasks
+        }
         successors = {task_id: set() for task_id in task_ids}
         for task_id, dependency_ids in predecessors.items():
             for dependency_id in dependency_ids:
@@ -411,9 +373,6 @@ class ProjectProject(models.Model):
             "successors": successors,
             "ordered_ids": ordered_ids,
             "end_ids": [task_id for task_id in ordered_ids if not successors[task_id]],
-            "excluded_ids": [
-                task.id for task in tasks if task.id not in task_ids
-            ],
         }
 
     def _calculate_task_schedule(self, graph):
