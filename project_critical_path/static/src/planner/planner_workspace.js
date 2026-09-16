@@ -2182,6 +2182,16 @@ export class PlannerWorkspace extends Component {
         };
     }
 
+    // Clicking empty space (below/beside the task rows) clears the current
+    // row selection; clicks inside a row or the inspector are ignored.
+    onBackgroundClick(ev) {
+        if (ev.target.closest(".o_cp_planner_wbs_row, .o_cp_planner_gantt_row")) {
+            return;
+        }
+        this.state.selectedId = null;
+        this.state.inspectorOpen = false;
+    }
+
     onRowClick(task) {
         if (this.suppressClick) {
             this.suppressClick = false;

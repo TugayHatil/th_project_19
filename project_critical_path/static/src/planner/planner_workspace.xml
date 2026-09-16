@@ -67,7 +67,8 @@
                         <span t-if="state.showFinishCol" class="o_cp_planner_date_col"
                               t-att-class="{'ms-auto': !state.showStartCol}">Finish</span>
                     </div>
-                    <div class="o_cp_planner_wbs_rows flex-grow-1 overflow-hidden" t-ref="wbsRows" t-on-scroll="onWbsScroll">
+                    <div class="o_cp_planner_wbs_rows flex-grow-1 overflow-hidden" t-ref="wbsRows" t-on-scroll="onWbsScroll"
+                                     t-on-click="onBackgroundClick">
                         <div t-foreach="visibleTasks" t-as="task" t-key="task.id"
                              class="o_cp_planner_wbs_row d-flex align-items-center px-2"
                              t-att-class="{selected: state.selectedId === task.id, parent: task.has_children}"
@@ -108,7 +109,8 @@
                     </div>
                 </div>
                 <div class="o_cp_planner_gantt flex-grow-1 d-flex flex-column overflow-hidden">
-                    <div class="o_cp_planner_gantt_scroll flex-grow-1" t-ref="ganttScroll" t-on-scroll="onGanttScroll">
+                    <div class="o_cp_planner_gantt_scroll flex-grow-1" t-ref="ganttScroll" t-on-scroll="onGanttScroll"
+                                 t-on-click="onBackgroundClick">
                         <div class="o_cp_planner_gantt_inner position-relative"
                              t-att-style="'width:' + timelineWidth + 'px'">
                             <div class="o_cp_planner_gantt_header position-sticky top-0">
@@ -861,7 +863,7 @@
                     </div>
                 </div>
             </div>
-            <div class="o_cp_planner_bottom border-top"/>
+            <div class="o_cp_planner_bottom border-top" t-on-click="onBackgroundClick"/>
         </div>
     </t>
 </templates>
