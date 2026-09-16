@@ -422,6 +422,16 @@ $o_cp_planner_inspector_width: 320px;
         background: #f8f9fa;
     }
 
+    // Pastel red: this version's project duration grew vs the previous
+    // baseline — separates longer versions without reading as an alarm.
+    &.o_cp_planner_history_item_grew {
+        background: #fdeeef;
+
+        &:hover {
+            background: #fae3e5;
+        }
+    }
+
     &.selected {
         background: #dbeafe;
     }

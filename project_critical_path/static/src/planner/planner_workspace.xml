@@ -383,7 +383,7 @@
                         </div>
                         <div t-foreach="state.historyList" t-as="item" t-key="item.id"
                              class="o_cp_planner_history_item"
-                             t-att-class="{selected: state.historyDetail?.id === item.id}"
+                             t-att-class="{selected: state.historyDetail?.id === item.id, o_cp_planner_history_item_grew: !item.is_initial &amp;&amp; item.duration_variance > 0}"
                              t-on-click="() => this.selectBaselineVersion(item)">
                             <div class="d-flex justify-content-between">
                                 <span class="fw-bold" t-esc="item.name"/>
