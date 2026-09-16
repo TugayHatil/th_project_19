@@ -68,6 +68,16 @@ msgid "You can select up to 3 fields."
 msgstr "En fazla 3 alan seçebilirsiniz."
 
 #. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Slack (Float)"
+msgstr "Slack (Gecikme Payı)"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Shown left of the bar — does not count toward the limit."
+msgstr "Barın solunda gösterilir — limite dahil edilmez."
+
+#. module: project_critical_path
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
 msgid "Week"
 msgstr "Hafta"

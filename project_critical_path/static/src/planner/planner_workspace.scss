@@ -199,6 +199,29 @@ $o_cp_planner_bar_critical: #e8a33d;
     z-index: 3;
 }
 
+// Slack/float chip anchored to the left edge of the bar: a light-blue
+// "+Nh" for non-critical tasks, a light-red "CP" on the critical path.
+// pointer-events:none so it never blocks the left resize grip.
+.o_cp_planner_slack {
+    position: absolute;
+    top: 9px;
+    height: 14px;
+    line-height: 14px;
+    font-size: 0.62rem;
+    font-weight: 600;
+    padding: 0 4px;
+    border-radius: 3px;
+    white-space: nowrap;
+    pointer-events: none;
+    background: #e8f0fb;
+    color: #2b6cb0;
+
+    &.critical {
+        background: #fdecec;
+        color: #c0392b;
+    }
+}
+
 // Execution info text immediately right of the bar; never blocks bar/grips.
 .o_cp_planner_bar_info {
     position: absolute;

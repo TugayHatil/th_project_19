@@ -65,6 +65,63 @@ class TestPlannerWorkspace(TransactionCase):
         )
         self.assertEqual(rows["Long chain start"]["depend_on_ids"], [])
 
+    def test_planner_data_serializes_critical_slack(self):
+        """BRD-18 scenario: slack hours ride along with the planner rows so
+        the UI can show CP / +Nh without recomputing anything client-side.
+
+        Graph (hours in brackets, arrows are depend_on_ids):
+            1[2] → 1.1[8] → 2[6] ─┐
+                → 1.2[5] → 2.1[10]├→ 3[4] → 3.1[3]
+        Path B (24h) is critical; 1.1 and 2 keep 1h of slack.
+        """
+        project = self.env["project.project"].create({"name": "Slack"})
+        t1 = self._make_task(project, "1", allocated_hours=2.0)
+        t11 = self._make_task(
+            project, "1.1", allocated_hours=8.0, depend_on_ids=[(4, t1.id)],
+        )
+        t12 = self._make_task(
+            project, "1.2", allocated_hours=5.0, depend_on_ids=[(4, t1.id)],
+        )
+        t2 = self._make_task(
+            project, "2", allocated_hours=6.0, depend_on_ids=[(4, t11.id)],
+        )
+        t21 = self._make_task(
+            project, "2.1", allocated_hours=10.0, depend_on_ids=[(4, t12.id)],
+        )
+        t3 = self._make_task(
+            project, "3", allocated_hours=4.0,
+            depend_on_ids=[(4, t2.id), (4, t21.id)],
+        )
+        t31 = self._make_task(
+            project, "3.1", allocated_hours=3.0, depend_on_ids=[(4, t3.id)],
+        )
+
+        rows = {row["name"]: row for row in project.get_planner_data()["tasks"]}
+
+        self.assertAlmostEqual(rows["1"]["critical_slack"], 0.0)
+        self.assertTrue(rows["1"]["is_critical"])
+        self.assertAlmostEqual(rows["1.1"]["critical_slack"], 1.0)
+        self.assertFalse(rows["1.1"]["is_critical"])
+        self.assertAlmostEqual(rows["1.2"]["critical_slack"], 0.0)
+        self.assertAlmostEqual(rows["2"]["critical_slack"], 1.0)
+        self.assertFalse(rows["2"]["is_critical"])
+        self.assertAlmostEqual(rows["2.1"]["critical_slack"], 0.0)
+        self.assertAlmostEqual(rows["3"]["critical_slack"], 0.0)
+        self.assertAlmostEqual(rows["3.1"]["critical_slack"], 0.0)
+
+        # Growing 1.1 to 11h flips the critical path to 1 → 1.1 → 2 → 3 → 3.1
+        # (26h > 24h) and hands the slack to the other branch.
+        t11.allocated_hours = 11.0
+        rows = {row["name"]: row for row in project.get_planner_data()["tasks"]}
+
+        self.assertTrue(rows["1.1"]["is_critical"])
+        self.assertTrue(rows["2"]["is_critical"])
+        self.assertAlmostEqual(rows["1.1"]["critical_slack"], 0.0)
+        self.assertAlmostEqual(rows["1.2"]["critical_slack"], 2.0)
+        self.assertFalse(rows["1.2"]["is_critical"])
+        self.assertAlmostEqual(rows["2.1"]["critical_slack"], 2.0)
+        self.assertFalse(rows["2.1"]["is_critical"])
+
     def test_planner_data_serializes_missing_dates_as_false(self):
         project = self.env["project.project"].create({"name": "Undated planner"})
         self._make_task(project, "No dates task")

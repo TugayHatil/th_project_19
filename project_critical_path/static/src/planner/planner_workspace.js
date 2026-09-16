@@ -135,6 +135,8 @@ export class PlannerWorkspace extends Component {
             // Bar info field selector (BRD-17) — per-project selection
             barInfoOpen: false,
             barInfoKeys: [...BAR_INFO_DEFAULT],
+            // Slack chip pinned left of each bar (BRD-18) — per-project toggle
+            slackVisible: true,
             // Resource Planning workspace modal (BRD-21)
             resModalOpen: false,
             resTask: null,
@@ -830,21 +832,25 @@ export class PlannerWorkspace extends Component {
             .join(" • ");
     }
 
-    // The selected keys live in a {projectId: [keys]} map so each project
-    // keeps its own bar labels across reloads.
+    // The selected keys live in a {projectId: {keys, slack}} map so each
+    // project keeps its own bar labels across reloads. Older entries stored
+    // a bare array of keys — they still load, with slack defaulting to on.
     loadBarInfoKeys() {
         try {
             const all = JSON.parse(localStorage.getItem(BAR_INFO_STORE_KEY) || "{}");
             const saved = all[this.state.projectId];
-            if (Array.isArray(saved)) {
+            const keys = Array.isArray(saved) ? saved : saved?.keys;
+            if (Array.isArray(keys)) {
                 const valid = new Set(BAR_INFO_FIELDS.map((f) => f.key));
-                this.state.barInfoKeys = saved.filter((k) => valid.has(k)).slice(0, BAR_INFO_MAX);
+                this.state.barInfoKeys = keys.filter((k) => valid.has(k)).slice(0, BAR_INFO_MAX);
+                this.state.slackVisible = saved.slack !== false;
                 return;
             }
         } catch {
             // corrupted storage — fall through to the defaults
         }
         this.state.barInfoKeys = [...BAR_INFO_DEFAULT];
+        this.state.slackVisible = true;
     }
 
     persistBarInfoKeys() {
@@ -854,7 +860,10 @@ export class PlannerWorkspace extends Component {
         } catch {
             // corrupted storage — start over
         }
-        all[this.state.projectId] = this.state.barInfoKeys;
+        all[this.state.projectId] = {
+            keys: this.state.barInfoKeys,
+            slack: this.state.slackVisible,
+        };
         try {
             localStorage.setItem(BAR_INFO_STORE_KEY, JSON.stringify(all));
         } catch {
@@ -875,6 +884,33 @@ export class PlannerWorkspace extends Component {
         }
         this.state.barInfoKeys = keys;
         this.persistBarInfoKeys();
+    }
+
+    // ---- Slack (total float) label left of the bar (BRD-18) -----------------
+    // The value comes straight from the stored critical-path calculation
+    // (LS - ES in allocated-hours); nothing is recomputed client-side.
+
+    toggleSlackLabel() {
+        this.state.slackVisible = !this.state.slackVisible;
+        this.persistBarInfoKeys();
+    }
+
+    slackText(task) {
+        if (task.is_critical) {
+            return "CP";
+        }
+        const slack = Math.round((task.critical_slack || 0) * 10) / 10;
+        return `+${slack}h`;
+    }
+
+    // Right edge of the chip anchored just before the bar — translateX(-100%)
+    // keeps it outside the bar without measuring the chip width.
+    slackStyle(task) {
+        const bar = this.barGeometry(task);
+        if (!bar) {
+            return "display:none";
+        }
+        return `left:${bar.left - 4}px;transform:translateX(-100%)`;
     }
 
     // ---- Task bar drag & resize -------------------------------------------

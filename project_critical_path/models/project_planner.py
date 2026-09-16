@@ -105,6 +105,7 @@ class ProjectProjectPlanner(models.Model):
                     "allocated_hours": task.allocated_hours or 0.0,
                     "effective_hours": getattr(task, "effective_hours", 0.0) or 0.0,
                     "is_critical": bool(task.is_critical),
+                    "critical_slack": task.critical_slack or 0.0,
                     "depend_on_ids": task.depend_on_ids.ids,
                     "baseline_name": baseline.name if baseline_by_task.get(task.id) else False,
                     "baseline_start": (
