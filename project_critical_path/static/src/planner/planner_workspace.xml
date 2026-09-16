@@ -740,9 +740,9 @@
                                             <div class="ms-auto">
                                                 <button type="button" class="btn btn-primary btn-sm"
                                                         t-att-disabled="state.resTlPending.outside"
-                                                        t-on-click="confirmResTlPending">Ata</button>
+                                                        t-on-click="confirmResTlPending">Assign</button>
                                                 <button type="button" class="btn btn-outline-secondary btn-sm ms-1"
-                                                        t-on-click="cancelResTlPending">İptal</button>
+                                                        t-on-click="cancelResTlPending">Cancel</button>
                                             </div>
                                         </div>
                                         <div t-if="resSelectedAssignment"
@@ -766,9 +766,9 @@
                                             </div>
                                             <div class="ms-auto" t-if="resSelectedAssignment.mine &amp;&amp; !state.resAssignEdit &amp;&amp; !state.resAssignDelConfirm">
                                                 <button type="button" class="btn btn-outline-primary btn-sm"
-                                                        t-on-click="openResAssignEdit">Düzenle</button>
+                                                        t-on-click="openResAssignEdit">Edit</button>
                                                 <button type="button" class="btn btn-outline-danger btn-sm ms-1"
-                                                        t-on-click="askDeleteResAssignment">Sil</button>
+                                                        t-on-click="askDeleteResAssignment">Delete</button>
                                             </div>
                                         </div>
                                         <div t-if="resSelectedAssignment &amp;&amp; state.resAssignEdit"
@@ -783,24 +783,24 @@
                                                    t-att-value="state.resAssignEdit.date_end"
                                                    t-on-change="(ev) => state.resAssignEdit.date_end = ev.target.value"/>
                                             <button type="button" class="btn btn-primary btn-sm ms-auto"
-                                                    t-on-click="saveResAssignEdit">Kaydet</button>
+                                                    t-on-click="saveResAssignEdit">Save</button>
                                             <button type="button" class="btn btn-outline-secondary btn-sm"
-                                                    t-on-click="cancelResAssignEdit">İptal</button>
+                                                    t-on-click="cancelResAssignEdit">Cancel</button>
                                         </div>
                                         <div t-if="resSelectedAssignment &amp;&amp; state.resAssignDelConfirm"
                                              class="o_cp_res_tl_confirm border border-danger rounded d-flex align-items-center gap-2 flex-wrap mt-1 px-2 py-2">
                                             <span class="small text-danger fw-bold">
-                                                Bu kaynak atamasını silmek istediğinize emin misiniz?
+                                                Are you sure you want to delete this resource assignment?
                                             </span>
                                             <div class="ms-auto">
                                                 <button type="button" class="btn btn-danger btn-sm"
-                                                        t-on-click="confirmDeleteResAssignment">Sil</button>
+                                                        t-on-click="confirmDeleteResAssignment">Delete</button>
                                                 <button type="button" class="btn btn-outline-secondary btn-sm ms-1"
-                                                        t-on-click="cancelDeleteResAssignment">İptal</button>
+                                                        t-on-click="cancelDeleteResAssignment">Cancel</button>
                                             </div>
                                         </div>
                                         <div class="text-muted small mt-1">
-                                            Drag across the timeline to preview an assignment, then click Ata · click an assignment for details · drag or resize your own assignments.
+                                            Drag across the timeline to preview an assignment, then click Assign · click an assignment for details · drag or resize your own assignments.
                                             <t t-if="state.resTlDrag?.conflict" class="text-danger fw-bold">
                                                 Overlaps an existing assignment.</t>
                                             <t t-if="state.resTlDrag?.outside" class="text-danger fw-bold">

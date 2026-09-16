@@ -2,6 +2,7 @@ import { Component, onMounted, useExternalListener, useRef, useState } from "@od
 import { registry } from "@web/core/registry";
 import { _t } from "@web/core/l10n/translation";
 import { useService } from "@web/core/utils/hooks";
+import { session } from "@web/session";
 
 const DAY_MS = 86400000;
 const SCALES = {
@@ -27,10 +28,18 @@ const addDays = (date, days) => new Date(date.getTime() + days * DAY_MS);
 const dayDiff = (a, b) => Math.round((b.getTime() - a.getTime()) / DAY_MS);
 const startOfWeek = (date) => addDays(date, -((date.getDay() + 6) % 7));
 const startOfMonth = (date) => new Date(date.getFullYear(), date.getMonth(), 1);
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const pad2 = (n) => String(n).padStart(2, "0");
-const monthLabel = (date) => `${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
-const dayLabel = (date) => `${MONTHS[date.getMonth()]} ${pad2(date.getDate())}`;
+// All calendar labels follow the Odoo user's language (session.user_context.lang),
+// never the browser locale — the same assets serve every language.
+const odooLocale = (session.user_context?.lang || "en_US").replace("_", "-");
+const fmtMonthYear = new Intl.DateTimeFormat(odooLocale, { month: "long", year: "numeric" });
+const fmtDayMonth = new Intl.DateTimeFormat(odooLocale, { day: "numeric", month: "short" });
+const fmtWeekdayDay = new Intl.DateTimeFormat(odooLocale, { weekday: "short", day: "numeric" });
+const fmtFullDay = new Intl.DateTimeFormat(odooLocale, { weekday: "long", day: "numeric", month: "short" });
+const fmtMediumDate = new Intl.DateTimeFormat(odooLocale, { dateStyle: "medium" });
+const fmtCompactDate = new Intl.DateTimeFormat(odooLocale, { day: "2-digit", month: "2-digit", year: "2-digit" });
+const monthLabel = (date) => fmtMonthYear.format(date);
+const dayLabel = (date) => fmtDayMonth.format(date);
 const isoDay = (date) => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
 const resIsoWeek = (date) => {
     const d = new Date(date);
@@ -108,7 +117,7 @@ export class PlannerWorkspace extends Component {
             resRequired: null,
             resSelOptKey: null,
             // Timeline: scale, navigation anchor, live drag preview and the
-            // pending assignment awaiting the explicit "Ata" commit (BRD-23)
+            // pending assignment awaiting the explicit "Assign" commit (BRD-23)
             resTlScale: "day",
             resTlAnchor: null,
             resTlDrag: null,
@@ -247,7 +256,7 @@ export class PlannerWorkspace extends Component {
         const origin = this.origin;
         if (scale === "day") {
             for (let day = origin; day <= rangeEnd; day = addDays(day, 1)) {
-                cols.push({ start: day, days: 1, label: pad2(day.getDate()), group: monthLabel(day) });
+                cols.push({ start: day, days: 1, label: fmtWeekdayDay.format(day), group: monthLabel(day) });
             }
         } else if (scale === "week") {
             for (let day = origin; day <= rangeEnd; day = addDays(day, 7)) {
@@ -531,7 +540,7 @@ export class PlannerWorkspace extends Component {
         if (!str) {
             return "—";
         }
-        return dayLabel(parseDay(str));
+        return fmtFullDay.format(parseDay(str));
     }
 
     formatDayVariance(days) {
@@ -984,7 +993,7 @@ export class PlannerWorkspace extends Component {
             return "";
         }
         const date = new Date(str.replace(" ", "T"));
-        return `${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+        return fmtMediumDate.format(date);
     }
 
     formatSignedHours(hours) {
@@ -1006,8 +1015,7 @@ export class PlannerWorkspace extends Component {
         if (!str) {
             return "–";
         }
-        const date = parseDay(str);
-        return `${pad2(date.getDate())}.${pad2(date.getMonth() + 1)}.${String(date.getFullYear()).slice(2)}`;
+        return fmtCompactDate.format(parseDay(str));
     }
 
     // ---- Resource Planning workspace (BRD-21) ------------------------------
@@ -1353,9 +1361,9 @@ export class PlannerWorkspace extends Component {
             if (this.state.resTlScale === "hour") {
                 cols.push({ label: pad2(d.getHours()) });
             } else if (this.state.resTlScale === "week") {
-                cols.push({ label: `W${resIsoWeek(d)}` });
+                cols.push({ label: `${_t("Week")} ${resIsoWeek(d)}` });
             } else {
-                cols.push({ label: pad2(d.getDate()) });
+                cols.push({ label: fmtWeekdayDay.format(d) });
             }
         }
         return cols;
@@ -1507,7 +1515,7 @@ export class PlannerWorkspace extends Component {
 
     // ---- Pending assignment (BRD-23) ---------------------------------------
     // A released drag only becomes a preview; the server write waits for the
-    // explicit "Ata" click. The preview itself stays draggable/resizable and
+    // explicit "Assign" click. The preview itself stays draggable/resizable and
     // follows whichever candidate is selected.
 
     resTlPendingStyle() {
@@ -1638,7 +1646,7 @@ export class PlannerWorkspace extends Component {
         return `${this.formatHours(hrs)} ${_t("planned")}`;
     }
 
-    // "Düzenle" reveals precise datetime inputs; move/resize on the bar
+    // "Edit" reveals precise datetime inputs; move/resize on the bar
     // itself stays the primary interaction.
     openResAssignEdit() {
         const item = this.resSelectedAssignment;
@@ -1924,7 +1932,7 @@ export class PlannerWorkspace extends Component {
         const startDt = fmtDt(new Date(drag.startMs));
         const endDt = fmtDt(new Date(drag.endMs));
         if (d.mode === "create") {
-            // Dragging only stages a preview — the "Ata" button commits it.
+            // Dragging only stages a preview — the "Assign" button commits it.
             this.state.resTlPending = {
                 startMs: drag.startMs,
                 endMs: drag.endMs,
