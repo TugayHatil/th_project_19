@@ -1,6 +1,7 @@
 import { Component, onMounted, useExternalListener, useRef, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { _t } from "@web/core/l10n/translation";
+import { localization } from "@web/core/l10n/localization";
 import { useService } from "@web/core/utils/hooks";
 import { session } from "@web/session";
 
@@ -29,17 +30,32 @@ const dayDiff = (a, b) => Math.round((b.getTime() - a.getTime()) / DAY_MS);
 const startOfWeek = (date) => addDays(date, -((date.getDay() + 6) % 7));
 const startOfMonth = (date) => new Date(date.getFullYear(), date.getMonth(), 1);
 const pad2 = (n) => String(n).padStart(2, "0");
-// All calendar labels follow the Odoo user's language (session.user_context.lang),
-// never the browser locale — the same assets serve every language.
-const odooLocale = (session.user_context?.lang || "en_US").replace("_", "-");
-const fmtMonthYear = new Intl.DateTimeFormat(odooLocale, { month: "long", year: "numeric" });
-const fmtDayMonth = new Intl.DateTimeFormat(odooLocale, { day: "numeric", month: "short" });
-const fmtWeekdayDay = new Intl.DateTimeFormat(odooLocale, { weekday: "short", day: "numeric" });
-const fmtFullDay = new Intl.DateTimeFormat(odooLocale, { weekday: "long", day: "numeric", month: "short" });
-const fmtMediumDate = new Intl.DateTimeFormat(odooLocale, { dateStyle: "medium" });
-const fmtCompactDate = new Intl.DateTimeFormat(odooLocale, { day: "2-digit", month: "2-digit", year: "2-digit" });
-const monthLabel = (date) => fmtMonthYear.format(date);
-const dayLabel = (date) => fmtDayMonth.format(date);
+// All calendar labels follow the Odoo user's language (res.lang code), never
+// the browser locale — the same assets serve every language. Built lazily:
+// the localization service populates `localization` after module eval.
+let calendarFormats = null;
+function getCalendarFormats() {
+    if (!calendarFormats) {
+        let lang = "";
+        try {
+            lang = localization.code;
+        } catch {
+            // localization params are not ready yet — fall back to the session
+        }
+        const locale = (lang || session.user_context?.lang || "en_US").replace("_", "-");
+        calendarFormats = {
+            monthYear: new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }),
+            dayMonth: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }),
+            weekdayDay: new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric" }),
+            fullDay: new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "short" }),
+            mediumDate: new Intl.DateTimeFormat(locale, { dateStyle: "medium" }),
+            compactDate: new Intl.DateTimeFormat(locale, { day: "2-digit", month: "2-digit", year: "2-digit" }),
+        };
+    }
+    return calendarFormats;
+}
+const monthLabel = (date) => getCalendarFormats().monthYear.format(date);
+const dayLabel = (date) => getCalendarFormats().dayMonth.format(date);
 const isoDay = (date) => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
 const resIsoWeek = (date) => {
     const d = new Date(date);
@@ -256,7 +272,7 @@ export class PlannerWorkspace extends Component {
         const origin = this.origin;
         if (scale === "day") {
             for (let day = origin; day <= rangeEnd; day = addDays(day, 1)) {
-                cols.push({ start: day, days: 1, label: fmtWeekdayDay.format(day), group: monthLabel(day) });
+                cols.push({ start: day, days: 1, label: getCalendarFormats().weekdayDay.format(day), group: monthLabel(day) });
             }
         } else if (scale === "week") {
             for (let day = origin; day <= rangeEnd; day = addDays(day, 7)) {
@@ -540,7 +556,7 @@ export class PlannerWorkspace extends Component {
         if (!str) {
             return "—";
         }
-        return fmtFullDay.format(parseDay(str));
+        return getCalendarFormats().fullDay.format(parseDay(str));
     }
 
     formatDayVariance(days) {
@@ -993,7 +1009,7 @@ export class PlannerWorkspace extends Component {
             return "";
         }
         const date = new Date(str.replace(" ", "T"));
-        return fmtMediumDate.format(date);
+        return getCalendarFormats().mediumDate.format(date);
     }
 
     formatSignedHours(hours) {
@@ -1015,7 +1031,7 @@ export class PlannerWorkspace extends Component {
         if (!str) {
             return "–";
         }
-        return fmtCompactDate.format(parseDay(str));
+        return getCalendarFormats().compactDate.format(parseDay(str));
     }
 
     // ---- Resource Planning workspace (BRD-21) ------------------------------
@@ -1363,7 +1379,7 @@ export class PlannerWorkspace extends Component {
             } else if (this.state.resTlScale === "week") {
                 cols.push({ label: `${_t("Week")} ${resIsoWeek(d)}` });
             } else {
-                cols.push({ label: fmtWeekdayDay.format(d) });
+                cols.push({ label: getCalendarFormats().weekdayDay.format(d) });
             }
         }
         return cols;
