@@ -394,7 +394,7 @@ class ProjectProject(models.Model):
                 in_degree[successor_id] -= 1
                 if not in_degree[successor_id]:
                     queue.append(successor_id)
-        if len(ordered_ids) != len(schedulable):
+        if len(ordered_ids) != len(task_ids):
             raise UserError(_("Critical paths cannot be calculated because task dependencies contain a cycle."))
 
         return {
