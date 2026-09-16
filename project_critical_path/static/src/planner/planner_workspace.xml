@@ -152,7 +152,7 @@
                                          class="o_cp_planner_bar"
                                          t-att-class="{selected: state.selectedId === task.id, critical: task.is_critical, done: task.is_done, dragging: state.drag?.taskId === task.id}"
                                          t-att-style="barStyle(task)"
-                                         t-att-title="task.is_critical ? task.name + ' — Critical Path' : task.name"
+                                         t-att-title="barTitle(task)"
                                          t-on-pointerdown="(ev) => this.onBarPointerDown(task, 'move', ev)"/>
                                     <div t-if="task.date_start &amp;&amp; task.date_stop &amp;&amp; task.baseline_stop &amp;&amp; task.date_stop &gt; task.baseline_stop"
                                          class="o_cp_planner_variance_bar"
@@ -583,7 +583,7 @@
                                             <option value="">Resource role…</option>
                                             <t t-foreach="state.resData?.roles || []" t-as="role" t-key="role.id">
                                                 <option t-att-value="role.id"
-                                                        t-esc="role.name + (role.category === 'equipment' ? ' (Equipment)' : '')"/>
+                                                        t-esc="resRoleLabel(role)"/>
                                             </t>
                                         </select>
                                         <div class="d-flex gap-1 mb-1">

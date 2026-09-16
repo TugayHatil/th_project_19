@@ -60,7 +60,6 @@ function getCalendarFormats() {
         calendarFormats = {
             monthYear: new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }),
             dayMonth: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }),
-            fullDay: new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "short" }),
             mediumDate: new Intl.DateTimeFormat(locale, { dateStyle: "medium" }),
             compactDate: new Intl.DateTimeFormat(locale, { day: "2-digit", month: "2-digit", year: "2-digit" }),
             percent: new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 0 }),
@@ -364,6 +363,16 @@ export class PlannerWorkspace extends Component {
         return parseDay(stopStr) < today;
     }
 
+    barTitle(task) {
+        return task.is_critical ? `${task.name} — ${_t("Critical Path")}` : task.name;
+    }
+
+    resRoleLabel(role) {
+        return role.category === "equipment"
+            ? `${role.name} (${_t("Equipment")})`
+            : role.name;
+    }
+
     // The dates the bar currently shows — during a drag this is the live
     // drag position so bars, variance tails and arrows follow the pointer.
     currentDates(task) {
@@ -414,15 +423,15 @@ export class PlannerWorkspace extends Component {
 
     baselineTooltip(task) {
         const days = dayDiff(parseDay(task.baseline_start), parseDay(task.baseline_stop));
-        return `Baseline ${task.baseline_name}\n`
+        return `${_t("Baseline")} ${task.baseline_name}\n`
             + `${dayLabel(parseDay(task.baseline_start))} – ${dayLabel(parseDay(task.baseline_stop))}\n`
-            + `Duration: ${days}d`;
+            + `${_t("Duration")}: ${days}d`;
     }
 
     varianceTooltip(task) {
         const stop = this.currentDates(task).stop;
         const days = dayDiff(parseDay(task.baseline_stop), parseDay(stop));
-        return `Current finish: ${dayLabel(parseDay(stop))}\nVariance: +${days}d`;
+        return `${_t("Current finish")}: ${dayLabel(parseDay(stop))}\n${_t("Variance")}: +${days}d`;
     }
 
     barStyle(task) {
@@ -600,7 +609,9 @@ export class PlannerWorkspace extends Component {
         if (!str) {
             return "—";
         }
-        return getCalendarFormats().fullDay.format(parseDay(str));
+        // Compact "7 Eyl" — the narrow inspector columns can't afford the
+        // weekday name.
+        return getCalendarFormats().dayMonth.format(parseDay(str));
     }
 
     formatDayVariance(days) {
