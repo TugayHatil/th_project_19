@@ -488,7 +488,9 @@ export class PlannerWorkspace extends Component {
         return raw.map((edge) => {
             const x1 = edge.fromBar.left + edge.fromBar.width;
             const y1 = edge.predIdx * PLANNER_ROW_H + PLANNER_BAR_CENTER;
-            const x2 = edge.toBar.left;
+            // Arrows land left of the lead-in cluster (slack/!/✓) so the
+            // markers stay readable instead of sitting under the arrowhead.
+            const x2 = edge.toBar.left - this.barLeadWidth(edge.task);
             const y2 = edge.toIdx * PLANNER_ROW_H + PLANNER_BAR_CENTER;
             const exitX = x1 + DEP_STUB + edge.outLane * DEP_LANE;
             const entryX = x2 - DEP_STUB - edge.inLane * DEP_LANE;
@@ -920,6 +922,22 @@ export class PlannerWorkspace extends Component {
         }
         const slack = Math.round((task.critical_slack || 0) * 10) / 10;
         return `+${slack}h`;
+    }
+
+    // Approximate width of the lead-in cluster (slack chip + ! + ✓) so
+    // dependency arrows can end left of it instead of overlapping the icons.
+    barLeadWidth(task) {
+        let w = 0;
+        if (this.state.slackVisible) {
+            w += 8 + this.slackText(task).length * 5;
+        }
+        if (this.isOverdue(task)) {
+            w += (w ? 4 : 0) + 11;
+        }
+        if (task.is_done) {
+            w += (w ? 4 : 0) + 10;
+        }
+        return w ? w + 4 : 0; // + the 4px anchor gap in barLeadStyle
     }
 
     // Right edge of the lead-in cluster anchored just before the bar —
