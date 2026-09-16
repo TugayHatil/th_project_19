@@ -46,7 +46,6 @@ function getCalendarFormats() {
         calendarFormats = {
             monthYear: new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }),
             dayMonth: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }),
-            weekdayDay: new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric" }),
             fullDay: new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "short" }),
             mediumDate: new Intl.DateTimeFormat(locale, { dateStyle: "medium" }),
             compactDate: new Intl.DateTimeFormat(locale, { day: "2-digit", month: "2-digit", year: "2-digit" }),
@@ -272,7 +271,7 @@ export class PlannerWorkspace extends Component {
         const origin = this.origin;
         if (scale === "day") {
             for (let day = origin; day <= rangeEnd; day = addDays(day, 1)) {
-                cols.push({ start: day, days: 1, label: getCalendarFormats().weekdayDay.format(day), group: monthLabel(day) });
+                cols.push({ start: day, days: 1, label: pad2(day.getDate()), group: monthLabel(day) });
             }
         } else if (scale === "week") {
             for (let day = origin; day <= rangeEnd; day = addDays(day, 7)) {
@@ -1379,7 +1378,7 @@ export class PlannerWorkspace extends Component {
             } else if (this.state.resTlScale === "week") {
                 cols.push({ label: `${_t("Week")} ${resIsoWeek(d)}` });
             } else {
-                cols.push({ label: getCalendarFormats().weekdayDay.format(d) });
+                cols.push({ label: pad2(d.getDate()) });
             }
         }
         return cols;
