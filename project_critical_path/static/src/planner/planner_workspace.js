@@ -194,6 +194,9 @@ export class PlannerWorkspace extends Component {
             }
             if (this.state.projectId) {
                 await this.loadProject(this.state.projectId);
+                // Open fitted to the viewport so the whole timeline is
+                // visible without pressing Fit every time.
+                this.fit();
             } else {
                 this.state.loading = false;
             }
@@ -2160,6 +2163,8 @@ export class PlannerWorkspace extends Component {
         this.state.projectId = Number(ev.target.value) || false;
         if (this.state.projectId) {
             await this.loadProject(this.state.projectId);
+            // A different project means a different range — refit it.
+            this.fit();
         }
     }
 }
