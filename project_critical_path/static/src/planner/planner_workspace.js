@@ -1005,17 +1005,17 @@ export class PlannerWorkspace extends Component {
                 tip: _t("Tasks past their finish date and not Done."),
             },
             {
-                key: "week", icon: "fa-clock-o", cls: "neutral",
+                key: "week", icon: "fa-calendar", cls: "neutral",
                 label: _t("This Week"), value: week,
                 tip: _t("Tasks planned to finish by the end of this week, not Done."),
             },
             {
-                key: "done", icon: "fa-check", cls: "done",
+                key: "done", icon: "fa-check-circle", cls: "done",
                 label: _t("Completed"), value: done,
                 tip: _t("Tasks in the Done state."),
             },
             {
-                key: "total", icon: "fa-hourglass-half", cls: "neutral",
+                key: "total", icon: "fa-clock-o", cls: "neutral",
                 label: _t("Total"), value: `${getCalendarFormats().number.format(hours)}h`,
                 tip: _t("Total planned hours across all tasks."),
             },

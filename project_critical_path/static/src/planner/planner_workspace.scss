@@ -24,41 +24,62 @@ $o_cp_planner_bar_critical: #e8a33d;
     font-size: 0.875rem;
 }
 
-// Compact status strip under the toolbar — one line of small KPIs split
-// by hairline separators, ~44px tall so the timeline keeps its space.
+// Compact status strip under the toolbar — a single neutral container
+// holding one line of KPIs split by hairline separators. ~50px tall so
+// the timeline keeps its space; no cards, shadows or gradients.
 .o_cp_planner_kpis {
-    height: 44px;
+    min-height: 50px;
     flex: 0 0 auto;
-    gap: 14px;
+    gap: 18px;
+    margin: 6px 10px;
+    padding: 0 14px;
+    background: #f8f9fb;
+    border-radius: 6px;
     font-size: 0.78rem;
     color: #667085;
     overflow: hidden;
     white-space: nowrap;
+    flex-wrap: wrap;
+    row-gap: 2px;
 }
 
+// Icon + bold number + small muted label; color only on icon and number.
 .o_cp_planner_kpi {
     display: inline-flex;
-    align-items: center;
+    align-items: baseline;
     gap: 6px;
+    padding: 4px 0;
     cursor: pointer;
     user-select: none;
+    border-bottom: 2px solid transparent;
 
     i {
-        font-size: 0.72rem;
+        font-size: 0.75rem;
+        align-self: center;
     }
 
     b {
-        font-weight: 600;
+        font-weight: 700;
+        font-size: 0.95rem;
         color: #344054;
     }
 
-    &.critical i { color: $o_cp_planner_bar_critical; }
-    &.overdue i { color: #dc3545; }
-    &.done i { color: #198754; }
-    &.neutral i { color: #98a2b3; }
+    > span {
+        font-size: 0.72rem;
+        color: #98a2b3;
+    }
+
+    &.critical { i, b { color: $o_cp_planner_bar_critical; } }
+    &.overdue { i, b { color: #dc3545; } }
+    &.done { i, b { color: #43a56b; } }
+    &.neutral { i { color: #98a2b3; } }
+
+    &:hover:not(.static) > span {
+        color: #667085;
+    }
 
     &.active {
-        box-shadow: inset 0 -2px 0 #4a9edd;
+        border-bottom-color: #4a9edd;
     }
 
     &.static {
@@ -68,7 +89,7 @@ $o_cp_planner_bar_critical: #e8a33d;
 
 .o_cp_planner_kpi_sep {
     width: 1px;
-    height: 16px;
+    height: 18px;
     background: #e4e7ec;
     flex: 0 0 auto;
 }
