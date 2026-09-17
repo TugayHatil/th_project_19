@@ -81,13 +81,6 @@ function getCalendarFormats() {
 const monthLabel = (date) => getCalendarFormats().monthYear.format(date);
 const dayLabel = (date) => getCalendarFormats().dayMonth.format(date);
 const isoDay = (date) => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
-const resIsoWeek = (date) => {
-    const d = new Date(date);
-    d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
-    const week1 = new Date(d.getFullYear(), 0, 4);
-    return 1 + Math.round(((d - week1) / DAY_MS + ((week1.getDay() + 6) % 7)) / 7);
-};
-
 // Must stay in sync with planner_workspace.scss row/bar metrics.
 const PLANNER_ROW_H = 32;
 const PLANNER_BAR_CENTER = 16;
@@ -165,7 +158,7 @@ export class PlannerWorkspace extends Component {
             resSelOptKey: null,
             // Timeline: scale, navigation anchor, live drag preview and the
             // pending assignment awaiting the explicit "Assign" commit (BRD-23)
-            resTlScale: "day",
+            resTlScale: "week",
             resTlAnchor: null,
             resTlDrag: null,
             resTlPending: null,
@@ -185,7 +178,7 @@ export class PlannerWorkspace extends Component {
         });
         this.scales = SCALES;
         this.barInfoFields = BAR_INFO_FIELDS;
-        this.resTlScales = { hour: _t("Hour"), day: _t("Day"), week: _t("Week") };
+        this.resTlScales = { day: _t("Day"), week: _t("Week"), month: _t("Month") };
         useExternalListener(document.body, "keydown", (ev) => {
             if (ev.key !== "Escape") {
                 return;
@@ -1643,34 +1636,32 @@ export class PlannerWorkspace extends Component {
     }
 
     // ---- Candidate timeline (BRD-22) ---------------------------------------
-    // Continuous time axis at hour/day/week granularity. All bookings arrive
-    // with the options RPC; drags only write once on pointer-up.
+    // Same scale semantics as the Resource Board: day = 24 hour columns,
+    // week = 7 day columns, month = the anchor's calendar month. Anchored
+    // on the requirement by default and shifted by ‹ › navigation.
 
     resTlUnitMs() {
-        return { hour: 3600000, day: DAY_MS, week: 7 * DAY_MS }[this.state.resTlScale];
+        return { day: 3600000, week: DAY_MS, month: DAY_MS }[this.state.resTlScale];
     }
 
-    // Visible range per scale; anchored on the requirement by default and
-    // shifted by ‹ › navigation.
     get resTlRange() {
         const req = this.resSelectedReq;
         if (!req?.date_start || !req?.date_end) {
             return false;
         }
-        const reqStart = parseDay(req.date_start);
-        const reqEnd = parseDay(req.date_end);
-        const anchor = this.state.resTlAnchor;
-        if (this.state.resTlScale === "hour") {
-            const start = anchor || reqStart;
-            return { start, end: addDays(start, 1) };
+        const anchor = this.state.resTlAnchor || parseDay(req.date_start);
+        if (this.state.resTlScale === "day") {
+            return { start: anchor, end: addDays(anchor, 1) };
         }
-        if (this.state.resTlScale === "week") {
-            const start = anchor || addDays(startOfWeek(reqStart), -7);
-            const weeks = Math.ceil(Math.max(dayDiff(reqStart, reqEnd) + 1, 1) / 7) + 2;
-            return { start, end: addDays(start, weeks * 7) };
+        if (this.state.resTlScale === "month") {
+            const start = startOfMonth(anchor);
+            return {
+                start,
+                end: startOfMonth(new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1)),
+            };
         }
-        const start = anchor || addDays(reqStart, -2);
-        return { start, end: addDays(start, dayDiff(reqStart, reqEnd) + 5) };
+        const start = startOfWeek(anchor);
+        return { start, end: addDays(start, 7) };
     }
 
     get resTlColumns() {
@@ -1682,15 +1673,33 @@ export class PlannerWorkspace extends Component {
         const unit = this.resTlUnitMs();
         for (let t = range.start.getTime(); t < range.end.getTime(); t += unit) {
             const d = new Date(t);
-            if (this.state.resTlScale === "hour") {
+            if (this.state.resTlScale === "day") {
                 cols.push({ label: pad2(d.getHours()) });
-            } else if (this.state.resTlScale === "week") {
-                cols.push({ label: `${_t("Week")} ${resIsoWeek(d)}` });
             } else {
-                cols.push({ label: pad2(d.getDate()) });
+                cols.push({
+                    label: this.state.resTlScale === "month"
+                        ? String(d.getDate())
+                        : `${getCalendarFormats().weekdayShort.format(d)} ${pad2(d.getDate())}`,
+                });
             }
         }
         return cols;
+    }
+
+    // Same caption row as the board: day name, month + ISO week, or month.
+    get resTlCaption() {
+        const range = this.resTlRange;
+        if (!range) {
+            return "";
+        }
+        const fmt = getCalendarFormats();
+        if (this.state.resTlScale === "month") {
+            return fmt.monthYear.format(range.start);
+        }
+        if (this.state.resTlScale === "week") {
+            return `${fmt.monthYear.format(range.start)} · ${_t("Week")} ${isoWeek(range.start)}`;
+        }
+        return fmt.dayCaption.format(range.start);
     }
 
     async resTlNavigate(dir) {
@@ -1698,22 +1707,22 @@ export class PlannerWorkspace extends Component {
         if (!range) {
             return;
         }
-        // Hour view shows one day → navigate by day; week view by week;
-        // day view jumps a full visible span.
-        const step = {
-            hour: DAY_MS,
-            week: 7 * DAY_MS,
-        }[this.state.resTlScale] || (range.end.getTime() - range.start.getTime());
-        this.state.resTlAnchor = new Date(range.start.getTime() + dir * step);
+        if (this.state.resTlScale === "month") {
+            this.state.resTlAnchor = new Date(
+                range.start.getFullYear(), range.start.getMonth() + dir, 1
+            );
+        } else {
+            const step = this.state.resTlScale === "week" ? 7 * DAY_MS : DAY_MS;
+            this.state.resTlAnchor = new Date(range.start.getTime() + dir * step);
+        }
         await this.loadResOptions(this.state.resSelReqId);
     }
 
     async resTlToday() {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        this.state.resTlAnchor = this.state.resTlScale === "week"
-            ? startOfWeek(today)
-            : today;
+        this.state.resTlAnchor = this.state.resTlScale === "month" ? startOfMonth(today)
+            : this.state.resTlScale === "week" ? startOfWeek(today) : today;
         await this.loadResOptions(this.state.resSelReqId);
     }
 
@@ -1727,8 +1736,8 @@ export class PlannerWorkspace extends Component {
         const range = this.resTlRange;
         const cur = range ? range.start : new Date();
         this.state.resTlScale = scale;
-        this.state.resTlAnchor = scale === "week"
-            ? startOfWeek(cur)
+        this.state.resTlAnchor = scale === "month" ? startOfMonth(cur)
+            : scale === "week" ? startOfWeek(cur)
             : new Date(cur.getFullYear(), cur.getMonth(), cur.getDate());
         await this.loadResOptions(this.state.resSelReqId);
     }
@@ -1738,23 +1747,16 @@ export class PlannerWorkspace extends Component {
         return range ? isoDay(range.start) : "";
     }
 
-    // Direct date jump: hour view opens that day, day view centers the
-    // picked date inside the span, week view opens its week (BRD-23 §7).
+    // Direct date jump: day view opens that day, week its week, month its
+    // month — same anchoring rules as the board picker.
     async onResTlDatePick(ev) {
         const val = ev.target.value;
         if (!val) {
             return;
         }
         const picked = parseDay(val);
-        if (this.state.resTlScale === "week") {
-            this.state.resTlAnchor = startOfWeek(picked);
-        } else if (this.state.resTlScale === "day") {
-            const range = this.resTlRange;
-            const span = range ? dayDiff(range.start, range.end) : 7;
-            this.state.resTlAnchor = addDays(picked, -Math.floor(span / 2));
-        } else {
-            this.state.resTlAnchor = picked;
-        }
+        this.state.resTlAnchor = this.state.resTlScale === "month" ? startOfMonth(picked)
+            : this.state.resTlScale === "week" ? startOfWeek(picked) : picked;
         await this.loadResOptions(this.state.resSelReqId);
     }
 
@@ -2070,19 +2072,14 @@ export class PlannerWorkspace extends Component {
         return range.start.getTime() + ratio * (range.end.getTime() - range.start.getTime());
     }
 
-    // Snap a timestamp to the scale unit: hour boundaries, 09:00/18:00 day
-    // edges (the existing assignment defaults), Mon 09:00 / Sun 18:00 weeks.
+    // Snap a timestamp to the scale unit: hour boundaries in the day view,
+    // 09:00/18:00 day edges (the existing assignment defaults) in week and
+    // month views.
     resTlSnap(ms, edge) {
         const d = new Date(ms);
-        if (this.state.resTlScale === "hour") {
+        if (this.state.resTlScale === "day") {
             d.setMinutes(0, 0, 0);
             return edge === "end" ? d.getTime() + 3600000 : d.getTime();
-        }
-        if (this.state.resTlScale === "week") {
-            const monday = startOfWeek(d);
-            return edge === "end"
-                ? addDays(monday, 6).getTime() + 18 * 3600000
-                : monday.getTime() + 9 * 3600000;
         }
         d.setHours(edge === "end" ? 18 : 9, 0, 0, 0);
         return d.getTime();

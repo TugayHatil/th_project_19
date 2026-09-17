@@ -858,13 +858,18 @@
                                                    t-att-value="resTlPickerValue"
                                                    t-on-change="onResTlDatePick"/>
                                             <div class="btn-group btn-group-sm ms-2">
-                                                <button t-foreach="['hour', 'day', 'week']" t-as="tlScale"
+                                                <button t-foreach="['day', 'week', 'month']" t-as="tlScale"
                                                         t-key="tlScale" type="button"
                                                         class="btn"
                                                         t-att-class="state.resTlScale === tlScale ? 'btn-primary' : 'btn-outline-secondary'"
                                                         t-on-click="() => this.setResTlScale(tlScale)"
                                                         t-esc="resTlScales[tlScale]"/>
                                             </div>
+                                        </div>
+                                        <div t-if="resTlCaption"
+                                             class="o_cp_res_tl_row d-flex small fw-bold text-muted">
+                                            <span class="o_cp_res_tl_label"/>
+                                            <div class="flex-grow-1 text-center" t-esc="resTlCaption"/>
                                         </div>
                                         <div class="o_cp_res_tl_row d-flex small text-muted">
                                             <span class="o_cp_res_tl_label"/>
