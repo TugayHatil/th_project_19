@@ -819,3 +819,23 @@ msgstr "Vorgänge im Status Erledigt."
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
 msgid "Total planned hours across all tasks."
 msgstr "Summe der geplanten Stunden aller Vorgänge."
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.planner_workspace
+msgid "Resource Board"
+msgstr "Ressourcen-Board"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.planner_workspace
+msgid "Personnel"
+msgstr "Personal"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.planner_workspace
+msgid "No eligible resources."
+msgstr "Keine geeigneten Ressourcen."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Resources could not be loaded."
+msgstr "Ressourcen konnten nicht geladen werden."

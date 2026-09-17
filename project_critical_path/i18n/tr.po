@@ -1571,3 +1571,23 @@ msgstr "WBS:"
 #: model_terms:ir.ui.view,arch_db:project_critical_path.gantt_dependencies
 msgid "d"
 msgstr "g"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.planner_workspace
+msgid "Resource Board"
+msgstr "Kaynak Panosu"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.planner_workspace
+msgid "Personnel"
+msgstr "Personel"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.planner_workspace
+msgid "No eligible resources."
+msgstr "Uygun kaynak bulunamadı."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Resources could not be loaded."
+msgstr "Kaynaklar yüklenemedi."

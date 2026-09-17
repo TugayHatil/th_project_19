@@ -234,6 +234,75 @@ class ProjectProjectPlanner(models.Model):
             "changes": changes,
         }
 
+    def planner_get_resource_board(self, window_start=None, window_end=None):
+        """All eligible resources with their bookings inside the window.
+
+        Personnel = active employees carrying at least one resource role,
+        equipment = all active equipment. Occupancy is work-hours booked in
+        the window over work-hours available on the resource (or company)
+        calendar. Booking windows cross project boundaries on purpose —
+        capacity planning cares about the resource, not the project.
+        """
+        self.ensure_one()
+        win_start = _local_dt_to_utc(self, window_start, None, 0)
+        win_end = _local_dt_to_utc(self, window_end, None, 23)
+        if not (win_start and win_end):
+            return {"resources": []}
+        employees = self.env["hr.employee"].search(
+            [("active", "=", True), ("resource_role_ids", "!=", False)], order="name")
+        equipment = self.env["maintenance.equipment"].search(
+            [("active", "=", True)], order="name")
+        bookings = self.env["project.task.resource.assignment"].search([
+            ("date_start", "<", win_end), ("date_end", ">", win_start),
+        ], order="date_start, id")
+        company_cal = self.env.company.resource_calendar_id
+
+        by_res = {"employee_id": {}, "equipment_id": {}}
+        for booking in bookings:
+            resource = booking.employee_id or booking.equipment_id
+            if resource:
+                field = "employee_id" if booking.employee_id else "equipment_id"
+                by_res[field].setdefault(resource.id, []).append(booking)
+
+        def entry(resource, field):
+            res_bookings = by_res[field].get(resource.id, [])
+            calendar = getattr(resource, "resource_calendar_id", False) or company_cal
+            booked = 0.0
+            for booking in res_bookings:
+                start = max(booking.date_start, win_start)
+                end = min(booking.date_end, win_end)
+                booked += (calendar.get_work_hours_count(start, end, compute_leaves=True)
+                           if calendar else (end - start).total_seconds() / 3600.0)
+            available = (calendar.get_work_hours_count(win_start, win_end, compute_leaves=True)
+                         if calendar else (win_end - win_start).total_seconds() / 3600.0)
+            return {
+                "key": ("e" if field == "employee_id" else "q") + str(resource.id),
+                "employee_id": resource.id if field == "employee_id" else False,
+                "equipment_id": resource.id if field == "equipment_id" else False,
+                "category": "human" if field == "employee_id" else "equipment",
+                "name": resource.display_name,
+                "priority": int(resource.priority or 0) if field == "employee_id" else 0,
+                "booked_hours": round(booked, 2),
+                "available_hours": round(available, 2),
+                "occupancy": round(booked / available * 100) if available else (100 if booked else 0),
+                "schedule": [{
+                    "id": booking.id,
+                    "task_name": booking.task_id.display_name,
+                    "project_name": booking.project_id.display_name,
+                    "planned_hours": booking.planned_hours or 0.0,
+                    "date_start": _serialize_planner_day(self, booking.date_start),
+                    "date_end": _serialize_planner_day(self, booking.date_end),
+                    "dt_start": _serialize_planner_dt(self, booking.date_start),
+                    "dt_end": _serialize_planner_dt(self, booking.date_end),
+                } for booking in res_bookings],
+            }
+
+        personnel = sorted(
+            (entry(emp, "employee_id") for emp in employees),
+            key=lambda e: (-e["priority"], e["name"].lower()),
+        )
+        return {"resources": personnel + [entry(eq, "equipment_id") for eq in equipment]}
+
 
 class ProjectTaskPlanner(models.Model):
     _inherit = "project.task"

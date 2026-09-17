@@ -64,6 +64,7 @@ function getCalendarFormats() {
             compactDate: new Intl.DateTimeFormat(locale, { day: "2-digit", month: "2-digit", year: "2-digit" }),
             percent: new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 0 }),
             number: new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }),
+            weekdayShort: new Intl.DateTimeFormat(locale, { weekday: "short" }),
         };
     }
     return calendarFormats;
@@ -163,6 +164,14 @@ export class PlannerWorkspace extends Component {
             resSelAssignId: null,
             resAssignEdit: null,
             resAssignDelConfirm: false,
+            // Resource Board (BRD-19) — second workspace mode next to Planner
+            boardMode: false,
+            boardScale: "week",
+            boardAnchor: null,
+            boardLoading: false,
+            boardResources: [],
+            boardSelKey: null,
+            boardGroupsCollapsed: new Set(),
         });
         this.scales = SCALES;
         this.barInfoFields = BAR_INFO_FIELDS;
@@ -2336,12 +2345,206 @@ export class PlannerWorkspace extends Component {
         }
     }
 
+    // ------------------------------------------------------------------
+    // Resource Board (BRD-19): project-wide capacity view reusing the
+    // resource timeline metrics — view only, no drag/assign here.
+    // ------------------------------------------------------------------
+
+    boardAnchorDate() {
+        if (this.state.boardAnchor) {
+            return this.state.boardAnchor;
+        }
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        return d;
+    }
+
+    setBoardMode(on) {
+        this.state.boardMode = on;
+        if (on && this.state.projectId) {
+            this.loadBoard();
+        }
+    }
+
+    async loadBoard() {
+        if (!this.state.projectId) {
+            return;
+        }
+        const range = this.boardRange;
+        this.state.boardLoading = true;
+        try {
+            const data = await this.orm.call(
+                "project.project", "planner_get_resource_board", [this.state.projectId],
+                {
+                    window_start: isoDay(range.start),
+                    window_end: isoDay(addDays(range.end, -1)),
+                },
+            );
+            this.state.boardResources = data.resources || [];
+        } catch {
+            this.state.boardResources = [];
+            this.notification.add(_t("Resources could not be loaded."), { type: "danger" });
+        } finally {
+            this.state.boardLoading = false;
+        }
+    }
+
+    get boardRange() {
+        const anchor = this.boardAnchorDate();
+        if (this.state.boardScale === "day") {
+            return { start: anchor, end: addDays(anchor, 1) };
+        }
+        if (this.state.boardScale === "month") {
+            const start = startOfWeek(startOfMonth(anchor));
+            const next = startOfMonth(new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1));
+            return { start, end: addDays(start, Math.ceil(Math.max(dayDiff(start, next), 1) / 7) * 7) };
+        }
+        const start = startOfWeek(anchor);
+        return { start, end: addDays(start, 7) };
+    }
+
+    get boardColumns() {
+        const range = this.boardRange;
+        if (!range) {
+            return [];
+        }
+        const cols = [];
+        if (this.state.boardScale === "day") {
+            for (let h = 0; h < 24; h++) {
+                cols.push({ label: pad2(h) });
+            }
+        } else {
+            const unit = this.state.boardScale === "month" ? 7 * DAY_MS : DAY_MS;
+            for (let t = range.start.getTime(); t < range.end.getTime(); t += unit) {
+                const d = new Date(t);
+                cols.push({
+                    label: this.state.boardScale === "month"
+                        ? dayLabel(d)
+                        : `${getCalendarFormats().weekdayShort.format(d)} ${pad2(d.getDate())}`,
+                });
+            }
+        }
+        return cols;
+    }
+
+    boardMsToStyle(s, e) {
+        const range = this.boardRange;
+        if (!range) {
+            return "display:none";
+        }
+        const span = range.end.getTime() - range.start.getTime();
+        const left = Math.max((s - range.start.getTime()) / span * 100, 0);
+        const width = Math.min((e - s) / span * 100, 100 - left);
+        return `left:${left}%;width:${Math.max(width, 0.5)}%`;
+    }
+
+    boardItemStyle(item) {
+        const { s, e } = this.resTlItemMs(item);
+        return this.boardMsToStyle(s, e);
+    }
+
+    boardItemTitle(item) {
+        const head = [item.task_name, item.project_name].filter(Boolean).join(" — ");
+        return `${head}: ${item.dt_start || item.date_start} – ${item.dt_end || item.date_end} · ${this.formatHours(item.planned_hours)}`;
+    }
+
+    // Overview = one row per resource; selected = one row per booking,
+    // same focus behaviour as the assignment dialog.
+    get boardRows() {
+        const sel = this.state.boardResources.find((res) => res.key === this.state.boardSelKey);
+        if (sel) {
+            return (sel.schedule || []).map((item) => ({
+                key: item.id, label: item.task_name, title: item.task_name, items: [item],
+            }));
+        }
+        return this.state.boardResources.map((res) => ({
+            key: res.key, label: res.name, title: res.name, items: res.schedule || [], res,
+        }));
+    }
+
+    get boardPersonnel() {
+        return this.state.boardResources.filter((res) => res.category === "human");
+    }
+
+    get boardEquipment() {
+        return this.state.boardResources.filter((res) => res.category === "equipment");
+    }
+
+    boardGroupCollapsed(key) {
+        return this.state.boardGroupsCollapsed.has(key);
+    }
+
+    toggleBoardGroup(key) {
+        const next = new Set(this.state.boardGroupsCollapsed);
+        if (next.has(key)) {
+            next.delete(key);
+        } else {
+            next.add(key);
+        }
+        this.state.boardGroupsCollapsed = next;
+    }
+
+    selectBoardResource(res) {
+        this.state.boardSelKey = this.state.boardSelKey === res.key ? null : res.key;
+    }
+
+
+
+    async boardNavigate(dir) {
+        const base = this.boardAnchorDate();
+        if (this.state.boardScale === "month") {
+            this.state.boardAnchor = new Date(base.getFullYear(), base.getMonth() + dir, 1);
+        } else {
+            this.state.boardAnchor = addDays(base, dir * (this.state.boardScale === "week" ? 7 : 1));
+        }
+        await this.loadBoard();
+    }
+
+    async boardToday() {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        this.state.boardAnchor = this.state.boardScale === "month" ? startOfMonth(d)
+            : this.state.boardScale === "week" ? startOfWeek(d) : d;
+        await this.loadBoard();
+    }
+
+    async setBoardScale(scale) {
+        if (this.state.boardScale === scale) {
+            return;
+        }
+        this.state.boardScale = scale;
+        const cur = this.state.boardAnchor || new Date();
+        this.state.boardAnchor = scale === "month" ? startOfMonth(cur)
+            : scale === "week" ? startOfWeek(cur)
+            : new Date(cur.getFullYear(), cur.getMonth(), cur.getDate());
+        await this.loadBoard();
+    }
+
+    get boardPickerValue() {
+        return isoDay(this.boardAnchorDate());
+    }
+
+    async onBoardDatePick(ev) {
+        const val = ev.target.value;
+        if (!val) {
+            return;
+        }
+        const picked = parseDay(val);
+        this.state.boardAnchor = this.state.boardScale === "month" ? startOfMonth(picked)
+            : this.state.boardScale === "week" ? startOfWeek(picked) : picked;
+        await this.loadBoard();
+    }
+
     async onProjectChange(ev) {
         this.state.projectId = Number(ev.target.value) || false;
         if (this.state.projectId) {
             await this.loadProject(this.state.projectId);
             // A different project means a different range — refit it.
             this.fit();
+            if (this.state.boardMode) {
+                this.state.boardSelKey = null;
+                await this.loadBoard();
+            }
         }
     }
 }

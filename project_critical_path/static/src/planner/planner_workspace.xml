@@ -3,7 +3,14 @@
     <t t-name="project_critical_path.PlannerWorkspace">
         <div class="o_cp_planner_workspace d-flex flex-column h-100">
             <div class="o_cp_planner_toolbar d-flex align-items-center gap-2 px-3 py-2 border-bottom">
-                <span class="fw-bold">Planner</span>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-sm"
+                            t-att-class="!state.boardMode ? 'btn-primary' : 'btn-outline-secondary'"
+                            t-on-click="() => this.setBoardMode(false)">Planner</button>
+                    <button type="button" class="btn btn-sm"
+                            t-att-class="state.boardMode ? 'btn-primary' : 'btn-outline-secondary'"
+                            t-on-click="() => this.setBoardMode(true)">Resource Board</button>
+                </div>
                 <t t-if="state.projects.length &amp;&amp; !props.action?.params?.project_id">
                     <select class="form-select form-select-sm w-auto"
                             t-on-change="onProjectChange">
@@ -18,19 +25,20 @@
                 <t t-else="">
                     <span class="text-muted" t-esc="state.projectName"/>
                 </t>
-                <div class="btn-group ms-3">
-                    <t t-foreach="['day', 'week', 'month']" t-as="scale" t-key="scale">
-                        <button type="button"
-                                class="btn btn-sm"
-                                t-att-class="state.scale === scale ? 'btn-primary' : 'btn-outline-secondary'"
-                                t-on-click="() => this.setScale(scale)"
-                                t-esc="scales[scale].label"/>
-                    </t>
-                </div>
-                <button type="button" class="btn btn-sm btn-outline-secondary" t-on-click="goToday">Today</button>
-                <button type="button" class="btn btn-sm"
-                        t-att-class="state.historyOpen ? 'btn-primary' : 'btn-outline-secondary'"
-                        t-on-click="toggleHistory">Baseline History</button>
+                <t t-if="!state.boardMode">
+                    <div class="btn-group ms-3">
+                        <t t-foreach="['day', 'week', 'month']" t-as="scale" t-key="scale">
+                            <button type="button"
+                                    class="btn btn-sm"
+                                    t-att-class="state.scale === scale ? 'btn-primary' : 'btn-outline-secondary'"
+                                    t-on-click="() => this.setScale(scale)"
+                                    t-esc="scales[scale].label"/>
+                        </t>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" t-on-click="goToday">Today</button>
+                    <button type="button" class="btn btn-sm"
+                            t-att-class="state.historyOpen ? 'btn-primary' : 'btn-outline-secondary'"
+                            t-on-click="toggleHistory">Baseline History</button>
                 <div class="o_cp_planner_colmenu position-relative">
                     <button type="button" class="btn btn-sm"
                             t-att-class="state.showStartCol || state.showFinishCol ? 'btn-primary' : 'btn-outline-secondary'"
@@ -50,13 +58,14 @@
                         </label>
                     </div>
                 </div>
-                <button type="button" class="btn btn-sm"
-                        t-att-class="state.barInfoOpen ? 'btn-primary' : 'btn-outline-secondary'"
-                        t-on-click="() => state.barInfoOpen = !state.barInfoOpen">
-                    <i class="fa fa-tags me-1"/>Bar Info
-                </button>
+                    <button type="button" class="btn btn-sm"
+                            t-att-class="state.barInfoOpen ? 'btn-primary' : 'btn-outline-secondary'"
+                            t-on-click="() => state.barInfoOpen = !state.barInfoOpen">
+                        <i class="fa fa-tags me-1"/>Bar Info
+                    </button>
+                </t>
             </div>
-            <div t-if="state.projectId" class="o_cp_planner_kpis d-flex align-items-center px-3 py-1">
+            <div t-if="state.projectId &amp;&amp; !state.boardMode" class="o_cp_planner_kpis d-flex align-items-center px-3 py-1">
                 <t t-foreach="kpiItems" t-as="kpi" t-key="kpi.key">
                     <span class="o_cp_planner_kpi" role="button"
                           t-att-class="kpi.cls + (state.kpiFilter === kpi.key ? ' active' : '') + (kpi.key === 'total' ? ' static' : '')"
@@ -69,7 +78,7 @@
                     <span t-if="!kpi_last" class="o_cp_planner_kpi_sep"/>
                 </t>
             </div>
-            <div class="o_cp_planner_body d-flex flex-grow-1 overflow-hidden">
+            <div t-if="!state.boardMode" class="o_cp_planner_body d-flex flex-grow-1 overflow-hidden">
                 <div class="o_cp_planner_wbs d-flex flex-column border-end"
                      t-att-style="'width:' + wbsPanelWidth + 'px;flex-basis:' + wbsPanelWidth + 'px'">
                     <div class="o_cp_planner_wbs_header d-flex align-items-center px-2 border-bottom fw-bold">
@@ -512,6 +521,108 @@
                         <div class="text-muted small fst-italic">
                             Shown left of the bar — does not count toward the limit.
                         </div>
+                    </div>
+                </div>
+            </div>
+            <div t-if="state.boardMode" class="o_cp_board d-flex flex-grow-1 overflow-hidden">
+                <div class="o_cp_board_list d-flex flex-column border-end">
+                    <div class="flex-grow-1 overflow-auto">
+                        <div class="o_cp_board_group d-flex align-items-center gap-1 px-2 py-1 fw-bold small text-muted"
+                             role="button" t-on-click="() => this.toggleBoardGroup('human')">
+                            <i class="fa fa-fw" t-att-class="boardGroupCollapsed('human') ? 'fa-caret-right' : 'fa-caret-down'"/>
+                            <i class="fa fa-users"/>
+                            <span>Personnel</span>
+                        </div>
+                        <t t-if="!boardGroupCollapsed('human')">
+                            <div t-foreach="boardPersonnel" t-as="res" t-key="res.key"
+                                 class="o_cp_board_res d-flex align-items-center gap-1 px-2 py-1"
+                                 t-att-class="{selected: state.boardSelKey === res.key}"
+                                 role="button" t-on-click="() => this.selectBoardResource(res)">
+                                <img class="o_cp_res_avatar" t-att-src="resAvatarUrl(res)" t-att-alt="res.name"/>
+                                <span class="text-truncate small" t-esc="res.name"/>
+                                <span t-if="res.priority" class="o_cp_res_stars">
+                                    <i t-foreach="resStars(res)" t-as="star" t-key="star_index" class="fa fa-star"/>
+                                </span>
+                                <span class="o_cp_board_occupancy ms-auto small"
+                                      t-att-title="res.booked_hours + 'h / ' + res.available_hours + 'h'"
+                                      t-esc="res.occupancy + '%'"/>
+                            </div>
+                        </t>
+                        <div class="o_cp_board_group d-flex align-items-center gap-1 px-2 py-1 fw-bold small text-muted"
+                             role="button" t-on-click="() => this.toggleBoardGroup('equipment')">
+                            <i class="fa fa-fw" t-att-class="boardGroupCollapsed('equipment') ? 'fa-caret-right' : 'fa-caret-down'"/>
+                            <i class="fa fa-truck"/>
+                            <span>Equipment</span>
+                        </div>
+                        <t t-if="!boardGroupCollapsed('equipment')">
+                            <div t-foreach="boardEquipment" t-as="res" t-key="res.key"
+                                 class="o_cp_board_res d-flex align-items-center gap-1 px-2 py-1"
+                                 t-att-class="{selected: state.boardSelKey === res.key}"
+                                 role="button" t-on-click="() => this.selectBoardResource(res)">
+                                <span class="o_cp_res_avatar d-inline-flex align-items-center justify-content-center">
+                                    <i class="fa fa-wrench"/>
+                                </span>
+                                <span class="text-truncate small" t-esc="res.name"/>
+                                <span class="o_cp_board_occupancy ms-auto small"
+                                      t-att-title="res.booked_hours + 'h / ' + res.available_hours + 'h'"
+                                      t-esc="res.occupancy + '%'"/>
+                            </div>
+                        </t>
+                        <div t-if="!state.boardLoading &amp;&amp; !state.boardResources.length"
+                             class="text-muted small fst-italic px-3 py-2">No eligible resources.</div>
+                    </div>
+                </div>
+                <div class="o_cp_board_tl flex-grow-1 d-flex flex-column overflow-auto px-3 py-2">
+                    <t t-if="state.projectId">
+                        <div class="d-flex align-items-center mb-1">
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-secondary"
+                                        t-on-click="() => this.boardNavigate(-1)">‹</button>
+                                <button type="button" class="btn btn-outline-secondary"
+                                        t-on-click="boardToday">Today</button>
+                                <button type="button" class="btn btn-outline-secondary"
+                                        t-on-click="() => this.boardNavigate(1)">›</button>
+                            </div>
+                            <input type="date" class="form-control form-control-sm ms-2"
+                                   style="width: 140px"
+                                   t-att-value="boardPickerValue"
+                                   t-on-change="onBoardDatePick"/>
+                            <div class="btn-group btn-group-sm ms-auto">
+                                <t t-foreach="['day', 'week', 'month']" t-as="scale" t-key="scale">
+                                    <button type="button" class="btn"
+                                            t-att-class="state.boardScale === scale ? 'btn-primary' : 'btn-outline-secondary'"
+                                            t-on-click="() => this.setBoardScale(scale)"
+                                            t-esc="scales[scale].label"/>
+                                </t>
+                            </div>
+                        </div>
+                        <div class="o_cp_res_tl_row d-flex small text-muted">
+                            <span class="o_cp_res_tl_label"/>
+                            <div class="o_cp_res_tl_days flex-grow-1 d-flex">
+                                <span t-foreach="boardColumns" t-as="col" t-key="col_index"
+                                      class="o_cp_res_tl_day text-center" t-esc="col.label"/>
+                            </div>
+                        </div>
+                        <div t-if="state.boardLoading" class="text-muted small py-2">Loading…</div>
+                        <t t-else="">
+                            <div t-foreach="boardRows" t-as="row" t-key="row.key"
+                                 class="o_cp_res_tl_row d-flex align-items-center">
+                                <span class="o_cp_res_tl_label text-truncate small"
+                                      t-att-class="{clickable: !!row.res}"
+                                      t-att-title="row.title"
+                                      t-on-click="() => row.res &amp;&amp; this.selectBoardResource(row.res)"
+                                      t-esc="row.label"/>
+                                <div class="o_cp_res_tl_track overview flex-grow-1">
+                                    <div t-foreach="row.items" t-as="item" t-key="item.id"
+                                         class="o_cp_res_tl_bar"
+                                         t-att-style="boardItemStyle(item)"
+                                         t-att-title="boardItemTitle(item)"/>
+                                </div>
+                            </div>
+                        </t>
+                    </t>
+                    <div t-else="" class="d-flex flex-grow-1 align-items-center justify-content-center text-muted">
+                        Select a project…
                     </div>
                 </div>
             </div>
