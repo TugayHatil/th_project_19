@@ -43,6 +43,12 @@ const addDays = (date, days) => new Date(date.getTime() + days * DAY_MS);
 const dayDiff = (a, b) => Math.round((b.getTime() - a.getTime()) / DAY_MS);
 const startOfWeek = (date) => addDays(date, -((date.getDay() + 6) % 7));
 const startOfMonth = (date) => new Date(date.getFullYear(), date.getMonth(), 1);
+const isoWeek = (date) => {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    d.setUTCDate(d.getUTCDate() + 3 - ((d.getUTCDay() + 6) % 7));
+    const firstThursday = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+    return 1 + Math.round((d - firstThursday) / (7 * DAY_MS));
+};
 const pad2 = (n) => String(n).padStart(2, "0");
 // All calendar labels follow the Odoo user's language (res.lang code), never
 // the browser locale — the same assets serve every language. Built lazily:
@@ -65,6 +71,7 @@ function getCalendarFormats() {
             percent: new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 0 }),
             number: new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }),
             weekdayShort: new Intl.DateTimeFormat(locale, { weekday: "short" }),
+            dayCaption: new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long" }),
         };
     }
     return calendarFormats;
@@ -2437,8 +2444,17 @@ export class PlannerWorkspace extends Component {
         return cols;
     }
 
-    get boardMonthLabel() {
-        return getCalendarFormats().monthYear.format(this.boardAnchorDate());
+    // Single-line caption above the column headers: day → "17 Eylül
+    // Perşembe", week → "Eylül 2026 · Week 38", month → "Eylül 2026".
+    get boardCaption() {
+        const anchor = this.boardAnchorDate();
+        if (this.state.boardScale === "month") {
+            return getCalendarFormats().monthYear.format(anchor);
+        }
+        if (this.state.boardScale === "week") {
+            return `${getCalendarFormats().monthYear.format(startOfWeek(anchor))} · ${_t("Week")} ${isoWeek(anchor)}`;
+        }
+        return getCalendarFormats().dayCaption.format(anchor);
     }
 
     boardMsToStyle(s, e) {
