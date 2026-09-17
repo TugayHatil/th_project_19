@@ -1759,6 +1759,21 @@ export class PlannerWorkspace extends Component {
         };
     }
 
+    // No candidate selected → one overview row per candidate resource so
+    // workloads can be compared; selected → one focused row per booking.
+    get resTlRows() {
+        const selected = this.resSelectedOption;
+        if (selected) {
+            return (selected.schedule || []).map((item) => ({
+                key: item.id, label: item.task_name, title: item.task_name, items: [item],
+            }));
+        }
+        return this.state.resOptions.map((opt) => ({
+            key: this.resCandidateKey(opt), label: opt.name, title: opt.name,
+            items: opt.schedule || [], opt,
+        }));
+    }
+
     resTlRangeStyle() {
         const req = this.state.resRequired;
         if (!req?.start || !req?.end) {

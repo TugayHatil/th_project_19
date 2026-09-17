@@ -735,6 +735,14 @@ $o_cp_res_tl_label: 140px;
     flex: 0 0 $o_cp_res_tl_label;
     padding-right: 8px;
     overflow: hidden;
+
+    &.clickable {
+        cursor: pointer;
+
+        &:hover {
+            color: #714b67;
+        }
+    }
 }
 
 .o_cp_res_tl_day {
@@ -755,6 +763,10 @@ $o_cp_res_tl_label: 140px;
     border-radius: 2px;
     cursor: crosshair;
     touch-action: none;
+
+    &.overview {
+        cursor: default;
+    }
 }
 
 .o_cp_res_tl_req {

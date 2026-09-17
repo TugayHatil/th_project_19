@@ -696,10 +696,10 @@
                                             No matching resources for this role.
                                         </div>
                                     </t>
-                                    <div t-if="resSelectedOption" class="o_cp_res_timeline mt-3">
+                                    <div t-if="resSelectedReq" class="o_cp_res_timeline mt-3">
                                         <div class="d-flex align-items-center mb-1">
                                             <div class="small fw-bold">
-                                                <span>Timeline</span> — <t t-esc="resSelectedOption.name"/>
+                                                <span>Timeline</span><t t-if="resSelectedOption"> — <t t-esc="resSelectedOption.name"/></t>
                                             </div>
                                             <div class="btn-group btn-group-sm ms-auto">
                                                 <button type="button" class="btn btn-outline-secondary"
@@ -741,18 +741,24 @@
                                                      title="Required period"/>
                                             </div>
                                         </div>
-                                        <div t-foreach="resSelectedOption.schedule" t-as="item"
-                                             t-key="item.id"
+                                        <div t-foreach="resTlRows" t-as="row"
+                                             t-key="row.key"
                                              class="o_cp_res_tl_row d-flex align-items-center">
                                             <span class="o_cp_res_tl_label text-truncate small"
-                                                  t-att-title="item.task_name" t-esc="item.task_name"/>
+                                                  t-att-class="{clickable: !!row.opt}"
+                                                  t-att-role="row.opt ? 'button' : null"
+                                                  t-att-title="row.title"
+                                                  t-on-click="() => row.opt &amp;&amp; this.selectCandidate(row.opt)"
+                                                  t-esc="row.label"/>
                                             <div class="o_cp_res_tl_track flex-grow-1"
+                                                 t-att-class="{overview: !resSelectedOption}"
                                                  t-on-pointerdown="onResTlTrackDown">
-                                                <div class="o_cp_res_tl_bar"
+                                                <div t-foreach="row.items" t-as="item" t-key="item.id"
+                                                     class="o_cp_res_tl_bar"
                                                      t-att-class="resTlItemClass(item)"
                                                      t-att-style="resTlItemStyle(item)"
                                                      t-att-title="item.task_name + ': ' + (item.dt_start || '') + ' – ' + (item.dt_end || '')"
-                                                     t-on-pointerdown="(ev) => this.onResTlBarDown(item, ev)"/>
+                                                     t-on-pointerdown="(ev) => resSelectedOption &amp;&amp; this.onResTlBarDown(item, ev)"/>
                                             </div>
                                         </div>
                                         <div t-if="state.resTlDrag?.mode === 'create'"
@@ -858,7 +864,7 @@
                                                         t-on-click="cancelDeleteResAssignment">Cancel</button>
                                             </div>
                                         </div>
-                                        <div class="text-muted small mt-1">
+                                        <div t-if="resSelectedOption" class="text-muted small mt-1">
                                             Drag across the timeline to preview an assignment, then click Assign · click an assignment for details · drag or resize your own assignments.
                                             <t t-if="state.resTlDrag?.conflict" class="text-danger fw-bold">
                                                 Overlaps an existing assignment.</t>
