@@ -21,6 +21,7 @@ export class DependencyDialog extends Component {
     static props = ["close", "model", "records", "sourceId?", "targetId?", "taskId?", "mode"];
 
     setup() {
+        this.title = _t("Task Dependency");
         this.types = typeNames;
         this.records = [...new Map(this.props.records.map((record) => [record.id, record])).values()];
         const ids = new Set(this.records.map((record) => record.id));

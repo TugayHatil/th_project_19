@@ -37,7 +37,7 @@
     </t>
 
     <t t-name="project_critical_path.DependencyDialog">
-        <Dialog title="'Task Dependency'" size="'md'">
+        <Dialog title="this.title" size="'md'">
             <p class="text-muted">Type and lag affect visualization only. Scheduling, Critical Path and Baseline calculations are unchanged.</p>
             <p class="small text-muted">Task selection is limited to tasks loaded in the current Gantt view.</p>
             <div t-if="state.error" class="alert alert-danger" role="alert" t-esc="state.error"/>
