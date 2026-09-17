@@ -774,3 +774,48 @@ msgstr "Güncel bitiş"
 #: model:ir.ui.menu,name:project_critical_path.menu_project_resource_role
 msgid "Resource Roles"
 msgstr "Kaynak Rolleri"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Critical"
+msgstr "Kritik"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "This Week"
+msgstr "Bu Hafta"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Completed"
+msgstr "Tamamlanan"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Total"
+msgstr "Toplam"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Tasks on the critical path."
+msgstr "Kritik yol üzerindeki görev sayısı."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Tasks past their finish date and not Done."
+msgstr "Bitiş tarihi geçmiş ve Yapıldı olmayan görev sayısı."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Tasks planned to finish by the end of this week, not Done."
+msgstr "Bu hafta sonuna kadar bitmesi planlanan ve Yapıldı olmayan görev sayısı."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Tasks in the Done state."
+msgstr "Yapıldı durumundaki toplam görev sayısı."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Total planned hours across all tasks."
+msgstr "Tüm görevlerin toplam planlanan saati."

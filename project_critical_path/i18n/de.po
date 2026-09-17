@@ -774,3 +774,48 @@ msgstr "Aktuelles Ende"
 #: model:ir.ui.menu,name:project_critical_path.menu_project_resource_role
 msgid "Resource Roles"
 msgstr "Ressourcenrollen"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Critical"
+msgstr "Kritisch"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "This Week"
+msgstr "Diese Woche"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Completed"
+msgstr "Abgeschlossen"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Total"
+msgstr "Gesamt"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Tasks on the critical path."
+msgstr "Vorgänge auf dem kritischen Pfad."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Tasks past their finish date and not Done."
+msgstr "Vorgänge nach dem Enddatum, die nicht erledigt sind."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Tasks planned to finish by the end of this week, not Done."
+msgstr "Vorgänge, die bis Ende dieser Woche enden sollen und nicht erledigt sind."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Tasks in the Done state."
+msgstr "Vorgänge im Status Erledigt."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Total planned hours across all tasks."
+msgstr "Summe der geplanten Stunden aller Vorgänge."

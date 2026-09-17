@@ -63,6 +63,7 @@ function getCalendarFormats() {
             mediumDate: new Intl.DateTimeFormat(locale, { dateStyle: "medium" }),
             compactDate: new Intl.DateTimeFormat(locale, { day: "2-digit", month: "2-digit", year: "2-digit" }),
             percent: new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 0 }),
+            number: new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }),
         };
     }
     return calendarFormats;
@@ -136,6 +137,8 @@ export class PlannerWorkspace extends Component {
             barInfoKeys: [...BAR_INFO_DEFAULT],
             // Slack chip pinned left of each bar (BRD-18) — per-project toggle
             slackVisible: true,
+            // Status strip KPI highlight filter — null or a kpiItems key
+            kpiFilter: null,
             // Resource Planning workspace modal (BRD-21)
             resModalOpen: false,
             resTask: null,
@@ -361,6 +364,19 @@ export class PlannerWorkspace extends Component {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         return parseDay(stopStr) < today;
+    }
+
+    // Planned to finish by end of this week (today … Sunday), still not
+    // Done. Overdue tasks are excluded — they have their own KPI.
+    isDueThisWeek(task) {
+        if (task.is_done || !task.date_stop) {
+            return false;
+        }
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const weekEnd = addDays(startOfWeek(today), 6);
+        const stop = parseDay(task.date_stop);
+        return stop >= today && stop <= weekEnd;
     }
 
     barTitle(task) {
@@ -951,6 +967,87 @@ export class PlannerWorkspace extends Component {
             w += (w ? 4 : 0) + 10;
         }
         return w ? w + 4 : 0; // + the 4px anchor gap in barLeadStyle
+    }
+
+    // ---- Status strip KPIs -------------------------------------------------
+    // Single pass over the already-loaded task list — no extra queries.
+
+    get kpiItems() {
+        let critical = 0;
+        let overdue = 0;
+        let week = 0;
+        let done = 0;
+        let hours = 0;
+        for (const task of this.state.tasks) {
+            if (task.is_critical) {
+                critical++;
+            }
+            if (task.is_done) {
+                done++;
+            }
+            if (this.isOverdue(task)) {
+                overdue++;
+            }
+            if (this.isDueThisWeek(task)) {
+                week++;
+            }
+            hours += task.allocated_hours || 0;
+        }
+        return [
+            {
+                key: "critical", icon: "fa-exclamation-triangle", cls: "critical",
+                label: _t("Critical"), value: critical,
+                tip: _t("Tasks on the critical path."),
+            },
+            {
+                key: "overdue", icon: "fa-exclamation-circle", cls: "overdue",
+                label: _t("Overdue"), value: overdue,
+                tip: _t("Tasks past their finish date and not Done."),
+            },
+            {
+                key: "week", icon: "fa-clock-o", cls: "neutral",
+                label: _t("This Week"), value: week,
+                tip: _t("Tasks planned to finish by the end of this week, not Done."),
+            },
+            {
+                key: "done", icon: "fa-check", cls: "done",
+                label: _t("Completed"), value: done,
+                tip: _t("Tasks in the Done state."),
+            },
+            {
+                key: "total", icon: "fa-hourglass-half", cls: "neutral",
+                label: _t("Total"), value: `${getCalendarFormats().number.format(hours)}h`,
+                tip: _t("Total planned hours across all tasks."),
+            },
+        ];
+    }
+
+    toggleKpi(key) {
+        if (key === "total") {
+            return; // informational only — nothing to highlight
+        }
+        this.state.kpiFilter = this.state.kpiFilter === key ? null : key;
+    }
+
+    // true → task matches the active KPI filter, false → it does not,
+    // null → no filter active (nothing to highlight or dim).
+    kpiHit(task) {
+        const filter = this.state.kpiFilter;
+        if (!filter) {
+            return null;
+        }
+        switch (filter) {
+            case "critical":
+                return Boolean(task.is_critical);
+            case "overdue":
+                return this.isOverdue(task);
+            case "week":
+                return this.isDueThisWeek(task);
+            case "done":
+                return Boolean(task.is_done);
+            default:
+                return null;
+        }
     }
 
     // Right edge of the lead-in cluster anchored just before the bar —
