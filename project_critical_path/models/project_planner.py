@@ -256,6 +256,9 @@ class ProjectProjectPlanner(models.Model):
             ("date_start", "<", win_end), ("date_end", ">", win_start),
         ], order="date_start, id")
         company_cal = self.env.company.resource_calendar_id
+        task_states = dict(
+            self.env["project.task"].fields_get(["state"], ["selection"])["state"]["selection"]
+        )
 
         by_res = {"employee_id": {}, "equipment_id": {}}
         for booking in bookings:
@@ -288,6 +291,7 @@ class ProjectProjectPlanner(models.Model):
                 "schedule": [{
                     "id": booking.id,
                     "task_name": booking.task_id.display_name,
+                    "task_state": task_states.get(booking.task_id.state) or "",
                     "project_name": booking.project_id.display_name,
                     "planned_hours": booking.planned_hours or 0.0,
                     "date_start": _serialize_planner_day(self, booking.date_start),

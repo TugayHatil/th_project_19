@@ -916,3 +916,34 @@ $o_cp_board_bar: #8f6a85;
     text-overflow: ellipsis;
     pointer-events: none;
 }
+
+// Hover tooltip: light card, fixed width, anchored above the bar
+// (below when the bar hugs the top edge), horizontally clamped in JS.
+.o_cp_board_tip {
+    z-index: 20;
+    width: 248px;
+    padding: 8px 10px;
+    background: #fff;
+    color: #212529;
+    font-size: 0.75rem;
+    transform: translate(-50%, -100%);
+    pointer-events: none;
+
+    &.below {
+        transform: translate(-50%, 0);
+    }
+}
+
+.o_cp_board_tip_name {
+    font-weight: 600;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.o_cp_board_tip_range {
+    margin-top: 2px;
+    color: #495057;
+    font-variant-numeric: tabular-nums;
+}

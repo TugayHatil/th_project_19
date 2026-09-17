@@ -572,7 +572,8 @@
                              class="text-muted small fst-italic px-3 py-2">No eligible resources.</div>
                     </div>
                 </div>
-                <div class="o_cp_board_tl flex-grow-1 d-flex flex-column overflow-auto px-3 py-2">
+                <div class="o_cp_board_tl position-relative flex-grow-1 d-flex flex-column overflow-auto px-3 py-2"
+                     t-on-scroll="() => state.boardTip = null">
                     <t t-if="state.projectId">
                         <div class="d-flex align-items-center mb-1">
                             <div class="btn-group btn-group-sm">
@@ -621,7 +622,8 @@
                                     <div t-foreach="row.items" t-as="item" t-key="item.id"
                                          class="o_cp_res_tl_bar"
                                          t-att-style="boardItemStyle(item)"
-                                         t-att-title="boardItemTitle(item)">
+                                         t-on-pointerenter="(ev) => this.onBoardBarEnter(item, ev)"
+                                         t-on-pointerleave="onBoardBarLeave">
                                         <span t-if="row.res" class="o_cp_board_bar_text"
                                               t-esc="item.task_name"/>
                                     </div>
@@ -631,6 +633,18 @@
                     </t>
                     <div t-else="" class="d-flex flex-grow-1 align-items-center justify-content-center text-muted">
                         Select a project…
+                    </div>
+                    <div t-if="state.boardTip"
+                         class="o_cp_board_tip border rounded shadow-sm position-absolute"
+                         t-att-class="{below: state.boardTip.below}"
+                         t-att-style="'left:' + state.boardTip.left + 'px;top:' + state.boardTip.top + 'px'">
+                        <div class="o_cp_board_tip_name" t-esc="state.boardTip.item.task_name"/>
+                        <div class="o_cp_board_tip_range" t-esc="boardTipRange(state.boardTip.item)"/>
+                        <div class="small" t-esc="boardTipDuration(state.boardTip.item)"/>
+                        <div t-if="state.boardTip.item.task_state" class="small text-muted"
+                             t-esc="boardTipStatus(state.boardTip.item)"/>
+                        <div t-if="state.boardTip.item.project_name &amp;&amp; state.boardTip.item.project_name !== state.projectName"
+                             class="small text-muted fst-italic" t-esc="state.boardTip.item.project_name"/>
                     </div>
                 </div>
             </div>

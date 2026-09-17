@@ -72,6 +72,8 @@ function getCalendarFormats() {
             number: new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }),
             weekdayShort: new Intl.DateTimeFormat(locale, { weekday: "short" }),
             dayCaption: new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long" }),
+            tipDate: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" }),
+            time: new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }),
         };
     }
     return calendarFormats;
@@ -179,6 +181,7 @@ export class PlannerWorkspace extends Component {
             boardResources: [],
             boardSelKey: null,
             boardGroupsCollapsed: new Set(),
+            boardTip: null,
         });
         this.scales = SCALES;
         this.barInfoFields = BAR_INFO_FIELDS;
@@ -2473,9 +2476,53 @@ export class PlannerWorkspace extends Component {
         return this.boardMsToStyle(s, e);
     }
 
-    boardItemTitle(item) {
-        const head = [item.task_name, item.project_name].filter(Boolean).join(" — ");
-        return `${head}: ${item.dt_start || item.date_start} – ${item.dt_end || item.date_end} · ${this.formatHours(item.planned_hours)}`;
+    // Hover tooltip over a booking bar: task name, localized range,
+    // duration and state — replaces the cramped native title.
+    onBoardBarEnter(item, ev) {
+        const container = ev.currentTarget.closest(".o_cp_board_tl");
+        if (!container) {
+            return;
+        }
+        const bar = ev.currentTarget.getBoundingClientRect();
+        const box = container.getBoundingClientRect();
+        const center = bar.left + bar.width / 2 - box.left + container.scrollLeft;
+        const visibleTop = bar.top - box.top;
+        const below = visibleTop < 110;
+        const half = 124; // half of the tooltip's fixed width
+        const minLeft = container.scrollLeft + half;
+        const maxLeft = container.scrollLeft + container.clientWidth - half;
+        this.state.boardTip = {
+            item,
+            left: Math.min(Math.max(center, minLeft), Math.max(maxLeft, minLeft)),
+            top: below
+                ? bar.top - box.top + container.scrollTop + bar.height + 6
+                : bar.top - box.top + container.scrollTop - 6,
+            below,
+        };
+    }
+
+    onBoardBarLeave() {
+        this.state.boardTip = null;
+    }
+
+    boardTipRange(item) {
+        const { s, e } = this.resTlItemMs(item);
+        const fmt = getCalendarFormats();
+        const sd = new Date(s);
+        const ed = new Date(e);
+        const start = `${fmt.tipDate.format(sd)}, ${fmt.time.format(sd)}`;
+        const end = isoDay(sd) === isoDay(ed)
+            ? fmt.time.format(ed)
+            : `${fmt.tipDate.format(ed)}, ${fmt.time.format(ed)}`;
+        return `${start} → ${end}`;
+    }
+
+    boardTipDuration(item) {
+        return `${_t("Duration")}: ${this.formatHours(item.planned_hours)}`;
+    }
+
+    boardTipStatus(item) {
+        return `${_t("Status")}: ${item.task_state}`;
     }
 
     // Overview = one row per resource; selected = one row per booking,
