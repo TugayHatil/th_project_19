@@ -431,6 +431,8 @@ class ProjectTaskPlanner(models.Model):
         self.ensure_one()
         Requirement = self.env["project.task.resource.requirement"]
         roles = self.env["project.resource.role"].search([("active", "=", True)])
+        template = self.project_id.resource_rate_template_id
+        currency = template.currency_id or self.env.company.currency_id
         return {
             "requirements": [
                 {
@@ -438,8 +440,11 @@ class ProjectTaskPlanner(models.Model):
                     "role_id": requirement.role_id.id,
                     "role_name": requirement.role_id.name or "",
                     "category": requirement.role_id.category,
+                    "level": int(requirement.level or 0),
                     "quantity": requirement.quantity or 0.0,
                     "planned_hours": requirement.planned_hours or 0.0,
+                    "hourly_rate": requirement.hourly_rate or 0.0,
+                    "planned_cost": requirement.planned_cost or 0.0,
                     "date_start": _serialize_planner_day(self, requirement.date_start),
                     "date_end": _serialize_planner_day(self, requirement.date_end),
                     "description": requirement.description or "",
@@ -462,9 +467,29 @@ class ProjectTaskPlanner(models.Model):
                 for requirement in Requirement.search([("task_id", "=", self.id)])
             ],
             "roles": [
-                {"id": role.id, "name": role.name, "category": role.category}
+                {
+                    "id": role.id,
+                    "name": role.name,
+                    "category": role.category,
+                    "priority": int(role.priority or 0),
+                }
                 for role in roles
             ],
+            # Rates are shipped per role+level so the form can preview the
+            # hourly rate and planned cost before saving; the authoritative
+            # snapshot still happens server-side on write.
+            "rate_template": {
+                "name": template.display_name,
+                "currency_symbol": currency.symbol or "",
+            } if template else None,
+            "rates": [
+                {
+                    "role_id": line.role_id.id,
+                    "level": int(line.level),
+                    "hourly_rate": line.hourly_rate,
+                }
+                for line in template.line_ids
+            ] if template else [],
             "task_dates": {
                 "date_start": _serialize_planner_day(self, self.date_assign),
                 "date_stop": _serialize_planner_day(self, self.date_deadline),
@@ -486,6 +511,8 @@ class ProjectTaskPlanner(models.Model):
         vals = {}
         if "role_id" in values:
             vals["role_id"] = values["role_id"] or False
+        if "level" in values:
+            vals["level"] = str(int(values["level"] or 1))
         if "quantity" in values:
             vals["quantity"] = values["quantity"] or 1.0
         if "planned_hours" in values:

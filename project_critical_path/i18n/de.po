@@ -839,3 +839,57 @@ msgstr "Keine geeigneten Ressourcen."
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
 msgid "Resources could not be loaded."
 msgstr "Ressourcen konnten nicht geladen werden."
+
+#. module: project_critical_path
+msgid "Resource Rate Template"
+msgstr "Ressourcen-Tarifvorlage"
+
+#. module: project_critical_path
+msgid "Resource Rate Templates"
+msgstr "Ressourcen-Tarifvorlagen"
+
+#. module: project_critical_path
+msgid "Rates"
+msgstr "Tarife"
+
+#. module: project_critical_path
+msgid "Hourly Rate"
+msgstr "Stundensatz"
+
+#. module: project_critical_path
+msgid "Planned Cost"
+msgstr "Plankosten"
+
+#. module: project_critical_path
+msgid "Planned Resource Cost"
+msgstr "Geplante Ressourcenkosten"
+
+#. module: project_critical_path
+msgid "Currency"
+msgstr "Währung"
+
+#. module: project_critical_path
+msgid "Personnel:"
+msgstr "Personal:"
+
+#. module: project_critical_path
+msgid "Not assigned yet"
+msgstr "Noch nicht zugewiesen"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "No hourly rate for this role and level in the project rate template."
+msgstr "Kein Stundensatz für diese Rolle und Stufe in der Projekttarifvorlage."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource.py:0
+msgid "No hourly rate for %(role)s (level %(level)s) in template %(template)s."
+msgstr "Kein Stundensatz für %(role)s (Stufe %(level)s) in Vorlage %(template)s."
+
+#. module: project_critical_path
+msgid "The hourly rate cannot be negative."
+msgstr "Der Stundensatz darf nicht negativ sein."
+
+#. module: project_critical_path
+msgid "A role can only have one rate per level within a template."
+msgstr "Eine Rolle kann pro Stufe nur einen Tarif innerhalb einer Vorlage haben."

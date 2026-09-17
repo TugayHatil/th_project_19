@@ -695,10 +695,16 @@
                                                        t-att-class="req.category === 'human' ? 'fa-user' : 'fa-wrench'"/>
                                                 </td>
                                                 <td>
-                                                    <div class="fw-bold text-truncate" t-esc="req.role_name"/>
+                                                    <div class="fw-bold text-truncate">
+                                                        <t t-esc="req.role_name"/>
+                                                        <span t-if="req.level" class="o_cp_res_stars ms-1">
+                                                            <i t-foreach="starList(req.level)" t-as="star" t-key="star_index" class="fa fa-star"/>
+                                                        </span>
+                                                    </div>
                                                     <div class="text-muted small text-nowrap">
                                                         <t t-esc="formatDay(req.date_start)"/> – <t t-esc="formatDay(req.date_end)"/>
                                                         <t t-if="req.planned_hours"> · <t t-esc="formatHours(req.planned_hours)"/></t>
+                                                        <t t-if="req.planned_cost"> · <t t-esc="resMoney(req.planned_cost)"/></t>
                                                     </div>
                                                 </td>
                                                 <td class="text-end" t-esc="req.quantity"/>
@@ -727,13 +733,31 @@
                                          class="o_cp_res_form border rounded p-2 mt-2">
                                         <select class="form-select form-select-sm mb-1"
                                                 t-att-value="state.resForm.role_id"
-                                                t-on-change="(ev) => state.resForm.role_id = ev.target.value">
+                                                t-on-change="(ev) => this.onResFormRoleChange(ev.target.value)">
                                             <option value="">Resource role…</option>
                                             <t t-foreach="state.resData?.roles || []" t-as="role" t-key="role.id">
                                                 <option t-att-value="role.id"
                                                         t-esc="resRoleLabel(role)"/>
                                             </t>
                                         </select>
+                                        <div class="d-flex gap-1 mb-1 align-items-center">
+                                            <select class="form-select form-select-sm w-auto"
+                                                    title="Level"
+                                                    t-att-value="state.resForm.level"
+                                                    t-on-change="(ev) => state.resForm.level = ev.target.value">
+                                                <t t-foreach="resFormLevels()" t-as="lv" t-key="lv.level">
+                                                    <option t-att-value="lv.level"
+                                                            t-esc="'★'.repeat(lv.level) + (lv.hourly_rate === null ? '' : ' · ' + resMoney(lv.hourly_rate) + '/h')"/>
+                                                </t>
+                                            </select>
+                                            <span t-if="resFormRate() !== null" class="small text-muted ms-auto text-nowrap">
+                                                <t t-esc="resMoney(resFormRate())"/>/h → <b t-esc="resMoney(resFormCost())"/>
+                                            </span>
+                                        </div>
+                                        <div t-if="state.resForm.role_id &amp;&amp; state.resData?.rate_template &amp;&amp; resFormRate() === null"
+                                             class="text-danger small mb-1">
+                                            No hourly rate for this role and level in the project rate template.
+                                        </div>
                                         <div class="d-flex gap-1 mb-1">
                                             <input type="number" class="form-control form-control-sm"
                                                    placeholder="Qty" min="0" step="1" title="Required quantity"
@@ -776,6 +800,9 @@
                                         <i class="fa fa-fw"
                                            t-att-class="resSelectedReq.category === 'human' ? 'fa-user' : 'fa-wrench'"/>
                                         <span class="fw-bold" t-esc="resSelectedReq.role_name"/>
+                                        <span t-if="resSelectedReq.level" class="o_cp_res_stars">
+                                            <i t-foreach="starList(resSelectedReq.level)" t-as="star" t-key="star_index" class="fa fa-star"/>
+                                        </span>
                                         <span class="text-muted">
                                             — <t t-esc="resSelectedReq.quantity"/> <span>required</span>
                                         </span>
@@ -785,14 +812,20 @@
                                     <div class="text-muted small mt-1">
                                         <t t-esc="formatDay(resSelectedReq.date_start)"/> → <t t-esc="formatDay(resSelectedReq.date_end)"/>
                                         <t t-if="resSelectedReq.planned_hours"> · <t t-esc="formatHours(resSelectedReq.planned_hours)"/> <span>planned</span></t>
+                                        <t t-if="resSelectedReq.hourly_rate"> · <t t-esc="resMoney(resSelectedReq.hourly_rate)"/>/h</t>
+                                        <t t-if="resSelectedReq.planned_cost"> · <b t-esc="resMoney(resSelectedReq.planned_cost)"/></t>
                                     </div>
-                                    <div t-if="resSelectedReq.assignments.length" class="mt-1">
-                                        <div t-foreach="resSelectedReq.assignments" t-as="asg" t-key="asg.id"
-                                             class="o_cp_planner_dep_chip d-inline-flex align-items-center gap-1 me-1 mb-1">
-                                            <span t-esc="asg.name"/>
-                                            <i class="fa fa-times" role="button" title="Unassign"
-                                               t-on-click="() => this.unassignResource(asg.id)"/>
-                                        </div>
+                                    <div class="mt-1 small">
+                                        <span class="text-muted">Personnel:</span>
+                                        <t t-if="resSelectedReq.assignments.length">
+                                            <div t-foreach="resSelectedReq.assignments" t-as="asg" t-key="asg.id"
+                                                 class="o_cp_planner_dep_chip d-inline-flex align-items-center gap-1 me-1 mb-1">
+                                                <span t-esc="asg.name"/>
+                                                <i class="fa fa-times" role="button" title="Unassign"
+                                                   t-on-click="() => this.unassignResource(asg.id)"/>
+                                            </div>
+                                        </t>
+                                        <span t-else="" class="fst-italic text-muted">Not assigned yet</span>
                                     </div>
                                 </div>
                                 <div class="px-3 py-2 flex-grow-1">

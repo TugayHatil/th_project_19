@@ -3,7 +3,7 @@
 import json
 from collections import defaultdict, deque
 
-from odoo import _, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 
@@ -39,6 +39,32 @@ class ProjectProject(models.Model):
     resource_assignment_ids = fields.One2many(
         "project.task.resource.assignment", "project_id", string="Resource Assignments", readonly=True,
     )
+    resource_rate_template_id = fields.Many2one(
+        "project.resource.rate.template", string="Resource Rate Template",
+        domain=[("active", "=", True)],
+    )
+    resource_cost_currency_id = fields.Many2one(
+        "res.currency", compute="_compute_resource_cost_currency",
+    )
+    planned_resource_cost = fields.Monetary(
+        string="Planned Resource Cost", compute="_compute_planned_resource_cost",
+        currency_field="resource_cost_currency_id", readonly=True,
+    )
+
+    @api.depends("resource_rate_template_id.currency_id")
+    def _compute_resource_cost_currency(self):
+        for project in self:
+            project.resource_cost_currency_id = (
+                project.resource_rate_template_id.currency_id
+                or self.env.company.currency_id
+            )
+
+    @api.depends("resource_requirement_ids.planned_cost")
+    def _compute_planned_resource_cost(self):
+        for project in self:
+            project.planned_resource_cost = sum(
+                project.resource_requirement_ids.mapped("planned_cost")
+            )
 
     def _compute_critical_path_baseline_count(self):
         for project in self:
@@ -111,10 +137,13 @@ class ProjectProject(models.Model):
         Requirement = self.env["project.task.resource.requirement"]
         for project in self:
             requirements = Requirement.search([("project_id", "=", project.id)])
-            totals = defaultdict(lambda: {"quantity": 0.0, "planned_hours": 0.0})
+            totals = defaultdict(
+                lambda: {"quantity": 0.0, "planned_hours": 0.0, "planned_cost": 0.0}
+            )
             for requirement in requirements:
                 totals[requirement.role_id.id]["quantity"] += requirement.quantity or 0.0
                 totals[requirement.role_id.id]["planned_hours"] += requirement.planned_hours or 0.0
+                totals[requirement.role_id.id]["planned_cost"] += requirement.planned_cost or 0.0
             Summary.search([("project_id", "=", project.id)]).unlink()
             Summary.create([
                 {
@@ -122,6 +151,7 @@ class ProjectProject(models.Model):
                     "role_id": role_id,
                     "total_quantity": values["quantity"],
                     "total_planned_hours": values["planned_hours"],
+                    "total_planned_cost": values["planned_cost"],
                 }
                 for role_id, values in totals.items()
             ])

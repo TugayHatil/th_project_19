@@ -2,7 +2,8 @@
 
 from collections import defaultdict
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import ValidationError
 
 
 class ProjectResourceRole(models.Model):
@@ -15,6 +16,12 @@ class ProjectResourceRole(models.Model):
         ("human", "Human"),
         ("equipment", "Equipment"),
     ], required=True, default="human")
+    # Same 5-star Selection as hr.employee.priority so the priority widget
+    # renders identically (BRD §4/§26).
+    priority = fields.Selection(
+        [("1", "1"), ("2", "2"), ("3", "3"), ("4", "4"), ("5", "5")],
+        string="Level", required=True, default="1",
+    )
     active = fields.Boolean(default=True)
     requirement_ids = fields.One2many("project.task.resource.requirement", "role_id")
 
@@ -30,6 +37,10 @@ class ProjectTaskResourceRequirement(models.Model):
         "project.project", related="task_id.project_id", store=True, index=True, readonly=True,
     )
     role_id = fields.Many2one("project.resource.role", required=True, index=True)
+    level = fields.Selection(
+        [("1", "1"), ("2", "2"), ("3", "3"), ("4", "4"), ("5", "5")],
+        string="Level", required=True, default="1",
+    )
     quantity = fields.Float(required=True, default=1.0)
     date_start = fields.Datetime(string="Requirement Start")
     date_end = fields.Datetime(string="Requirement End")
@@ -46,6 +57,68 @@ class ProjectTaskResourceRequirement(models.Model):
         ("partial", "Partial"),
         ("assigned", "Assigned"),
     ], compute="_compute_assignment_summary", string="Assignment Status")
+    # Cost planning (BRD): rate snapshot from the project's rate template —
+    # stored, so later template edits never move existing planned costs.
+    hourly_rate = fields.Float(string="Hourly Rate")
+    currency_id = fields.Many2one(
+        "res.currency", compute="_compute_currency_id", store=True, readonly=True,
+    )
+    planned_cost = fields.Monetary(
+        string="Planned Cost", compute="_compute_planned_cost",
+        currency_field="currency_id", store=True, readonly=True,
+    )
+
+    @api.depends("project_id.resource_rate_template_id.currency_id")
+    def _compute_currency_id(self):
+        for requirement in self:
+            requirement.currency_id = (
+                requirement.project_id.resource_rate_template_id.currency_id
+                or self.env.company.currency_id
+            )
+
+    @api.depends("quantity", "planned_hours", "hourly_rate")
+    def _compute_planned_cost(self):
+        for requirement in self:
+            requirement.planned_cost = (
+                (requirement.quantity or 0.0)
+                * (requirement.planned_hours or 0.0)
+                * (requirement.hourly_rate or 0.0)
+            )
+
+    def _resolve_hourly_rate(self):
+        """Rate for this requirement's role+level from the project template.
+
+        Returns ``None`` when the project has no template (rate is left to
+        the caller) and raises when the template lacks the combination —
+        planning an unpriced role/level is not allowed (BRD §25).
+        """
+        template = self.project_id.resource_rate_template_id
+        if not template:
+            return None
+        rate = template.find_rate(self.role_id.id, int(self.level or 0))
+        if rate is None:
+            raise ValidationError(_(
+                "No hourly rate for %(role)s (level %(level)s) "
+                "in template %(template)s.",
+                role=self.role_id.display_name,
+                level=self.level or "-",
+                template=template.display_name,
+            ))
+        return rate
+
+    @api.constrains("hourly_rate")
+    def _check_hourly_rate(self):
+        for requirement in self:
+            if requirement.hourly_rate < 0:
+                raise ValidationError(_("The hourly rate cannot be negative."))
+
+    @api.onchange("role_id")
+    def _onchange_role_id(self):
+        if self.role_id:
+            self.level = self.role_id.priority or "1"
+            rate = self._resolve_hourly_rate()
+            if rate is not None:
+                self.hourly_rate = rate
 
     @api.depends("task_id.display_name", "role_id.name")
     def _compute_name(self):
@@ -131,6 +204,7 @@ class ProjectTaskResourceRequirement(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         Task = self.env["project.task"]
+        Role = self.env["project.resource.role"]
         for vals in vals_list:
             task_id = vals.get("task_id") or self.env.context.get("default_task_id")
             if task_id:
@@ -139,14 +213,26 @@ class ProjectTaskResourceRequirement(models.Model):
                     vals["date_start"] = task.date_assign if task.date_assign else False
                 if "date_end" not in vals and "date_deadline" in task._fields:
                     vals["date_end"] = task.date_deadline if task.date_deadline else False
+            if "level" not in vals and vals.get("role_id"):
+                vals["level"] = Role.browse(vals["role_id"]).priority or "1"
         requirements = super().create(vals_list)
+        for requirement, vals in zip(requirements, vals_list):
+            if not vals.get("hourly_rate"):
+                rate = requirement._resolve_hourly_rate()
+                if rate is not None:
+                    requirement.hourly_rate = rate
         requirements.mapped("project_id")._recalculate_resource_plan()
         return requirements
 
     def write(self, vals):
         affected_projects = self.mapped("project_id")
         result = super().write(vals)
-        if {"task_id", "role_id", "quantity", "planned_hours"}.intersection(vals):
+        if {"task_id", "role_id", "level"}.intersection(vals) and "hourly_rate" not in vals:
+            for requirement in self:
+                rate = requirement._resolve_hourly_rate()
+                if rate is not None:
+                    requirement.write({"hourly_rate": rate})
+        if {"task_id", "role_id", "level", "quantity", "planned_hours"}.intersection(vals):
             (affected_projects | self.mapped("project_id"))._recalculate_resource_plan()
         return result
 
@@ -166,3 +252,7 @@ class ProjectResourcePlanSummary(models.Model):
     role_id = fields.Many2one("project.resource.role", required=True, ondelete="cascade")
     total_quantity = fields.Float(readonly=True)
     total_planned_hours = fields.Float(readonly=True)
+    currency_id = fields.Many2one(related="project_id.resource_cost_currency_id")
+    total_planned_cost = fields.Monetary(
+        string="Planned Cost", currency_field="currency_id", readonly=True,
+    )

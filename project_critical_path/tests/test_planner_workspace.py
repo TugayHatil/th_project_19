@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from odoo.exceptions import ValidationError
 from odoo.tests.common import TransactionCase
 
 
@@ -564,3 +565,129 @@ class TestPlannerWorkspace(TransactionCase):
         self.assertFalse(baseline["has_line"])
         self.assertFalse(baseline["date_start"])
         self.assertFalse(baseline["duration_days"])
+
+
+class TestResourceRatePlanning(TransactionCase):
+    """Role level + rate template → planned cost snapshot (BRD-20)."""
+
+    def _template(self, rates):
+        template = self.env["project.resource.rate.template"].create({
+            "name": "EUR – Standard",
+            "currency_id": self.env.company.currency_id.id,
+        })
+        for role, level, rate in rates:
+            self.env["project.resource.rate.template.line"].create({
+                "template_id": template.id,
+                "role_id": role.id,
+                "level": str(level),
+                "hourly_rate": rate,
+            })
+        return template
+
+    def _requirement(self, project, role, level, hours, qty=1.0):
+        task = self.env["project.task"].create({
+            "name": "Resourced task", "project_id": project.id,
+        })
+        return self.env["project.task.resource.requirement"].create({
+            "task_id": task.id,
+            "role_id": role.id,
+            "level": str(level),
+            "planned_hours": hours,
+            "quantity": qty,
+        })
+
+    def test_planned_cost_uses_role_level_rate(self):
+        role = self.env["project.resource.role"].create(
+            {"name": "Foreman", "category": "human", "priority": "4"})
+        project = self.env["project.project"].create({
+            "name": "Costed",
+            "resource_rate_template_id": self._template([(role, 4, 50.0)]).id,
+        })
+        req = self._requirement(project, role, level=4, hours=16.0)
+
+        self.assertEqual(req.hourly_rate, 50.0)
+        self.assertEqual(req.planned_cost, 800.0)
+
+    def test_quantity_multiplies_planned_cost(self):
+        role = self.env["project.resource.role"].create(
+            {"name": "Worker", "category": "human", "priority": "2"})
+        project = self.env["project.project"].create({
+            "name": "Qty",
+            "resource_rate_template_id": self._template([(role, 2, 25.0)]).id,
+        })
+        req = self._requirement(project, role, level=2, hours=16.0, qty=2.0)
+
+        self.assertEqual(req.planned_cost, 800.0)
+
+    def test_level_picks_its_own_rate(self):
+        role = self.env["project.resource.role"].create(
+            {"name": "Foreman", "category": "human", "priority": "4"})
+        project = self.env["project.project"].create({
+            "name": "Levels",
+            "resource_rate_template_id": self._template(
+                [(role, 3, 45.0), (role, 4, 50.0), (role, 5, 60.0)]).id,
+        })
+        for level, expected in ((3, 45.0), (4, 50.0), (5, 60.0)):
+            req = self._requirement(project, role, level=level, hours=1.0)
+            self.assertEqual(req.hourly_rate, expected)
+
+    def test_missing_rate_blocks_planning(self):
+        role = self.env["project.resource.role"].create(
+            {"name": "Welder", "category": "human", "priority": "3"})
+        project = self.env["project.project"].create({
+            "name": "Missing rate",
+            "resource_rate_template_id": self._template([]).id,
+        })
+        with self.assertRaises(ValidationError):
+            self._requirement(project, role, level=3, hours=8.0)
+
+    def test_template_edit_does_not_reprice_existing_requirements(self):
+        role = self.env["project.resource.role"].create(
+            {"name": "Foreman", "category": "human", "priority": "4"})
+        template = self._template([(role, 4, 50.0)])
+        project = self.env["project.project"].create({
+            "name": "Snapshot",
+            "resource_rate_template_id": template.id,
+        })
+        req = self._requirement(project, role, level=4, hours=16.0)
+
+        template.line_ids.write({"hourly_rate": 99.0})
+
+        self.assertEqual(req.hourly_rate, 50.0)
+        self.assertEqual(req.planned_cost, 800.0)
+
+    def test_assignment_does_not_change_planned_cost(self):
+        role = self.env["project.resource.role"].create(
+            {"name": "Foreman", "category": "human", "priority": "4"})
+        project = self.env["project.project"].create({
+            "name": "Assign",
+            "resource_rate_template_id": self._template([(role, 4, 50.0)]).id,
+        })
+        req = self._requirement(project, role, level=4, hours=16.0)
+        employee = self.env["hr.employee"].create({
+            "name": "Tugay", "resource_role_ids": [(4, role.id)],
+        })
+        self.env["project.task.resource.assignment"].create({
+            "requirement_id": req.id,
+            "employee_id": employee.id,
+            "date_start": "2026-03-02 09:00:00",
+            "date_end": "2026-03-02 18:00:00",
+        })
+
+        self.assertEqual(req.hourly_rate, 50.0)
+        self.assertEqual(req.planned_cost, 800.0)
+
+    def test_project_planned_resource_cost_sums_requirements(self):
+        foreman = self.env["project.resource.role"].create(
+            {"name": "Foreman", "category": "human", "priority": "4"})
+        operator = self.env["project.resource.role"].create(
+            {"name": "Crane Op.", "category": "human", "priority": "3"})
+        project = self.env["project.project"].create({
+            "name": "Totals",
+            "resource_rate_template_id": self._template(
+                [(foreman, 4, 50.0), (operator, 3, 40.0)]).id,
+        })
+        self._requirement(project, foreman, level=4, hours=16.0)
+        self._requirement(project, operator, level=3, hours=8.0)
+
+        self.assertEqual(project.planned_resource_cost, 1120.0)

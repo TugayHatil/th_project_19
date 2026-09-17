@@ -110,6 +110,9 @@
                 <page name="resource_plan" string="Resource Plan">
                     <group>
                         <group string="Resource Roles">
+                            <field name="resource_rate_template_id"/>
+                            <field name="resource_cost_currency_id" invisible="1"/>
+                            <field name="planned_resource_cost" readonly="1"/>
                             <button name="action_open_resource_roles" string="Manage Resource Roles"
                                     type="object" class="btn-secondary"/>
                         </group>
@@ -120,6 +123,8 @@
                                 <field name="role_id"/>
                                 <field name="total_quantity"/>
                                 <field name="total_planned_hours" widget="float_time"/>
+                                <field name="currency_id" column_invisible="1"/>
+                                <field name="total_planned_cost" optional="show"/>
                             </list>
                         </field>
                     </group>
@@ -127,11 +132,15 @@
                         <field name="resource_requirement_ids" nolabel="1" readonly="1">
                             <list create="0" edit="0" delete="0">
                                 <field name="role_id"/>
+                                <field name="level" widget="priority"/>
                                 <field name="task_id"/>
                                 <field name="quantity"/>
                                 <field name="date_start"/>
                                 <field name="date_end"/>
                                 <field name="planned_hours" widget="float_time"/>
+                                <field name="hourly_rate"/>
+                                <field name="currency_id" column_invisible="1"/>
+                                <field name="planned_cost"/>
                                 <field name="assigned_quantity"/>
                                 <field name="assigned_hours" widget="float_time"/>
                                 <field name="assignment_status" widget="badge"
@@ -199,14 +208,22 @@
                     </group>
                 </page>
                 <page name="resource_requirements" string="Resource Requirements">
+                    <group>
+                        <field name="resource_cost_currency_id" invisible="1"/>
+                        <field name="planned_resource_cost" readonly="1"/>
+                    </group>
                     <field name="resource_requirement_ids" nolabel="1"
                            context="{'default_task_id': id}">
                         <list editable="bottom">
                             <field name="role_id"/>
+                            <field name="level" widget="priority"/>
                             <field name="quantity"/>
                             <field name="date_start"/>
                             <field name="date_end"/>
                             <field name="planned_hours" widget="float_time"/>
+                            <field name="hourly_rate"/>
+                            <field name="currency_id" column_invisible="1"/>
+                            <field name="planned_cost" readonly="1"/>
                             <field name="assigned_quantity" readonly="1"/>
                             <field name="assigned_hours" widget="float_time" readonly="1"/>
                             <field name="assignment_status" widget="badge" readonly="1"

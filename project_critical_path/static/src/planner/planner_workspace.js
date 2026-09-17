@@ -74,6 +74,7 @@ function getCalendarFormats() {
             dayCaption: new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long" }),
             tipDate: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" }),
             time: new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }),
+            money: new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
         };
     }
     return calendarFormats;
@@ -405,9 +406,63 @@ export class PlannerWorkspace extends Component {
     }
 
     resRoleLabel(role) {
+        const stars = "★".repeat(role.priority || 0);
+        const name = stars ? `${role.name} ${stars}` : role.name;
         return role.category === "equipment"
-            ? `${role.name} (${_t("Equipment")})`
-            : role.name;
+            ? `${name} (${_t("Equipment")})`
+            : name;
+    }
+
+    starList(count) {
+        return Array.from({ length: count || 0 }, (_, i) => i);
+    }
+
+    // Level options for the requirement form: when the project's rate
+    // template defines rates for the role, only priced levels are offered
+    // (each labelled with its hourly rate); otherwise a plain 1–5 range.
+    resFormLevels() {
+        const roleId = parseInt(this.state.resForm?.role_id, 10);
+        if (!roleId) {
+            return [];
+        }
+        const rates = (this.state.resData?.rates || [])
+            .filter((rate) => rate.role_id === roleId)
+            .sort((a, b) => a.level - b.level);
+        if (rates.length) {
+            return rates;
+        }
+        return [1, 2, 3, 4, 5].map((level) => ({ level, hourly_rate: null }));
+    }
+
+    resFormRate() {
+        const roleId = parseInt(this.state.resForm?.role_id, 10);
+        const level = parseInt(this.state.resForm?.level, 10);
+        const rate = (this.state.resData?.rates || [])
+            .find((r) => r.role_id === roleId && r.level === level);
+        return rate ? rate.hourly_rate : null;
+    }
+
+    resFormCost() {
+        const rate = this.resFormRate();
+        if (rate === null) {
+            return null;
+        }
+        const qty = parseFloat(this.state.resForm?.quantity) || 0;
+        const hours = parseFloat(this.state.resForm?.planned_hours) || 0;
+        return qty * hours * rate;
+    }
+
+    resMoney(value) {
+        const symbol = this.state.resData?.rate_template?.currency_symbol || "";
+        const formatted = getCalendarFormats().money.format(value || 0);
+        return symbol ? `${formatted} ${symbol}` : formatted;
+    }
+
+    onResFormRoleChange(value) {
+        this.state.resForm.role_id = value;
+        const role = (this.state.resData?.roles || [])
+            .find((r) => r.id === parseInt(value, 10));
+        this.state.resForm.level = String(role?.priority || 1);
     }
 
     // The dates the bar currently shows — during a drag this is the live
@@ -1449,6 +1504,7 @@ export class PlannerWorkspace extends Component {
         this.state.resEditingId = req?.id || null;
         this.state.resForm = {
             role_id: req?.role_id || "",
+            level: String(req?.level || 1),
             quantity: req?.quantity ?? 1,
             planned_hours: req?.planned_hours ?? 0,
             description: req?.description || "",
@@ -1464,6 +1520,13 @@ export class PlannerWorkspace extends Component {
             this.notification.add(_t("Select a resource role first."), { type: "warning" });
             return;
         }
+        if (this.state.resData?.rate_template && this.resFormRate() === null) {
+            this.notification.add(
+                _t("No hourly rate for this role and level in the project rate template."),
+                { type: "warning" },
+            );
+            return;
+        }
         try {
             await this.orm.call(
                 "project.task", "planner_save_requirement", [this.state.resTask.id],
@@ -1471,6 +1534,7 @@ export class PlannerWorkspace extends Component {
                     values: {
                         id: this.state.resEditingId || false,
                         role_id: parseInt(form.role_id, 10),
+                        level: parseInt(form.level, 10) || 1,
                         quantity: parseFloat(form.quantity) || 1,
                         planned_hours: parseFloat(form.planned_hours) || 0,
                         description: form.description || "",

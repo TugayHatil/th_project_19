@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="project_resource_rate_template_list" model="ir.ui.view">
+        <field name="name">project.resource.rate.template.list</field>
+        <field name="model">project.resource.rate.template</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="currency_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="project_resource_rate_template_form" model="ir.ui.view">
+        <field name="name">project.resource.rate.template.form</field>
+        <field name="model">project.resource.rate.template</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="currency_id"/>
+                        <field name="active" invisible="1"/>
+                        <field name="description"/>
+                    </group>
+                    <group string="Rates">
+                        <field name="line_ids" nolabel="1">
+                            <list editable="bottom">
+                                <field name="role_id"/>
+                                <field name="level" widget="priority"/>
+                                <field name="hourly_rate"/>
+                                <field name="currency_id" column_invisible="1"/>
+                            </list>
+                        </field>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_project_resource_rate_template" model="ir.actions.act_window">
+        <field name="name">Resource Rate Templates</field>
+        <field name="res_model">project.resource.rate.template</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_project_resource_rate_template"
+              name="Resource Rate Templates"
+              parent="project.menu_project_config"
+              action="action_project_resource_rate_template"
+              sequence="41"/>
+</odoo>
