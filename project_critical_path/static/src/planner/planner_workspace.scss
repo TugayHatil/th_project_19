@@ -887,3 +887,32 @@ $o_cp_board_list: 240px;
     color: #6c757d;
     font-variant-numeric: tabular-nums;
 }
+
+// Board bars reuse the resource-timeline bar geometry with the Odoo
+// purple family: ~75% intensity at rest, full #714b67 on hover.
+$o_cp_board_bar: #8f6a85;
+
+.o_cp_board_tl {
+    .o_cp_res_tl_bar {
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+        background: $o_cp_board_bar;
+        transition: background-color 0.12s ease-in-out;
+
+        &:hover {
+            background: #714b67;
+        }
+    }
+}
+
+.o_cp_board_bar_text {
+    color: #fff;
+    font-size: 0.62rem;
+    line-height: 1;
+    padding: 0 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+}

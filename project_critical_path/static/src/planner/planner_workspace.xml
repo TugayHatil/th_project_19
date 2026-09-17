@@ -621,7 +621,10 @@
                                     <div t-foreach="row.items" t-as="item" t-key="item.id"
                                          class="o_cp_res_tl_bar"
                                          t-att-style="boardItemStyle(item)"
-                                         t-att-title="boardItemTitle(item)"/>
+                                         t-att-title="boardItemTitle(item)">
+                                        <span t-if="row.res" class="o_cp_board_bar_text"
+                                              t-esc="item.task_name"/>
+                                    </div>
                                 </div>
                             </div>
                         </t>
