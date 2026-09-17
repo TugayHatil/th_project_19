@@ -431,10 +431,10 @@ class ProjectTaskPlanner(models.Model):
         self.ensure_one()
         Requirement = self.env["project.task.resource.requirement"]
         roles = self.env["project.resource.role"].search([("active", "=", True)])
-        template = self.project_id.resource_rate_template_id
+        templates = self.project_id.resource_rate_template_ids
         currency = (
             self.project_id.resource_currency_id
-            or template.currency_id
+            or templates[:1].currency_id
             or self.env.company.currency_id
         )
         return {
@@ -479,14 +479,19 @@ class ProjectTaskPlanner(models.Model):
                 }
                 for role in roles
             ],
-            # The project's single snapshot rate is shipped so the form can
-            # preview the planned cost before saving; the authoritative
-            # snapshot still happens server-side on write.
+            # The project's selected rate templates are shipped so the form
+            # can preview the role's rate and planned cost before saving;
+            # the authoritative snapshot still happens server-side on write.
             "rate_template": {
-                "name": template.display_name,
                 "currency_symbol": currency.symbol or "",
-                "hourly_rate": self.project_id.resource_hourly_rate or template.hourly_rate,
-            } if template else None,
+            } if templates else None,
+            "rates": [
+                {
+                    "role_id": template.role_id.id or None,
+                    "hourly_rate": template.hourly_rate,
+                }
+                for template in templates
+            ],
             "task_dates": {
                 "date_start": _serialize_planner_day(self, self.date_assign),
                 "date_stop": _serialize_planner_day(self, self.date_deadline),

@@ -878,8 +878,8 @@ msgstr "Noch nicht zugewiesen"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
-msgid "No hourly rate in the project rate template."
-msgstr "Kein Stundensatz in der Projekttarifvorlage."
+msgid "No hourly rate for this role in the project rate templates."
+msgstr "Kein Stundensatz für diese Rolle in den Projekttarifvorlagen."
 
 #. module: project_critical_path
 msgid "The hourly rate cannot be negative."

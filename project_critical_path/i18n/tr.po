@@ -1630,8 +1630,8 @@ msgstr "Henüz atanmadı"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
-msgid "No hourly rate in the project rate template."
-msgstr "Proje tarife şablonunda saatlik tarife yok."
+msgid "No hourly rate for this role in the project rate templates."
+msgstr "Proje tarife şablonlarında bu rol için saatlik tarife yok."
 
 #. module: project_critical_path
 msgid "The hourly rate cannot be negative."

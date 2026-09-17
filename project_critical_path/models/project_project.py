@@ -39,18 +39,16 @@ class ProjectProject(models.Model):
     resource_assignment_ids = fields.One2many(
         "project.task.resource.assignment", "project_id", string="Resource Assignments", readonly=True,
     )
-    resource_rate_template_id = fields.Many2one(
-        "project.resource.rate.template", string="Resource Rate Template",
+    # The project selects the rate templates it plans with — typically one
+    # record per role (each template may carry a role + currency + rate).
+    # Rates are snapshot onto each requirement on create, so later template
+    # edits never reprice the existing plan (BRD §9/§10).
+    resource_rate_template_ids = fields.Many2many(
+        "project.resource.rate.template", string="Resource Rate Templates",
         domain=[("active", "=", True)],
     )
-    # Currency + rate are copied from the template when it is selected —
-    # stored snapshots, so a later template edit never reprices the
-    # project's existing resource plan (BRD §9/§10).
     resource_currency_id = fields.Many2one(
         "res.currency", string="Resource Currency", readonly=True, copy=False,
-    )
-    resource_hourly_rate = fields.Float(
-        string="Resource Hourly Rate", readonly=True, copy=False,
     )
     resource_cost_currency_id = fields.Many2one(
         "res.currency", compute="_compute_resource_cost_currency",
@@ -60,37 +58,36 @@ class ProjectProject(models.Model):
         currency_field="resource_cost_currency_id", readonly=True,
     )
 
-    @api.depends("resource_currency_id", "resource_rate_template_id.currency_id")
+    @api.depends("resource_currency_id", "resource_rate_template_ids.currency_id")
     def _compute_resource_cost_currency(self):
         for project in self:
             project.resource_cost_currency_id = (
                 project.resource_currency_id
-                or project.resource_rate_template_id.currency_id
+                or project.resource_rate_template_ids[:1].currency_id
                 or self.env.company.currency_id
             )
 
     def _sync_resource_rate_fields(self):
-        """Copy currency + rate from the selected template onto the project."""
+        """Copy the currency of the selected templates onto the project."""
         for project in self:
-            template = project.resource_rate_template_id
-            project.resource_currency_id = template.currency_id.id if template else False
-            project.resource_hourly_rate = template.hourly_rate if template else 0.0
+            currency = project.resource_rate_template_ids[:1].currency_id
+            project.resource_currency_id = currency.id if currency else False
 
-    @api.onchange("resource_rate_template_id")
-    def _onchange_resource_rate_template_id(self):
+    @api.onchange("resource_rate_template_ids")
+    def _onchange_resource_rate_template_ids(self):
         self._sync_resource_rate_fields()
 
     @api.model_create_multi
     def create(self, vals_list):
         projects = super().create(vals_list)
         for project, vals in zip(projects, vals_list):
-            if vals.get("resource_rate_template_id"):
+            if vals.get("resource_rate_template_ids"):
                 project._sync_resource_rate_fields()
         return projects
 
     def write(self, vals):
         result = super().write(vals)
-        if "resource_rate_template_id" in vals:
+        if "resource_rate_template_ids" in vals:
             self._sync_resource_rate_fields()
         return result
 

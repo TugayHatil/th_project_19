@@ -568,18 +568,26 @@ class TestPlannerWorkspace(TransactionCase):
 
 
 class TestResourceRatePlanning(TransactionCase):
-    """Role level (auto) + single template rate → planned cost (BRD-20 rev2).
+    """Per-role rate templates → planned cost snapshot (BRD-20 rev3).
 
-    The rate template carries ONE currency + hourly rate; the role carries
-    the 5-star level. Requirement level is related to the role and is never
-    picked manually.
+    A rate template carries one currency + hourly rate and may be bound to
+    a role. The project selects the templates it plans with; a requirement
+    resolves the rate of the template matching its role (role-less
+    templates act as fallback) and stores it as a snapshot.
     """
 
-    def _template(self, rate, name="EUR – Standard"):
+    def _template(self, rate, role=None, name="EUR – Standard"):
         return self.env["project.resource.rate.template"].create({
             "name": name,
             "currency_id": self.env.company.currency_id.id,
             "hourly_rate": rate,
+            "role_id": role.id if role else False,
+        })
+
+    def _project(self, name, templates):
+        return self.env["project.project"].create({
+            "name": name,
+            "resource_rate_template_ids": [(6, 0, templates.ids)],
         })
 
     def _requirement(self, project, role, hours, qty=1.0):
@@ -593,90 +601,95 @@ class TestResourceRatePlanning(TransactionCase):
             "quantity": qty,
         })
 
-    def test_planned_cost_uses_project_rate(self):
-        role = self.env["project.resource.role"].create(
-            {"name": "Foreman", "category": "human", "priority": "4"})
-        project = self.env["project.project"].create({
-            "name": "Costed",
-            "resource_rate_template_id": self._template(50.0).id,
-        })
-        req = self._requirement(project, role, hours=16.0)
+    def _role(self, name, priority):
+        return self.env["project.resource.role"].create(
+            {"name": name, "category": "human", "priority": str(priority)})
+
+    def test_planned_cost_uses_role_template_rate(self):
+        foreman = self._role("Foreman", 4)
+        project = self._project("Costed", self._template(50.0, role=foreman))
+        req = self._requirement(project, foreman, hours=16.0)
 
         self.assertEqual(req.hourly_rate, 50.0)
         self.assertEqual(req.planned_cost, 800.0)
 
+    def test_each_role_uses_its_own_template_rate(self):
+        foreman = self._role("Foreman", 4)
+        operator = self._role("Crane Op.", 3)
+        project = self._project(
+            "Per role",
+            self._template(50.0, role=foreman) + self._template(40.0, role=operator),
+        )
+        req_a = self._requirement(project, foreman, hours=16.0)
+        req_b = self._requirement(project, operator, hours=8.0)
+
+        self.assertEqual(req_a.planned_cost, 800.0)
+        self.assertEqual(req_b.planned_cost, 320.0)
+
+    def test_roleless_template_is_fallback(self):
+        foreman = self._role("Foreman", 4)
+        welder = self._role("Welder", 3)
+        project = self._project("Fallback", self._template(50.0))
+        req = self._requirement(project, welder, hours=8.0)
+
+        self.assertEqual(req.hourly_rate, 50.0)
+        self.assertEqual(req.planned_cost, 400.0)
+
     def test_requirement_level_comes_from_role(self):
-        role = self.env["project.resource.role"].create(
-            {"name": "Foreman", "category": "human", "priority": "4"})
-        project = self.env["project.project"].create({"name": "Level"})
-        req = self._requirement(project, role, hours=8.0)
+        foreman = self._role("Foreman", 4)
+        project = self._project("Level", self._template(50.0, role=foreman))
+        req = self._requirement(project, foreman, hours=8.0)
 
         self.assertEqual(req.level, "4")
 
     def test_quantity_multiplies_planned_cost(self):
-        role = self.env["project.resource.role"].create(
-            {"name": "Worker", "category": "human", "priority": "2"})
-        project = self.env["project.project"].create({
-            "name": "Qty",
-            "resource_rate_template_id": self._template(50.0).id,
-        })
-        req = self._requirement(project, role, hours=16.0, qty=2.0)
+        worker = self._role("Worker", 2)
+        project = self._project("Qty", self._template(50.0, role=worker))
+        req = self._requirement(project, worker, hours=16.0, qty=2.0)
 
         self.assertEqual(req.planned_cost, 1600.0)
 
     def test_no_template_means_no_planned_cost(self):
-        role = self.env["project.resource.role"].create(
-            {"name": "Welder", "category": "human", "priority": "3"})
+        welder = self._role("Welder", 3)
         project = self.env["project.project"].create({"name": "No template"})
-        req = self._requirement(project, role, hours=8.0)
+        req = self._requirement(project, welder, hours=8.0)
+
+        self.assertEqual(req.hourly_rate, 0.0)
+        self.assertEqual(req.planned_cost, 0.0)
+
+    def test_uncovered_role_means_no_planned_cost(self):
+        foreman = self._role("Foreman", 4)
+        welder = self._role("Welder", 3)
+        project = self._project("Covered", self._template(50.0, role=foreman))
+        req = self._requirement(project, welder, hours=8.0)
 
         self.assertEqual(req.hourly_rate, 0.0)
         self.assertEqual(req.planned_cost, 0.0)
 
     def test_template_edit_does_not_reprice_existing_requirements(self):
-        role = self.env["project.resource.role"].create(
-            {"name": "Foreman", "category": "human", "priority": "4"})
-        template = self._template(50.0)
-        project = self.env["project.project"].create({
-            "name": "Snapshot",
-            "resource_rate_template_id": template.id,
-        })
-        req = self._requirement(project, role, hours=16.0)
+        foreman = self._role("Foreman", 4)
+        template = self._template(50.0, role=foreman)
+        project = self._project("Snapshot", template)
+        req = self._requirement(project, foreman, hours=16.0)
 
         template.hourly_rate = 55.0
 
         self.assertEqual(req.hourly_rate, 50.0)
         self.assertEqual(req.planned_cost, 800.0)
 
-    def test_project_snapshots_rate_on_template_selection(self):
-        template = self._template(50.0)
-        project = self.env["project.project"].create({
-            "name": "Snap",
-            "resource_rate_template_id": template.id,
-        })
-        self.assertEqual(project.resource_hourly_rate, 50.0)
+    def test_project_snapshots_currency_on_template_selection(self):
+        foreman = self._role("Foreman", 4)
+        template = self._template(50.0, role=foreman)
+        project = self._project("Snap", template)
+
         self.assertEqual(project.resource_currency_id, template.currency_id)
 
-        template.hourly_rate = 55.0
-        self.assertEqual(project.resource_hourly_rate, 50.0)
-
-        # New projects pick up the updated rate
-        new_project = self.env["project.project"].create({
-            "name": "Snap2",
-            "resource_rate_template_id": template.id,
-        })
-        self.assertEqual(new_project.resource_hourly_rate, 55.0)
-
     def test_assignment_does_not_change_planned_cost(self):
-        role = self.env["project.resource.role"].create(
-            {"name": "Foreman", "category": "human", "priority": "4"})
-        project = self.env["project.project"].create({
-            "name": "Assign",
-            "resource_rate_template_id": self._template(50.0).id,
-        })
-        req = self._requirement(project, role, hours=16.0)
+        foreman = self._role("Foreman", 4)
+        project = self._project("Assign", self._template(50.0, role=foreman))
+        req = self._requirement(project, foreman, hours=16.0)
         employee = self.env["hr.employee"].create({
-            "name": "Tugay", "resource_role_ids": [(4, role.id)],
+            "name": "Tugay", "resource_role_ids": [(4, foreman.id)],
         })
         self.env["project.task.resource.assignment"].create({
             "requirement_id": req.id,
@@ -690,16 +703,15 @@ class TestResourceRatePlanning(TransactionCase):
         self.assertEqual(req.planned_cost, 800.0)
 
     def test_project_planned_resource_cost_sums_requirements(self):
-        foreman = self.env["project.resource.role"].create(
-            {"name": "Foreman", "category": "human", "priority": "4"})
-        operator = self.env["project.resource.role"].create(
-            {"name": "Crane Op.", "category": "human", "priority": "3"})
-        worker = self.env["project.resource.role"].create(
-            {"name": "Worker", "category": "human", "priority": "2"})
-        project = self.env["project.project"].create({
-            "name": "Totals",
-            "resource_rate_template_id": self._template(50.0).id,
-        })
+        foreman = self._role("Foreman", 4)
+        operator = self._role("Crane Op.", 3)
+        worker = self._role("Worker", 2)
+        project = self._project(
+            "Totals",
+            self._template(50.0, role=foreman)
+            + self._template(50.0, role=operator)
+            + self._template(50.0, role=worker),
+        )
         self._requirement(project, foreman, hours=16.0)
         self._requirement(project, operator, hours=8.0)
         self._requirement(project, worker, hours=24.0)

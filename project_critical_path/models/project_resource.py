@@ -71,13 +71,13 @@ class ProjectTaskResourceRequirement(models.Model):
 
     @api.depends(
         "project_id.resource_currency_id",
-        "project_id.resource_rate_template_id.currency_id",
+        "project_id.resource_rate_template_ids.currency_id",
     )
     def _compute_currency_id(self):
         for requirement in self:
             requirement.currency_id = (
                 requirement.project_id.resource_currency_id
-                or requirement.project_id.resource_rate_template_id.currency_id
+                or requirement.project_id.resource_rate_template_ids[:1].currency_id
                 or self.env.company.currency_id
             )
 
@@ -91,18 +91,21 @@ class ProjectTaskResourceRequirement(models.Model):
             )
 
     def _resolve_hourly_rate(self):
-        """Planning rate snapshot for this requirement.
+        """Planning rate snapshot for this requirement's role.
 
-        The single template rate is copied onto the project when the
-        template is selected; requirements read the project snapshot so a
-        later template edit never moves existing planned costs (BRD §10).
-        Returns ``None`` when the project has no template — no planned cost
-        is computed then (BRD §24).
+        Picks the project's rate template bound to this role; falls back to
+        a role-less general template. The resolved rate is stored on the
+        requirement, so a later template edit never moves existing planned
+        costs (BRD §10). Returns ``None`` when no template covers the
+        role — no planned cost is computed then (BRD §24).
         """
-        project = self.project_id
-        if not project.resource_rate_template_id:
+        templates = self.project_id.resource_rate_template_ids
+        if not templates:
             return None
-        return project.resource_hourly_rate or project.resource_rate_template_id.hourly_rate
+        match = templates.filtered(lambda t: t.role_id == self.role_id)
+        if not match:
+            match = templates.filtered(lambda t: not t.role_id)
+        return match[0].hourly_rate if match else None
 
     @api.constrains("hourly_rate")
     def _check_hourly_rate(self):

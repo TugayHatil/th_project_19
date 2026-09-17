@@ -425,8 +425,14 @@ export class PlannerWorkspace extends Component {
     }
 
     resFormRate() {
-        const rate = this.state.resData?.rate_template?.hourly_rate;
-        return rate ? rate : null;
+        const roleId = parseInt(this.state.resForm?.role_id, 10);
+        if (!roleId) {
+            return null;
+        }
+        const rates = this.state.resData?.rates || [];
+        const match = rates.find((r) => r.role_id === roleId)
+            || rates.find((r) => r.role_id === null);
+        return match ? match.hourly_rate : null;
     }
 
     resFormCost() {
@@ -1505,7 +1511,7 @@ export class PlannerWorkspace extends Component {
         }
         if (this.state.resData?.rate_template && this.resFormRate() === null) {
             this.notification.add(
-                _t("No hourly rate in the project rate template."),
+                _t("No hourly rate for this role in the project rate templates."),
                 { type: "warning" },
             );
             return;

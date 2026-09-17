@@ -110,9 +110,8 @@
                 <page name="resource_plan" string="Resource Plan">
                     <group>
                         <group string="Resource Roles">
-                            <field name="resource_rate_template_id"/>
+                            <field name="resource_rate_template_ids" widget="many2many_tags"/>
                             <field name="resource_currency_id" readonly="1"/>
-                            <field name="resource_hourly_rate" readonly="1"/>
                             <field name="resource_cost_currency_id" invisible="1"/>
                             <field name="planned_resource_cost" readonly="1"/>
                             <button name="action_open_resource_roles" string="Manage Resource Roles"
