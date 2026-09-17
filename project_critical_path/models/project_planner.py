@@ -518,6 +518,7 @@ class ProjectTaskPlanner(models.Model):
             for line in planner.line_ids
         ]
         planner.unlink()
+        options.sort(key=lambda option: -(option["priority"] or 0))
         return {
             "options": options,
             "window": {

@@ -738,6 +738,14 @@ $o_cp_res_tl_label: 140px;
     white-space: nowrap;
 }
 
+.o_cp_res_avatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    object-fit: cover;
+    vertical-align: -5px;
+}
+
 .o_cp_res_tl_label {
     width: $o_cp_res_tl_label;
     flex: 0 0 $o_cp_res_tl_label;

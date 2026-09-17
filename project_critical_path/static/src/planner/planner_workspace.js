@@ -1492,6 +1492,10 @@ export class PlannerWorkspace extends Component {
         return Array.from({ length: opt.priority || 0 }, (_, i) => i);
     }
 
+    resAvatarUrl(opt) {
+        return opt.employee_id ? `/web/image/hr.employee/${opt.employee_id}/avatar_128` : "";
+    }
+
     get resSelectedOption() {
         return this.state.resOptions.find(
             (opt) => this.resCandidateKey(opt) === this.state.resSelOptKey,

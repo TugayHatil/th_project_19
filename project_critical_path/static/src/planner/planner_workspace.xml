@@ -684,6 +684,9 @@
                                                     t-on-click="() => this.selectCandidate(opt)">
                                                     <td><span class="o_cp_res_dot" t-att-class="resAvailabilityDot(opt)"/></td>
                                                     <td class="text-truncate" style="max-width: 220px">
+                                                        <img t-if="opt.employee_id" class="o_cp_res_avatar me-1"
+                                                             t-att-src="resAvatarUrl(opt)" t-att-alt="opt.name"/>
+                                                        <i t-else="" class="fa fa-wrench text-muted me-1"/>
                                                         <t t-esc="opt.name"/>
                                                         <span t-if="opt.priority" class="o_cp_res_stars ms-1">
                                                             <i t-foreach="resStars(opt)" t-as="star" t-key="star_index" class="fa fa-star"/>
@@ -754,10 +757,10 @@
                                                   t-att-role="row.opt ? 'button' : null"
                                                   t-att-title="row.title"
                                                   t-on-click="() => row.opt &amp;&amp; this.selectCandidate(row.opt)">
+                                                <img t-if="row.opt &amp;&amp; row.opt.employee_id" class="o_cp_res_avatar me-1"
+                                                     t-att-src="resAvatarUrl(row.opt)" t-att-alt="row.label"/>
+                                                <i t-if="row.opt &amp;&amp; !row.opt.employee_id" class="fa fa-wrench text-muted me-1"/>
                                                 <t t-esc="row.label"/>
-                                                <span t-if="row.opt &amp;&amp; row.opt.priority" class="o_cp_res_stars ms-1">
-                                                    <i t-foreach="resStars(row.opt)" t-as="star" t-key="star_index" class="fa fa-star"/>
-                                                </span>
                                             </span>
                                             <div class="o_cp_res_tl_track flex-grow-1"
                                                  t-att-class="{overview: !resSelectedOption}"
