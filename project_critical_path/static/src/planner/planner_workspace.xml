@@ -783,7 +783,7 @@
                                                      t-on-pointerdown="onResTlPendingDown"/>
                                             </div>
                                         </div>
-                                        <div t-if="!resSelectedOption.schedule.length &amp;&amp; !state.resTlDrag"
+                                        <div t-if="resSelectedOption &amp;&amp; !resSelectedOption.schedule.length &amp;&amp; !state.resTlDrag"
                                              class="text-muted small fst-italic mt-1">
                                             No existing assignments in this window — resource is free.
                                         </div>
