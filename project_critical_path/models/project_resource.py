@@ -58,7 +58,8 @@ class ProjectTaskResourceRequirement(models.Model):
     def _compute_assignment_summary(self):
         for requirement in self:
             assignments = requirement.assignment_ids
-            requirement.assigned_quantity = len(assignments)
+            res_field = "employee_id" if requirement.role_id.category == "human" else "equipment_id"
+            requirement.assigned_quantity = len(assignments.mapped(res_field))
             requirement.assigned_hours = sum(assignments.mapped("planned_hours"))
             if not assignments:
                 requirement.assignment_status = "waiting"

@@ -1302,8 +1302,8 @@ msgstr "Atama bitişi gereksinim tarih aralığı içinde olmalıdır."
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_resource_assignment.py:0
-msgid "The same resource cannot be assigned to one requirement more than once."
-msgstr "Aynı kaynak bir gereksinime birden fazla kez atanamaz."
+msgid "The same resource cannot have overlapping assignments within one requirement."
+msgstr "Aynı kaynağın aynı gereksinim içindeki atamaları çakışamaz."
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_resource_assignment.py:0

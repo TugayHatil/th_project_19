@@ -94,11 +94,17 @@ class ProjectTaskResourceAssignment(models.Model):
             if requirement.date_end and assignment.date_end > requirement.date_end:
                 raise ValidationError(_("Assignment end must be within the requirement date range."))
 
+            res_field = "employee_id" if is_human else "equipment_id"
             assignments = requirement.assignment_ids
-            resources = assignments.mapped("employee_id") if is_human else assignments.mapped("equipment_id")
-            if len(resources) != len(assignments):
-                raise ValidationError(_("The same resource cannot be assigned to one requirement more than once."))
-            if len(assignments) > requirement.quantity + 0.000001:
+            overlapping = (assignments - assignment).filtered(
+                lambda other: other.date_start < assignment.date_end
+                and other.date_end > assignment.date_start
+            )
+            if assignment[res_field] in overlapping.mapped(res_field):
+                raise ValidationError(
+                    _("The same resource cannot have overlapping assignments within one requirement.")
+                )
+            if len(overlapping.mapped(res_field) | assignment[res_field]) > requirement.quantity + 0.000001:
                 raise ValidationError(_("Assigned resource quantity cannot exceed the required quantity."))
             if sum(assignments.mapped("planned_hours")) > requirement.planned_hours + 0.000001:
                 raise ValidationError(_("Assigned planned hours cannot exceed the required planned hours."))
