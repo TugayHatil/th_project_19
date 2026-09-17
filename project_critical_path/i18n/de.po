@@ -884,3 +884,7 @@ msgstr "Kein Stundensatz in der Projekttarifvorlage."
 #. module: project_critical_path
 msgid "The hourly rate cannot be negative."
 msgstr "Der Stundensatz darf nicht negativ sein."
+
+#. module: project_critical_path
+msgid "Resource Role"
+msgstr "Ressourcenrolle"

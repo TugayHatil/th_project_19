@@ -1636,3 +1636,7 @@ msgstr "Proje tarife şablonunda saatlik tarife yok."
 #. module: project_critical_path
 msgid "The hourly rate cannot be negative."
 msgstr "Saatlik tarife negatif olamaz."
+
+#. module: project_critical_path
+msgid "Resource Role"
+msgstr "Kaynak Rolü"

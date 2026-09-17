@@ -6,6 +6,7 @@
         <field name="arch" type="xml">
             <list>
                 <field name="name"/>
+                <field name="role_id"/>
                 <field name="currency_id"/>
                 <field name="hourly_rate"/>
             </list>
@@ -20,6 +21,7 @@
                 <sheet>
                     <group>
                         <field name="name"/>
+                        <field name="role_id"/>
                         <field name="currency_id"/>
                         <field name="hourly_rate"/>
                         <field name="active" invisible="1"/>

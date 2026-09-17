@@ -17,6 +17,10 @@ class ProjectResourceRateTemplate(models.Model):
     _order = "name"
 
     name = fields.Char(required=True)
+    role_id = fields.Many2one(
+        "project.resource.role", string="Resource Role",
+        domain=[("active", "=", True)],
+    )
     active = fields.Boolean(default=True)
     currency_id = fields.Many2one(
         "res.currency", required=True,
