@@ -1,4 +1,4 @@
-import { Component, onMounted, useExternalListener, useRef, useState } from "@odoo/owl";
+import { Component, onMounted, onPatched, useExternalListener, useRef, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { _t } from "@web/core/l10n/translation";
 import { localization } from "@web/core/l10n/localization";
@@ -195,6 +195,15 @@ export class PlannerWorkspace extends Component {
         useExternalListener(document.body, "click", (ev) => {
             if (this.state.colMenuOpen && !ev.target.closest(".o_cp_planner_colmenu")) {
                 this.state.colMenuOpen = false;
+            }
+        });
+        // The gantt scroll element unmounts while the Resource Board is
+        // shown — refit once it remounts so the timeline always fills
+        // the viewport when returning to Planner.
+        onPatched(() => {
+            if (this._pendingFit) {
+                this._pendingFit = false;
+                this.fit();
             }
         });
         onMounted(async () => {
@@ -2363,6 +2372,8 @@ export class PlannerWorkspace extends Component {
         this.state.boardMode = on;
         if (on && this.state.projectId) {
             this.loadBoard();
+        } else if (!on) {
+            this._pendingFit = true;
         }
     }
 
@@ -2395,9 +2406,9 @@ export class PlannerWorkspace extends Component {
             return { start: anchor, end: addDays(anchor, 1) };
         }
         if (this.state.boardScale === "month") {
-            const start = startOfWeek(startOfMonth(anchor));
-            const next = startOfMonth(new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1));
-            return { start, end: addDays(start, Math.ceil(Math.max(dayDiff(start, next), 1) / 7) * 7) };
+            const start = startOfMonth(anchor);
+            const end = startOfMonth(new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1));
+            return { start, end };
         }
         const start = startOfWeek(anchor);
         return { start, end: addDays(start, 7) };
@@ -2414,17 +2425,20 @@ export class PlannerWorkspace extends Component {
                 cols.push({ label: pad2(h) });
             }
         } else {
-            const unit = this.state.boardScale === "month" ? 7 * DAY_MS : DAY_MS;
-            for (let t = range.start.getTime(); t < range.end.getTime(); t += unit) {
+            for (let t = range.start.getTime(); t < range.end.getTime(); t += DAY_MS) {
                 const d = new Date(t);
                 cols.push({
                     label: this.state.boardScale === "month"
-                        ? dayLabel(d)
+                        ? String(d.getDate())
                         : `${getCalendarFormats().weekdayShort.format(d)} ${pad2(d.getDate())}`,
                 });
             }
         }
         return cols;
+    }
+
+    get boardMonthLabel() {
+        return getCalendarFormats().monthYear.format(this.boardAnchorDate());
     }
 
     boardMsToStyle(s, e) {

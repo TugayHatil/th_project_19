@@ -596,6 +596,11 @@
                                 </t>
                             </div>
                         </div>
+                        <div t-if="state.boardScale === 'month'"
+                             class="o_cp_res_tl_row d-flex small fw-bold text-muted">
+                            <span class="o_cp_res_tl_label"/>
+                            <div class="flex-grow-1 text-center" t-esc="boardMonthLabel"/>
+                        </div>
                         <div class="o_cp_res_tl_row d-flex small text-muted">
                             <span class="o_cp_res_tl_label"/>
                             <div class="o_cp_res_tl_days flex-grow-1 d-flex">
