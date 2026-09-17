@@ -57,6 +57,7 @@ class ProjectResourcePlanner(models.TransientModel):
                 values.append({
                     "planner_id": planner.id,
                     resource_field: resource.id,
+                    "priority": int(resource.priority or 0) if resource_field == "employee_id" else 0,
                     "availability_status": availability_status,
                     "availability_order": availability_order,
                     "available_hours": available_hours,
@@ -103,11 +104,12 @@ class ProjectResourcePlanner(models.TransientModel):
 class ProjectResourcePlannerLine(models.TransientModel):
     _name = "project.resource.planner.line"
     _description = "Project Resource Planner Line"
-    _order = "availability_order, resource_name"
+    _order = "priority desc, availability_order, resource_name"
 
     planner_id = fields.Many2one("project.resource.planner", required=True, ondelete="cascade")
     employee_id = fields.Many2one("hr.employee", string="Employee", readonly=True)
     equipment_id = fields.Many2one("maintenance.equipment", string="Equipment", readonly=True)
+    priority = fields.Integer(readonly=True)
     resource_name = fields.Char(compute="_compute_resource_name", store=True, readonly=True)
     availability_status = fields.Selection([
         ("fully_available", "Fully Available"),

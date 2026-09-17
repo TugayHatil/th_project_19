@@ -273,6 +273,7 @@
                 <group string="Resource Planning">
                     <field name="resource_role_ids" widget="many2many_tags"
                            domain="[('category', '=', 'human')]"/>
+                    <field name="priority" widget="priority"/>
                 </group>
             </xpath>
         </field>

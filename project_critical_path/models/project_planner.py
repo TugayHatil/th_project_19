@@ -505,6 +505,7 @@ class ProjectTaskPlanner(models.Model):
             {
                 "employee_id": line.employee_id.id or False,
                 "equipment_id": line.equipment_id.id or False,
+                "priority": line.priority or 0,
                 "name": line.resource_name,
                 "availability": line.availability_status,
                 "booked_hours": line.booked_hours,

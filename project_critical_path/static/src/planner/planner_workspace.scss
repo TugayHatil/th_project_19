@@ -730,6 +730,14 @@ $o_cp_planner_inspector_width: 320px;
 // period is a hatched band, existing bookings are solid bars (red = overlap).
 $o_cp_res_tl_label: 140px;
 
+.o_cp_res_stars {
+    color: #e8a33d;
+    font-size: 0.62rem;
+    letter-spacing: 1px;
+    vertical-align: 1px;
+    white-space: nowrap;
+}
+
 .o_cp_res_tl_label {
     width: $o_cp_res_tl_label;
     flex: 0 0 $o_cp_res_tl_label;

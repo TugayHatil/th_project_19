@@ -683,7 +683,12 @@
                                                     t-att-class="{selected: state.resSelOptKey === resCandidateKey(opt)}"
                                                     t-on-click="() => this.selectCandidate(opt)">
                                                     <td><span class="o_cp_res_dot" t-att-class="resAvailabilityDot(opt)"/></td>
-                                                    <td class="text-truncate" style="max-width: 220px" t-esc="opt.name"/>
+                                                    <td class="text-truncate" style="max-width: 220px">
+                                                        <t t-esc="opt.name"/>
+                                                        <span t-if="opt.priority" class="o_cp_res_stars ms-1">
+                                                            <i t-foreach="resStars(opt)" t-as="star" t-key="star_index" class="fa fa-star"/>
+                                                        </span>
+                                                    </td>
                                                     <td class="small" t-att-title="opt.booking_summary"
                                                         t-esc="resAvailabilityLabel(opt)"/>
                                                     <td class="text-end small text-muted"
@@ -748,8 +753,12 @@
                                                   t-att-class="{clickable: !!row.opt}"
                                                   t-att-role="row.opt ? 'button' : null"
                                                   t-att-title="row.title"
-                                                  t-on-click="() => row.opt &amp;&amp; this.selectCandidate(row.opt)"
-                                                  t-esc="row.label"/>
+                                                  t-on-click="() => row.opt &amp;&amp; this.selectCandidate(row.opt)">
+                                                <t t-esc="row.label"/>
+                                                <span t-if="row.opt &amp;&amp; row.opt.priority" class="o_cp_res_stars ms-1">
+                                                    <i t-foreach="resStars(row.opt)" t-as="star" t-key="star_index" class="fa fa-star"/>
+                                                </span>
+                                            </span>
                                             <div class="o_cp_res_tl_track flex-grow-1"
                                                  t-att-class="{overview: !resSelectedOption}"
                                                  t-on-pointerdown="onResTlTrackDown">

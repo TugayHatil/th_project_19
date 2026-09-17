@@ -1488,6 +1488,10 @@ export class PlannerWorkspace extends Component {
         return opt.employee_id ? `e${opt.employee_id}` : `q${opt.equipment_id}`;
     }
 
+    resStars(opt) {
+        return Array.from({ length: opt.priority || 0 }, (_, i) => i);
+    }
+
     get resSelectedOption() {
         return this.state.resOptions.find(
             (opt) => this.resCandidateKey(opt) === this.state.resSelOptKey,
