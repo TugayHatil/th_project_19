@@ -11,4 +11,3 @@ access_project_task_resource_assignment_user,project.task.resource.assignment us
 access_project_resource_planner_user,project.resource.planner user,model_project_resource_planner,base.group_user,1,1,1,1
 access_project_resource_planner_line_user,project.resource.planner.line user,model_project_resource_planner_line,base.group_user,1,1,1,1
 access_project_resource_rate_template_user,project.resource.rate.template user,model_project_resource_rate_template,base.group_user,1,1,1,1
-access_project_resource_rate_template_line_user,project.resource.rate.template.line user,model_project_resource_rate_template_line,base.group_user,1,1,1,1

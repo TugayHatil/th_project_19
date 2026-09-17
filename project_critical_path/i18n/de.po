@@ -878,18 +878,9 @@ msgstr "Noch nicht zugewiesen"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
-msgid "No hourly rate for this role and level in the project rate template."
-msgstr "Kein Stundensatz für diese Rolle und Stufe in der Projekttarifvorlage."
-
-#. module: project_critical_path
-#: code:addons/project_critical_path/models/project_resource.py:0
-msgid "No hourly rate for %(role)s (level %(level)s) in template %(template)s."
-msgstr "Kein Stundensatz für %(role)s (Stufe %(level)s) in Vorlage %(template)s."
+msgid "No hourly rate in the project rate template."
+msgstr "Kein Stundensatz in der Projekttarifvorlage."
 
 #. module: project_critical_path
 msgid "The hourly rate cannot be negative."
 msgstr "Der Stundensatz darf nicht negativ sein."
-
-#. module: project_critical_path
-msgid "A role can only have one rate per level within a template."
-msgstr "Eine Rolle kann pro Stufe nur einen Tarif innerhalb einer Vorlage haben."

@@ -37,9 +37,10 @@ class ProjectTaskResourceRequirement(models.Model):
         "project.project", related="task_id.project_id", store=True, index=True, readonly=True,
     )
     role_id = fields.Many2one("project.resource.role", required=True, index=True)
+    # Level is a property of the role — it is never picked manually on a
+    # requirement, the role's 5-star level applies automatically (BRD §4).
     level = fields.Selection(
-        [("1", "1"), ("2", "2"), ("3", "3"), ("4", "4"), ("5", "5")],
-        string="Level", required=True, default="1",
+        related="role_id.priority", string="Level", store=True, readonly=True,
     )
     quantity = fields.Float(required=True, default=1.0)
     date_start = fields.Datetime(string="Requirement Start")
@@ -68,11 +69,15 @@ class ProjectTaskResourceRequirement(models.Model):
         currency_field="currency_id", store=True, readonly=True,
     )
 
-    @api.depends("project_id.resource_rate_template_id.currency_id")
+    @api.depends(
+        "project_id.resource_currency_id",
+        "project_id.resource_rate_template_id.currency_id",
+    )
     def _compute_currency_id(self):
         for requirement in self:
             requirement.currency_id = (
-                requirement.project_id.resource_rate_template_id.currency_id
+                requirement.project_id.resource_currency_id
+                or requirement.project_id.resource_rate_template_id.currency_id
                 or self.env.company.currency_id
             )
 
@@ -86,25 +91,18 @@ class ProjectTaskResourceRequirement(models.Model):
             )
 
     def _resolve_hourly_rate(self):
-        """Rate for this requirement's role+level from the project template.
+        """Planning rate snapshot for this requirement.
 
-        Returns ``None`` when the project has no template (rate is left to
-        the caller) and raises when the template lacks the combination —
-        planning an unpriced role/level is not allowed (BRD §25).
+        The single template rate is copied onto the project when the
+        template is selected; requirements read the project snapshot so a
+        later template edit never moves existing planned costs (BRD §10).
+        Returns ``None`` when the project has no template — no planned cost
+        is computed then (BRD §24).
         """
-        template = self.project_id.resource_rate_template_id
-        if not template:
+        project = self.project_id
+        if not project.resource_rate_template_id:
             return None
-        rate = template.find_rate(self.role_id.id, int(self.level or 0))
-        if rate is None:
-            raise ValidationError(_(
-                "No hourly rate for %(role)s (level %(level)s) "
-                "in template %(template)s.",
-                role=self.role_id.display_name,
-                level=self.level or "-",
-                template=template.display_name,
-            ))
-        return rate
+        return project.resource_hourly_rate or project.resource_rate_template_id.hourly_rate
 
     @api.constrains("hourly_rate")
     def _check_hourly_rate(self):
@@ -115,7 +113,6 @@ class ProjectTaskResourceRequirement(models.Model):
     @api.onchange("role_id")
     def _onchange_role_id(self):
         if self.role_id:
-            self.level = self.role_id.priority or "1"
             rate = self._resolve_hourly_rate()
             if rate is not None:
                 self.hourly_rate = rate
@@ -204,7 +201,6 @@ class ProjectTaskResourceRequirement(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         Task = self.env["project.task"]
-        Role = self.env["project.resource.role"]
         for vals in vals_list:
             task_id = vals.get("task_id") or self.env.context.get("default_task_id")
             if task_id:
@@ -213,8 +209,6 @@ class ProjectTaskResourceRequirement(models.Model):
                     vals["date_start"] = task.date_assign if task.date_assign else False
                 if "date_end" not in vals and "date_deadline" in task._fields:
                     vals["date_end"] = task.date_deadline if task.date_deadline else False
-            if "level" not in vals and vals.get("role_id"):
-                vals["level"] = Role.browse(vals["role_id"]).priority or "1"
         requirements = super().create(vals_list)
         for requirement, vals in zip(requirements, vals_list):
             if not vals.get("hourly_rate"):
@@ -227,12 +221,12 @@ class ProjectTaskResourceRequirement(models.Model):
     def write(self, vals):
         affected_projects = self.mapped("project_id")
         result = super().write(vals)
-        if {"task_id", "role_id", "level"}.intersection(vals) and "hourly_rate" not in vals:
+        if {"task_id", "role_id"}.intersection(vals) and "hourly_rate" not in vals:
             for requirement in self:
                 rate = requirement._resolve_hourly_rate()
                 if rate is not None:
                     requirement.write({"hourly_rate": rate})
-        if {"task_id", "role_id", "level", "quantity", "planned_hours"}.intersection(vals):
+        if {"task_id", "role_id", "quantity", "planned_hours"}.intersection(vals):
             (affected_projects | self.mapped("project_id"))._recalculate_resource_plan()
         return result
 

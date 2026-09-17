@@ -43,6 +43,15 @@ class ProjectProject(models.Model):
         "project.resource.rate.template", string="Resource Rate Template",
         domain=[("active", "=", True)],
     )
+    # Currency + rate are copied from the template when it is selected —
+    # stored snapshots, so a later template edit never reprices the
+    # project's existing resource plan (BRD §9/§10).
+    resource_currency_id = fields.Many2one(
+        "res.currency", string="Resource Currency", readonly=True, copy=False,
+    )
+    resource_hourly_rate = fields.Float(
+        string="Resource Hourly Rate", readonly=True, copy=False,
+    )
     resource_cost_currency_id = fields.Many2one(
         "res.currency", compute="_compute_resource_cost_currency",
     )
@@ -51,13 +60,39 @@ class ProjectProject(models.Model):
         currency_field="resource_cost_currency_id", readonly=True,
     )
 
-    @api.depends("resource_rate_template_id.currency_id")
+    @api.depends("resource_currency_id", "resource_rate_template_id.currency_id")
     def _compute_resource_cost_currency(self):
         for project in self:
             project.resource_cost_currency_id = (
-                project.resource_rate_template_id.currency_id
+                project.resource_currency_id
+                or project.resource_rate_template_id.currency_id
                 or self.env.company.currency_id
             )
+
+    def _sync_resource_rate_fields(self):
+        """Copy currency + rate from the selected template onto the project."""
+        for project in self:
+            template = project.resource_rate_template_id
+            project.resource_currency_id = template.currency_id.id if template else False
+            project.resource_hourly_rate = template.hourly_rate if template else 0.0
+
+    @api.onchange("resource_rate_template_id")
+    def _onchange_resource_rate_template_id(self):
+        self._sync_resource_rate_fields()
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        projects = super().create(vals_list)
+        for project, vals in zip(projects, vals_list):
+            if vals.get("resource_rate_template_id"):
+                project._sync_resource_rate_fields()
+        return projects
+
+    def write(self, vals):
+        result = super().write(vals)
+        if "resource_rate_template_id" in vals:
+            self._sync_resource_rate_fields()
+        return result
 
     @api.depends("resource_requirement_ids.planned_cost")
     def _compute_planned_resource_cost(self):

@@ -417,29 +417,16 @@ export class PlannerWorkspace extends Component {
         return Array.from({ length: count || 0 }, (_, i) => i);
     }
 
-    // Level options for the requirement form: when the project's rate
-    // template defines rates for the role, only priced levels are offered
-    // (each labelled with its hourly rate); otherwise a plain 1–5 range.
-    resFormLevels() {
+    // The requirement level is the role's own 5-star level — it is shown
+    // read-only and never picked manually in the planner (BRD §4).
+    resFormRole() {
         const roleId = parseInt(this.state.resForm?.role_id, 10);
-        if (!roleId) {
-            return [];
-        }
-        const rates = (this.state.resData?.rates || [])
-            .filter((rate) => rate.role_id === roleId)
-            .sort((a, b) => a.level - b.level);
-        if (rates.length) {
-            return rates;
-        }
-        return [1, 2, 3, 4, 5].map((level) => ({ level, hourly_rate: null }));
+        return (this.state.resData?.roles || []).find((r) => r.id === roleId) || null;
     }
 
     resFormRate() {
-        const roleId = parseInt(this.state.resForm?.role_id, 10);
-        const level = parseInt(this.state.resForm?.level, 10);
-        const rate = (this.state.resData?.rates || [])
-            .find((r) => r.role_id === roleId && r.level === level);
-        return rate ? rate.hourly_rate : null;
+        const rate = this.state.resData?.rate_template?.hourly_rate;
+        return rate ? rate : null;
     }
 
     resFormCost() {
@@ -460,9 +447,6 @@ export class PlannerWorkspace extends Component {
 
     onResFormRoleChange(value) {
         this.state.resForm.role_id = value;
-        const role = (this.state.resData?.roles || [])
-            .find((r) => r.id === parseInt(value, 10));
-        this.state.resForm.level = String(role?.priority || 1);
     }
 
     // The dates the bar currently shows — during a drag this is the live
@@ -1504,7 +1488,6 @@ export class PlannerWorkspace extends Component {
         this.state.resEditingId = req?.id || null;
         this.state.resForm = {
             role_id: req?.role_id || "",
-            level: String(req?.level || 1),
             quantity: req?.quantity ?? 1,
             planned_hours: req?.planned_hours ?? 0,
             description: req?.description || "",
@@ -1522,7 +1505,7 @@ export class PlannerWorkspace extends Component {
         }
         if (this.state.resData?.rate_template && this.resFormRate() === null) {
             this.notification.add(
-                _t("No hourly rate for this role and level in the project rate template."),
+                _t("No hourly rate in the project rate template."),
                 { type: "warning" },
             );
             return;
@@ -1534,7 +1517,6 @@ export class PlannerWorkspace extends Component {
                     values: {
                         id: this.state.resEditingId || false,
                         role_id: parseInt(form.role_id, 10),
-                        level: parseInt(form.level, 10) || 1,
                         quantity: parseFloat(form.quantity) || 1,
                         planned_hours: parseFloat(form.planned_hours) || 0,
                         description: form.description || "",

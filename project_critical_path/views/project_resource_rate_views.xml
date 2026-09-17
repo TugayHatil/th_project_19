@@ -7,6 +7,7 @@
             <list>
                 <field name="name"/>
                 <field name="currency_id"/>
+                <field name="hourly_rate"/>
             </list>
         </field>
     </record>
@@ -20,18 +21,9 @@
                     <group>
                         <field name="name"/>
                         <field name="currency_id"/>
+                        <field name="hourly_rate"/>
                         <field name="active" invisible="1"/>
                         <field name="description"/>
-                    </group>
-                    <group string="Rates">
-                        <field name="line_ids" nolabel="1">
-                            <list editable="bottom">
-                                <field name="role_id"/>
-                                <field name="level" widget="priority"/>
-                                <field name="hourly_rate"/>
-                                <field name="currency_id" column_invisible="1"/>
-                            </list>
-                        </field>
                     </group>
                 </sheet>
             </form>

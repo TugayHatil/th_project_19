@@ -432,7 +432,11 @@ class ProjectTaskPlanner(models.Model):
         Requirement = self.env["project.task.resource.requirement"]
         roles = self.env["project.resource.role"].search([("active", "=", True)])
         template = self.project_id.resource_rate_template_id
-        currency = template.currency_id or self.env.company.currency_id
+        currency = (
+            self.project_id.resource_currency_id
+            or template.currency_id
+            or self.env.company.currency_id
+        )
         return {
             "requirements": [
                 {
@@ -475,21 +479,14 @@ class ProjectTaskPlanner(models.Model):
                 }
                 for role in roles
             ],
-            # Rates are shipped per role+level so the form can preview the
-            # hourly rate and planned cost before saving; the authoritative
+            # The project's single snapshot rate is shipped so the form can
+            # preview the planned cost before saving; the authoritative
             # snapshot still happens server-side on write.
             "rate_template": {
                 "name": template.display_name,
                 "currency_symbol": currency.symbol or "",
+                "hourly_rate": self.project_id.resource_hourly_rate or template.hourly_rate,
             } if template else None,
-            "rates": [
-                {
-                    "role_id": line.role_id.id,
-                    "level": int(line.level),
-                    "hourly_rate": line.hourly_rate,
-                }
-                for line in template.line_ids
-            ] if template else [],
             "task_dates": {
                 "date_start": _serialize_planner_day(self, self.date_assign),
                 "date_stop": _serialize_planner_day(self, self.date_deadline),
@@ -511,8 +508,6 @@ class ProjectTaskPlanner(models.Model):
         vals = {}
         if "role_id" in values:
             vals["role_id"] = values["role_id"] or False
-        if "level" in values:
-            vals["level"] = str(int(values["level"] or 1))
         if "quantity" in values:
             vals["quantity"] = values["quantity"] or 1.0
         if "planned_hours" in values:

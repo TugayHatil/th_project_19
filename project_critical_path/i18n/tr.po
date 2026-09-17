@@ -1630,18 +1630,9 @@ msgstr "Henüz atanmadı"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
-msgid "No hourly rate for this role and level in the project rate template."
-msgstr "Proje tarife şablonunda bu rol ve seviye için saatlik tarife yok."
-
-#. module: project_critical_path
-#: code:addons/project_critical_path/models/project_resource.py:0
-msgid "No hourly rate for %(role)s (level %(level)s) in template %(template)s."
-msgstr "%(template)s şablonunda %(role)s (seviye %(level)s) için saatlik tarife yok."
+msgid "No hourly rate in the project rate template."
+msgstr "Proje tarife şablonunda saatlik tarife yok."
 
 #. module: project_critical_path
 msgid "The hourly rate cannot be negative."
 msgstr "Saatlik tarife negatif olamaz."
-
-#. module: project_critical_path
-msgid "A role can only have one rate per level within a template."
-msgstr "Bir rol aynı şablon içinde her seviye için yalnızca bir tarifeye sahip olabilir."
