@@ -317,7 +317,7 @@
                                     </div>
                                 </t>
                                 <div t-else="" class="text-muted small fst-italic">
-                                    <t t-if="state.baseline?.name">Task was not part of <t t-esc="state.baseline.name"/>.</t>
+                                    <t t-if="state.baseline?.name"><span>Task was not part of</span> <t t-esc="state.baseline.name"/>.</t>
                                     <t t-else="">No baseline exists for this project yet.</t>
                                 </div>
                                 <button type="button" class="btn btn-outline-secondary btn-sm w-100 mt-2"
@@ -447,7 +447,7 @@
                             </div>
                             <div t-if="state.historyDetail.is_initial"
                                  class="text-muted small fst-italic mt-2">
-                                Initial baseline — <t t-esc="state.historyDetail.task_count"/> task snapshots.
+                                <span>Initial baseline</span> — <t t-esc="state.historyDetail.task_count"/> <span>task snapshots.</span>
                             </div>
                             <t t-else="">
                                 <div class="fw-bold small text-uppercase text-muted mt-3 mb-1">Changes</div>
@@ -502,7 +502,7 @@
                                   t-on-click="() => this.toggleBarInfoField(field.key)"/>
                         </div>
                         <div class="text-muted small mb-3">
-                            Selected <t t-esc="state.barInfoKeys.length"/>/3
+                            <span>Selected</span> <t t-esc="state.barInfoKeys.length"/>/3
                         </div>
                         <div class="d-flex flex-wrap gap-1 mb-1">
                             <span class="o_cp_planner_barchip" role="button"
@@ -644,14 +644,14 @@
                                            t-att-class="resSelectedReq.category === 'human' ? 'fa-user' : 'fa-wrench'"/>
                                         <span class="fw-bold" t-esc="resSelectedReq.role_name"/>
                                         <span class="text-muted">
-                                            — <t t-esc="resSelectedReq.quantity"/> required
+                                            — <t t-esc="resSelectedReq.quantity"/> <span>required</span>
                                         </span>
                                         <span class="badge ms-auto" t-att-class="resStatusClass(resSelectedReq)"
                                               t-esc="resStatusLabel(resSelectedReq)"/>
                                     </div>
                                     <div class="text-muted small mt-1">
                                         <t t-esc="formatDay(resSelectedReq.date_start)"/> → <t t-esc="formatDay(resSelectedReq.date_end)"/>
-                                        <t t-if="resSelectedReq.planned_hours"> · <t t-esc="formatHours(resSelectedReq.planned_hours)"/> planned</t>
+                                        <t t-if="resSelectedReq.planned_hours"> · <t t-esc="formatHours(resSelectedReq.planned_hours)"/> <span>planned</span></t>
                                     </div>
                                     <div t-if="resSelectedReq.assignments.length" class="mt-1">
                                         <div t-foreach="resSelectedReq.assignments" t-as="asg" t-key="asg.id"
@@ -699,7 +699,7 @@
                                     <div t-if="resSelectedOption" class="o_cp_res_timeline mt-3">
                                         <div class="d-flex align-items-center mb-1">
                                             <div class="small fw-bold">
-                                                Timeline — <t t-esc="resSelectedOption.name"/>
+                                                <span>Timeline</span> — <t t-esc="resSelectedOption.name"/>
                                             </div>
                                             <div class="btn-group btn-group-sm ms-auto">
                                                 <button type="button" class="btn btn-outline-secondary"

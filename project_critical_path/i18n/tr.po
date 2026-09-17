@@ -1556,3 +1556,18 @@ msgstr "Bağımlılık kaydedilemedi."
 #: code:addons/project_critical_path/static/src/gantt_dependencies.js:0
 msgid "Enter a finite number of days."
 msgstr "Sonlu bir gün sayısı girin."
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.planner_workspace
+msgid "Initial baseline"
+msgstr "İlk Referans"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.planner_workspace
+msgid "WBS:"
+msgstr "WBS:"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.gantt_dependencies
+msgid "d"
+msgstr "g"

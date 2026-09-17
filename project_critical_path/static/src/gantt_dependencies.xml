@@ -23,7 +23,7 @@
             <title t-if="props.reactive.cpData" t-esc="props.reactive.cpData.title"/>
             <text t-if="props.reactive.cpData?.lag" class="o_cp_dependency_label" pointer-events="all">
                 <t t-esc="props.reactive.cpData.type"/>
-                <t t-esc="props.reactive.cpData.lag > 0 ? '+' : ''"/><t t-esc="props.reactive.cpData.lag"/> d
+                <t t-esc="props.reactive.cpData.lag > 0 ? '+' : ''"/><t t-esc="props.reactive.cpData.lag"/> <tspan>d</tspan>
             </text>
         </xpath>
     </t>
