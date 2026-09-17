@@ -1355,6 +1355,17 @@ export class PlannerWorkspace extends Component {
         return `${value > 0 ? "+" : ""}${value}h`;
     }
 
+    formatMoney(value, symbol) {
+        const formatted = getCalendarFormats().money.format(value || 0);
+        return symbol ? `${formatted} ${symbol}` : formatted;
+    }
+
+    formatSignedMoney(value, symbol) {
+        const formatted = getCalendarFormats().money.format(Math.abs(value || 0));
+        const signed = `${(value || 0) > 0 ? "+" : (value || 0) < 0 ? "−" : ""}${formatted}`;
+        return symbol ? `${signed} ${symbol}` : signed;
+    }
+
     formatHours(hours) {
         return `${Math.round((hours || 0) * 100) / 100}h`;
     }

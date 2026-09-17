@@ -1640,3 +1640,24 @@ msgstr "Saatlik tarife negatif olamaz."
 #. module: project_critical_path
 msgid "Resource Role"
 msgstr "Kaynak Rolü"
+
+#. module: project_critical_path
+msgid "Cost Variance"
+msgstr "Maliyet Farkı"
+
+#. module: project_critical_path
+msgid "Planned Resource Hours"
+msgstr "Planlanan Kaynak Saati"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+msgid "Planned cost: %(old)s → %(new)s (%(delta)s)"
+msgstr "Planlanan maliyet: %(old)s → %(new)s (%(delta)s)"
+
+#. module: project_critical_path
+msgid "Cost Change"
+msgstr "Maliyet Değişimi"
+
+#. module: project_critical_path
+msgid "Resource Currency"
+msgstr "Kaynak Para Birimi"

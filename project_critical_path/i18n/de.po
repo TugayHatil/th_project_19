@@ -888,3 +888,24 @@ msgstr "Der Stundensatz darf nicht negativ sein."
 #. module: project_critical_path
 msgid "Resource Role"
 msgstr "Ressourcenrolle"
+
+#. module: project_critical_path
+msgid "Cost Variance"
+msgstr "Kostenabweichung"
+
+#. module: project_critical_path
+msgid "Planned Resource Hours"
+msgstr "Geplante Ressourcenstunden"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+msgid "Planned cost: %(old)s → %(new)s (%(delta)s)"
+msgstr "Plankosten: %(old)s → %(new)s (%(delta)s)"
+
+#. module: project_critical_path
+msgid "Cost Change"
+msgstr "Kostenänderung"
+
+#. module: project_critical_path
+msgid "Resource Currency"
+msgstr "Ressourcenwährung"

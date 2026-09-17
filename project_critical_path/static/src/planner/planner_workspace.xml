@@ -426,6 +426,13 @@
                                 <span t-else="" class="text-muted"
                                       t-esc="formatSignedHours(item.duration_variance) + ' vs ' + item.previous_name"/>
                             </div>
+                            <div t-if="item.planned_cost" class="d-flex justify-content-between small">
+                                <span class="text-muted"
+                                      t-esc="formatMoney(item.planned_cost, item.currency_symbol)"/>
+                                <span t-if="!item.is_initial"
+                                      t-att-class="item.cost_variance > 0 ? 'text-danger' : (item.cost_variance &lt; 0 ? 'text-success' : 'text-muted')"
+                                      t-esc="formatSignedMoney(item.cost_variance, item.currency_symbol)"/>
+                            </div>
                         </div>
                         <div t-if="state.historyDetailLoading" class="text-muted small py-2">Loading…</div>
                         <div t-if="state.historyDetail &amp;&amp; !state.historyDetailLoading"
@@ -445,6 +452,21 @@
                                  class="d-flex justify-content-between small">
                                 <span class="text-muted">Variance</span>
                                 <span t-esc="formatSignedHours(state.historyDetail.duration_variance)"/>
+                            </div>
+                            <div t-if="state.historyDetail.planned_cost || state.historyDetail.previous_cost"
+                                 class="d-flex justify-content-between small">
+                                <span class="text-muted">Planned Cost</span>
+                                <span>
+                                    <t t-if="state.historyDetail.previous_cost !== false"
+                                       t-esc="formatMoney(state.historyDetail.previous_cost, state.historyDetail.currency_symbol) + ' → '"/>
+                                    <t t-esc="formatMoney(state.historyDetail.planned_cost, state.historyDetail.currency_symbol)"/>
+                                </span>
+                            </div>
+                            <div t-if="!state.historyDetail.is_initial &amp;&amp; state.historyDetail.planned_cost"
+                                 class="d-flex justify-content-between small">
+                                <span class="text-muted">Cost Variance</span>
+                                <span t-att-class="state.historyDetail.cost_variance > 0 ? 'text-danger' : (state.historyDetail.cost_variance &lt; 0 ? 'text-success' : 'text-muted')"
+                                      t-esc="formatSignedMoney(state.historyDetail.cost_variance, state.historyDetail.currency_symbol)"/>
                             </div>
                             <div class="d-flex justify-content-between small">
                                 <span class="text-muted">Tasks Changed</span>
@@ -473,13 +495,21 @@
                                      t-on-click="() => this.openHistoryTask(change)">
                                     <div class="d-flex justify-content-between">
                                         <span class="text-truncate" t-esc="change.task_name"/>
-                                        <span t-if="change.delta_hours !== false" class="ms-2"
-                                              t-att-class="change.delta_hours > 0 ? 'text-danger' : 'text-success'"
-                                              t-esc="formatSignedHours(change.delta_hours)"/>
+                                        <span class="ms-2 text-nowrap">
+                                            <span t-if="change.delta_hours !== false"
+                                                  t-att-class="change.delta_hours > 0 ? 'text-danger' : 'text-success'"
+                                                  t-esc="formatSignedHours(change.delta_hours)"/>
+                                            <span t-if="change.delta_cost" class="ms-1"
+                                                  t-att-class="change.delta_cost > 0 ? 'text-danger' : 'text-success'"
+                                                  t-esc="formatSignedMoney(change.delta_cost, state.historyDetail.currency_symbol)"/>
+                                        </span>
                                     </div>
                                     <div t-if="change.delta_hours !== false &amp;&amp; change.old_hours !== false"
                                          class="text-muted small"
                                          t-esc="formatHours(change.old_hours) + ' → ' + formatHours(change.new_hours)"/>
+                                    <div t-if="change.delta_cost !== false &amp;&amp; change.old_cost !== false &amp;&amp; (change.old_cost || change.new_cost)"
+                                         class="text-muted small"
+                                         t-esc="formatMoney(change.old_cost, state.historyDetail.currency_symbol) + ' → ' + formatMoney(change.new_cost, state.historyDetail.currency_symbol)"/>
                                     <div class="small">
                                         <span t-if="change.entered_cp" class="badge text-bg-warning me-1">Entered Critical Path</span>
                                         <span t-if="change.left_cp" class="badge text-bg-secondary me-1">Left Critical Path</span>

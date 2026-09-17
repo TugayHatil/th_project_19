@@ -717,3 +717,115 @@ class TestResourceRatePlanning(TransactionCase):
         self._requirement(project, worker, hours=24.0)
 
         self.assertEqual(project.planned_resource_cost, 2400.0)
+
+
+class TestBaselineCostHistory(TransactionCase):
+    """Baseline snapshots freeze planned resource cost; history compares
+    consecutive baselines on cost as well as duration (BRD-21)."""
+
+    def _setup(self, rate=50.0):
+        role = self.env["project.resource.role"].create(
+            {"name": "Foreman", "category": "human", "priority": "4"})
+        template = self.env["project.resource.rate.template"].create({
+            "name": "EUR – Standard",
+            "currency_id": self.env.company.currency_id.id,
+            "hourly_rate": rate,
+            "role_id": role.id,
+        })
+        project = self.env["project.project"].create({
+            "name": "Costed baseline",
+            "resource_rate_template_ids": [(6, 0, template.ids)],
+        })
+        task = self.env["project.task"].create({
+            "name": "Assembly", "project_id": project.id, "allocated_hours": 16.0,
+        })
+        req = self.env["project.task.resource.requirement"].create({
+            "task_id": task.id, "role_id": role.id, "planned_hours": 100.0,
+        })
+        return project, task, req, template
+
+    def _baseline(self, project):
+        project.action_create_critical_path_baseline()
+        return self.env["project.critical.path.baseline"].search(
+            [("project_id", "=", project.id)], order="revision_number desc", limit=1,
+        )
+
+    def test_baseline_freezes_planned_cost_and_currency(self):
+        project, task, req, template = self._setup()
+        baseline = self._baseline(project)
+
+        self.assertEqual(baseline.planned_resource_hours, 100.0)
+        self.assertEqual(baseline.planned_resource_cost, 5000.0)
+        self.assertEqual(baseline.currency_id, template.currency_id)
+        line = baseline.line_ids.filtered(lambda l: l.task_id == task)
+        self.assertEqual(line.planned_hours, 100.0)
+        self.assertEqual(line.planned_cost, 5000.0)
+
+        # Later template/rate edits never move the frozen baseline
+        template.hourly_rate = 99.0
+        req.hourly_rate = 99.0
+        self.assertEqual(baseline.planned_resource_cost, 5000.0)
+        self.assertEqual(line.planned_cost, 5000.0)
+
+    def test_cost_variance_between_baselines(self):
+        project, task, req, template = self._setup()
+        first = self._baseline(project)
+
+        req.planned_hours = 120.0
+        second = self._baseline(project)
+
+        self.assertEqual(second.planned_resource_cost, 6000.0)
+        self.assertEqual(second.previous_baseline_id, first)
+        self.assertEqual(second.history_planned_cost_variance, 1000.0)
+
+    def test_rate_change_alone_produces_cost_delta(self):
+        project, task, req, template = self._setup()
+        self._baseline(project)
+
+        req.hourly_rate = 60.0  # hours unchanged: 100h × 60 = 6000
+        second = self._baseline(project)
+
+        self.assertEqual(second.planned_resource_cost, 6000.0)
+        self.assertEqual(second.history_planned_cost_variance, 1000.0)
+        self.assertEqual(second.history_project_duration_variance, 0.0)
+
+    def test_cost_decrease_variance_is_negative(self):
+        project, task, req, template = self._setup()
+        self._baseline(project)
+        req.hourly_rate = 60.0
+        second = self._baseline(project)
+
+        req.hourly_rate = 50.0
+        third = self._baseline(project)
+
+        self.assertEqual(third.planned_resource_cost, 5000.0)
+        self.assertEqual(third.history_planned_cost_variance, -1000.0)
+
+    def test_history_payload_includes_cost_fields(self):
+        project, task, req, template = self._setup()
+        self._baseline(project)
+        req.hourly_rate = 60.0
+        self._baseline(project)
+
+        history = project.get_planner_baseline_history()
+        newest = history[0]
+        self.assertEqual(newest["planned_cost"], 6000.0)
+        self.assertEqual(newest["cost_variance"], 1000.0)
+        self.assertEqual(newest["currency_symbol"], template.currency_id.symbol)
+
+    def test_summary_payload_includes_task_cost_deltas(self):
+        project, task, req, template = self._setup()
+        self._baseline(project)
+        req.hourly_rate = 60.0
+        second = self._baseline(project)
+
+        summary = project.get_planner_baseline_summary(second.id)
+        self.assertEqual(summary["planned_cost"], 6000.0)
+        self.assertEqual(summary["previous_cost"], 5000.0)
+        self.assertEqual(summary["cost_variance"], 1000.0)
+        change = next(c for c in summary["changes"] if c["task_id"] == task.id)
+        # Rate-only change: hours delta is 0 but cost delta must surface
+        self.assertEqual(change["delta_hours"], 0.0)
+        self.assertEqual(change["old_cost"], 5000.0)
+        self.assertEqual(change["new_cost"], 6000.0)
+        self.assertEqual(change["delta_cost"], 1000.0)

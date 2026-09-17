@@ -145,6 +145,9 @@ class ProjectProjectPlanner(models.Model):
                 "previous_id": baseline.previous_baseline_id.id or False,
                 "previous_name": baseline.previous_baseline_id.name or False,
                 "duration_variance": baseline.history_project_duration_variance or 0.0,
+                "planned_cost": baseline.planned_resource_cost or 0.0,
+                "cost_variance": baseline.history_planned_cost_variance or 0.0,
+                "currency_symbol": baseline.currency_id.symbol or "",
                 "is_initial": not baseline.previous_baseline_id,
             }
             for baseline in baselines
@@ -181,7 +184,10 @@ class ProjectProjectPlanner(models.Model):
                 line.planned_date_begin != prev.planned_date_begin
                 or line.planned_date_end != prev.planned_date_end
             )
-            if not (delta or entered or left or dates_changed):
+            cost_delta = round(
+                (line.planned_cost or 0.0) - (prev.planned_cost if prev else 0.0), 2,
+            )
+            if not (delta or entered or left or dates_changed or cost_delta):
                 continue
             changes.append({
                 "task_id": task_id,
@@ -189,6 +195,9 @@ class ProjectProjectPlanner(models.Model):
                 "delta_hours": delta,
                 "old_hours": prev.allocated_hours if prev else False,
                 "new_hours": line.allocated_hours,
+                "delta_cost": cost_delta,
+                "old_cost": prev.planned_cost if prev else False,
+                "new_cost": line.planned_cost or 0.0,
                 # Strictly longer than the frozen previous snapshot — drives
                 # the light-red row highlight in Baseline History.
                 "duration_increased": prev is not None and delta > 0,
@@ -208,6 +217,9 @@ class ProjectProjectPlanner(models.Model):
                     "delta_hours": False,
                     "old_hours": line.allocated_hours,
                     "new_hours": False,
+                    "delta_cost": False,
+                    "old_cost": line.planned_cost or 0.0,
+                    "new_cost": False,
                     "duration_increased": False,
                     "entered_cp": False,
                     "left_cp": False,
@@ -227,6 +239,10 @@ class ProjectProjectPlanner(models.Model):
             "previous_duration": previous.project_duration if previous else False,
             "duration_variance": baseline.history_project_duration_variance or 0.0,
             "cp_duration_variance": baseline.history_critical_path_duration_variance or 0.0,
+            "planned_cost": baseline.planned_resource_cost or 0.0,
+            "previous_cost": previous.planned_resource_cost if previous else False,
+            "cost_variance": baseline.history_planned_cost_variance or 0.0,
+            "currency_symbol": baseline.currency_id.symbol or "",
             "is_initial": not previous,
             "task_count": len(baseline.line_ids),
             "tasks_changed": len(changes),

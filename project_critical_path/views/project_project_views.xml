@@ -422,6 +422,8 @@
                 <field name="created_by_id"/>
                 <field name="project_duration" widget="float_time"/>
                 <field name="critical_path_duration" widget="float_time"/>
+                <field name="planned_resource_cost"/>
+                <field name="history_planned_cost_variance" string="Cost Change"/>
                 <field name="critical_path_changed"/>
             </list>
         </field>
@@ -440,6 +442,11 @@
                             <field name="created_on"/>
                             <field name="created_by_id"/>
                         </group>
+                        <group string="Planned Resource Cost">
+                            <field name="currency_id"/>
+                            <field name="planned_resource_hours" widget="float_time"/>
+                            <field name="planned_resource_cost"/>
+                        </group>
                         <group string="Current Plan Comparison">
                             <field name="project_duration" widget="float_time"/>
                             <field name="current_project_duration" widget="float_time"/>
@@ -455,6 +462,7 @@
                             <field name="previous_baseline_id"/>
                             <field name="history_project_duration_variance" widget="float_time"/>
                             <field name="history_critical_path_duration_variance" widget="float_time"/>
+                            <field name="history_planned_cost_variance"/>
                         </group>
                         <group>
                             <field name="history_critical_path_changed"/>
@@ -488,6 +496,9 @@
                             <field name="allocated_hours" widget="float_time"/>
                             <field name="current_allocated_hours" widget="float_time"/>
                             <field name="allocated_hours_delta" widget="float_time"/>
+                            <field name="planned_hours" widget="float_time" optional="show"/>
+                            <field name="currency_id" column_invisible="1"/>
+                            <field name="planned_cost" optional="show"/>
                             <field name="early_start" optional="hide"/>
                             <field name="early_finish" optional="hide"/>
                             <field name="late_start" optional="hide"/>

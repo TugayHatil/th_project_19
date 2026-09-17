@@ -35,6 +35,19 @@ class ProjectCriticalPathBaseline(models.Model):
     previous_baseline_id = fields.Many2one(
         "project.critical.path.baseline", string="Previous Baseline", readonly=True, copy=False,
     )
+    # Planned resource cost snapshot — frozen at baseline creation so later
+    # rate/template/plan changes never move history (BRD §3/§9/§12).
+    planned_resource_hours = fields.Float(
+        string="Planned Resource Hours", readonly=True, copy=False,
+    )
+    planned_resource_cost = fields.Monetary(
+        string="Planned Resource Cost", readonly=True, copy=False,
+        currency_field="currency_id",
+    )
+    currency_id = fields.Many2one("res.currency", readonly=True, copy=False)
+    history_planned_cost_variance = fields.Float(
+        string="Planned Cost Variance", readonly=True, copy=False,
+    )
     history_project_duration_variance = fields.Float(
         string="Project Duration Variance", readonly=True, copy=False,
     )
@@ -81,6 +94,19 @@ class ProjectCriticalPathBaseline(models.Model):
                     "task_name": task.display_name,
                     "parent_task_name": task.parent_id.display_name if task.parent_id else False,
                     "allocated_hours": task.allocated_hours,
+                    # Planned resource cost snapshot: quantity × hours × rate
+                    # is already aggregated per requirement — the baseline
+                    # just freezes the task totals (BRD §3/§7).
+                    "planned_hours": sum(
+                        task.resource_requirement_ids.mapped("planned_hours")
+                    ),
+                    "planned_cost": sum(
+                        task.resource_requirement_ids.mapped("planned_cost")
+                    ),
+                    "currency_id": (
+                        task.resource_requirement_ids[:1].currency_id
+                        or baseline.project_id.resource_cost_currency_id
+                    ).id or False,
                     # Odoo Project exposes its scheduled dates as date_assign and
                     # date_deadline.  Check the model fields for compatibility
                     # with installations that do not provide a planned_date_* API.
@@ -201,6 +227,7 @@ class ProjectCriticalPathBaseline(models.Model):
                     "previous_baseline_id": previous.id or False,
                     "history_project_duration_variance": 0.0,
                     "history_critical_path_duration_variance": 0.0,
+                    "history_planned_cost_variance": 0.0,
                     "history_critical_path_changed": False,
                     "history_added_task_names": False,
                     "history_removed_task_names": False,
@@ -219,6 +246,9 @@ class ProjectCriticalPathBaseline(models.Model):
                         "history_critical_path_duration_variance": (
                             baseline.critical_path_duration - previous.critical_path_duration
                         ),
+                        "history_planned_cost_variance": (
+                            baseline.planned_resource_cost - previous.planned_resource_cost
+                        ),
                         "history_critical_path_changed": "yes" if paths_changed else "no",
                         "history_added_task_names": ", ".join(
                             current_names.get(task_id, str(task_id)) for task_id in sorted(added_ids)
@@ -234,6 +264,13 @@ class ProjectCriticalPathBaseline(models.Model):
                             "new": baseline.project_duration,
                             "delta": values["history_project_duration_variance"],
                         },
+                        _("Planned cost: %(old)s → %(new)s (%(delta)s)") % {
+                            "old": baseline._format_snapshot_cost(previous.planned_resource_cost),
+                            "new": baseline._format_snapshot_cost(baseline.planned_resource_cost),
+                            "delta": baseline._format_snapshot_cost(
+                                values["history_planned_cost_variance"], signed=True,
+                            ),
+                        },
                     ]
                     if paths_changed:
                         summary.append(_("Critical Path changed."))
@@ -245,11 +282,19 @@ class ProjectCriticalPathBaseline(models.Model):
                 baseline.write(values)
                 previous = baseline
 
+    def _format_snapshot_cost(self, value, signed=False):
+        """Frozen-currency cost label for history summaries."""
+        self.ensure_one()
+        symbol = self.currency_id.symbol or ""
+        formatted = "%+.2f" % value if signed else "%.2f" % value
+        return "%s %s" % (formatted, symbol) if symbol else formatted
+
     def write(self, vals):
         protected = {
             "project_id", "name", "revision_number", "created_on", "created_by_id",
             "project_duration", "critical_path_duration", "critical_path_signature",
             "critical_path_snapshot", "line_ids", "critical_path_change_line_ids",
+            "planned_resource_hours", "planned_resource_cost", "currency_id",
         }
         if protected.intersection(vals):
             raise UserError(_("Baseline snapshots cannot be modified."))
@@ -282,6 +327,11 @@ class ProjectCriticalPathBaselineLine(models.Model):
     late_finish = fields.Float(readonly=True)
     slack = fields.Float(readonly=True)
     is_critical = fields.Boolean(readonly=True)
+    planned_hours = fields.Float(string="Planned Resource Hours", readonly=True)
+    planned_cost = fields.Monetary(
+        string="Planned Cost", readonly=True, currency_field="currency_id",
+    )
+    currency_id = fields.Many2one("res.currency", readonly=True)
     current_allocated_hours = fields.Float(compute="_compute_current_values")
     allocated_hours_delta = fields.Float(compute="_compute_current_values")
     current_early_start = fields.Float(compute="_compute_current_values")

@@ -121,6 +121,11 @@ class ProjectProject(models.Model):
                 "name": "v1.%d" % revision_number,
                 "project_duration": project.critical_path_duration,
                 "critical_path_duration": project.critical_path_duration,
+                "planned_resource_hours": sum(
+                    project.resource_requirement_ids.mapped("planned_hours")
+                ),
+                "planned_resource_cost": project.planned_resource_cost,
+                "currency_id": project.resource_cost_currency_id.id or False,
                 "critical_path_signature": project._get_critical_path_signature(),
                 "critical_path_snapshot": json.dumps([
                     {
