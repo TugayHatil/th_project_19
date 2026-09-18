@@ -221,21 +221,27 @@ class ProjectProject(models.Model):
                 task_by_id[task_id].write(values)
 
             # duration_by_task is the longest duration ending at each task;
-            # best_predecessors retains every predecessor that yields that value.
+            # best_predecessors retains every predecessor whose edge bound
+            # actually produced that finish (type- and lag-aware — with
+            # FS+0 edges this is exactly "the longest finishing parent").
             duration_by_task = schedule["early_finish"]
             best_predecessors = {}
             for task_id in ordered_ids:
-                dependency_ids = predecessors[task_id]
-                if not dependency_ids:
-                    best_predecessors[task_id] = []
-                    continue
-                best_duration = max(
-                    duration_by_task[dependency_id] for dependency_id in dependency_ids
-                )
+                dependency_edges = predecessors[task_id]
+                duration = task_by_id[task_id].allocated_hours or 0.0
                 best_predecessors[task_id] = sorted(
                     dependency_id
-                    for dependency_id in dependency_ids
-                    if duration_by_task[dependency_id] == best_duration
+                    for dependency_id, edge in dependency_edges.items()
+                    if abs(
+                        self._edge_early_bound(
+                            edge,
+                            duration_by_task[dependency_id]
+                            - (task_by_id[dependency_id].allocated_hours or 0.0),
+                            duration_by_task[dependency_id],
+                            duration,
+                        )
+                        - duration_by_task[task_id]
+                    ) < 0.000001
                 )
 
             maximum_duration = schedule["project_duration"]
@@ -401,6 +407,45 @@ class ProjectProject(models.Model):
         steps.append("Project finish %+.2f h" % impact)
         return " → ".join(steps)
 
+    def _ensure_dependency_records(self):
+        """Reconcile ``project.task.dependency`` rows with the M2M edges.
+
+        ``depend_on_ids`` is the structural source of truth — every write
+        path (Inspector, gantt, imports, code) goes through it. This lazy
+        reconciliation keeps exactly one attribute row per edge so the
+        relationship type and lag always exist for the schedule and the
+        planner payload. Returns ``{(task_id, depends_on_id): record}``.
+        """
+        self.ensure_one()
+        Dependency = self.env["project.task.dependency"].sudo()
+        tasks = self.env["project.task"].with_context(active_test=False).search(
+            [("project_id", "=", self.id)]
+        )
+        wanted = {
+            (task.id, dependency.id)
+            for task in tasks
+            for dependency in task.depend_on_ids
+            if dependency.id != task.id
+        }
+        existing = Dependency.search([("project_id", "=", self.id)])
+        orphans = existing.filtered(
+            lambda row: (row.task_id.id, row.depends_on_id.id) not in wanted
+        )
+        if orphans:
+            orphans.unlink()
+        existing -= orphans
+        have = {(row.task_id.id, row.depends_on_id.id) for row in existing}
+        missing = wanted - have
+        if missing:
+            Dependency.create(
+                [
+                    {"task_id": task_id, "depends_on_id": depends_on_id}
+                    for task_id, depends_on_id in sorted(missing)
+                ]
+            )
+            existing = Dependency.search([("project_id", "=", self.id)])
+        return {(row.task_id.id, row.depends_on_id.id): row for row in existing}
+
     def _get_task_dependency_graph(self):
         """Return the standard task dependency graph once for all calculations.
 
@@ -408,7 +453,9 @@ class ProjectProject(models.Model):
         its own dependencies — WBS hierarchy is a presentation concern only
         and must not change the critical path. Edges are the plain
         ``depend_on_ids`` links restricted to this project; a self-link is
-        dropped since it can never affect the schedule.
+        dropped since it can never affect the schedule. Each edge carries the
+        ``project.task.dependency`` attributes — relationship type and lag in
+        hours — so the CPM passes can honour FS/SS/FF/SF and lead/lag.
         """
         self.ensure_one()
         tasks = self.env["project.task"].with_context(active_test=False).search(
@@ -416,19 +463,27 @@ class ProjectProject(models.Model):
         )
         task_by_id = {task.id: task for task in tasks}
         task_ids = set(task_by_id)
+        dependency_rows = self._ensure_dependency_records()
+
+        def edge(task_id, dependency_id):
+            row = dependency_rows.get((task_id, dependency_id))
+            return {
+                "type": row.relationship_type if row else "fs",
+                "lag": row.lag_hours if row else 0.0,
+            }
 
         predecessors = {
             task.id: {
-                dependency.id
+                dependency.id: edge(task.id, dependency.id)
                 for dependency in task.depend_on_ids
                 if dependency.id in task_by_id and dependency.id != task.id
             }
             for task in tasks
         }
-        successors = {task_id: set() for task_id in task_ids}
+        successors = {task_id: {} for task_id in task_ids}
         for task_id, dependency_ids in predecessors.items():
-            for dependency_id in dependency_ids:
-                successors[dependency_id].add(task_id)
+            for dependency_id, dependency_edge in dependency_ids.items():
+                successors[dependency_id][task_id] = dependency_edge
 
         in_degree = {task_id: len(ids) for task_id, ids in predecessors.items()}
         queue = deque(sorted(task_id for task_id, degree in in_degree.items() if not degree))
@@ -451,8 +506,39 @@ class ProjectProject(models.Model):
             "end_ids": [task_id for task_id in ordered_ids if not successors[task_id]],
         }
 
+    @staticmethod
+    def _edge_early_bound(edge, pred_es, pred_ef, duration):
+        """Forward-pass lower bound this edge puts on the successor's EF."""
+        lag = edge["lag"]
+        relation = edge["type"]
+        if relation == "ss":
+            return pred_es + lag + duration
+        if relation == "ff":
+            return pred_ef + lag
+        if relation == "sf":
+            return pred_es + lag
+        return pred_ef + lag + duration  # fs
+
+    @staticmethod
+    def _edge_late_bound(edge, succ_ls, succ_lf, duration):
+        """Backward-pass upper bound this edge puts on the predecessor's LF."""
+        lag = edge["lag"]
+        relation = edge["type"]
+        if relation == "ss":
+            return succ_ls - lag + duration
+        if relation == "ff":
+            return succ_lf - lag
+        if relation == "sf":
+            return succ_lf - lag + duration
+        return succ_ls - lag  # fs
+
     def _calculate_task_schedule(self, graph):
-        """Run CPM forward/backward passes over the shared dependency graph."""
+        """Run CPM forward/backward passes over the shared dependency graph.
+
+        Edges carry a relationship type and a lag in hours (BRD Dependency
+        Lag). With the default FS+0 every bound collapses to the classic
+        formulas, so existing plans compute identically.
+        """
         task_by_id = graph["task_by_id"]
         predecessors = graph["predecessors"]
         successors = graph["successors"]
@@ -461,20 +547,33 @@ class ProjectProject(models.Model):
 
         early_start, early_finish = {}, {}
         for task_id in ordered_ids:
-            early_start[task_id] = max(
-                (early_finish[dependency_id] for dependency_id in predecessors[task_id]),
-                default=0.0,
-            )
-            early_finish[task_id] = early_start[task_id] + (task_by_id[task_id].allocated_hours or 0.0)
+            duration = task_by_id[task_id].allocated_hours or 0.0
+            # EF >= duration keeps the early start non-negative.
+            finish_bound = duration
+            for dependency_id, edge in predecessors[task_id].items():
+                pred_ef = early_finish[dependency_id]
+                pred_es = pred_ef - (task_by_id[dependency_id].allocated_hours or 0.0)
+                finish_bound = max(
+                    finish_bound,
+                    self._edge_early_bound(edge, pred_es, pred_ef, duration),
+                )
+            early_finish[task_id] = finish_bound
+            early_start[task_id] = finish_bound - duration
 
         project_duration = max((early_finish[task_id] for task_id in end_ids), default=0.0)
         late_start, late_finish = {}, {}
         for task_id in reversed(ordered_ids):
-            late_finish[task_id] = min(
-                (late_start[successor_id] for successor_id in successors[task_id]),
-                default=project_duration,
-            )
-            late_start[task_id] = late_finish[task_id] - (task_by_id[task_id].allocated_hours or 0.0)
+            duration = task_by_id[task_id].allocated_hours or 0.0
+            finish_bound = project_duration
+            for successor_id, edge in successors[task_id].items():
+                succ_lf = late_finish[successor_id]
+                succ_ls = succ_lf - (task_by_id[successor_id].allocated_hours or 0.0)
+                finish_bound = min(
+                    finish_bound,
+                    self._edge_late_bound(edge, succ_ls, succ_lf, duration),
+                )
+            late_finish[task_id] = finish_bound
+            late_start[task_id] = finish_bound - duration
 
         return {
             "early_finish": early_finish,

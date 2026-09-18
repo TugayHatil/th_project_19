@@ -368,3 +368,82 @@ class TestCriticalPath(TransactionCase):
         self.assertNotIn(unassigned_employee, planner.line_ids.mapped("employee_id"))
         self.assertNotIn(unqualified_employee, planner.line_ids.mapped("employee_id"))
         self.assertIn("Task - Foreman", requirement.display_name)
+
+    def test_dependency_lag_shifts_critical_path(self):
+        """FS+lag widens the schedule; negative lag shortens it (BRD Lag)."""
+        project = self.env["project.project"].create({"name": "Lag test"})
+        task_a = self.env["project.task"].create({
+            "name": "A", "project_id": project.id, "allocated_hours": 4,
+        })
+        task_b = self.env["project.task"].create({
+            "name": "B", "project_id": project.id, "allocated_hours": 6,
+            "depend_on_ids": [(4, task_a.id)],
+        })
+
+        project.action_calculate_critical_paths()
+        # FS+0 baseline behaviour: B starts right at A's finish.
+        self.assertEqual(project.critical_path_duration, 10)
+        self.assertEqual(task_b.critical_early_start, 4)
+
+        # FS +10h → B may start at earliest 10 h after A's finish.
+        task_b.update_planner_dependency(task_a.id, "fs", 10, "hours")
+        self.assertEqual(task_b.critical_early_start, 14)
+        self.assertEqual(project.critical_path_duration, 20)
+
+        # FS -4h lead → B starts 4 h before A finishes.
+        task_b.update_planner_dependency(task_a.id, "fs", -4, "hours")
+        self.assertEqual(task_b.critical_early_start, 0)
+        self.assertEqual(project.critical_path_duration, 6)
+
+        # Lag given in days converts through hours_per_day (default 8).
+        task_b.update_planner_dependency(task_a.id, "fs", 1, "days")
+        self.assertEqual(task_b.critical_early_start, 12)
+
+        # SS +2h → B starts 2 h after A starts.
+        task_b.update_planner_dependency(task_a.id, "ss", 2, "hours")
+        self.assertEqual(task_b.critical_early_start, 2)
+        self.assertEqual(task_b.critical_early_finish, 8)
+
+        # FF +3h → B finishes at least 3 h after A finishes.
+        task_b.update_planner_dependency(task_a.id, "ff", 3, "hours")
+        self.assertEqual(task_b.critical_early_finish, 7)
+        self.assertEqual(task_b.critical_early_start, 1)
+
+        # SF +1h → B finishes at least 1 h after A starts — the bound (1)
+        # is below B's own duration so the task simply starts at 0.
+        task_b.update_planner_dependency(task_a.id, "sf", 1, "hours")
+        self.assertEqual(task_b.critical_early_start, 0)
+        self.assertEqual(task_b.critical_early_finish, 6)
+
+    def test_dependency_attributes_stay_on_the_edge(self):
+        """Type/lag live on project.task.dependency, not on the task."""
+        project = self.env["project.project"].create({"name": "Edge attrs"})
+        task_a = self.env["project.task"].create({
+            "name": "A", "project_id": project.id, "allocated_hours": 4,
+        })
+        task_b = self.env["project.task"].create({
+            "name": "B", "project_id": project.id, "allocated_hours": 6,
+            "depend_on_ids": [(4, task_a.id)],
+        })
+        # Lazy reconcile creates a default FS/0 row for the M2M edge.
+        project.action_calculate_critical_paths()
+        row = self.env["project.task.dependency"].search(
+            [("task_id", "=", task_b.id), ("depends_on_id", "=", task_a.id)]
+        )
+        self.assertEqual(len(row), 1)
+        self.assertEqual(row.relationship_type, "fs")
+        self.assertEqual(row.lag_hours, 0.0)
+
+        task_b.update_planner_dependency(task_a.id, "ss", 2, "days")
+        self.assertEqual(row.relationship_type, "ss")
+        self.assertEqual(row.lag, 2)
+        self.assertEqual(row.lag_unit, "days")
+
+        # Removing the M2M edge orphans the attribute row on next sync.
+        task_b.depend_on_ids = [(5, 0, 0)]
+        project._ensure_dependency_records()
+        self.assertFalse(
+            self.env["project.task.dependency"].search(
+                [("task_id", "=", task_b.id)]
+            )
+        )

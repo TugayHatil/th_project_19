@@ -1725,3 +1725,75 @@ msgstr "Lütfen bir baseline başlığı seçin."
 #. module: project_critical_path
 msgid "The baseline title cannot exceed 15 characters."
 msgstr "Baseline başlığı 15 karakteri geçemez."
+
+#. module: project_critical_path
+msgid "Task Dependency"
+msgstr "Görev Bağımlılığı"
+
+#. module: project_critical_path
+msgid "Depends On"
+msgstr "Bağlı Olduğu"
+
+#. module: project_critical_path
+msgid "Relationship Type"
+msgstr "İlişki Tipi"
+
+#. module: project_critical_path
+msgid "Relationship"
+msgstr "İlişki"
+
+#. module: project_critical_path
+msgid "Lag"
+msgstr "Lag"
+
+#. module: project_critical_path
+msgid "Lag Unit"
+msgstr "Lag Birimi"
+
+#. module: project_critical_path
+msgid "Lag (Hours)"
+msgstr "Lag (Saat)"
+
+#. module: project_critical_path
+msgid "Hours"
+msgstr "Saat"
+
+#. module: project_critical_path
+msgid "Days"
+msgstr "Gün"
+
+#. module: project_critical_path
+msgid "Positive = wait, negative = lead."
+msgstr "Pozitif = bekleme, negatif = erken başlama (lead)."
+
+#. module: project_critical_path
+msgid "Edit relationship"
+msgstr "İlişkiyi düzenle"
+
+#. module: project_critical_path
+msgid "Finish-to-Start (FS)"
+msgstr "Bitiş-Başlangıç (FS)"
+
+#. module: project_critical_path
+msgid "Start-to-Start (SS)"
+msgstr "Başlangıç-Başlangıç (SS)"
+
+#. module: project_critical_path
+msgid "Finish-to-Finish (FF)"
+msgstr "Bitiş-Bitiş (FF)"
+
+#. module: project_critical_path
+msgid "Start-to-Finish (SF)"
+msgstr "Başlangıç-Bitiş (SF)"
+
+#. module: project_critical_path
+msgid "A dependency between these two tasks already exists."
+msgstr "Bu iki görev arasında zaten bir bağımlılık var."
+
+#. module: project_critical_path
+msgid "The dependency no longer exists."
+msgstr "Bağımlılık artık mevcut değil."
+
+#. module: project_critical_path
+msgid "The dependency could not be saved."
+msgstr "Bağımlılık kaydedilemedi."

@@ -124,6 +124,9 @@ export class PlannerWorkspace extends Component {
             baseline: null,
             impact: null,
             depOpen: false,
+            // BRD Dependency Lag: the arrow-click editor popover — holds
+            // {taskId, predId, type, lag, unit, x, y} while open.
+            depEdit: null,
             options: { stages: [], users: [] },
             form: null,
             saving: false,
@@ -562,7 +565,8 @@ export class PlannerWorkspace extends Component {
             if (!toBar) {
                 continue;
             }
-            for (const predId of task.depend_on_ids || []) {
+            for (const dep of task.dependencies || []) {
+                const predId = dep.task_id;
                 const predIdx = indexById.get(predId);
                 if (predIdx === undefined) {
                     continue; // predecessor collapsed or outside this project
@@ -571,7 +575,7 @@ export class PlannerWorkspace extends Component {
                 if (!fromBar) {
                     continue;
                 }
-                raw.push({ predId, task, predIdx, toIdx: indexById.get(task.id), fromBar, toBar });
+                raw.push({ predId, task, dep, predIdx, toIdx: indexById.get(task.id), fromBar, toBar });
             }
         }
         // Lane assignment: per-predecessor exit stubs, per-successor entry
@@ -610,10 +614,27 @@ export class PlannerWorkspace extends Component {
             const corridorY = y1 + (edge.down ? PLANNER_BAR_CENTER : -PLANNER_BAR_CENTER) + offset;
             const d = `M ${x1} ${y1} H ${exitX} V ${corridorY} H ${entryX} V ${y2} H ${x2}`;
             const related = selected === edge.task.id || selected === edge.predId;
+            // BRD Dependency Lag: non-default edges get a small label on
+            // the corridor segment — relationship type when it is not FS,
+            // plus the signed lag ("SS +2d", "-4h", "+10h").
+            const parts = [];
+            if (edge.dep.type && edge.dep.type !== "fs") {
+                parts.push(edge.dep.type.toUpperCase());
+            }
+            if (edge.dep.lag) {
+                parts.push(
+                    `${edge.dep.lag > 0 ? "+" : ""}${edge.dep.lag}${edge.dep.unit === "days" ? "d" : "h"}`,
+                );
+            }
             return {
                 key: `${edge.predId}-${edge.task.id}`,
+                taskId: edge.task.id,
+                predId: edge.predId,
                 d,
                 arrowD: `M ${x2} ${y2} l -8 -4.5 l 0 9 z`,
+                label: parts.length ? parts.join(" ") : null,
+                labelX: (exitX + entryX) / 2,
+                labelY: corridorY - 4,
                 dim: Boolean(selected && !related),
                 highlight: Boolean(selected && related),
                 critical: Boolean(edge.task.is_critical && byId.get(edge.predId)?.is_critical),
@@ -879,6 +900,74 @@ export class PlannerWorkspace extends Component {
     removeSuccessor(id) {
         const form = this.state.form;
         form.dependent_ids = form.dependent_ids.filter((depId) => depId !== id);
+    }
+
+    // ---- Dependency edge editor (BRD Dependency Lag) ---------------------
+
+    // Edge attributes of (predId → taskId) from the planner payload.
+    depEdge(taskId, predId) {
+        const task = this.taskById.get(taskId);
+        return (task?.dependencies || []).find((dep) => dep.task_id === predId) || null;
+    }
+
+    // Suffix shown on the Inspector predecessor chips — "FS", "SS +2d".
+    depChipText(predId) {
+        const edge = this.depEdge(this.state.inspector?.id, predId);
+        if (!edge) {
+            return "";
+        }
+        const parts = [(edge.type || "fs").toUpperCase()];
+        if (edge.lag) {
+            parts.push(
+                `${edge.lag > 0 ? "+" : ""}${edge.lag}${edge.unit === "days" ? "d" : "h"}`,
+            );
+        }
+        return `· ${parts.join(" ")}`;
+    }
+
+    openDepEditor(taskId, predId, ev) {
+        ev.stopPropagation();
+        const edge = this.depEdge(taskId, predId);
+        this.state.depEdit = {
+            taskId,
+            predId,
+            type: edge?.type || "fs",
+            lag: edge?.lag || 0,
+            unit: edge?.unit || "hours",
+            x: ev.clientX,
+            y: ev.clientY,
+        };
+    }
+
+    closeDepEdit() {
+        this.state.depEdit = null;
+    }
+
+    async saveDepEdit() {
+        const edit = this.state.depEdit;
+        if (!edit) {
+            return;
+        }
+        try {
+            await this.orm.call("project.task", "update_planner_dependency", [edit.taskId], {
+                depends_on_id: edit.predId,
+                relationship_type: edit.type,
+                lag: Number(edit.lag) || 0,
+                lag_unit: edit.unit,
+            });
+            this.state.depEdit = null;
+            const collapsed = this.state.collapsedIds;
+            await this.loadProject(this.state.projectId);
+            this.state.collapsedIds = collapsed;
+            if (this.state.inspectorOpen && this.state.inspector?.id) {
+                await this.loadInspector(this.state.inspector.id);
+            }
+        } catch (error) {
+            this.notification.add(
+                error.data?.message || _t("The dependency could not be saved."),
+                { type: "danger" },
+            );
+        }
     }
 
     async saveInspector() {
@@ -2431,11 +2520,12 @@ export class PlannerWorkspace extends Component {
     // Clicking empty space (below/beside the task rows) clears the current
     // row selection; clicks inside a row or the inspector are ignored.
     onBackgroundClick(ev) {
-        if (ev.target.closest(".o_cp_planner_wbs_row, .o_cp_planner_gantt_row")) {
+        if (ev.target.closest(".o_cp_planner_wbs_row, .o_cp_planner_gantt_row, .o_cp_planner_dep_edit")) {
             return;
         }
         this.state.selectedId = null;
         this.state.inspectorOpen = false;
+        this.state.depEdit = null;
     }
 
     onRowClick(task) {

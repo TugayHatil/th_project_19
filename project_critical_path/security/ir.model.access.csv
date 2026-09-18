@@ -12,3 +12,4 @@ access_project_resource_planner_user,project.resource.planner user,model_project
 access_project_resource_planner_line_user,project.resource.planner.line user,model_project_resource_planner_line,base.group_user,1,1,1,1
 access_project_resource_rate_template_user,project.resource.rate.template user,model_project_resource_rate_template,base.group_user,1,1,1,1
 access_project_baseline_title_user,project.baseline.title user,model_project_baseline_title,base.group_user,1,1,1,1
+access_project_task_dependency_user,project.task.dependency user,model_project_task_dependency,base.group_user,1,1,1,1

@@ -94,6 +94,9 @@ class ProjectProjectPlanner(models.Model):
         baseline_by_task = {
             line.task_id.id: line for line in baseline.line_ids if line.task_id
         } if baseline else {}
+        # Per-edge relationship type/lag attributes (BRD Dependency Lag) —
+        # reconciled against the M2M so the map covers every edge.
+        dependency_rows = self._ensure_dependency_records()
         # Compact per-task resource summary for the row badges.
         requirements = self.env["project.task.resource.requirement"].search(
             [("project_id", "=", self.id)]
@@ -132,6 +135,11 @@ class ProjectProjectPlanner(models.Model):
                     # Done is the Odoo task state, never a progress threshold
                     "is_done": task.state == "1_done",
                     "depend_on_ids": task.depend_on_ids.ids,
+                    "dependencies": [
+                        dependency_rows[(task.id, dependency.id)]._serialize()
+                        for dependency in task.depend_on_ids
+                        if (task.id, dependency.id) in dependency_rows
+                    ],
                     "baseline_name": baseline.name if baseline_by_task.get(task.id) else False,
                     "baseline_start": (
                         _serialize_planner_day(self, baseline_by_task[task.id].planned_date_begin)
@@ -378,6 +386,7 @@ class ProjectTaskPlanner(models.Model):
         line = baseline.line_ids.filtered(lambda item: item.task_id == self)[:1] if baseline else False
         baseline_start = _serialize_planner_day(line, line.planned_date_begin) if line else False
         baseline_stop = _serialize_planner_day(line, line.planned_date_end) if line else False
+        dependency_rows = project._ensure_dependency_records() if project else {}
         return {
             "task": {
                 "id": self.id,
@@ -396,6 +405,11 @@ class ProjectTaskPlanner(models.Model):
                 "user_ids": self.user_ids.ids,
                 "depend_on_ids": self.depend_on_ids.ids,
                 "dependent_ids": self.dependent_ids.ids,
+                "dependencies": [
+                    dependency_rows[(self.id, dependency.id)]._serialize()
+                    for dependency in self.depend_on_ids
+                    if (self.id, dependency.id) in dependency_rows
+                ],
             },
             "baseline": {
                 "name": baseline.name if baseline else False,
@@ -471,6 +485,47 @@ class ProjectTaskPlanner(models.Model):
         if "dependent_ids" in values:
             vals["dependent_ids"] = [Command.set(values["dependent_ids"] or [])]
         self.write(vals)
+        return True
+
+    def update_planner_dependency(
+        self, depends_on_id, relationship_type="fs", lag=0.0, lag_unit="hours",
+    ):
+        """Write the relationship type and lag of the edge depends_on_id → self.
+
+        Called from the Planner dependency-arrow editor. The M2M edge must
+        already exist — the attribute row is created lazily if the edge was
+        added since the last reconciliation.
+        """
+        self.ensure_one()
+        if depends_on_id not in self.depend_on_ids.ids:
+            raise UserError(_("The dependency no longer exists."))
+        if relationship_type not in ("fs", "ss", "ff", "sf"):
+            relationship_type = "fs"
+        if lag_unit not in ("hours", "days"):
+            lag_unit = "hours"
+        Dependency = self.env["project.task.dependency"]
+        row = Dependency.search(
+            [
+                ("task_id", "=", self.id),
+                ("depends_on_id", "=", depends_on_id),
+            ],
+            limit=1,
+        )
+        if not row:
+            row = Dependency.create(
+                {"task_id": self.id, "depends_on_id": depends_on_id}
+            )
+        row.write(
+            {
+                "relationship_type": relationship_type,
+                "lag": float(lag or 0.0),
+                "lag_unit": lag_unit,
+            }
+        )
+        # Edge attributes feed the CPM — a plain task write is not involved,
+        # so the recalculation is triggered explicitly.
+        if self.project_id:
+            self.project_id._recalculate_critical_paths()
         return True
 
     # ---- Planner Resources (BRD-21) ---------------------------------------

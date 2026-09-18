@@ -196,12 +196,22 @@
                                      t-att-width="timelineWidth"
                                      t-att-height="visibleTasks.length * 32">
                                     <t t-foreach="dependencyEdges" t-as="edge" t-key="edge.key">
+                                        <!-- Invisible wide stroke makes the
+                                             connector an easy click target
+                                             for the relationship editor. -->
+                                        <path class="o_cp_planner_dep_hit"
+                                              t-att-d="edge.d" fill="none"
+                                              t-on-click="(ev) => this.openDepEditor(edge.taskId, edge.predId, ev)"/>
                                         <path class="o_cp_planner_dep_line"
                                               t-att-class="{dim: edge.dim, highlight: edge.highlight, critical: edge.critical}"
                                               t-att-d="edge.d" fill="none"/>
                                         <path class="o_cp_planner_dep_arrow"
                                               t-att-class="{dim: edge.dim, highlight: edge.highlight, critical: edge.critical}"
                                               t-att-d="edge.arrowD"/>
+                                        <text t-if="edge.label"
+                                              class="o_cp_planner_dep_label"
+                                              t-att-x="edge.labelX" t-att-y="edge.labelY"
+                                              t-esc="edge.label"/>
                                     </t>
                                 </svg>
                             </div>
@@ -343,6 +353,9 @@
                                         <div t-foreach="state.form?.depend_on_ids || []" t-as="depId" t-key="depId"
                                              class="o_cp_planner_dep_chip d-inline-flex align-items-center gap-1 me-1 mb-1">
                                             <span t-esc="taskLabel(depId)"/>
+                                            <span class="text-muted" t-esc="depChipText(depId)"/>
+                                            <i class="fa fa-pencil" role="button" title="Edit relationship"
+                                               t-on-click="(ev) => this.openDepEditor(state.inspector?.id, depId, ev)"/>
                                             <i class="fa fa-times" role="button" title="Remove"
                                                t-on-click="() => this.removePredecessor(depId)"/>
                                         </div>
@@ -1124,6 +1137,47 @@
                 </div>
             </div>
             <div class="o_cp_planner_bottom border-top" t-on-click="onBackgroundClick"/>
+            <!-- BRD Dependency Lag: clicking a connector opens this small
+                 editor for the edge's relationship type and lag. -->
+            <div t-if="state.depEdit"
+                 class="o_cp_planner_dep_edit border rounded shadow bg-white p-2"
+                 t-att-style="'left:' + state.depEdit.x + 'px;top:' + state.depEdit.y + 'px'">
+                <div class="fw-bold small mb-2 text-truncate">
+                    <t t-esc="taskLabel(state.depEdit.predId)"/> → <t t-esc="taskLabel(state.depEdit.taskId)"/>
+                </div>
+                <div class="mb-2">
+                    <div class="o_cp_planner_inspector_label mb-1">Relationship</div>
+                    <select class="form-select form-select-sm"
+                            t-att-value="state.depEdit.type"
+                            t-on-change="(ev) => state.depEdit.type = ev.target.value">
+                        <option value="fs">FS — Finish-to-Start</option>
+                        <option value="ss">SS — Start-to-Start</option>
+                        <option value="ff">FF — Finish-to-Finish</option>
+                        <option value="sf">SF — Start-to-Finish</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <div class="o_cp_planner_inspector_label mb-1">Lag</div>
+                    <div class="input-group input-group-sm">
+                        <input type="number" step="0.5" class="form-control"
+                               t-att-value="state.depEdit.lag"
+                               t-on-change="(ev) => state.depEdit.lag = ev.target.value"/>
+                        <select class="form-select"
+                            t-att-value="state.depEdit.unit"
+                            t-on-change="(ev) => state.depEdit.unit = ev.target.value">
+                            <option value="hours">Hours</option>
+                            <option value="days">Days</option>
+                        </select>
+                    </div>
+                    <div class="text-muted small mt-1">Positive = wait, negative = lead.</div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-primary btn-sm flex-grow-1"
+                            t-on-click="saveDepEdit">Save</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                            t-on-click="closeDepEdit">Cancel</button>
+                </div>
+            </div>
         </div>
     </t>
 </templates>

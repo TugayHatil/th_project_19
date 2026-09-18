@@ -392,6 +392,35 @@ $o_cp_planner_bar_critical: #e8a33d;
     }
 }
 
+// Invisible fat stroke over each connector — re-enables pointer events
+// (the svg layer is click-through) so clicking an arrow opens the
+// relationship/lag editor (BRD Dependency Lag).
+.o_cp_planner_dep_hit {
+    stroke: transparent;
+    stroke-width: 9;
+    pointer-events: stroke;
+    cursor: pointer;
+}
+
+// Small lag/type tag floating on the connector's corridor segment.
+.o_cp_planner_dep_label {
+    font-size: 8.5px;
+    font-weight: 600;
+    fill: #175cd3;
+    text-anchor: middle;
+    paint-order: stroke;
+    stroke: #ffffff;
+    stroke-width: 3px;
+    pointer-events: none;
+}
+
+// Arrow-click editor popover — fixed at the click point.
+.o_cp_planner_dep_edit {
+    position: fixed;
+    z-index: 1100;
+    width: 240px;
+}
+
 .o_cp_planner_today {
     position: absolute;
     top: $o_cp_planner_header_height;

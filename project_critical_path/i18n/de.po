@@ -977,3 +977,75 @@ msgstr "Bitte einen Baseline-Titel auswählen."
 #. module: project_critical_path
 msgid "The baseline title cannot exceed 15 characters."
 msgstr "Der Baseline-Titel darf maximal 15 Zeichen lang sein."
+
+#. module: project_critical_path
+msgid "Task Dependency"
+msgstr "Aufgabenabhängigkeit"
+
+#. module: project_critical_path
+msgid "Depends On"
+msgstr "Abhängig von"
+
+#. module: project_critical_path
+msgid "Relationship Type"
+msgstr "Beziehungstyp"
+
+#. module: project_critical_path
+msgid "Relationship"
+msgstr "Beziehung"
+
+#. module: project_critical_path
+msgid "Lag"
+msgstr "Lag"
+
+#. module: project_critical_path
+msgid "Lag Unit"
+msgstr "Lag-Einheit"
+
+#. module: project_critical_path
+msgid "Lag (Hours)"
+msgstr "Lag (Stunden)"
+
+#. module: project_critical_path
+msgid "Hours"
+msgstr "Stunden"
+
+#. module: project_critical_path
+msgid "Days"
+msgstr "Tage"
+
+#. module: project_critical_path
+msgid "Positive = wait, negative = lead."
+msgstr "Positiv = Wartezeit, negativ = Vorlauf."
+
+#. module: project_critical_path
+msgid "Edit relationship"
+msgstr "Beziehung bearbeiten"
+
+#. module: project_critical_path
+msgid "Finish-to-Start (FS)"
+msgstr "Ende-Beginn (FS)"
+
+#. module: project_critical_path
+msgid "Start-to-Start (SS)"
+msgstr "Beginn-Beginn (SS)"
+
+#. module: project_critical_path
+msgid "Finish-to-Finish (FF)"
+msgstr "Ende-Ende (FF)"
+
+#. module: project_critical_path
+msgid "Start-to-Finish (SF)"
+msgstr "Beginn-Ende (SF)"
+
+#. module: project_critical_path
+msgid "A dependency between these two tasks already exists."
+msgstr "Zwischen diesen beiden Aufgaben besteht bereits eine Abhängigkeit."
+
+#. module: project_critical_path
+msgid "The dependency no longer exists."
+msgstr "Die Abhängigkeit existiert nicht mehr."
+
+#. module: project_critical_path
+msgid "The dependency could not be saved."
+msgstr "Die Abhängigkeit konnte nicht gespeichert werden."
