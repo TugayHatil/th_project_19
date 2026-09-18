@@ -71,8 +71,18 @@
                     </button>
                 </t>
             </div>
-            <div t-if="state.projectId &amp;&amp; !state.boardMode" class="o_cp_planner_search px-3 py-1 border-bottom">
-                <SearchBar/>
+            <div t-if="state.projectId &amp;&amp; !state.boardMode" class="o_cp_planner_kpis d-flex align-items-center px-3 py-1">
+                <t t-foreach="kpiItems" t-as="kpi" t-key="kpi.key">
+                    <span class="o_cp_planner_kpi" role="button"
+                          t-att-class="kpi.cls + (state.kpiFilter === kpi.key ? ' active' : '') + (kpi.key === 'total' ? ' static' : '')"
+                          t-att-title="kpi.tip"
+                          t-on-click="() => this.toggleKpi(kpi.key)">
+                        <i t-att-class="'fa ' + kpi.icon"/>
+                        <b t-esc="kpi.value"/>
+                        <span t-esc="kpi.label"/>
+                    </span>
+                    <span t-if="!kpi_last" class="o_cp_planner_kpi_sep"/>
+                </t>
             </div>
             <div t-if="!state.boardMode" class="o_cp_planner_body d-flex flex-grow-1 overflow-hidden">
                 <div class="o_cp_planner_wbs d-flex flex-column border-end"
@@ -89,7 +99,7 @@
                                      t-on-click="onBackgroundClick">
                         <div t-foreach="visibleTasks" t-as="task" t-key="task.id"
                              class="o_cp_planner_wbs_row d-flex align-items-center px-2"
-                             t-att-class="{selected: state.selectedId === task.id, parent: task.has_children}"
+                             t-att-class="{selected: state.selectedId === task.id, parent: task.has_children, 'kpi-hit': kpiHit(task) === true, 'kpi-dim': kpiHit(task) === false}"
                              t-on-click="() => this.selectTask(task)"
                              t-on-dblclick="() => this.openTask(task)">
                             <span class="o_cp_planner_toggle" t-on-click="(ev) => this.toggleCollapse(task, ev)">
@@ -148,7 +158,7 @@
                             <div class="o_cp_planner_gantt_rows">
                                 <div t-foreach="visibleTasks" t-as="task" t-key="task.id"
                                      class="o_cp_planner_gantt_row"
-                                     t-att-class="{selected: state.selectedId === task.id}"
+                                     t-att-class="{selected: state.selectedId === task.id, 'kpi-hit': kpiHit(task) === true, 'kpi-dim': kpiHit(task) === false}"
                                      t-on-click="() => this.onRowClick(task)"
                                      t-on-dblclick="() => this.openTask(task)">
                                     <div t-if="task.baseline_start &amp;&amp; task.baseline_stop"
