@@ -171,6 +171,12 @@ class ProjectProjectPlanner(models.Model):
                 "project_duration": baseline.project_duration or 0.0,
                 "previous_id": baseline.previous_baseline_id.id or False,
                 "previous_name": baseline.previous_baseline_id.name or False,
+                # Version-only reference for the comparison line — titles
+                # stay out of "x vs v1.Y" (BRD).
+                "previous_version": (
+                    "v1.%d" % baseline.previous_baseline_id.revision_number
+                    if baseline.previous_baseline_id else False
+                ),
                 "duration_variance": baseline.history_project_duration_variance or 0.0,
                 "planned_cost": baseline.planned_resource_cost or 0.0,
                 "cost_variance": baseline.history_planned_cost_variance or 0.0,
@@ -265,6 +271,7 @@ class ProjectProjectPlanner(models.Model):
             "critical_path_duration": baseline.critical_path_duration or 0.0,
             "previous_id": previous.id or False,
             "previous_name": previous.name or False,
+            "previous_version": "v1.%d" % previous.revision_number if previous else False,
             "previous_duration": previous.project_duration if previous else False,
             "duration_variance": baseline.history_project_duration_variance or 0.0,
             "cp_duration_variance": baseline.history_critical_path_duration_variance or 0.0,

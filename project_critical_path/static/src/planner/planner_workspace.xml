@@ -456,7 +456,7 @@
                                 <span t-esc="formatHours(item.project_duration)"/>
                                 <span t-if="item.is_initial" class="text-muted fst-italic">Initial</span>
                                 <span t-else="" class="text-muted"
-                                      t-esc="formatSignedHours(item.duration_variance) + ' vs ' + item.previous_name"/>
+                                      t-esc="formatSignedHours(item.duration_variance) + ' vs ' + (item.previous_version || item.previous_name)"/>
                             </div>
                             <div t-if="item.planned_cost" class="d-flex justify-content-between small">
                                 <span class="text-muted"
@@ -478,7 +478,7 @@
                                  class="d-flex justify-content-between small">
                                 <span class="text-muted">Previous Baseline</span>
                                 <span><t t-esc="formatHours(state.historyDetail.previous_duration)"/>
-                                    (<t t-esc="state.historyDetail.previous_name"/>)</span>
+                                    (<t t-esc="state.historyDetail.previous_version || state.historyDetail.previous_name"/>)</span>
                             </div>
                             <div t-if="!state.historyDetail.is_initial"
                                  class="d-flex justify-content-between small">
