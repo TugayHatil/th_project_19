@@ -106,19 +106,28 @@ class ProjectProject(models.Model):
         self._recalculate_critical_paths()
         return True
 
-    def action_create_critical_path_baseline(self):
-        """Freeze the calculated plan as the next immutable baseline revision."""
+    def action_create_critical_path_baseline(self, baseline_label=None):
+        """Freeze the calculated plan as the next immutable baseline revision.
+
+        ``baseline_label`` is an optional user-provided name appended to the
+        auto-generated version — ``v1.20 - Revize İş Programı``. Callers that
+        pass no label keep the plain ``v1.X`` naming (BRD Baseline Save).
+        """
         Baseline = self.env["project.critical.path.baseline"]
+        label = (baseline_label or "").strip()
         for project in self:
             project._recalculate_critical_paths()
             previous_baseline = Baseline.search(
                 [("project_id", "=", project.id)], order="revision_number desc, id desc", limit=1,
             )
             revision_number = previous_baseline.revision_number + 1 if previous_baseline else 0
+            name = "v1.%d" % revision_number
+            if label:
+                name = "%s - %s" % (name, label)
             baseline = Baseline.create({
                 "project_id": project.id,
                 "revision_number": revision_number,
-                "name": "v1.%d" % revision_number,
+                "name": name,
                 "project_duration": project.critical_path_duration,
                 "critical_path_duration": project.critical_path_duration,
                 "planned_resource_hours": sum(

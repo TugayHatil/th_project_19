@@ -941,3 +941,19 @@ msgstr "Phase"
 #. module: project_critical_path
 msgid "WBS Level"
 msgstr "WBS-Ebene"
+
+#. module: project_critical_path
+msgid "Baseline Save"
+msgstr "Baseline speichern"
+
+#. module: project_critical_path
+msgid "Baseline name…"
+msgstr "Baseline-Name…"
+
+#. module: project_critical_path
+msgid "Please enter a baseline name."
+msgstr "Bitte einen Baseline-Namen eingeben."
+
+#. module: project_critical_path
+msgid "The baseline could not be created."
+msgstr "Die Baseline konnte nicht erstellt werden."

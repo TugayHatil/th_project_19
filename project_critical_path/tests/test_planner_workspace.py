@@ -336,6 +336,27 @@ class TestPlannerWorkspace(TransactionCase):
             history[0]["project_duration"] - history[1]["project_duration"],
         )
 
+    def test_baseline_label_appends_user_name(self):
+        """BRD Baseline Save: the version keeps auto-incrementing while the
+        user-provided label is appended to the generated name."""
+        project = self.env["project.project"].create({"name": "Named baseline"})
+        self._make_task(project, "Task", allocated_hours=4.0)
+
+        project.action_create_critical_path_baseline(baseline_label="İlk Plan")
+        project.action_create_critical_path_baseline(baseline_label=" Revize  ")
+        project.action_create_critical_path_baseline()
+
+        baselines = self.env["project.critical.path.baseline"].search(
+            [("project_id", "=", project.id)], order="revision_number",
+        )
+        self.assertEqual(baselines[0].name, "v1.0 - İlk Plan")
+        self.assertEqual(baselines[1].name, "v1.1 - Revize")
+        self.assertEqual(baselines[2].name, "v1.2")
+
+        history = project.get_planner_baseline_history()
+        self.assertEqual(history[0]["name"], "v1.2")
+        self.assertEqual(history[2]["name"], "v1.0 - İlk Plan")
+
     def test_planner_baseline_summary_reports_task_changes(self):
         project = self.env["project.project"].create({"name": "Change summary"})
         stable = self._make_task(project, "Stable task", allocated_hours=5.0)

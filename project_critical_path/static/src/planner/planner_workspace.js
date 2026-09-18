@@ -132,6 +132,10 @@ export class PlannerWorkspace extends Component {
             historyDetail: null,
             historyDetailLoading: false,
             compareBaselineId: null,
+            // Baseline Save inline form (BRD) — user-named new revision
+            baselineSaveOpen: false,
+            baselineSaveName: "",
+            baselineSaving: false,
             // Optional WBS date columns (BRD-19) — hidden by default
             colMenuOpen: false,
             showStartCol: false,
@@ -1196,6 +1200,44 @@ export class PlannerWorkspace extends Component {
             );
         } finally {
             this.state.historyLoading = false;
+        }
+    }
+
+    // Baseline Save — the user names the snapshot; the version number
+    // keeps auto-incrementing server-side (v1.19 → v1.20).
+    openBaselineSave() {
+        this.state.baselineSaveName = "";
+        this.state.baselineSaveOpen = true;
+    }
+
+    cancelBaselineSave() {
+        this.state.baselineSaveOpen = false;
+        this.state.baselineSaveName = "";
+    }
+
+    async saveBaseline() {
+        const label = (this.state.baselineSaveName || "").trim();
+        if (!label) {
+            this.notification.add(_t("Please enter a baseline name."), { type: "warning" });
+            return;
+        }
+        this.state.baselineSaving = true;
+        try {
+            await this.orm.call(
+                "project.project", "action_create_critical_path_baseline",
+                [this.state.projectId], { baseline_label: label },
+            );
+            this.cancelBaselineSave();
+            await this.loadBaselineHistory();
+            // The new baseline may shift delay-impact baselines — refresh.
+            await this.reloadPlannerData();
+        } catch (error) {
+            this.notification.add(
+                error.data?.message || _t("The baseline could not be created."),
+                { type: "danger" },
+            );
+        } finally {
+            this.state.baselineSaving = false;
         }
     }
 

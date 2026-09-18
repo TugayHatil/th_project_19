@@ -1689,3 +1689,19 @@ msgstr "Atananlar"
 #. module: project_critical_path
 msgid "Stage"
 msgstr "Aşama"
+
+#. module: project_critical_path
+msgid "Baseline Save"
+msgstr "Baseline Kaydet"
+
+#. module: project_critical_path
+msgid "Baseline name…"
+msgstr "Baseline adı…"
+
+#. module: project_critical_path
+msgid "Please enter a baseline name."
+msgstr "Lütfen bir baseline adı girin."
+
+#. module: project_critical_path
+msgid "The baseline could not be created."
+msgstr "Baseline oluşturulamadı."
