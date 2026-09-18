@@ -214,12 +214,14 @@
                         <div class="d-flex align-items-start">
                             <div class="flex-grow-1">
                                 <div class="d-flex align-items-center gap-2 mb-1">
-                                    <span class="o_cp_planner_wbs_code text-muted">WBS: <t t-esc="state.inspector?.wbs_code"/></span>
+                                    <span t-if="state.inspector?.id" class="o_cp_planner_wbs_code text-muted">WBS: <t t-esc="state.inspector?.wbs_code"/></span>
+                                    <span t-elif="" class="text-muted small fst-italic">New Subtask</span>
                                     <span t-if="state.inspector?.is_critical" class="badge o_cp_planner_critical_badge">
                                         <i class="fa fa-exclamation-triangle me-1"/>Critical Path
                                     </span>
                                 </div>
                                 <input type="text" class="form-control form-control-sm fw-bold"
+                                       placeholder="Task name"
                                        t-att-value="state.form?.name"
                                        t-on-change="(ev) => state.form.name = ev.target.value"/>
                             </div>
@@ -266,6 +268,10 @@
                                     </select>
                                 </div>
                             </div>
+                            <!-- Baseline / Dependencies / Resources need a
+                                 saved record — hidden while the Inspector
+                                 holds an unsaved subtask draft. -->
+                            <t t-if="state.inspector?.id">
                             <div class="o_cp_planner_inspector_section mb-3">
                                 <div class="fw-bold small text-uppercase text-muted mb-2">
                                     Baseline
@@ -381,6 +387,7 @@
                                     </button>
                                 </div>
                             </div>
+                            </t>
                         </t>
                     </div>
                     <div class="o_cp_planner_inspector_footer border-top px-3 py-2 d-flex gap-2">
@@ -390,7 +397,8 @@
                             <t t-if="state.saving">Saving…</t>
                             <t t-else="">Save</t>
                         </button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                        <button t-if="state.inspector?.id" type="button"
+                                class="btn btn-outline-secondary btn-sm"
                                 t-on-click="openInspectorTask">Open Full Task</button>
                     </div>
                 </div>

@@ -116,6 +116,9 @@ export class PlannerWorkspace extends Component {
             rangeEnd: new Date(),
             // Quick Inspector panel
             inspectorOpen: false,
+            // When set, the Inspector shows an unsaved subtask draft for
+            // this parent task id — the record is only created on Save.
+            draftParentId: null,
             inspectorLoading: false,
             inspector: null,
             baseline: null,
@@ -669,6 +672,7 @@ export class PlannerWorkspace extends Component {
             this.state.impact = detail.impact;
             this.state.options = detail.options;
             this.state.depOpen = false;
+            this.state.draftParentId = null;
             const t = detail.task;
             this.state.form = {
                 name: t.name,
@@ -700,6 +704,7 @@ export class PlannerWorkspace extends Component {
 
     closeInspector() {
         this.state.inspectorOpen = false;
+        this.state.draftParentId = null;
     }
 
     // ---- Baseline vs Current ----------------------------------------------
@@ -878,15 +883,30 @@ export class PlannerWorkspace extends Component {
 
     async saveInspector() {
         const form = this.state.form;
+        const isDraft = !!this.state.draftParentId && !this.state.inspector?.id;
         const taskId = this.state.inspector?.id;
-        if (!taskId || !form) {
+        if ((!taskId && !isDraft) || !form) {
             return;
         }
         this.state.saving = true;
         try {
-            await this.orm.call("project.task", "update_planner_task", [taskId], {
+            const name = form.name?.trim() || _t("New Subtask");
+            let savedId = taskId;
+            if (isDraft) {
+                // Draft subtask: create the record only now, then run the
+                // same update path so dates/assignee/dependencies get the
+                // standard planner conversion.
+                const ids = await this.orm.create("project.task", [{
+                    name: name,
+                    project_id: this.state.projectId,
+                    parent_id: this.state.draftParentId,
+                }]);
+                savedId = ids[0];
+                this.state.draftParentId = null;
+            }
+            await this.orm.call("project.task", "update_planner_task", [savedId], {
                 values: {
-                    name: form.name,
+                    name: name,
                     date_start: form.date_start || false,
                     date_stop: form.date_stop || false,
                     duration_days: form.duration_days,
@@ -900,8 +920,8 @@ export class PlannerWorkspace extends Component {
             const collapsed = this.state.collapsedIds;
             await this.loadProject(this.state.projectId);
             this.state.collapsedIds = collapsed;
-            this.state.selectedId = taskId;
-            await this.loadInspector(taskId);
+            this.state.selectedId = savedId;
+            await this.loadInspector(savedId);
         } catch (error) {
             this.notification.add(error.data?.message || _t("The task could not be saved."), { type: "danger" });
         } finally {
@@ -916,23 +936,39 @@ export class PlannerWorkspace extends Component {
     }
 
     // BRD (quick subtask creation): the small "+" next to each WBS row
-    // name creates a child task under that row — the correct WBS
-    // hierarchy/code is derived server-side from parent_id — then the
-    // Quick Inspector opens so the new task's name can be edited.
+    // name opens the Quick Inspector as an unsaved draft for a child of
+    // that row. No record is created until the user presses Save —
+    // closing the Inspector without saving leaves nothing behind.
     async quickAddSubtask(task, ev) {
         ev.stopPropagation();
         try {
-            const ids = await this.orm.create("project.task", [{
-                name: _t("New Subtask"),
-                project_id: this.state.projectId,
-                parent_id: task.id,
-            }]);
-            await this.loadProject(this.state.projectId);
-            // loadInspector fetches by id directly, so the Inspector opens
-            // even while a toolbar search filter hides the new task.
-            if (ids?.length) {
-                await this.selectTask({ id: ids[0] });
-            }
+            // Reuse the parent's detail call to populate state.options
+            // (the assignee select) — no record is created here.
+            const detail = await this.orm.call("project.task", "get_planner_detail", [task.id]);
+            this.state.selectedId = 0;
+            this.state.inspector = null;
+            this.state.inspectorOpen = true;
+            this.state.inspectorLoading = false;
+            this.state.draftParentId = task.id;
+            this.state.baseline = null;
+            this.state.impact = null;
+            this.state.options = detail.options;
+            this.state.depOpen = false;
+            const start = task.date_start || "";
+            const stop = task.date_stop || "";
+            this.state.form = {
+                name: "",
+                date_start: start,
+                date_stop: stop,
+                duration_days: start && stop ? dayDiff(parseDay(start), parseDay(stop)) + 1 : 0,
+                allocated_hours: 0,
+                progress: 0,
+                user_id: false,
+                depend_on_ids: [],
+                dependent_ids: [],
+                addPredecessorId: "",
+                addSuccessorId: "",
+            };
         } catch (error) {
             this.notification.add(error.data?.message || _t("The subtask could not be created."), {
                 type: "danger",
