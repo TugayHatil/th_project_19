@@ -1,11 +1,12 @@
-import { Component, onMounted, onPatched, onWillStart, useExternalListener, useRef, useState } from "@odoo/owl";
+import { Component, onMounted, onPatched, onWillStart, useExternalListener, useRef, useState, useSubEnv } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { _t } from "@web/core/l10n/translation";
 import { localization } from "@web/core/l10n/localization";
 import { useBus, useService } from "@web/core/utils/hooks";
 import { session } from "@web/session";
-import { WithSearch } from "@web/search/with_search/with_search";
+import { SearchModel } from "@web/search/search_model";
 import { SearchBar } from "@web/search/search_bar/search_bar";
+import { CallbackRecorder } from "@web/search/action_hook";
 
 const DAY_MS = 86400000;
 const SCALES = {
@@ -92,30 +93,9 @@ const DEP_LANE = 6; // x offset between parallel connector lanes
 const DEP_CORRIDOR_STEP = 4; // y fan-out step inside a row-gap corridor
 const DEP_CORRIDOR_MAX = 6; // corridor offsets stay clear of the bars
 
-// Renders the standard Odoo SearchBar inside the Planner. It must live
-// inside a WithSearch slot so env.searchModel exists (BRD-XX); every
-// SearchModel update is forwarded to the parent so the planner reloads.
-class PlannerSearchBar extends Component {
-    static template = "project_critical_path.PlannerSearchBar";
-    static components = { SearchBar };
-    static props = { onSearchChange: Function };
-
-    setup() {
-        this.searchModel = this.env.searchModel;
-        this._lastDomain = null;
-        useBus(this.searchModel, "update", () => {
-            const key = JSON.stringify(this.searchModel.domain);
-            if (key !== this._lastDomain) {
-                this._lastDomain = key;
-                this.props.onSearchChange(this.searchModel.domain);
-            }
-        });
-    }
-}
-
 export class PlannerWorkspace extends Component {
     static template = "project_critical_path.PlannerWorkspace";
-    static components = { WithSearch, PlannerSearchBar };
+    static components = { SearchBar };
     static props = { "*": true };
 
     setup() {
@@ -236,31 +216,56 @@ export class PlannerWorkspace extends Component {
                 this.fit();
             }
         });
-        // Resolve the dedicated planner search view before first render so
-        // WithSearch binds to it directly (searchViewId is not reloadable).
-        onWillStart(async () => {
-            try {
-                const views = await this.orm.searchRead(
-                    "ir.ui.view",
-                    [["model", "=", "project.task"], ["name", "=", "project.task.planner.search"]],
-                    ["id"], { limit: 1 },
-                );
-                this.state.searchViewId = views.length ? views[0].id : false;
-            } catch {
-                this.state.searchViewId = false;
+        // Standard Odoo SearchModel (BRD-XX). WithSearch only wraps this —
+        // driving it directly avoids reload() being triggered by every
+        // re-render of this heavily stateful component.
+        this.searchModel = new SearchModel(this.env, {
+            orm: this.orm,
+            view: useService("view"),
+            field: useService("field"),
+            name: useService("name"),
+            dialog: useService("dialog"),
+            treeProcessor: useService("tree_processor"),
+        });
+        useSubEnv({
+            searchModel: this.searchModel,
+            searchPanelState: null,
+            __getContext__: new CallbackRecorder(),
+            __getOrderBy__: new CallbackRecorder(),
+        });
+        // Every SearchModel update (query, filters, group by, favorites)
+        // re-reads the planner data with the resulting domain.
+        this._lastSearchKey = null;
+        useBus(this.searchModel, "update", () => {
+            const key = JSON.stringify(this.searchModel.domain);
+            if (key !== this._lastSearchKey) {
+                this._lastSearchKey = key;
+                this.onPlannerSearch(this.searchModel.domain);
             }
         });
-        onMounted(async () => {
+        // Resolve the project list and the dedicated search view id
+        // server-side (ir.ui.view is not readable by regular users), then
+        // load the search model before the first render.
+        onWillStart(async () => {
             try {
-                this.state.projects = await this.orm.call("project.project", "get_planner_projects", []);
+                const info = await this.orm.call("project.project", "get_planner_projects", []);
+                this.state.projects = info.projects || [];
+                this.state.searchViewId = info.search_view_id || false;
             } catch {
                 this.state.projects = [];
+                this.state.searchViewId = false;
             }
+            await this.searchModel.load({
+                resModel: "project.task",
+                searchViewId: this.state.searchViewId,
+                domain: this.plannerGlobalDomain,
+                loadIrFilters: true,
+            });
+        });
+        onMounted(async () => {
             if (this.state.projectId) {
+                this._fitOnNextLoad = true;
                 await this.loadProject(this.state.projectId);
-                // Open fitted to the viewport so the whole timeline is
-                // visible without pressing Fit every time.
-                this.fit();
             } else {
                 this.state.loading = false;
             }
@@ -287,6 +292,10 @@ export class PlannerWorkspace extends Component {
             this.state.projectName = data.project.name;
             this.state.tasks = data.tasks;
             this.computeRange();
+            if (this._fitOnNextLoad) {
+                this._fitOnNextLoad = false;
+                this.fit();
+            }
         } catch (error) {
             this.state.tasks = [];
             this.notification.add(error.data?.message || _t("The planner data could not be loaded."), { type: "danger" });
@@ -1067,10 +1076,9 @@ export class PlannerWorkspace extends Component {
     }
 
     // ---- Standard Odoo search (BRD-XX) --------------------------------------
-    // WithSearch feeds the SearchModel with the dedicated planner search
-    // view; this global leaf keeps the search scoped to the open project.
-    // Memoized — WithSearch shallow-compares the prop, so the same array
-    // must be returned until the project actually changes.
+    // The SearchModel is created directly in setup with the dedicated
+    // planner search view; this global leaf keeps the search scoped to
+    // the open project. Memoized so repeated calls share one instance.
     get plannerGlobalDomain() {
         const pid = this.state.projectId || 0;
         if (!this._globalDomain || this._globalDomain[0][2] !== pid) {
@@ -2664,10 +2672,12 @@ export class PlannerWorkspace extends Component {
 
     async onProjectChange(ev) {
         this.state.projectId = Number(ev.target.value) || false;
+        // Re-scope the search model to the new project — the user's
+        // filters/facets survive, only the global leaf changes. The
+        // resulting "update" triggers the reload via onPlannerSearch.
+        this._fitOnNextLoad = true;
+        await this.searchModel.reload({ domain: this.plannerGlobalDomain });
         if (this.state.projectId) {
-            await this.loadProject(this.state.projectId);
-            // A different project means a different range — refit it.
-            this.fit();
             if (this.state.boardMode) {
                 this.state.boardSelKey = null;
                 await this.loadBoard();

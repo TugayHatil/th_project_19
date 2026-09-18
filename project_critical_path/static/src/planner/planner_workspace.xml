@@ -1,14 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
-    <t t-name="project_critical_path.PlannerSearchBar">
-        <SearchBar/>
-    </t>
-
     <t t-name="project_critical_path.PlannerWorkspace">
-        <WithSearch t-if="state.searchViewId !== null"
-                    resModel="'project.task'"
-                    searchViewId="state.searchViewId"
-                    domain="plannerGlobalDomain">
         <div class="o_cp_planner_workspace d-flex flex-column h-100">
             <div class="o_cp_planner_toolbar d-flex align-items-center gap-2 px-3 py-2 border-bottom">
                 <button t-if="state.projectId" type="button"
@@ -80,7 +72,7 @@
                 </t>
             </div>
             <div t-if="state.projectId &amp;&amp; !state.boardMode" class="o_cp_planner_search px-3 py-1 border-bottom">
-                <PlannerSearchBar onSearchChange.bind="onPlannerSearch"/>
+                <SearchBar/>
             </div>
             <div t-if="!state.boardMode" class="o_cp_planner_body d-flex flex-grow-1 overflow-hidden">
                 <div class="o_cp_planner_wbs d-flex flex-column border-end"
@@ -1097,6 +1089,5 @@
             </div>
             <div class="o_cp_planner_bottom border-top" t-on-click="onBackgroundClick"/>
         </div>
-        </WithSearch>
     </t>
 </templates>

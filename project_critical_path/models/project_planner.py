@@ -42,11 +42,18 @@ class ProjectProjectPlanner(models.Model):
 
     @api.model
     def get_planner_projects(self):
-        """Return the projects selectable in the Planner Workspace picker."""
-        return [
-            {"id": project.id, "name": project.display_name}
-            for project in self.search([], order="name")
-        ]
+        """Return the projects selectable in the Planner Workspace picker
+        plus the dedicated search view id (resolved server-side so the
+        client never needs ir.ui.view read access)."""
+        return {
+            "projects": [
+                {"id": project.id, "name": project.display_name}
+                for project in self.search([], order="name")
+            ],
+            "search_view_id": self.env.ref(
+                "project_critical_path.project_task_planner_search", raise_if_not_found=False
+            ).id or False,
+        }
 
     def get_planner_data(self, baseline_id=None, domain=None):
         """Return the project's tasks in WBS order for the Planner Workspace.

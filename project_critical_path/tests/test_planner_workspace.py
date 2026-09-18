@@ -164,11 +164,15 @@ class TestPlannerWorkspace(TransactionCase):
     def test_get_planner_projects_lists_projects(self):
         project = self.env["project.project"].create({"name": "Listed project"})
 
-        projects = self.env["project.project"].get_planner_projects()
+        info = self.env["project.project"].get_planner_projects()
 
         self.assertIn(
             {"id": project.id, "name": project.display_name},
-            [{"id": entry["id"], "name": entry["name"]} for entry in projects],
+            [{"id": entry["id"], "name": entry["name"]} for entry in info["projects"]],
+        )
+        self.assertEqual(
+            info["search_view_id"],
+            self.env.ref("project_critical_path.project_task_planner_search").id,
         )
 
     def test_get_planner_detail_returns_editable_fields_and_options(self):
