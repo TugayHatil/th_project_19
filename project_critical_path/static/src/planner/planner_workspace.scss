@@ -484,13 +484,6 @@ $o_cp_planner_inspector_width: 320px;
     overflow: hidden;
 }
 
-// The user-chosen baseline title appended to the version — rendered one
-// step smaller and muted so the version stays the primary reading.
-.o_cp_planner_history_label {
-    font-size: 0.8rem;
-    color: #667085;
-}
-
 .o_cp_planner_history_item {
     padding: 6px 8px;
     border-radius: 4px;

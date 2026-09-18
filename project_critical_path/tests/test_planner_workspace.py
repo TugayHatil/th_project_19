@@ -928,18 +928,18 @@ class TestPlannerSearchView(TransactionCase):
 
 
 class TestBaselineTitle(TransactionCase):
-    """BRD: predefined baseline titles — max 25 chars, active flag, and
+    """BRD: predefined baseline titles — max 15 chars, active flag, and
     only active titles feed the Baseline Save selection."""
 
     def test_title_constraints_and_active_flag(self):
         ok = self.env["project.baseline.title"].create({"name": "İlk Plan"})
         self.assertTrue(ok.active)
 
-        too_long = "X" * 26
+        too_long = "X" * 16
         with self.assertRaises(ValidationError):
             self.env["project.baseline.title"].create({"name": too_long})
 
-        exactly = "Y" * 25
+        exactly = "Y" * 15
         self.assertTrue(
             self.env["project.baseline.title"].create({"name": exactly})
         )

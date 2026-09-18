@@ -23,7 +23,7 @@ class ProjectBaselineTitle(models.Model):
     @api.constrains("name")
     def _check_name_length(self):
         for title in self:
-            if title.name and len(title.name) > 25:
+            if title.name and len(title.name) > 15:
                 raise ValidationError(
-                    _("The baseline title cannot exceed 25 characters.")
+                    _("The baseline title cannot exceed 15 characters.")
                 )

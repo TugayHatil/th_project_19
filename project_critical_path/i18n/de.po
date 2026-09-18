@@ -975,5 +975,5 @@ msgid "Please select a baseline title."
 msgstr "Bitte einen Baseline-Titel auswählen."
 
 #. module: project_critical_path
-msgid "The baseline title cannot exceed 25 characters."
-msgstr "Der Baseline-Titel darf maximal 25 Zeichen lang sein."
+msgid "The baseline title cannot exceed 15 characters."
+msgstr "Der Baseline-Titel darf maximal 15 Zeichen lang sein."

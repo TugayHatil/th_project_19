@@ -1723,5 +1723,5 @@ msgid "Please select a baseline title."
 msgstr "Lütfen bir baseline başlığı seçin."
 
 #. module: project_critical_path
-msgid "The baseline title cannot exceed 25 characters."
-msgstr "Baseline başlığı 25 karakteri geçemez."
+msgid "The baseline title cannot exceed 15 characters."
+msgstr "Baseline başlığı 15 karakteri geçemez."
