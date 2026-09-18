@@ -95,6 +95,27 @@ $o_cp_planner_bar_critical: #e8a33d;
         color: #175cd3;
         background: #eff4ff;
     }
+
+    &.disabled {
+        opacity: 0.35;
+        cursor: default;
+
+        &:hover {
+            color: #98a2b3;
+            background: transparent;
+        }
+    }
+}
+
+// Drag-and-drop reorder preview — a 2px insertion line at the target
+// slot (top edge of the row it lands before, bottom edge when appending
+// after the last row).
+.o_cp_planner_wbs_row.droptop {
+    box-shadow: inset 0 2px 0 #175cd3;
+}
+
+.o_cp_planner_wbs_row.dropbottom {
+    box-shadow: inset 0 -2px 0 #175cd3;
 }
 
 .o_cp_planner_res_action {
