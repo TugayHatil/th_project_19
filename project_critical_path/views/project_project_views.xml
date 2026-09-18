@@ -522,12 +522,10 @@
         <field name="model">project.project</field>
         <field name="inherit_id" ref="project.view_project_kanban"/>
         <field name="arch" type="xml">
-            <xpath expr="//div[hasclass('oe_kanban_card') or hasclass('oe_kanban_global_click')]" position="inside">
-                <div class="o_cp_kanban_planner border-top d-flex justify-content-end py-1">
-                    <a type="object" name="action_open_planner_workspace" class="small fw-bold">
-                        <i class="fa fa-calendar me-1"/>Planner
-                    </a>
-                </div>
+            <xpath expr="//div[hasclass('o_project_kanban_boxes')]" position="inside">
+                <a class="o_project_kanban_box ms-1" name="action_open_planner_workspace" type="object">
+                    <div><i class="fa fa-calendar me-1"/>Planner</div>
+                </a>
             </xpath>
         </field>
     </record>
