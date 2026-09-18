@@ -90,7 +90,7 @@
                               t-att-class="{'ms-auto': !state.showStartCol}">Finish</span>
                     </div>
                     <div class="o_cp_planner_wbs_rows flex-grow-1 overflow-hidden" t-ref="wbsRows" t-on-scroll="onWbsScroll"
-                                     t-on-click="onBackgroundClick" t-on-drop="onWbsDrop">
+                                     t-on-click="onBackgroundClick" t-on-dragover="onWbsRowsDragOver" t-on-drop="onWbsDrop">
                         <div t-if="state.wbsDropIndex !== null &amp;&amp; state.wbsDropIndex !== undefined"
                              class="o_cp_planner_drop_marker"
                              t-att-style="'top:' + (state.wbsDropIndex * 32) + 'px;left:' + wbsDropMarkerX + 'px'"/>
