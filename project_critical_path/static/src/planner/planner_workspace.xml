@@ -417,7 +417,7 @@
                             <input type="text" class="form-control form-control-sm"
                                    placeholder="Baseline name…"
                                    t-att-value="state.baselineSaveName"
-                                   t-on-change="(ev) => state.baselineSaveName = ev.target.value"
+                                   t-on-input="(ev) => state.baselineSaveName = ev.target.value"
                                    t-on-keydown="(ev) => ev.key === 'Enter' ? this.saveBaseline() : null"/>
                             <div class="d-flex gap-2">
                                 <button type="button" class="btn btn-primary btn-sm flex-grow-1"
