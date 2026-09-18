@@ -215,7 +215,7 @@
                             <div class="flex-grow-1">
                                 <div class="d-flex align-items-center gap-2 mb-1">
                                     <span t-if="state.inspector?.id" class="o_cp_planner_wbs_code text-muted">WBS: <t t-esc="state.inspector?.wbs_code"/></span>
-                                    <span t-elif="" class="text-muted small fst-italic">New Subtask</span>
+                                    <span t-else="" class="text-muted small fst-italic">New Subtask</span>
                                     <span t-if="state.inspector?.is_critical" class="badge o_cp_planner_critical_badge">
                                         <i class="fa fa-exclamation-triangle me-1"/>Critical Path
                                     </span>
