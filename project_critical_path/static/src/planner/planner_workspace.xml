@@ -106,26 +106,18 @@
                                   t-att-class="{done: task.is_done}"
                                   t-att-style="'margin-left:' + (Math.max((task.wbs_level || 1) - 1, 0) * 18) + 'px'"
                                   t-esc="task.name"/>
+                            <!-- BRD: one-click subtask creation — the tiny "+"
+                                 icon creates a child task and opens the Quick
+                                 Inspector with its editable name field. Resource
+                                 assignment lives exclusively in the Inspector. -->
+                            <i class="o_cp_planner_add_child fa fa-plus"
+                               role="button" title="Add subtask"
+                               t-on-click="(ev) => this.quickAddSubtask(task, ev)"/>
                             <span t-if="state.showStartCol" class="o_cp_planner_date_col ms-auto small"
                                   t-esc="formatColDate(currentDates(task).start)"/>
                             <span t-if="state.showFinishCol" class="o_cp_planner_date_col small"
                                   t-att-class="{'ms-auto': !state.showStartCol}"
                                   t-esc="formatColDate(currentDates(task).stop)"/>
-                            <span class="o_cp_planner_rescell" role="button"
-                                  t-att-class="{'ms-auto': !state.showStartCol &amp;&amp; !state.showFinishCol}"
-                                  t-att-title="resTooltip(task)"
-                                  t-on-click="(ev) => this.openResourceWorkspace(task, ev)">
-                                <t t-if="task.resources &amp;&amp; (task.resources.human || task.resources.equipment)">
-                                    <i class="fa fa-user"/><t t-esc="task.resources.human"/>
-                                    <t t-if="task.resources.equipment">
-                                        <i class="fa fa-wrench ms-1"/><t t-esc="task.resources.equipment"/>
-                                    </t>
-                                    <i t-if="task.resources.open"
-                                       class="fa fa-exclamation-circle o_cp_planner_res_warn ms-1"
-                                       title="Unassigned or partially assigned requirements"/>
-                                </t>
-                                <i t-else="" class="fa fa-plus"/>
-                            </span>
                         </div>
                         <div t-if="!state.loading &amp;&amp; !visibleTasks.length" class="p-3 text-muted">No tasks</div>
                     </div>

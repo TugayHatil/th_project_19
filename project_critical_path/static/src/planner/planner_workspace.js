@@ -915,6 +915,31 @@ export class PlannerWorkspace extends Component {
         }
     }
 
+    // BRD (quick subtask creation): the small "+" next to each WBS row
+    // name creates a child task under that row — the correct WBS
+    // hierarchy/code is derived server-side from parent_id — then the
+    // Quick Inspector opens so the new task's name can be edited.
+    async quickAddSubtask(task, ev) {
+        ev.stopPropagation();
+        try {
+            const ids = await this.orm.create("project.task", [{
+                name: _t("New Subtask"),
+                project_id: this.state.projectId,
+                parent_id: task.id,
+            }]);
+            await this.loadProject(this.state.projectId);
+            // loadInspector fetches by id directly, so the Inspector opens
+            // even while a toolbar search filter hides the new task.
+            if (ids?.length) {
+                await this.selectTask({ id: ids[0] });
+            }
+        } catch (error) {
+            this.notification.add(error.data?.message || _t("The subtask could not be created."), {
+                type: "danger",
+            });
+        }
+    }
+
     openTask(task) {
         this.action.doAction({
             type: "ir.actions.act_window",
@@ -1622,11 +1647,6 @@ export class PlannerWorkspace extends Component {
             return;
         }
         await this.refreshResources();
-    }
-
-    resTooltip(task) {
-        const names = task.resources?.names || [];
-        return names.length ? names.join("\n") : _t("Manage resources");
     }
 
     // Compact summary shown in the Inspector and next to the Manage button.

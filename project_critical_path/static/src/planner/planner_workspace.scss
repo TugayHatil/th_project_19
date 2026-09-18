@@ -71,20 +71,23 @@ $o_cp_planner_bar_critical: #e8a33d;
     font-variant-numeric: tabular-nums;
 }
 
-// Compact per-row resource badge (right end of the WBS row).
-.o_cp_planner_rescell {
+// Tiny "+" icon next to each WBS row name — creates a subtask on click
+// (BRD: quick subtask creation). Kept small so the row height is
+// unaffected; it only brightens on hover.
+.o_cp_planner_add_child {
     flex: 0 0 auto;
-    margin-left: 8px;
-    min-width: 20px;
-    text-align: right;
-    font-size: 0.78rem;
-    color: #667085;
-    white-space: nowrap;
+    margin-left: 6px;
+    font-size: 0.62rem;
+    line-height: 1;
+    color: #98a2b3;
     cursor: pointer;
-}
+    padding: 2px;
+    border-radius: 3px;
 
-.o_cp_planner_res_warn {
-    color: #d92d20;
+    &:hover {
+        color: #175cd3;
+        background: #eff4ff;
+    }
 }
 
 .o_cp_planner_res_action {
