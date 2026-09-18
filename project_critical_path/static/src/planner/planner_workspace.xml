@@ -3,6 +3,12 @@
     <t t-name="project_critical_path.PlannerWorkspace">
         <div class="o_cp_planner_workspace d-flex flex-column h-100">
             <div class="o_cp_planner_toolbar d-flex align-items-center gap-2 px-3 py-2 border-bottom">
+                <button t-if="state.projectId" type="button"
+                        class="btn btn-sm btn-outline-secondary"
+                        title="Back to Project"
+                        t-on-click="openProjectForm">
+                    <i class="fa fa-arrow-left me-1"/><span>Project</span>
+                </button>
                 <div class="btn-group">
                     <button type="button" class="btn btn-sm"
                             t-att-class="!state.boardMode ? 'btn-primary' : 'btn-outline-secondary'"

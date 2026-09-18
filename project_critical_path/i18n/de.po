@@ -909,3 +909,11 @@ msgstr "Kostenänderung"
 #. module: project_critical_path
 msgid "Resource Currency"
 msgstr "Ressourcenwährung"
+
+#. module: project_critical_path
+msgid "Back to Project"
+msgstr "Zurück zum Projekt"
+
+#. module: project_critical_path
+msgid "Project"
+msgstr "Projekt"

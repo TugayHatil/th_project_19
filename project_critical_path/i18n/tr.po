@@ -1661,3 +1661,11 @@ msgstr "Maliyet Değişimi"
 #. module: project_critical_path
 msgid "Resource Currency"
 msgstr "Kaynak Para Birimi"
+
+#. module: project_critical_path
+msgid "Back to Project"
+msgstr "Projeye Dön"
+
+#. module: project_critical_path
+msgid "Project"
+msgstr "Proje"

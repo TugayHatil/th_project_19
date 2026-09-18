@@ -2672,6 +2672,21 @@ export class PlannerWorkspace extends Component {
         await this.loadBoard();
     }
 
+    // BRD-22: one-click navigation back to the project's form — no list
+    // detour, the same project record opens directly.
+    openProjectForm() {
+        if (!this.state.projectId) {
+            return;
+        }
+        this.action.doAction({
+            type: "ir.actions.act_window",
+            res_model: "project.project",
+            res_id: this.state.projectId,
+            views: [[false, "form"]],
+            target: "current",
+        });
+    }
+
     async onProjectChange(ev) {
         this.state.projectId = Number(ev.target.value) || false;
         if (this.state.projectId) {

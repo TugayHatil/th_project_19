@@ -513,4 +513,22 @@
             </form>
         </field>
     </record>
+
+    <!-- BRD-22: one-click Kanban → Planner shortcut on every project card.
+         The link calls the same action as the form's Planner button, so
+         both entries land in the same planner workspace. -->
+    <record id="project_project_kanban_inherit_planner" model="ir.ui.view">
+        <field name="name">project.project.kanban.inherit.critical.path</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.view_project_kanban"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[hasclass('oe_kanban_card') or hasclass('oe_kanban_global_click')]" position="inside">
+                <div class="o_cp_kanban_planner border-top d-flex justify-content-end py-1">
+                    <a type="object" name="action_open_planner_workspace" class="small fw-bold">
+                        <i class="fa fa-calendar me-1"/>Planner
+                    </a>
+                </div>
+            </xpath>
+        </field>
+    </record>
 </odoo>
