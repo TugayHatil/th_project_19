@@ -71,18 +71,25 @@ $o_cp_planner_bar_critical: #e8a33d;
     font-variant-numeric: tabular-nums;
 }
 
-// Tiny "+" icon next to each WBS row name — creates a subtask on click
-// (BRD: quick subtask creation). Kept small so the row height is
-// unaffected; it only brightens on hover.
+// Tiny "+" icon right next to each WBS row name — creates a subtask on
+// click (BRD: quick subtask creation). Its slot is always reserved so
+// the row layout (name truncation, date columns) never shifts; the icon
+// itself only becomes visible while the cursor is over the row.
 .o_cp_planner_add_child {
     flex: 0 0 auto;
-    margin-left: 6px;
+    width: 14px;
+    margin-left: 4px;
     font-size: 0.62rem;
     line-height: 1;
     color: #98a2b3;
     cursor: pointer;
     padding: 2px;
     border-radius: 3px;
+    visibility: hidden;
+
+    .o_cp_planner_wbs_row:hover & {
+        visibility: visible;
+    }
 
     &:hover {
         color: #175cd3;
