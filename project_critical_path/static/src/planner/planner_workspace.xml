@@ -90,18 +90,12 @@
                               t-att-class="{'ms-auto': !state.showStartCol}">Finish</span>
                     </div>
                     <div class="o_cp_planner_wbs_rows flex-grow-1 overflow-hidden" t-ref="wbsRows" t-on-scroll="onWbsScroll"
-                                     t-on-click="onBackgroundClick" t-on-drop="onWbsDrop">
+                                     t-on-click="onBackgroundClick">
                         <div t-foreach="visibleTasks" t-as="task" t-key="task.id"
                              class="o_cp_planner_wbs_row d-flex align-items-center px-2"
-                             t-att-class="{selected: state.selectedId === task.id, parent: task.has_children,
-                                          droptop: state.wbsDropIndex === task_index,
-                                          dropbottom: state.wbsDropIndex === visibleTasks.length &amp;&amp; task_index === visibleTasks.length - 1}"
-                             draggable="true"
+                             t-att-class="{selected: state.selectedId === task.id, parent: task.has_children}"
                              t-on-click="() => this.selectTask(task)"
-                             t-on-dblclick="() => this.openTask(task)"
-                             t-on-dragstart="(ev) => this.onWbsDragStart(task, ev)"
-                             t-on-dragover="(ev) => this.onWbsDragOver(task, task_index, ev)"
-                             t-on-dragend="onWbsDragEnd">
+                             t-on-dblclick="() => this.openTask(task)">
                             <span class="o_cp_planner_toggle" t-on-click="(ev) => this.toggleCollapse(task, ev)">
                                 <i t-if="task.has_children"
                                    class="fa fa-fw"
@@ -112,21 +106,13 @@
                                   t-att-class="{done: task.is_done}"
                                   t-att-style="'margin-left:' + (Math.max((task.wbs_level || 1) - 1, 0) * 18) + 'px'"
                                   t-esc="task.name"/>
-                            <!-- BRD: quick task management — hover-only row
-                                 actions. "+" opens a subtask draft in the
-                                 Inspector; indent/outdent reparent through
-                                 planner_move_task; reordering is drag-and-drop. -->
+                            <!-- BRD: one-click subtask creation — the tiny "+"
+                                 icon creates a child task and opens the Quick
+                                 Inspector with its editable name field. Resource
+                                 assignment lives exclusively in the Inspector. -->
                             <i class="o_cp_planner_add_child fa fa-plus"
                                role="button" title="Add subtask"
                                t-on-click="(ev) => this.quickAddSubtask(task, ev)"/>
-                            <i class="o_cp_planner_add_child fa fa-indent"
-                               role="button" title="Indent"
-                               t-att-class="{disabled: !canIndent(task)}"
-                               t-on-click="(ev) => this.indentTask(task, ev)"/>
-                            <i class="o_cp_planner_add_child fa fa-outdent"
-                               role="button" title="Outdent"
-                               t-att-class="{disabled: !canOutdent(task)}"
-                               t-on-click="(ev) => this.outdentTask(task, ev)"/>
                             <span t-if="state.showStartCol" class="o_cp_planner_date_col ms-auto small"
                                   t-esc="formatColDate(currentDates(task).start)"/>
                             <span t-if="state.showFinishCol" class="o_cp_planner_date_col small"

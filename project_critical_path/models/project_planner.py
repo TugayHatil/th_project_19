@@ -473,54 +473,6 @@ class ProjectTaskPlanner(models.Model):
         self.write(vals)
         return True
 
-    def planner_move_task(self, parent_id=False, before_task_id=False, after_task_id=False):
-        """Reposition the task inside the WBS tree (Quick WBS panel).
-
-        ``parent_id`` is the new parent (``False`` for top level);
-        ``before_task_id``/``after_task_id`` pick the sibling slot — with
-        neither given the task becomes the last child.  Sibling
-        ``sequence`` values are renumbered, and the stored WBS
-        code/level/sort-key are refreshed by the regular
-        ``_recalculate_wbs`` hook on write.
-        """
-        self.ensure_one()
-        task = self
-        Task = self.env["project.task"]
-        new_parent = Task.browse(parent_id) if parent_id else Task
-        if new_parent:
-            if new_parent.project_id != task.project_id:
-                raise UserError(_("A task cannot be moved into another project."))
-            node = new_parent
-            while node:
-                if node == task:
-                    raise UserError(_("A task cannot be moved under its own descendant."))
-                node = node.parent_id
-
-        siblings = Task.search(
-            [
-                ("project_id", "=", task.project_id.id),
-                ("parent_id", "=", new_parent.id if new_parent else False),
-                ("id", "!=", task.id),
-            ],
-            order="sequence, id",
-        )
-        position = len(siblings)
-        sibling_ids = siblings.ids
-        if before_task_id and before_task_id in sibling_ids:
-            position = sibling_ids.index(before_task_id)
-        elif after_task_id and after_task_id in sibling_ids:
-            position = sibling_ids.index(after_task_id) + 1
-
-        if task.parent_id != new_parent:
-            task.write({"parent_id": new_parent.id if new_parent else False})
-
-        ordered = siblings[:position] | task | siblings[position:]
-        for index, sibling in enumerate(ordered, start=1):
-            sequence = index * 10
-            if sibling.sequence != sequence:
-                sibling.write({"sequence": sequence})
-        return True
-
     # ---- Planner Resources (BRD-21) ---------------------------------------
     # Thin serialization/mutation over the existing resource models
     # (project.task.resource.requirement / .assignment / project.resource.planner).
