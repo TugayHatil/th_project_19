@@ -16,6 +16,7 @@
         "views/project_planner_views.xml",
         "views/project_resource_role_views.xml",
         "views/project_resource_rate_views.xml",
+        "views/project_baseline_title_views.xml",
     ],
     "demo": [
         "demo/project_wbs_demo.xml",

@@ -414,14 +414,22 @@
                             <i class="fa fa-save me-1"/>Baseline Save
                         </button>
                         <div t-else="" class="d-flex flex-column gap-2">
-                            <input type="text" class="form-control form-control-sm"
-                                   placeholder="Baseline name…"
-                                   t-att-value="state.baselineSaveName"
-                                   t-on-input="(ev) => state.baselineSaveName = ev.target.value"
-                                   t-on-keydown="(ev) => ev.key === 'Enter' ? this.saveBaseline() : null"/>
+                            <select class="form-select form-select-sm"
+                                    t-att-disabled="!state.baselineTitles.length"
+                                    t-on-change="(ev) => state.baselineSaveTitle = ev.target.value">
+                                <option value="">Select a baseline title…</option>
+                                <t t-foreach="state.baselineTitles" t-as="title" t-key="title.id">
+                                    <option t-att-value="title.name"
+                                            t-att-selected="title.name === state.baselineSaveTitle"
+                                            t-esc="title.name"/>
+                                </t>
+                            </select>
+                            <div t-if="!state.baselineTitles.length" class="text-muted small fst-italic">
+                                No baseline titles defined. Add them under Configuration → Baseline Titles.
+                            </div>
                             <div class="d-flex gap-2">
                                 <button type="button" class="btn btn-primary btn-sm flex-grow-1"
-                                        t-att-disabled="state.baselineSaving || !state.baselineSaveName.trim()"
+                                        t-att-disabled="state.baselineSaving || !state.baselineSaveTitle"
                                         t-on-click="saveBaseline">
                                     <t t-if="state.baselineSaving">Saving…</t>
                                     <t t-else="">Save</t>
@@ -441,7 +449,11 @@
                              t-att-class="{selected: state.historyDetail?.id === item.id, o_cp_planner_history_item_grew: !item.is_initial &amp;&amp; item.duration_variance > 0}"
                              t-on-click="() => this.selectBaselineVersion(item)">
                             <div class="d-flex justify-content-between">
-                                <span class="fw-bold" t-esc="item.name"/>
+                                <span>
+                                    <span class="fw-bold" t-esc="item.version || item.name"/>
+                                    <span t-if="item.label" class="o_cp_planner_history_label"
+                                          t-esc="' - ' + item.label"/>
+                                </span>
                                 <span class="text-muted small" t-esc="formatHistoryDate(item.created_on)"/>
                             </div>
                             <div class="d-flex justify-content-between small">
@@ -461,7 +473,11 @@
                         <div t-if="state.historyDetailLoading" class="text-muted small py-2">Loading…</div>
                         <div t-if="state.historyDetail &amp;&amp; !state.historyDetailLoading"
                              class="o_cp_planner_history_detail border-top mt-3 pt-2">
-                            <div class="fw-bold mb-2" t-esc="state.historyDetail.name"/>
+                            <div class="mb-2">
+                                <span class="fw-bold" t-esc="state.historyDetail.version || state.historyDetail.name"/>
+                                <span t-if="state.historyDetail.label" class="o_cp_planner_history_label"
+                                      t-esc="' - ' + state.historyDetail.label"/>
+                            </div>
                             <div class="d-flex justify-content-between small">
                                 <span class="text-muted">Project Duration</span>
                                 <span t-esc="formatHours(state.historyDetail.project_duration)"/>

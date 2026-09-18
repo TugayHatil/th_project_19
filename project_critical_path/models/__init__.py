@@ -14,3 +14,4 @@ from . import project_task
 from . import project_wbs
 from . import project_task_gantt
 from . import project_planner
+from . import project_baseline_title

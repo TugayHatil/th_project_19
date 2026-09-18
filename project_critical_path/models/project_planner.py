@@ -163,6 +163,10 @@ class ProjectProjectPlanner(models.Model):
             {
                 "id": baseline.id,
                 "name": baseline.name,
+                # Version is always the "v1.X" prefix; the label is the
+                # optional user-chosen baseline title appended after it.
+                "version": "v1.%d" % baseline.revision_number,
+                "label": baseline.name.partition(" - ")[2] or False,
                 "created_on": fields.Datetime.to_string(baseline.created_on),
                 "project_duration": baseline.project_duration or 0.0,
                 "previous_id": baseline.previous_baseline_id.id or False,
@@ -254,6 +258,8 @@ class ProjectProjectPlanner(models.Model):
         return {
             "id": baseline.id,
             "name": baseline.name,
+            "version": "v1.%d" % baseline.revision_number,
+            "label": baseline.name.partition(" - ")[2] or False,
             "created_on": fields.Datetime.to_string(baseline.created_on),
             "project_duration": baseline.project_duration or 0.0,
             "critical_path_duration": baseline.critical_path_duration or 0.0,

@@ -356,6 +356,11 @@ class TestPlannerWorkspace(TransactionCase):
         history = project.get_planner_baseline_history()
         self.assertEqual(history[0]["name"], "v1.2")
         self.assertEqual(history[2]["name"], "v1.0 - İlk Plan")
+        # Version and label are split for the panel display (BRD).
+        self.assertEqual(history[2]["version"], "v1.0")
+        self.assertEqual(history[2]["label"], "İlk Plan")
+        self.assertEqual(history[0]["version"], "v1.2")
+        self.assertFalse(history[0]["label"])
 
     def test_planner_baseline_summary_reports_task_changes(self):
         project = self.env["project.project"].create({"name": "Change summary"})
@@ -920,3 +925,31 @@ class TestPlannerSearchView(TransactionCase):
 
         crit_rows = project.get_planner_data(domain=[("is_critical", "=", True)])["tasks"]
         self.assertEqual({row["name"] for row in crit_rows}, {"Chain A", "Chain B"})
+
+
+class TestBaselineTitle(TransactionCase):
+    """BRD: predefined baseline titles — max 25 chars, active flag, and
+    only active titles feed the Baseline Save selection."""
+
+    def test_title_constraints_and_active_flag(self):
+        ok = self.env["project.baseline.title"].create({"name": "İlk Plan"})
+        self.assertTrue(ok.active)
+
+        too_long = "X" * 26
+        with self.assertRaises(ValidationError):
+            self.env["project.baseline.title"].create({"name": too_long})
+
+        exactly = "Y" * 25
+        self.assertTrue(
+            self.env["project.baseline.title"].create({"name": exactly})
+        )
+
+    def test_save_flow_uses_only_active_titles(self):
+        Title = self.env["project.baseline.title"]
+        Title.create({"name": "Aktif Başlık"})
+        inactive = Title.create({"name": "Pasif Başlık", "active": False})
+
+        active_titles = Title.search([("active", "=", True)])
+
+        self.assertIn("Aktif Başlık", active_titles.mapped("name"))
+        self.assertNotIn(inactive, active_titles)

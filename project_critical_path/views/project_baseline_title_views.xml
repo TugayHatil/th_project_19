@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="project_baseline_title_list" model="ir.ui.view">
+        <field name="name">project.baseline.title.list</field>
+        <field name="model">project.baseline.title</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="project_baseline_title_form" model="ir.ui.view">
+        <field name="name">project.baseline.title.form</field>
+        <field name="model">project.baseline.title</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name" maxlength="25"/>
+                        <field name="active" invisible="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_project_baseline_title" model="ir.actions.act_window">
+        <field name="name">Baseline Titles</field>
+        <field name="res_model">project.baseline.title</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_project_baseline_title"
+              name="Baseline Titles"
+              parent="project.menu_project_config"
+              action="action_project_baseline_title"
+              sequence="50"/>
+</odoo>

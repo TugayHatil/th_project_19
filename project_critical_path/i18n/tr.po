@@ -1705,3 +1705,23 @@ msgstr "Lütfen bir baseline adı girin."
 #. module: project_critical_path
 msgid "The baseline could not be created."
 msgstr "Baseline oluşturulamadı."
+
+#. module: project_critical_path
+msgid "Baseline Titles"
+msgstr "Baseline Başlıkları"
+
+#. module: project_critical_path
+msgid "Select a baseline title…"
+msgstr "Bir baseline başlığı seçin…"
+
+#. module: project_critical_path
+msgid "No baseline titles defined. Add them under Configuration → Baseline Titles."
+msgstr "Tanımlı baseline başlığı yok. Yapılandırma → Baseline Başlıkları altından ekleyin."
+
+#. module: project_critical_path
+msgid "Please select a baseline title."
+msgstr "Lütfen bir baseline başlığı seçin."
+
+#. module: project_critical_path
+msgid "The baseline title cannot exceed 25 characters."
+msgstr "Baseline başlığı 25 karakteri geçemez."

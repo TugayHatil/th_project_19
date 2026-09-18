@@ -132,9 +132,11 @@ export class PlannerWorkspace extends Component {
             historyDetail: null,
             historyDetailLoading: false,
             compareBaselineId: null,
-            // Baseline Save inline form (BRD) — user-named new revision
+            // Baseline Save inline form (BRD) — the user picks one of the
+            // predefined active baseline titles for the new revision
             baselineSaveOpen: false,
-            baselineSaveName: "",
+            baselineSaveTitle: "",
+            baselineTitles: [],
             baselineSaving: false,
             // Optional WBS date columns (BRD-19) — hidden by default
             colMenuOpen: false,
@@ -1203,22 +1205,32 @@ export class PlannerWorkspace extends Component {
         }
     }
 
-    // Baseline Save — the user names the snapshot; the version number
-    // keeps auto-incrementing server-side (v1.19 → v1.20).
-    openBaselineSave() {
-        this.state.baselineSaveName = "";
+    // Baseline Save — the user picks a predefined active title; the
+    // version number keeps auto-incrementing server-side (v1.19 → v1.20).
+    async openBaselineSave() {
+        this.state.baselineSaveTitle = "";
+        try {
+            this.state.baselineTitles = await this.orm.searchRead(
+                "project.baseline.title",
+                [["active", "=", true]],
+                ["name"],
+                { order: "name" },
+            );
+        } catch {
+            this.state.baselineTitles = [];
+        }
         this.state.baselineSaveOpen = true;
     }
 
     cancelBaselineSave() {
         this.state.baselineSaveOpen = false;
-        this.state.baselineSaveName = "";
+        this.state.baselineSaveTitle = "";
     }
 
     async saveBaseline() {
-        const label = (this.state.baselineSaveName || "").trim();
+        const label = (this.state.baselineSaveTitle || "").trim();
         if (!label) {
-            this.notification.add(_t("Please enter a baseline name."), { type: "warning" });
+            this.notification.add(_t("Please select a baseline title."), { type: "warning" });
             return;
         }
         this.state.baselineSaving = true;

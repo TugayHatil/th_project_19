@@ -957,3 +957,23 @@ msgstr "Bitte einen Baseline-Namen eingeben."
 #. module: project_critical_path
 msgid "The baseline could not be created."
 msgstr "Die Baseline konnte nicht erstellt werden."
+
+#. module: project_critical_path
+msgid "Baseline Titles"
+msgstr "Baseline-Titel"
+
+#. module: project_critical_path
+msgid "Select a baseline title…"
+msgstr "Baseline-Titel auswählen…"
+
+#. module: project_critical_path
+msgid "No baseline titles defined. Add them under Configuration → Baseline Titles."
+msgstr "Keine Baseline-Titel definiert. Unter Konfiguration → Baseline-Titel hinzufügen."
+
+#. module: project_critical_path
+msgid "Please select a baseline title."
+msgstr "Bitte einen Baseline-Titel auswählen."
+
+#. module: project_critical_path
+msgid "The baseline title cannot exceed 25 characters."
+msgstr "Der Baseline-Titel darf maximal 25 Zeichen lang sein."
