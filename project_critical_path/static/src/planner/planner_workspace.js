@@ -141,8 +141,9 @@ export class PlannerWorkspace extends Component {
             barInfoKeys: [...BAR_INFO_DEFAULT],
             // Slack chip pinned left of each bar (BRD-18) — per-project toggle
             slackVisible: true,
-            // Status strip KPI highlight filter — null or a kpiItems key
-            kpiFilter: null,
+            // Toolbar task search — the submitted text becomes a simple
+            // name/wbs_code ilike domain sent with get_planner_data
+            searchDomain: [],
             // Resource Planning workspace modal (BRD-21)
             resModalOpen: false,
             resTask: null,
@@ -235,9 +236,13 @@ export class PlannerWorkspace extends Component {
         this.state.selectedId = null;
         this.state.inspectorOpen = false;
         try {
-            const kwargs = this.state.compareBaselineId
-                ? { baseline_id: this.state.compareBaselineId }
-                : {};
+            const kwargs = {};
+            if (this.state.compareBaselineId) {
+                kwargs.baseline_id = this.state.compareBaselineId;
+            }
+            if (this.state.searchDomain?.length) {
+                kwargs.domain = this.state.searchDomain;
+            }
             const data = await this.orm.call(
                 "project.project", "get_planner_data", [projectId], kwargs,
             );
@@ -389,17 +394,20 @@ export class PlannerWorkspace extends Component {
         return parseDay(stopStr) < today;
     }
 
-    // Planned to finish by end of this week (today … Sunday), still not
-    // Done. Overdue tasks are excluded — they have their own KPI.
-    isDueThisWeek(task) {
-        if (task.is_done || !task.date_stop) {
-            return false;
+    // Toolbar task search — Enter submits; the planner reloads with a
+    // name/wbs_code ilike domain (matching rows keep their WBS ancestors).
+    // Clearing the input and pressing Enter again restores all tasks.
+    async onTaskSearch(ev) {
+        if (ev.key !== "Enter") {
+            return;
         }
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const weekEnd = addDays(startOfWeek(today), 6);
-        const stop = parseDay(task.date_stop);
-        return stop >= today && stop <= weekEnd;
+        const query = ev.target.value.trim();
+        this.state.searchDomain = query
+            ? ["|", ["name", "ilike", query], ["wbs_code", "ilike", query]]
+            : [];
+        if (this.state.projectId) {
+            await this.loadProject(this.state.projectId);
+        }
     }
 
     barTitle(task) {
@@ -1034,87 +1042,6 @@ export class PlannerWorkspace extends Component {
             w += (w ? 4 : 0) + 10;
         }
         return w ? w + 4 : 0; // + the 4px anchor gap in barLeadStyle
-    }
-
-    // ---- Status strip KPIs -------------------------------------------------
-    // Single pass over the already-loaded task list — no extra queries.
-
-    get kpiItems() {
-        let critical = 0;
-        let overdue = 0;
-        let week = 0;
-        let done = 0;
-        let hours = 0;
-        for (const task of this.state.tasks) {
-            if (task.is_critical) {
-                critical++;
-            }
-            if (task.is_done) {
-                done++;
-            }
-            if (this.isOverdue(task)) {
-                overdue++;
-            }
-            if (this.isDueThisWeek(task)) {
-                week++;
-            }
-            hours += task.allocated_hours || 0;
-        }
-        return [
-            {
-                key: "critical", icon: "fa-exclamation-triangle", cls: "critical",
-                label: _t("Critical"), value: critical,
-                tip: _t("Tasks on the critical path."),
-            },
-            {
-                key: "overdue", icon: "fa-exclamation-circle", cls: "overdue",
-                label: _t("Overdue"), value: overdue,
-                tip: _t("Tasks past their finish date and not Done."),
-            },
-            {
-                key: "week", icon: "fa-calendar", cls: "neutral",
-                label: _t("This Week"), value: week,
-                tip: _t("Tasks planned to finish by the end of this week, not Done."),
-            },
-            {
-                key: "done", icon: "fa-check-circle", cls: "done",
-                label: _t("Completed"), value: done,
-                tip: _t("Tasks in the Done state."),
-            },
-            {
-                key: "total", icon: "fa-clock-o", cls: "neutral",
-                label: _t("Total"), value: `${getCalendarFormats().number.format(hours)}h`,
-                tip: _t("Total planned hours across all tasks."),
-            },
-        ];
-    }
-
-    toggleKpi(key) {
-        if (key === "total") {
-            return; // informational only — nothing to highlight
-        }
-        this.state.kpiFilter = this.state.kpiFilter === key ? null : key;
-    }
-
-    // true → task matches the active KPI filter, false → it does not,
-    // null → no filter active (nothing to highlight or dim).
-    kpiHit(task) {
-        const filter = this.state.kpiFilter;
-        if (!filter) {
-            return null;
-        }
-        switch (filter) {
-            case "critical":
-                return Boolean(task.is_critical);
-            case "overdue":
-                return this.isOverdue(task);
-            case "week":
-                return this.isDueThisWeek(task);
-            case "done":
-                return Boolean(task.is_done);
-            default:
-                return null;
-        }
     }
 
     // Right edge of the lead-in cluster anchored just before the bar —
