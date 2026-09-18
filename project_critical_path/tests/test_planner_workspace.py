@@ -829,3 +829,69 @@ class TestBaselineCostHistory(TransactionCase):
         self.assertEqual(change["old_cost"], 5000.0)
         self.assertEqual(change["new_cost"], 6000.0)
         self.assertEqual(change["delta_cost"], 1000.0)
+
+
+class TestPlannerSearchView(TransactionCase):
+    """BRD-XX: the Planner runs on the standard Odoo Search View — the
+    dedicated project.task search view must exist and the search-model
+    domain must restrict the planner rows while keeping WBS ancestors."""
+
+    def _make_task(self, project, name, parent=None, **values):
+        return self.env["project.task"].create({
+            "name": name,
+            "project_id": project.id,
+            "parent_id": parent.id if parent else False,
+            **values,
+        })
+
+    def test_planner_search_view_exists_with_filters(self):
+        view = self.env.ref("project_critical_path.project_task_planner_search")
+        arch = view.arch
+        for name in ("filter_critical", "filter_delayed", "filter_this_week",
+                     "filter_completed", "group_wbs_level"):
+            self.assertIn(f'name="{name}"', arch)
+
+    def test_domain_restricts_planner_tasks(self):
+        project = self.env["project.project"].create({"name": "Search"})
+        self._make_task(project, "Foundation")
+        self._make_task(project, "Roofing")
+
+        data = project.get_planner_data(domain=[("name", "=", "Foundation")])
+
+        self.assertEqual([row["name"] for row in data["tasks"]], ["Foundation"])
+
+    def test_domain_keeps_wbs_ancestors(self):
+        project = self.env["project.project"].create({"name": "Hierarchy"})
+        parent = self._make_task(project, "Engineering")
+        self._make_task(project, "Detail Drawing", parent=parent)
+        self._make_task(project, "Procurement")
+
+        data = project.get_planner_data(domain=[("name", "=", "Detail Drawing")])
+
+        names = [row["name"] for row in data["tasks"]]
+        self.assertEqual(names, ["Engineering", "Detail Drawing"])
+        self.assertNotIn("Procurement", names)
+
+    def test_domain_never_leaks_other_projects(self):
+        project = self.env["project.project"].create({"name": "Mine"})
+        other = self.env["project.project"].create({"name": "Theirs"})
+        mine = self._make_task(project, "Shared name")
+        self._make_task(other, "Shared name")
+
+        data = project.get_planner_data(domain=[("name", "=", "Shared name")])
+
+        self.assertEqual(len(data["tasks"]), 1)
+        self.assertEqual(data["tasks"][0]["id"], mine.id)
+
+    def test_completed_and_critical_domains(self):
+        project = self.env["project.project"].create({"name": "States"})
+        done = self._make_task(project, "Finished", state="1_done")
+        first = self._make_task(project, "Chain A", allocated_hours=8.0)
+        self._make_task(project, "Chain B", allocated_hours=8.0,
+                        depend_on_ids=[(4, first.id)])
+
+        done_rows = project.get_planner_data(domain=[("state", "=", "1_done")])["tasks"]
+        self.assertEqual([row["id"] for row in done_rows], [done.id])
+
+        crit_rows = project.get_planner_data(domain=[("is_critical", "=", True)])["tasks"]
+        self.assertEqual({row["name"] for row in crit_rows}, {"Chain A", "Chain B"})

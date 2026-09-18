@@ -917,3 +917,27 @@ msgstr "Zurück zum Projekt"
 #. module: project_critical_path
 msgid "Project"
 msgstr "Projekt"
+
+#. module: project_critical_path
+msgid "Critical Tasks"
+msgstr "Kritische Aufgaben"
+
+#. module: project_critical_path
+msgid "Delayed Tasks"
+msgstr "Verspätete Aufgaben"
+
+#. module: project_critical_path
+msgid "Completed Tasks"
+msgstr "Abgeschlossene Aufgaben"
+
+#. module: project_critical_path
+msgid "Assignees"
+msgstr "Zugewiesene"
+
+#. module: project_critical_path
+msgid "Stage"
+msgstr "Phase"
+
+#. module: project_critical_path
+msgid "WBS Level"
+msgstr "WBS-Ebene"

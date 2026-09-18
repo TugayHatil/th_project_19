@@ -1,9 +1,11 @@
-import { Component, onMounted, onPatched, useExternalListener, useRef, useState } from "@odoo/owl";
+import { Component, onMounted, onPatched, onWillStart, useExternalListener, useRef, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { _t } from "@web/core/l10n/translation";
 import { localization } from "@web/core/l10n/localization";
-import { useService } from "@web/core/utils/hooks";
+import { useBus, useService } from "@web/core/utils/hooks";
 import { session } from "@web/session";
+import { WithSearch } from "@web/search/with_search/with_search";
+import { SearchBar } from "@web/search/search_bar/search_bar";
 
 const DAY_MS = 86400000;
 const SCALES = {
@@ -90,8 +92,30 @@ const DEP_LANE = 6; // x offset between parallel connector lanes
 const DEP_CORRIDOR_STEP = 4; // y fan-out step inside a row-gap corridor
 const DEP_CORRIDOR_MAX = 6; // corridor offsets stay clear of the bars
 
+// Renders the standard Odoo SearchBar inside the Planner. It must live
+// inside a WithSearch slot so env.searchModel exists (BRD-XX); every
+// SearchModel update is forwarded to the parent so the planner reloads.
+class PlannerSearchBar extends Component {
+    static template = "project_critical_path.PlannerSearchBar";
+    static components = { SearchBar };
+    static props = { onSearchChange: Function };
+
+    setup() {
+        this.searchModel = this.env.searchModel;
+        this._lastDomain = null;
+        useBus(this.searchModel, "update", () => {
+            const key = JSON.stringify(this.searchModel.domain);
+            if (key !== this._lastDomain) {
+                this._lastDomain = key;
+                this.props.onSearchChange(this.searchModel.domain);
+            }
+        });
+    }
+}
+
 export class PlannerWorkspace extends Component {
     static template = "project_critical_path.PlannerWorkspace";
+    static components = { WithSearch, PlannerSearchBar };
     static props = { "*": true };
 
     setup() {
@@ -141,8 +165,10 @@ export class PlannerWorkspace extends Component {
             barInfoKeys: [...BAR_INFO_DEFAULT],
             // Slack chip pinned left of each bar (BRD-18) — per-project toggle
             slackVisible: true,
-            // Status strip KPI highlight filter — null or a kpiItems key
-            kpiFilter: null,
+            // Standard Search View state (BRD-XX) — the resolved
+            // ir.ui.view id and the active SearchModel domain
+            searchViewId: null,
+            searchDomain: [],
             // Resource Planning workspace modal (BRD-21)
             resModalOpen: false,
             resTask: null,
@@ -210,6 +236,20 @@ export class PlannerWorkspace extends Component {
                 this.fit();
             }
         });
+        // Resolve the dedicated planner search view before first render so
+        // WithSearch binds to it directly (searchViewId is not reloadable).
+        onWillStart(async () => {
+            try {
+                const views = await this.orm.searchRead(
+                    "ir.ui.view",
+                    [["model", "=", "project.task"], ["name", "=", "project.task.planner.search"]],
+                    ["id"], { limit: 1 },
+                );
+                this.state.searchViewId = views.length ? views[0].id : false;
+            } catch {
+                this.state.searchViewId = false;
+            }
+        });
         onMounted(async () => {
             try {
                 this.state.projects = await this.orm.call("project.project", "get_planner_projects", []);
@@ -234,9 +274,13 @@ export class PlannerWorkspace extends Component {
         this.state.selectedId = null;
         this.state.inspectorOpen = false;
         try {
-            const kwargs = this.state.compareBaselineId
-                ? { baseline_id: this.state.compareBaselineId }
-                : {};
+            const kwargs = {};
+            if (this.state.compareBaselineId) {
+                kwargs.baseline_id = this.state.compareBaselineId;
+            }
+            if (this.state.searchDomain?.length) {
+                kwargs.domain = this.state.searchDomain;
+            }
             const data = await this.orm.call(
                 "project.project", "get_planner_data", [projectId], kwargs,
             );
@@ -386,19 +430,6 @@ export class PlannerWorkspace extends Component {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         return parseDay(stopStr) < today;
-    }
-
-    // Planned to finish by end of this week (today … Sunday), still not
-    // Done. Overdue tasks are excluded — they have their own KPI.
-    isDueThisWeek(task) {
-        if (task.is_done || !task.date_stop) {
-            return false;
-        }
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const weekEnd = addDays(startOfWeek(today), 6);
-        const stop = parseDay(task.date_stop);
-        return stop >= today && stop <= weekEnd;
     }
 
     barTitle(task) {
@@ -1035,84 +1066,28 @@ export class PlannerWorkspace extends Component {
         return w ? w + 4 : 0; // + the 4px anchor gap in barLeadStyle
     }
 
-    // ---- Status strip KPIs -------------------------------------------------
-    // Single pass over the already-loaded task list — no extra queries.
-
-    get kpiItems() {
-        let critical = 0;
-        let overdue = 0;
-        let week = 0;
-        let done = 0;
-        let hours = 0;
-        for (const task of this.state.tasks) {
-            if (task.is_critical) {
-                critical++;
-            }
-            if (task.is_done) {
-                done++;
-            }
-            if (this.isOverdue(task)) {
-                overdue++;
-            }
-            if (this.isDueThisWeek(task)) {
-                week++;
-            }
-            hours += task.allocated_hours || 0;
+    // ---- Standard Odoo search (BRD-XX) --------------------------------------
+    // WithSearch feeds the SearchModel with the dedicated planner search
+    // view; this global leaf keeps the search scoped to the open project.
+    // Memoized — WithSearch shallow-compares the prop, so the same array
+    // must be returned until the project actually changes.
+    get plannerGlobalDomain() {
+        const pid = this.state.projectId || 0;
+        if (!this._globalDomain || this._globalDomain[0][2] !== pid) {
+            this._globalDomain = [["project_id", "=", pid]];
         }
-        return [
-            {
-                key: "critical", icon: "fa-exclamation-triangle", cls: "critical",
-                label: _t("Critical"), value: critical,
-                tip: _t("Tasks on the critical path."),
-            },
-            {
-                key: "overdue", icon: "fa-exclamation-circle", cls: "overdue",
-                label: _t("Overdue"), value: overdue,
-                tip: _t("Tasks past their finish date and not Done."),
-            },
-            {
-                key: "week", icon: "fa-calendar", cls: "neutral",
-                label: _t("This Week"), value: week,
-                tip: _t("Tasks planned to finish by the end of this week, not Done."),
-            },
-            {
-                key: "done", icon: "fa-check-circle", cls: "done",
-                label: _t("Completed"), value: done,
-                tip: _t("Tasks in the Done state."),
-            },
-            {
-                key: "total", icon: "fa-clock-o", cls: "neutral",
-                label: _t("Total"), value: `${getCalendarFormats().number.format(hours)}h`,
-                tip: _t("Total planned hours across all tasks."),
-            },
-        ];
+        return this._globalDomain;
     }
 
-    toggleKpi(key) {
-        if (key === "total") {
-            return; // informational only — nothing to highlight
-        }
-        this.state.kpiFilter = this.state.kpiFilter === key ? null : key;
-    }
-
-    // true → task matches the active KPI filter, false → it does not,
-    // null → no filter active (nothing to highlight or dim).
-    kpiHit(task) {
-        const filter = this.state.kpiFilter;
-        if (!filter) {
-            return null;
-        }
-        switch (filter) {
-            case "critical":
-                return Boolean(task.is_critical);
-            case "overdue":
-                return this.isOverdue(task);
-            case "week":
-                return this.isDueThisWeek(task);
-            case "done":
-                return Boolean(task.is_done);
-            default:
-                return null;
+    // The SearchModel domain carries the global project leaf plus the
+    // facets/filters. The leaf is dropped here — the backend scopes to the
+    // current project itself, so a stale leaf can never filter wrongly.
+    onPlannerSearch(domain) {
+        this.state.searchDomain = (domain || []).filter(
+            (leaf) => !(Array.isArray(leaf) && leaf[0] === "project_id"),
+        );
+        if (this.state.projectId) {
+            this.loadProject(this.state.projectId);
         }
     }
 

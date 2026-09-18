@@ -1669,3 +1669,23 @@ msgstr "Projeye Dön"
 #. module: project_critical_path
 msgid "Project"
 msgstr "Proje"
+
+#. module: project_critical_path
+msgid "Critical Tasks"
+msgstr "Kritik Görevler"
+
+#. module: project_critical_path
+msgid "Delayed Tasks"
+msgstr "Geciken Görevler"
+
+#. module: project_critical_path
+msgid "Completed Tasks"
+msgstr "Tamamlanan Görevler"
+
+#. module: project_critical_path
+msgid "Assignees"
+msgstr "Atananlar"
+
+#. module: project_critical_path
+msgid "Stage"
+msgstr "Aşama"

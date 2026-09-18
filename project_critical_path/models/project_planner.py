@@ -48,7 +48,7 @@ class ProjectProjectPlanner(models.Model):
             for project in self.search([], order="name")
         ]
 
-    def get_planner_data(self, baseline_id=None):
+    def get_planner_data(self, baseline_id=None, domain=None):
         """Return the project's tasks in WBS order for the Planner Workspace.
 
         The list is already flattened in display order so the WBS panel and the
@@ -57,11 +57,27 @@ class ProjectProjectPlanner(models.Model):
         ``baseline_id`` optionally overrides the comparison baseline used for
         the ghost/variance layer so the Gantt can show a historical baseline
         against the current plan without touching any baseline record.
+
+        ``domain`` is the standard search-view domain coming from the
+        planner's search bar — matching tasks are kept together with their
+        WBS ancestors so the hierarchy stays readable (BRD-XX).
         """
         self.ensure_one()
         tasks = self.env["project.task"].with_context(active_test=False).search(
             [("project_id", "=", self.id)]
         )
+        if domain:
+            matched = self.env["project.task"].with_context(active_test=False).search(
+                [("project_id", "=", self.id)] + list(domain)
+            )
+            keep = set(matched.ids)
+            queue = [task.parent_id for task in matched if task.parent_id]
+            while queue:
+                parent = queue.pop()
+                if parent and parent.project_id == self and parent.id not in keep:
+                    keep.add(parent.id)
+                    queue.append(parent.parent_id)
+            tasks = tasks.filtered(lambda task: task.id in keep)
         ordered = tasks.sorted(key=lambda task: (task.wbs_sort_key or "", task.sequence, task.id))
         baseline = self.delay_impact_baseline_id
         if baseline_id:
