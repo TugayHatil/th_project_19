@@ -41,7 +41,6 @@ $o_cp_planner_bar_critical: #e8a33d;
     line-height: $o_cp_planner_row_height;
     white-space: nowrap;
     cursor: pointer;
-    user-select: none; // text selection must not fight row dragging
     border-bottom: 1px solid #dee2e6;
 
     &:hover {

@@ -1036,14 +1036,6 @@ export class PlannerWorkspace extends Component {
         ev.stopPropagation();
         this.state.wbsDragTaskId = task.id;
         this._wbsDragStartX = ev.clientX;
-        this._wbsDropSteps = 0;
-        // Level-1 name origin is measured once from the dragged row —
-        // recomputing it per hovered row makes the guide jitter because
-        // the WBS-code column has a variable width.
-        const nameEl = ev.currentTarget.querySelector(".o_cp_planner_task_name");
-        this.state.wbsDropX = nameEl
-            ? nameEl.offsetLeft - (task.wbs_level - 1) * WBS_INDENT_PX
-            : 0;
         ev.dataTransfer.effectAllowed = "move";
         ev.dataTransfer.setData("text/plain", String(task.id));
     }
@@ -1054,66 +1046,34 @@ export class PlannerWorkspace extends Component {
         }
         ev.preventDefault(); // required to allow dropping
         ev.dataTransfer.dropEffect = "move";
-        this._autoScrollWbs(ev.clientY);
         // Top half of the row → insert before it; bottom half → after it.
         const rect = ev.currentTarget.getBoundingClientRect();
         const before = ev.clientY < rect.top + rect.height / 2;
         const dropIndex = before ? index : index + 1;
         this.state.wbsDropIndex = dropIndex;
-        this._updateWbsDropLevel(dropIndex, ev);
-    }
-
-    // Dragover on the container's empty tail area → append at the end.
-    onWbsRowsDragOver(ev) {
-        if (!this.state.wbsDragTaskId || ev.target !== ev.currentTarget) {
-            return;
-        }
-        ev.preventDefault();
-        ev.dataTransfer.dropEffect = "move";
-        this._autoScrollWbs(ev.clientY);
-        this.state.wbsDropIndex = this.visibleTasks.length;
-        this._updateWbsDropLevel(this.state.wbsDropIndex, ev);
-    }
-
-    // While dragging near the top/bottom edge of the list, nudge the
-    // scroll so out-of-view slots stay reachable.
-    _autoScrollWbs(clientY) {
-        const el = this.wbsRowsRef.el;
-        if (!el) {
-            return;
-        }
-        const rect = el.getBoundingClientRect();
-        const edge = PLANNER_ROW_H;
-        if (clientY < rect.top + edge) {
-            el.scrollTop -= 12;
-        } else if (clientY > rect.bottom - edge) {
-            el.scrollTop += 12;
-        }
+        this._updateWbsDropLevel(dropIndex, ev, task);
     }
 
     // The horizontal drag offset picks the target WBS level: each
     // indent-width step right/left moves one level deeper/shallower. The
     // level is clamped between 1 and "child of the row above the slot" —
     // deeper than that is not a valid position in a tree list.
-    _updateWbsDropLevel(dropIndex, ev) {
+    _updateWbsDropLevel(dropIndex, ev, task) {
         const rows = this.visibleTasks;
         const dragged = this.taskById.get(this.state.wbsDragTaskId);
         const above = dropIndex > 0 ? rows[dropIndex - 1] : null;
         const maxLevel = above ? above.wbs_level + 1 : 1;
-        // Hysteresis: the level only changes once the offset passes 60%
-        // of an indent step, so the preview doesn't flicker on jitter.
-        const raw = (ev.clientX - this._wbsDragStartX) / WBS_INDENT_PX;
-        let steps = this._wbsDropSteps || 0;
-        if (raw > steps + 0.6) {
-            steps += 1;
-        } else if (raw < steps - 0.6) {
-            steps -= 1;
-        }
-        this._wbsDropSteps = steps;
+        const steps = Math.round((ev.clientX - (this._wbsDragStartX || ev.clientX)) / WBS_INDENT_PX);
         this.state.wbsDropLevel = Math.max(
             1,
             Math.min(maxLevel, (dragged ? dragged.wbs_level : 1) + steps),
         );
+        // Name-column origin for the level guide: the hovered row's name
+        // offset minus its own indentation gives the level-1 position.
+        const nameEl = ev.currentTarget.querySelector(".o_cp_planner_task_name");
+        if (nameEl) {
+            this.state.wbsDropX = nameEl.offsetLeft - (task.wbs_level - 1) * WBS_INDENT_PX;
+        }
     }
 
     get wbsDropMarkerX() {
@@ -1161,31 +1121,12 @@ export class PlannerWorkspace extends Component {
             while (anchor && anchor.wbs_level > desired) {
                 anchor = this.taskById.get(anchor.parent_id);
             }
-            if (!anchor || anchor.id === taskId) {
-                return; // inside its own subtree → no move
+            if (anchor) {
+                parentId = anchor.parent_id || false;
+                afterId = anchor.id;
             }
-            parentId = anchor.parent_id || false;
-            afterId = anchor.id;
-        }
-        // A task can never land inside its own subtree — dropping there
-        // is a no-op rather than an error.
-        if (parentId && this._isWbsDescendant(parentId, taskId)) {
-            return;
         }
         await this.moveTask(taskId, parentId, beforeId, afterId);
-    }
-
-    // Walks the parent chain: is `candidateId` the task itself or one of
-    // its descendants?
-    _isWbsDescendant(candidateId, taskId) {
-        let node = this.taskById.get(candidateId);
-        while (node) {
-            if (node.id === taskId) {
-                return true;
-            }
-            node = this.taskById.get(node.parent_id);
-        }
-        return false;
     }
 
     onWbsDragEnd() {
