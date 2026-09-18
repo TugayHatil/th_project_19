@@ -101,6 +101,7 @@
                              t-on-click="() => this.selectTask(task)"
                              t-on-dblclick="() => this.openTask(task)"
                              t-on-dragstart="(ev) => this.onWbsDragStart(task, ev)"
+                             t-on-dragover="(ev) => this.onWbsDragOver(task, task_index, ev)"
                              t-on-dragend="onWbsDragEnd">
                             <span class="o_cp_planner_toggle" t-on-click="(ev) => this.toggleCollapse(task, ev)">
                                 <i t-if="task.has_children"

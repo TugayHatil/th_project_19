@@ -1048,47 +1048,31 @@ export class PlannerWorkspace extends Component {
         ev.dataTransfer.setData("text/plain", String(task.id));
     }
 
-    // Single container-level dragover resolves the whole drop: the
-    // vertical pointer position picks the insertion slot (nearest row
-    // boundary), the horizontal offset from the drag start picks the
-    // target WBS level.  Rows bubble their dragover here, and the empty
-    // tail area resolves to "append after the last row".
-    onWbsRowsDragOver(ev) {
+    onWbsDragOver(task, index, ev) {
         if (!this.state.wbsDragTaskId) {
             return;
         }
         ev.preventDefault(); // required to allow dropping
         ev.dataTransfer.dropEffect = "move";
-        const el = this.wbsRowsRef.el;
-        if (!el) {
-            return;
-        }
         this._autoScrollWbs(ev.clientY);
-        const rows = this.visibleTasks;
-        const rect = el.getBoundingClientRect();
-        // Slot = nearest row boundary in content coordinates.
-        const slotY = ev.clientY - rect.top + el.scrollTop;
-        const index = Math.max(
-            0,
-            Math.min(
-                rows.length,
-                Math.floor((slotY + PLANNER_ROW_H / 2) / PLANNER_ROW_H),
-            ),
-        );
-        const dragId = this.state.wbsDragTaskId;
-        const above = index > 0 ? rows[index - 1] : null;
-        const below = index < rows.length ? rows[index] : null;
-        // Slots next to the dragged row or inside its own subtree are
-        // no-ops — hide the marker instead of suggesting a move.
-        if (
-            (below && below.id === dragId) ||
-            (above && this._isWbsDescendant(above.id, dragId))
-        ) {
-            this.state.wbsDropIndex = null;
+        // Top half of the row → insert before it; bottom half → after it.
+        const rect = ev.currentTarget.getBoundingClientRect();
+        const before = ev.clientY < rect.top + rect.height / 2;
+        const dropIndex = before ? index : index + 1;
+        this.state.wbsDropIndex = dropIndex;
+        this._updateWbsDropLevel(dropIndex, ev);
+    }
+
+    // Dragover on the container's empty tail area → append at the end.
+    onWbsRowsDragOver(ev) {
+        if (!this.state.wbsDragTaskId || ev.target !== ev.currentTarget) {
             return;
         }
-        this.state.wbsDropIndex = index;
-        this._updateWbsDropLevel(index, ev);
+        ev.preventDefault();
+        ev.dataTransfer.dropEffect = "move";
+        this._autoScrollWbs(ev.clientY);
+        this.state.wbsDropIndex = this.visibleTasks.length;
+        this._updateWbsDropLevel(this.state.wbsDropIndex, ev);
     }
 
     // While dragging near the top/bottom edge of the list, nudge the
