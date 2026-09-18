@@ -51,6 +51,16 @@ class ProjectTask(models.Model):
         result = super().write(vals)
         if {"project_id", "parent_id", "allocated_hours", "depend_on_ids", "dependent_ids"}.intersection(vals):
             (affected_projects | self.mapped("project_id"))._recalculate_critical_paths()
+        # BRD auto-shift: a date change can violate successor dependency
+        # bounds — the cascade runs once per project and suppresses its
+        # own re-trigger via context.
+        if {"date_assign", "date_deadline"}.intersection(vals) and not self.env.context.get(
+            "cp_skip_auto_schedule"
+        ):
+            for project in self.mapped("project_id"):
+                project._schedule_dependents(
+                    self.filtered(lambda task: task.project_id == project)
+                )
         return result
 
     def unlink(self):

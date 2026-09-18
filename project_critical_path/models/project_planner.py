@@ -522,9 +522,11 @@ class ProjectTaskPlanner(models.Model):
                 "lag_unit": lag_unit,
             }
         )
-        # Edge attributes feed the CPM — a plain task write is not involved,
-        # so the recalculation is triggered explicitly.
+        # Edge attributes feed the CPM and the auto-shift bounds — a plain
+        # task write is not involved, so the scheduling check and the
+        # recalculation are triggered explicitly.
         if self.project_id:
+            self.project_id._schedule_dependents(self, include_changed=True)
             self.project_id._recalculate_critical_paths()
         return True
 

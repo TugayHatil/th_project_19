@@ -447,3 +447,54 @@ class TestCriticalPath(TransactionCase):
                 [("task_id", "=", task_b.id)]
             )
         )
+
+    def test_auto_shift_pushes_successors(self):
+        """A moved task pushes violating successors down the chain (BRD)."""
+        project = self.env["project.project"].create({"name": "Auto shift"})
+        task_a = self.env["project.task"].create({
+            "name": "A", "project_id": project.id, "allocated_hours": 16,
+            "date_assign": "2026-09-14 09:00:00", "date_deadline": "2026-09-15 18:00:00",
+        })
+        task_b = self.env["project.task"].create({
+            "name": "B", "project_id": project.id, "allocated_hours": 16,
+            "date_assign": "2026-09-16 09:00:00", "date_deadline": "2026-09-17 18:00:00",
+            "depend_on_ids": [(4, task_a.id)],
+        })
+        task_c = self.env["project.task"].create({
+            "name": "C", "project_id": project.id, "allocated_hours": 8,
+            "date_assign": "2026-09-18 09:00:00", "date_deadline": "2026-09-18 18:00:00",
+            "depend_on_ids": [(4, task_b.id)],
+        })
+        task_d = self.env["project.task"].create({
+            "name": "D", "project_id": project.id, "allocated_hours": 8,
+            "date_assign": "2026-09-16 09:00:00", "date_deadline": "2026-09-16 18:00:00",
+        })
+
+        # Push A's finish past B's start → B and C chain-shift, D untouched.
+        task_a.write({"date_deadline": "2026-09-18 18:00:00"})
+        self.assertEqual(str(task_b.date_assign)[:10], "2026-09-19")
+        self.assertEqual(str(task_b.date_deadline)[:10], "2026-09-20")
+        self.assertEqual(str(task_c.date_assign)[:10], "2026-09-21")
+        self.assertEqual(str(task_d.date_assign)[:10], "2026-09-16")
+
+        # Pulling A earlier violates nothing → successors stay put.
+        task_a.write({"date_deadline": "2026-09-15 18:00:00"})
+        self.assertEqual(str(task_b.date_assign)[:10], "2026-09-19")
+        self.assertEqual(str(task_c.date_assign)[:10], "2026-09-21")
+
+    def test_auto_shift_from_dependency_edit(self):
+        """Raising the lag on an edge re-checks the successor itself."""
+        project = self.env["project.project"].create({"name": "Lag shift"})
+        task_a = self.env["project.task"].create({
+            "name": "A", "project_id": project.id, "allocated_hours": 16,
+            "date_assign": "2026-09-14 09:00:00", "date_deadline": "2026-09-15 18:00:00",
+        })
+        task_b = self.env["project.task"].create({
+            "name": "B", "project_id": project.id, "allocated_hours": 16,
+            "date_assign": "2026-09-16 09:00:00", "date_deadline": "2026-09-17 18:00:00",
+            "depend_on_ids": [(4, task_a.id)],
+        })
+        # FS +2d → earliest B start = Sep15 + 1 + 2 = Sep18 → B shifts.
+        task_b.update_planner_dependency(task_a.id, "fs", 2, "days")
+        self.assertEqual(str(task_b.date_assign)[:10], "2026-09-18")
+        self.assertEqual(str(task_b.date_deadline)[:10], "2026-09-19")
