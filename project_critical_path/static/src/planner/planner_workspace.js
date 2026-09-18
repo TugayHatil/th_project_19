@@ -84,9 +84,6 @@ const dayLabel = (date) => getCalendarFormats().dayMonth.format(date);
 const isoDay = (date) => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
 // Must stay in sync with planner_workspace.scss row/bar metrics.
 const PLANNER_ROW_H = 32;
-// Horizontal indent per WBS level in the left task list — also the
-// drag-distance step that moves the drop target one level deeper.
-const WBS_INDENT_PX = 18;
 const PLANNER_BAR_CENTER = 16;
 const DEP_STUB = 12; // horizontal stub length next to each connected bar
 const DEP_LANE = 6; // x offset between parallel connector lanes
@@ -124,13 +121,9 @@ export class PlannerWorkspace extends Component {
             draftParentId: null,
             // WBS row drag-and-drop reordering: dragged task id plus the
             // insertion index inside visibleTasks (== length means append
-            // after the last row). wbsDropLevel is the target WBS depth
-            // chosen by the horizontal drag offset and wbsDropX the
-            // name-column origin used to place the level guide line.
+            // after the last row).
             wbsDragTaskId: null,
             wbsDropIndex: null,
-            wbsDropLevel: null,
-            wbsDropX: 0,
             inspectorLoading: false,
             inspector: null,
             baseline: null,
@@ -1000,12 +993,46 @@ export class PlannerWorkspace extends Component {
 
     // ---- WBS hierarchy editing (BRD: quick task management) ---------------
     //
-    // Ordering AND indent/outdent are drag-and-drop only: the vertical
-    // position picks the insertion slot while the horizontal offset picks
-    // the target WBS level (one level per step of indent).  Moves go
-    // through ``planner_move_task`` which renumbers the sibling
-    // ``sequence`` values — the stored WBS codes are recomputed
-    // server-side on write.
+    // Indent/outdent are per-row icon actions; ordering between siblings is
+    // drag-and-drop only (no up/down buttons).  All three go through
+    // ``planner_move_task`` which renumbers the sibling ``sequence`` values —
+    // the stored WBS codes are recomputed server-side on write.
+
+    // Indent is only possible when a task sits directly above the row in
+    // the flat WBS list and that row is not already its parent (the row
+    // above can never be a descendant — children render below ancestors).
+    canIndent(task) {
+        const rows = this.visibleTasks;
+        const index = rows.indexOf(task);
+        return index > 0 && rows[index - 1].id !== task.parent_id;
+    }
+
+    canOutdent(task) {
+        return !!task.parent_id;
+    }
+
+    async indentTask(task, ev) {
+        ev.stopPropagation();
+        if (!this.canIndent(task)) {
+            return;
+        }
+        const rows = this.visibleTasks;
+        const above = rows[rows.indexOf(task) - 1];
+        // The row above becomes the parent; the task is appended as its
+        // last child (standard outliner indent).
+        await this.moveTask(task.id, above.id, false, false);
+    }
+
+    async outdentTask(task, ev) {
+        ev.stopPropagation();
+        if (!this.canOutdent(task)) {
+            return;
+        }
+        const parent = this.taskById.get(task.parent_id);
+        // One level up: same parent as the current parent, inserted
+        // directly after it.
+        await this.moveTask(task.id, parent?.parent_id || false, false, task.parent_id);
+    }
 
     async moveTask(taskId, parentId, beforeId, afterId) {
         try {
@@ -1030,12 +1057,11 @@ export class PlannerWorkspace extends Component {
         }
     }
 
-    // ---- WBS drag-and-drop reordering and indent --------------------------
+    // ---- WBS drag-and-drop reordering -------------------------------------
 
     onWbsDragStart(task, ev) {
         ev.stopPropagation();
         this.state.wbsDragTaskId = task.id;
-        this._wbsDragStartX = ev.clientX;
         ev.dataTransfer.effectAllowed = "move";
         ev.dataTransfer.setData("text/plain", String(task.id));
     }
@@ -1049,35 +1075,7 @@ export class PlannerWorkspace extends Component {
         // Top half of the row → insert before it; bottom half → after it.
         const rect = ev.currentTarget.getBoundingClientRect();
         const before = ev.clientY < rect.top + rect.height / 2;
-        const dropIndex = before ? index : index + 1;
-        this.state.wbsDropIndex = dropIndex;
-        this._updateWbsDropLevel(dropIndex, ev, task);
-    }
-
-    // The horizontal drag offset picks the target WBS level: each
-    // indent-width step right/left moves one level deeper/shallower. The
-    // level is clamped between 1 and "child of the row above the slot" —
-    // deeper than that is not a valid position in a tree list.
-    _updateWbsDropLevel(dropIndex, ev, task) {
-        const rows = this.visibleTasks;
-        const dragged = this.taskById.get(this.state.wbsDragTaskId);
-        const above = dropIndex > 0 ? rows[dropIndex - 1] : null;
-        const maxLevel = above ? above.wbs_level + 1 : 1;
-        const steps = Math.round((ev.clientX - (this._wbsDragStartX || ev.clientX)) / WBS_INDENT_PX);
-        this.state.wbsDropLevel = Math.max(
-            1,
-            Math.min(maxLevel, (dragged ? dragged.wbs_level : 1) + steps),
-        );
-        // Name-column origin for the level guide: the hovered row's name
-        // offset minus its own indentation gives the level-1 position.
-        const nameEl = ev.currentTarget.querySelector(".o_cp_planner_task_name");
-        if (nameEl) {
-            this.state.wbsDropX = nameEl.offsetLeft - (task.wbs_level - 1) * WBS_INDENT_PX;
-        }
-    }
-
-    get wbsDropMarkerX() {
-        return this.state.wbsDropX + ((this.state.wbsDropLevel || 1) - 1) * WBS_INDENT_PX;
+        this.state.wbsDropIndex = before ? index : index + 1;
     }
 
     async onWbsDrop(ev) {
@@ -1085,8 +1083,8 @@ export class PlannerWorkspace extends Component {
         const taskId = this.state.wbsDragTaskId;
         const rows = this.visibleTasks;
         const index = this.state.wbsDropIndex;
-        const desired = this.state.wbsDropLevel;
-        this._resetWbsDrag();
+        this.state.wbsDragTaskId = null;
+        this.state.wbsDropIndex = null;
         if (!taskId || index == null) {
             return;
         }
@@ -1095,48 +1093,26 @@ export class PlannerWorkspace extends Component {
         if (index === ownIndex || index === ownIndex + 1) {
             return;
         }
-        const above = index > 0 ? rows[index - 1] : null;
-        const below = index < rows.length ? rows[index] : null;
-        if (above && above.id === taskId) {
-            return; // cannot be positioned relative to itself
-        }
         let parentId = false;
         let beforeId = false;
         let afterId = false;
-        if (!above) {
-            // Slot at the very top → top level, before the first row.
-            beforeId = below.id;
-        } else if (desired === above.wbs_level + 1) {
-            // One level deeper than the row above → its child. When the
-            // row below is already a child of it this lands as first
-            // child, otherwise as its last child.
-            parentId = above.id;
-            if (below && below.parent_id === above.id) {
-                beforeId = below.id;
-            }
+        if (index < rows.length) {
+            // Insert before this row — adopting its parent (between a
+            // parent row and its first child this lands as first child).
+            const target = rows[index];
+            parentId = target.parent_id;
+            beforeId = target.id;
         } else {
-            // Same level or shallower: land right after the ancestor of
-            // the row above that sits at the desired level.
-            let anchor = above;
-            while (anchor && anchor.wbs_level > desired) {
-                anchor = this.taskById.get(anchor.parent_id);
-            }
-            if (anchor) {
-                parentId = anchor.parent_id || false;
-                afterId = anchor.id;
-            }
+            const last = rows[rows.length - 1];
+            parentId = last.parent_id;
+            afterId = last.id;
         }
         await this.moveTask(taskId, parentId, beforeId, afterId);
     }
 
     onWbsDragEnd() {
-        this._resetWbsDrag();
-    }
-
-    _resetWbsDrag() {
         this.state.wbsDragTaskId = null;
         this.state.wbsDropIndex = null;
-        this.state.wbsDropLevel = null;
     }
 
     // Execution info rendered right after the bar. Which values appear is
