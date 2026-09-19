@@ -502,6 +502,18 @@ class ProjectTaskPlanner(models.Model):
         # fractional-day durations (e.g. 20 h over a 3-day window) survive.
         if "allocated_hours" in values:
             vals["allocated_hours"] = max(float(values["allocated_hours"] or 0.0), 0.0)
+            # BRD Auto-Scheduling: a duration-only edit (no explicit finish
+            # in the same write) stretches the plan from the finish side —
+            # the write hook then reschedules violating successors.
+            if (
+                self.date_assign and self.date_deadline
+                and "date_stop" not in values and "dt_stop" not in values
+            ):
+                delta_hours = vals["allocated_hours"] - (self.allocated_hours or 0.0)
+                if delta_hours:
+                    vals["date_deadline"] = self.date_deadline + timedelta(
+                        hours=delta_hours
+                    )
         if "progress" in values:
             vals["progress"] = min(max(values["progress"] or 0.0, 0.0), 100.0) / 100.0
         if "stage_id" in values:
@@ -554,7 +566,7 @@ class ProjectTaskPlanner(models.Model):
         # task write is not involved, so the scheduling check and the
         # recalculation are triggered explicitly.
         if self.project_id:
-            self.project_id._schedule_dependents(self, include_changed=True)
+            self.project_id._schedule_dependents(self)
             self.project_id._recalculate_critical_paths()
         return True
 

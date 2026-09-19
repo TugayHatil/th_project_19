@@ -1095,19 +1095,37 @@ export class PlannerWorkspace extends Component {
                 savedId = ids[0];
                 this.state.draftParentId = null;
             }
+            // Unchanged date+time fields stay out of the write — a
+            // duration-only edit must reach the server without an explicit
+            // finish so it can stretch date_deadline and reschedule the
+            // successor chain (BRD Auto-Scheduling).
+            const inspector = this.state.inspector || {};
+            const isDraft = Boolean(this.state.draftParentId);
+            const startChanged = isDraft
+                || (form.date_start || "") !== (inspector.date_start || "")
+                || (form.time_start || "09:00")
+                    !== ((inspector.dt_start || "").slice(11, 16) || "09:00");
+            const stopChanged = isDraft
+                || (form.date_stop || "") !== (inspector.date_stop || "")
+                || (form.time_stop || "18:00")
+                    !== ((inspector.dt_stop || "").slice(11, 16) || "18:00");
             await this.orm.call("project.task", "update_planner_task", [savedId], {
                 values: {
                     name: name,
-                    date_start: form.date_start || false,
-                    date_stop: form.date_stop || false,
-                    // Time-of-day inputs — written with dt precision so the
-                    // day-scale timeline shows the exact clock times.
-                    dt_start: form.date_start
-                        ? `${form.date_start} ${form.time_start || "09:00"}`
-                        : false,
-                    dt_stop: form.date_stop
-                        ? `${form.date_stop} ${form.time_stop || "18:00"}`
-                        : false,
+                    ...(startChanged ? {
+                        date_start: form.date_start || false,
+                        dt_start: form.date_start
+                            ? `${form.date_start} ${form.time_start || "09:00"}`
+                            : false,
+                    } : {}),
+                    ...(stopChanged ? {
+                        date_stop: form.date_stop || false,
+                        // Time-of-day input — written with dt precision so
+                        // the day-scale timeline shows the exact clock time.
+                        dt_stop: form.date_stop
+                            ? `${form.date_stop} ${form.time_stop || "18:00"}`
+                            : false,
+                    } : {}),
                     duration_days: form.duration_days,
                     allocated_hours: form.allocated_hours,
                     progress: form.progress || 0,

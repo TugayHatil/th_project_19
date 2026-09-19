@@ -1,14 +1,11 @@
 # -*- coding: utf-8 -*-
 
 import json
-import math
 from collections import defaultdict, deque
-from datetime import date
+from datetime import timedelta
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
-
-from .project_planner import _local_day_to_utc, _planner_hours_per_day
 
 
 class ProjectProject(models.Model):
@@ -595,35 +592,38 @@ class ProjectProject(models.Model):
             },
         }
 
-    def _schedule_dependents(self, changed_tasks, include_changed=False):
-        """Push successors forward when a dependency bound is violated.
+    def _schedule_dependents(self, changed_tasks):
+        """Push tasks forward when a dependency bound is violated.
 
-        BRD Dependency-Based Auto-Shift: after a task's dates change,
-        every downstream task is checked in topological order — so each
-        predecessor is final before its successors are evaluated. An edge
-        contributes a minimum start or finish day per its type and lag
-        (lag converted to days through the project working calendar):
+        BRD Dependency-Based Auto Scheduling: bounds are evaluated at
+        datetime precision — the Planner's day scale edits real clock
+        times, and a 24h-style chain like A 09:00–17:00 → B 17:00–… must
+        shift by exact hours, not whole days:
 
-        * FS → successor starts ≥ predecessor finish + 1 day + lag
+        * FS → successor starts ≥ predecessor finish + lag
         * SS → successor starts ≥ predecessor start + lag
         * FF → successor finishes ≥ predecessor finish + lag
         * SF → successor finishes ≥ predecessor start + lag
 
-        A task whose plan already honours every bound is left alone;
-        a violating task is shifted forward by exactly the tightest
-        bound, keeping its day span. Shifts write with
-        ``cp_skip_auto_schedule`` so the cascade runs in this single
-        pass instead of re-entering through ``write``.
+        The changed tasks themselves are validated against their own
+        predecessors — a task dragged before its earliest valid start is
+        pushed back to it — and every downstream task is checked in
+        topological order so each predecessor is final (possibly already
+        shifted) before its successors are evaluated. A task whose plan
+        already honours every bound is left alone; a violating task is
+        shifted forward by exactly the tightest bound, keeping its
+        start→finish span. Shifts write with ``cp_skip_auto_schedule`` so
+        the cascade runs in this single pass instead of re-entering
+        through ``write``.
         """
         self.ensure_one()
         graph = self._get_task_dependency_graph()
         task_by_id = graph["task_by_id"]
         successors = graph["successors"]
 
-        # Every task downstream of a changed task is a candidate — plus
-        # the changed tasks themselves when the edge rule (not the date)
-        # is what changed, e.g. a lag/type edit via the arrow editor.
-        affected = set(changed_tasks.ids) if include_changed else set()
+        # The check set is the changed tasks plus everything downstream —
+        # BFS over the successor map.
+        check = set(changed_tasks.ids)
         queue = deque(
             successor_id
             for task in changed_tasks
@@ -631,69 +631,61 @@ class ProjectProject(models.Model):
         )
         while queue:
             task_id = queue.popleft()
-            if task_id in affected:
+            if task_id in check:
                 continue
-            affected.add(task_id)
+            check.add(task_id)
             queue.extend(successors.get(task_id, {}))
-        if not affected:
+        if not check:
             return
 
-        def day_ordinals(task):
-            """Local (start, end) day ordinals of a task, or None."""
-            if not task.date_assign or not task.date_deadline:
-                return None
-            start = fields.Datetime.context_timestamp(task, task.date_assign).date()
-            stop = fields.Datetime.context_timestamp(task, task.date_deadline).date()
-            return (start.toordinal(), stop.toordinal())
+        # Effective (start, stop) per task — shifted values feed the bounds
+        # of downstream tasks so the whole chain resolves in one pass.
+        effective = {}
 
-        hours_per_day = _planner_hours_per_day(self) or 8.0
-        shifts = []
+        def times(task):
+            if task.id in effective:
+                return effective[task.id]
+            if not task.date_assign or not task.date_deadline:
+                return None  # unscheduled tasks give/receive no bound
+            return (task.date_assign, task.date_deadline)
+
+        shifted = []
         for task_id in graph["ordered_ids"]:
-            if task_id not in affected:
+            if task_id not in check:
                 continue
             task = task_by_id[task_id]
-            days = day_ordinals(task)
-            if not days:
-                continue  # unscheduled tasks have nothing to violate
-            start_day, end_day = days
-            span = end_day - start_day
-            required_start = start_day  # bounds only push forward
+            current = times(task)
+            if not current:
+                continue
+            start, stop = current
+            span = stop - start
+            required_start = start  # bounds only ever push forward
             for dependency_id, edge in graph["predecessors"][task_id].items():
-                pred_days = day_ordinals(task_by_id[dependency_id])
-                if not pred_days:
-                    continue  # an unscheduled predecessor gives no bound
-                pred_start, pred_end = pred_days
-                lag_days = edge["lag"] / hours_per_day
+                pred = times(task_by_id[dependency_id])
+                if not pred:
+                    continue
+                pred_start, pred_stop = pred
+                lag = timedelta(hours=edge["lag"])
                 relation = edge["type"]
                 if relation == "ss":
-                    bound_start = pred_start + math.ceil(lag_days - 1e-9)
+                    bound = pred_start + lag
                 elif relation == "ff":
-                    bound_start = pred_end + math.ceil(lag_days - 1e-9) - span
+                    bound = pred_stop + lag - span
                 elif relation == "sf":
-                    bound_start = pred_start + math.ceil(lag_days - 1e-9) - span
+                    bound = pred_start + lag - span
                 else:  # fs
-                    bound_start = pred_end + 1 + math.floor(lag_days)
-                required_start = max(required_start, bound_start)
-            if required_start > start_day:
-                shifts.append((task, required_start, required_start + span))
+                    bound = pred_stop + lag
+                if bound > required_start:
+                    required_start = bound
+            if required_start > start:
+                effective[task.id] = (required_start, required_start + span)
+                shifted.append(task)
 
-        if not shifts:
+        if not shifted:
             return
-        for task, start_ord, end_ord in shifts:
+        for task in shifted:
+            start, stop = effective[task.id]
             task.with_context(cp_skip_auto_schedule=True).write(
-                {
-                    "date_assign": _local_day_to_utc(
-                        task,
-                        date.fromordinal(start_ord).isoformat(),
-                        task.date_assign,
-                        9,
-                    ),
-                    "date_deadline": _local_day_to_utc(
-                        task,
-                        date.fromordinal(end_ord).isoformat(),
-                        task.date_deadline,
-                        18,
-                    ),
-                }
+                {"date_assign": start, "date_deadline": stop}
             )
         self._recalculate_critical_paths()

@@ -471,16 +471,18 @@ class TestCriticalPath(TransactionCase):
         })
 
         # Push A's finish past B's start → B and C chain-shift, D untouched.
+        # Bounds are hour-precise: B starts exactly at A's new finish and
+        # keeps its 33h wall span; C follows B's shifted finish.
         task_a.write({"date_deadline": "2026-09-18 18:00:00"})
-        self.assertEqual(str(task_b.date_assign)[:10], "2026-09-19")
-        self.assertEqual(str(task_b.date_deadline)[:10], "2026-09-20")
-        self.assertEqual(str(task_c.date_assign)[:10], "2026-09-21")
+        self.assertEqual(str(task_b.date_assign)[:16], "2026-09-18 18:00")
+        self.assertEqual(str(task_b.date_deadline)[:16], "2026-09-20 03:00")
+        self.assertEqual(str(task_c.date_assign)[:16], "2026-09-20 03:00")
         self.assertEqual(str(task_d.date_assign)[:10], "2026-09-16")
 
         # Pulling A earlier violates nothing → successors stay put.
         task_a.write({"date_deadline": "2026-09-15 18:00:00"})
-        self.assertEqual(str(task_b.date_assign)[:10], "2026-09-19")
-        self.assertEqual(str(task_c.date_assign)[:10], "2026-09-21")
+        self.assertEqual(str(task_b.date_assign)[:16], "2026-09-18 18:00")
+        self.assertEqual(str(task_c.date_assign)[:16], "2026-09-20 03:00")
 
     def test_auto_shift_from_dependency_edit(self):
         """Raising the lag on an edge re-checks the successor itself."""
@@ -494,10 +496,57 @@ class TestCriticalPath(TransactionCase):
             "date_assign": "2026-09-16 09:00:00", "date_deadline": "2026-09-17 18:00:00",
             "depend_on_ids": [(4, task_a.id)],
         })
-        # FS +2d → earliest B start = Sep15 + 1 + 2 = Sep18 → B shifts.
+        # FS +2d → 16 working hours of lag → earliest B start = Sep15 18:00
+        # + 16h = Sep16 10:00 → B shifts by one hour, keeping its 33h span.
         task_b.update_planner_dependency(task_a.id, "fs", 2, "days")
-        self.assertEqual(str(task_b.date_assign)[:10], "2026-09-18")
-        self.assertEqual(str(task_b.date_deadline)[:10], "2026-09-19")
+        self.assertEqual(str(task_b.date_assign)[:16], "2026-09-16 10:00")
+        self.assertEqual(str(task_b.date_deadline)[:16], "2026-09-17 19:00")
+
+    def test_hourly_fs_chain_auto_schedules(self):
+        """BRD Auto-Scheduling scenario — a 24h-style FS chain shifts by
+        exact hours, cascades downstream, and rejects backward violations."""
+        project = self.env["project.project"].create({"name": "Hourly schedule"})
+        task_a = self.env["project.task"].create({
+            "name": "A", "project_id": project.id, "allocated_hours": 8,
+            "date_assign": "2026-09-22 09:00:00", "date_deadline": "2026-09-22 17:00:00",
+        })
+        task_b = self.env["project.task"].create({
+            "name": "B", "project_id": project.id, "allocated_hours": 8,
+            "date_assign": "2026-09-22 17:00:00", "date_deadline": "2026-09-23 01:00:00",
+            "depend_on_ids": [(4, task_a.id)],
+        })
+        task_c = self.env["project.task"].create({
+            "name": "C", "project_id": project.id, "allocated_hours": 8,
+            "date_assign": "2026-09-23 01:00:00", "date_deadline": "2026-09-23 09:00:00",
+            "depend_on_ids": [(4, task_b.id)],
+        })
+
+        # Step 1: move A two hours forward → B and C shift by exactly 2h.
+        task_a.write({
+            "date_assign": "2026-09-22 11:00:00",
+            "date_deadline": "2026-09-22 19:00:00",
+        })
+        self.assertEqual(str(task_b.date_assign)[:16], "2026-09-22 19:00")
+        self.assertEqual(str(task_b.date_deadline)[:16], "2026-09-23 03:00")
+        self.assertEqual(str(task_c.date_assign)[:16], "2026-09-23 03:00")
+        self.assertEqual(str(task_c.date_deadline)[:16], "2026-09-23 11:00")
+
+        # Step 2: duration 8h → 12h stretches A's finish by 4h → cascade.
+        task_a.update_planner_task({"allocated_hours": 12})
+        self.assertEqual(str(task_a.date_deadline)[:16], "2026-09-22 23:00")
+        self.assertEqual(str(task_b.date_assign)[:16], "2026-09-22 23:00")
+        self.assertEqual(str(task_b.date_deadline)[:16], "2026-09-23 07:00")
+        self.assertEqual(str(task_c.date_assign)[:16], "2026-09-23 07:00")
+        self.assertEqual(str(task_c.date_deadline)[:16], "2026-09-23 15:00")
+
+        # Step 3: dragging B before A's finish snaps it back to the
+        # earliest valid start — the violation cannot persist.
+        task_b.write({
+            "date_assign": "2026-09-22 20:00:00",
+            "date_deadline": "2026-09-23 04:00:00",
+        })
+        self.assertEqual(str(task_b.date_assign)[:16], "2026-09-22 23:00")
+        self.assertEqual(str(task_b.date_deadline)[:16], "2026-09-23 07:00")
 
     def test_day_scale_hourly_drag_writes_dt_precision(self):
         """Day-scale bar drags persist hour precision: dt_start/dt_stop land
