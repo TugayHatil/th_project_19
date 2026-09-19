@@ -237,6 +237,13 @@ export class PlannerWorkspace extends Component {
                 }
                 this._leftExtendPx = 0;
             }
+            if (this._pendingScrollPx != null) {
+                const el = this.ganttScrollRef.el;
+                if (el) {
+                    el.scrollLeft = Math.max(this._pendingScrollPx - 40, 0);
+                }
+                this._pendingScrollPx = null;
+            }
         });
         onMounted(async () => {
             try {
@@ -831,7 +838,14 @@ export class PlannerWorkspace extends Component {
         if (this.state.scale === "day") {
             px += ((date.getHours() + date.getMinutes() / 60) / 24) * this.state.pxPerDay;
         }
-        el.scrollLeft = Math.max(px - 40, 0);
+        const target = Math.max(px - 40, 0);
+        el.scrollLeft = target;
+        // The timeline widens asynchronously (state → patch). If the
+        // target is beyond the current scrollable area the set above is
+        // clamped — retry it once the patch has applied the new width.
+        if (target > el.scrollWidth - el.clientWidth) {
+            this._pendingScrollPx = px;
+        }
     }
 
     // Grow the buffered range until it covers the given date — used by
