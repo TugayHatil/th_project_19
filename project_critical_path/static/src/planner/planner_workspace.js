@@ -1111,7 +1111,6 @@ export class PlannerWorkspace extends Component {
             // finish so it can stretch date_deadline and reschedule the
             // successor chain (BRD Auto-Scheduling).
             const inspector = this.state.inspector || {};
-            const isDraft = Boolean(this.state.draftParentId);
             const startChanged = isDraft
                 || (form.date_start || "") !== (inspector.date_start || "")
                 || (form.time_start || "09:00")
