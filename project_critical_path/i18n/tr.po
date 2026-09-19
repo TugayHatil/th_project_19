@@ -1797,3 +1797,7 @@ msgstr "Bağımlılık artık mevcut değil."
 #. module: project_critical_path
 msgid "The dependency could not be saved."
 msgstr "Bağımlılık kaydedilemedi."
+
+#. module: project_critical_path
+msgid "You do not have permission to edit tasks in this project."
+msgstr "Bu projedeki görevleri düzenleme yetkiniz yok."

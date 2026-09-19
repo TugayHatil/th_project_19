@@ -157,6 +157,10 @@ export class PlannerWorkspace extends Component {
             // Toolbar task search — the submitted text becomes a simple
             // name/wbs_code ilike domain sent with get_planner_data
             searchDomain: [],
+            // Write access on project.task — checked once on mount; when
+            // false, bar drags are blocked up-front with a warning instead
+            // of silently reverting after a failed RPC.
+            canEdit: true,
             // Resource Planning workspace modal (BRD-21)
             resModalOpen: false,
             resTask: null,
@@ -225,6 +229,13 @@ export class PlannerWorkspace extends Component {
             }
         });
         onMounted(async () => {
+            try {
+                this.state.canEdit = await this.orm.call(
+                    "project.task", "check_access_rights", ["write", false],
+                );
+            } catch {
+                this.state.canEdit = true;
+            }
             try {
                 const info = await this.orm.call("project.project", "get_planner_projects", []);
                 this.state.projects = info.projects || [];
@@ -1344,6 +1355,13 @@ export class PlannerWorkspace extends Component {
 
     onBarPointerDown(task, mode, ev) {
         if (!task.date_start || !task.date_stop || task.is_done || ev.button !== 0) {
+            return;
+        }
+        if (this.state.canEdit === false) {
+            this.notification.add(
+                _t("You do not have permission to edit tasks in this project."),
+                { type: "warning" },
+            );
             return;
         }
         ev.preventDefault();

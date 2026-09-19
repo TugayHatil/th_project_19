@@ -1049,3 +1049,7 @@ msgstr "Die Abhängigkeit existiert nicht mehr."
 #. module: project_critical_path
 msgid "The dependency could not be saved."
 msgstr "Die Abhängigkeit konnte nicht gespeichert werden."
+
+#. module: project_critical_path
+msgid "You do not have permission to edit tasks in this project."
+msgstr "Sie haben keine Berechtigung, Aufgaben in diesem Projekt zu bearbeiten."
