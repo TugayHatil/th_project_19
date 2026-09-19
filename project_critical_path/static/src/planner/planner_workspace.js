@@ -416,7 +416,7 @@ export class PlannerWorkspace extends Component {
         return dayDiff(range.start, today) * this.state.pxPerDay;
     }
 
-    spanGeometry(startStr, stopStr) {
+    spanGeometry(startStr, stopStr, dtStart, dtStop) {
         if (!startStr || !stopStr) {
             return false;
         }
@@ -430,13 +430,22 @@ export class PlannerWorkspace extends Component {
         }
         const ppd = this.state.pxPerDay;
         if (this.state.scale === "day") {
-            // Stored timestamps use the 09:00–18:00 convention, matching how
-            // the resource timelines position bars on their day scale.
-            const startFrac = start < range.start ? 0 : 9 / 24;
-            const stopFrac = stop >= range.end ? 1 : 18 / 24;
+            // Hour precision on the day scale: real stored times when the
+            // payload carries them, otherwise the 09:00–18:00 convention
+            // (matching how the resource timelines position day bars).
+            const dayStartMs = range.start.getTime();
+            const dayEndMs = range.end.getTime();
+            const startMs = dtStart
+                ? parseDt(dtStart).getTime()
+                : start < range.start ? dayStartMs : dayStartMs + 9 * 3600000;
+            const stopMs = dtStop
+                ? parseDt(dtStop).getTime()
+                : stop >= range.end ? dayEndMs : dayStartMs + 18 * 3600000;
+            const leftMs = Math.min(Math.max(startMs, dayStartMs), dayEndMs);
+            const rightMs = Math.min(Math.max(stopMs, leftMs), dayEndMs);
             return {
-                left: startFrac * ppd,
-                width: Math.max((stopFrac - startFrac) * ppd, 1),
+                left: ((leftMs - dayStartMs) / DAY_MS) * ppd,
+                width: Math.max(((rightMs - leftMs) / DAY_MS) * ppd, 1),
             };
         }
         return {
@@ -543,7 +552,13 @@ export class PlannerWorkspace extends Component {
 
     barGeometry(task) {
         const dates = this.currentDates(task);
-        return this.spanGeometry(dates.start, dates.stop);
+        const drag = this.state.drag;
+        const dragging = drag && drag.taskId === task.id;
+        return this.spanGeometry(
+            dates.start, dates.stop,
+            dragging ? drag.dtStart : task.dt_start,
+            dragging ? drag.dtStop : task.dt_stop,
+        );
     }
 
     baselineStyle(task) {
@@ -1329,8 +1344,44 @@ export class PlannerWorkspace extends Component {
             return; // click threshold — avoids accidental micro-drags
         }
         dragging.moved = true;
-        const delta = Math.round(dx / this.state.pxPerDay);
         const task = dragging.task;
+        const rowIdx = this.visibleTasks.findIndex((row) => row.id === task.id);
+        if (this.state.scale === "day") {
+            // Day scale drags at hour precision — one column = one hour.
+            const deltaH = Math.round(dx / (this.state.pxPerDay / 24));
+            const baseStart = task.dt_start
+                ? parseDt(task.dt_start)
+                : new Date(parseDay(task.date_start).getTime() + 9 * 3600000);
+            const baseStop = task.dt_stop
+                ? parseDt(task.dt_stop)
+                : new Date(parseDay(task.date_stop).getTime() + 18 * 3600000);
+            let startDt = baseStart;
+            let stopDt = baseStop;
+            if (dragging.mode === "move") {
+                startDt = new Date(baseStart.getTime() + deltaH * 3600000);
+                stopDt = new Date(baseStop.getTime() + deltaH * 3600000);
+            } else if (dragging.mode === "left") {
+                startDt = new Date(baseStart.getTime() + deltaH * 3600000);
+                if (startDt >= stopDt) {
+                    startDt = new Date(stopDt.getTime() - 3600000);
+                }
+            } else {
+                stopDt = new Date(baseStop.getTime() + deltaH * 3600000);
+                if (stopDt <= startDt) {
+                    stopDt = new Date(startDt.getTime() + 3600000);
+                }
+            }
+            this.state.drag = {
+                taskId: task.id,
+                rowIdx,
+                start: isoDay(startDt),
+                stop: isoDay(stopDt),
+                dtStart: fmtDt(startDt),
+                dtStop: fmtDt(stopDt),
+            };
+            return;
+        }
+        const delta = Math.round(dx / this.state.pxPerDay);
         let start = parseDay(task.date_start);
         let stop = parseDay(task.date_stop);
         if (dragging.mode === "move") {
@@ -1347,7 +1398,6 @@ export class PlannerWorkspace extends Component {
                 stop = start;
             }
         }
-        const rowIdx = this.visibleTasks.findIndex((row) => row.id === task.id);
         this.state.drag = {
             taskId: task.id,
             rowIdx,
@@ -1370,18 +1420,21 @@ export class PlannerWorkspace extends Component {
         setTimeout(() => {
             this.suppressClick = false;
         }, 0);
-        this.persistTaskDates(dragging.task, drag.start, drag.stop);
+        this.persistTaskDates(dragging.task, drag);
     }
 
-    async persistTaskDates(task, start, stop) {
+    async persistTaskDates(task, drag) {
+        // Hour-precision drags (day scale) persist dt_start/dt_stop; other
+        // scales keep the day-string + duration_days path unchanged.
+        const values = drag.dtStart && drag.dtStop
+            ? { dt_start: drag.dtStart, dt_stop: drag.dtStop }
+            : {
+                date_start: drag.start,
+                date_stop: drag.stop,
+                duration_days: dayDiff(parseDay(drag.start), parseDay(drag.stop)) + 1,
+            };
         try {
-            await this.orm.call("project.task", "update_planner_task", [task.id], {
-                values: {
-                    date_start: start,
-                    date_stop: stop,
-                    duration_days: dayDiff(parseDay(start), parseDay(stop)) + 1,
-                },
-            });
+            await this.orm.call("project.task", "update_planner_task", [task.id], { values });
         } catch (error) {
             this.notification.add(
                 error.data?.message || _t("The task dates could not be saved."), { type: "danger" },
@@ -2591,12 +2644,22 @@ export class PlannerWorkspace extends Component {
         if (!drag) {
             return false;
         }
-        const bar = this.spanGeometry(drag.start, drag.stop);
-        const start = parseDay(drag.start);
-        const stop = parseDay(drag.stop);
+        const bar = this.spanGeometry(drag.start, drag.stop, drag.dtStart, drag.dtStop);
+        if (!bar) {
+            return false;
+        }
+        let text;
+        if (this.state.scale === "day" && drag.dtStart && drag.dtStop) {
+            const fmt = getCalendarFormats().time;
+            text = `${fmt.format(parseDt(drag.dtStart))} – ${fmt.format(parseDt(drag.dtStop))}`;
+        } else {
+            const start = parseDay(drag.start);
+            const stop = parseDay(drag.stop);
+            text = `${dayLabel(start)} – ${dayLabel(stop)} · ${dayDiff(start, stop) + 1}d`;
+        }
         return {
             style: `left:${bar.left}px;top:${Math.max(drag.rowIdx * PLANNER_ROW_H - 22, 0)}px`,
-            text: `${dayLabel(start)} – ${dayLabel(stop)} · ${dayDiff(start, stop) + 1}d`,
+            text,
         };
     }
 

@@ -498,3 +498,30 @@ class TestCriticalPath(TransactionCase):
         task_b.update_planner_dependency(task_a.id, "fs", 2, "days")
         self.assertEqual(str(task_b.date_assign)[:10], "2026-09-18")
         self.assertEqual(str(task_b.date_deadline)[:10], "2026-09-19")
+
+    def test_day_scale_hourly_drag_writes_dt_precision(self):
+        """Day-scale bar drags persist hour precision: dt_start/dt_stop land
+        on the given clock times and allocated_hours follows the real span
+        for same-day bars, day-span convention for multi-day bars."""
+        project = self.env["project.project"].create({"name": "Hourly drag"})
+        task = self.env["project.task"].create({
+            "name": "T", "project_id": project.id, "allocated_hours": 8,
+            "date_assign": "2026-09-15 09:00:00", "date_deadline": "2026-09-15 18:00:00",
+        })
+        task.update_planner_task({
+            "dt_start": "2026-09-15 10:00", "dt_stop": "2026-09-15 14:00",
+        })
+        self.assertEqual(str(task.date_assign)[11:16], "10:00")
+        self.assertEqual(str(task.date_deadline)[11:16], "14:00")
+        self.assertAlmostEqual(task.allocated_hours, 4.0, places=2)
+
+        # A multi-day bar keeps the day-span * hours-per-day convention.
+        task.update_planner_task({
+            "dt_start": "2026-09-15 14:00", "dt_stop": "2026-09-17 11:00",
+        })
+        from odoo.addons.project_critical_path.models.project_planner import (
+            _planner_hours_per_day,
+        )
+        self.assertAlmostEqual(
+            task.allocated_hours, 3 * _planner_hours_per_day(task), places=2,
+        )

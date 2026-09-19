@@ -127,6 +127,10 @@ class ProjectProjectPlanner(models.Model):
                     "has_children": bool(task.child_ids),
                     "date_start": _serialize_planner_day(self, task.date_assign),
                     "date_stop": _serialize_planner_day(self, task.date_deadline),
+                    # Localized datetimes — the day-scale timeline positions
+                    # and drags bars at hour precision.
+                    "dt_start": _serialize_planner_dt(self, task.date_assign),
+                    "dt_stop": _serialize_planner_dt(self, task.date_deadline),
                     "progress": task.progress or 0.0,
                     "allocated_hours": task.allocated_hours or 0.0,
                     "effective_hours": getattr(task, "effective_hours", 0.0) or 0.0,
@@ -454,6 +458,26 @@ class ProjectTaskPlanner(models.Model):
             vals["date_assign"] = _local_day_to_utc(self, values["date_start"], self.date_assign, 9)
         if "date_stop" in values:
             vals["date_deadline"] = _local_day_to_utc(self, values["date_stop"], self.date_deadline, 18)
+        # Hour-precision variant used by day-scale timeline drags —
+        # "YYYY-MM-DD HH:MM" local strings.
+        if "dt_start" in values:
+            vals["date_assign"] = _local_dt_to_utc(self, values["dt_start"], self.date_assign, 9)
+        if "dt_stop" in values:
+            vals["date_deadline"] = _local_dt_to_utc(self, values["dt_stop"], self.date_deadline, 18)
+        # Planned hours for dt writes: a same-day bar is its real hour span,
+        # a multi-day bar keeps the day-span * hours-per-day convention.
+        if values.get("dt_start") and values.get("dt_stop") and "allocated_hours" not in values:
+            dt_start = datetime.strptime(values["dt_start"].strip()[:16], "%Y-%m-%d %H:%M")
+            dt_stop = datetime.strptime(values["dt_stop"].strip()[:16], "%Y-%m-%d %H:%M")
+            if dt_start.date() == dt_stop.date():
+                vals["allocated_hours"] = max(
+                    (dt_stop - dt_start).total_seconds() / 3600.0, 0.0
+                )
+            else:
+                span_days = (dt_stop.date() - dt_start.date()).days + 1
+                vals["allocated_hours"] = max(
+                    span_days, 0.0
+                ) * _planner_hours_per_day(self)
         # Keep allocated_hours (the duration used by critical-path, delay-impact
         # and baseline comparisons) in sync when the inspector duration changes.
         # ``duration_days`` is inclusive — a bar covering N day cells is an
