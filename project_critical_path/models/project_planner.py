@@ -400,6 +400,10 @@ class ProjectTaskPlanner(models.Model):
                 "critical_slack": self.critical_slack or 0.0,
                 "date_start": _serialize_planner_day(self, self.date_assign),
                 "date_stop": _serialize_planner_day(self, self.date_deadline),
+                # Localized datetimes — the Inspector time inputs and the
+                # day-scale timeline keep hour precision.
+                "dt_start": _serialize_planner_dt(self, self.date_assign),
+                "dt_stop": _serialize_planner_dt(self, self.date_deadline),
                 "allocated_hours": self.allocated_hours or 0.0,
                 "hours_per_day": _planner_hours_per_day(self),
                 "effective_hours": getattr(self, "effective_hours", 0.0) or 0.0,

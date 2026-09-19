@@ -262,12 +262,20 @@
                                     <input type="date" class="form-control form-control-sm"
                                            t-att-value="state.form?.date_start"
                                            t-on-change="onStartChange"/>
+                                    <input type="time" class="form-control form-control-sm"
+                                           style="width: 90px"
+                                           t-att-value="state.form?.time_start"
+                                           t-on-change="(ev) => state.form.time_start = ev.target.value"/>
                                 </div>
                                 <div class="d-flex align-items-center gap-2 mb-1">
                                     <label class="o_cp_planner_inspector_label">Finish</label>
                                     <input type="date" class="form-control form-control-sm"
                                            t-att-value="state.form?.date_stop"
                                            t-on-change="onStopChange"/>
+                                    <input type="time" class="form-control form-control-sm"
+                                           style="width: 90px"
+                                           t-att-value="state.form?.time_stop"
+                                           t-on-change="(ev) => state.form.time_stop = ev.target.value"/>
                                 </div>
                                 <div class="d-flex align-items-center gap-2 mb-1">
                                     <label class="o_cp_planner_inspector_label">Duration</label>

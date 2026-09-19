@@ -797,6 +797,10 @@ export class PlannerWorkspace extends Component {
                 name: t.name,
                 date_start: t.date_start || "",
                 date_stop: t.date_stop || "",
+                // HH:MM next to each date — saved with dt precision so the
+                // day-scale timeline and hour drags keep the exact times.
+                time_start: (t.dt_start || "").slice(11, 16) || "09:00",
+                time_stop: (t.dt_stop || "").slice(11, 16) || "18:00",
                 // duration_days counts inclusive days — a bar covering N day
                 // cells is an N-day task (BRD-25 keeps it synced to
                 // allocated_hours via hours_per_day).
@@ -1096,6 +1100,14 @@ export class PlannerWorkspace extends Component {
                     name: name,
                     date_start: form.date_start || false,
                     date_stop: form.date_stop || false,
+                    // Time-of-day inputs — written with dt precision so the
+                    // day-scale timeline shows the exact clock times.
+                    dt_start: form.date_start
+                        ? `${form.date_start} ${form.time_start || "09:00"}`
+                        : false,
+                    dt_stop: form.date_stop
+                        ? `${form.date_stop} ${form.time_stop || "18:00"}`
+                        : false,
                     duration_days: form.duration_days,
                     allocated_hours: form.allocated_hours,
                     progress: form.progress || 0,
@@ -1147,6 +1159,8 @@ export class PlannerWorkspace extends Component {
                 name: "",
                 date_start: start,
                 date_stop: stop,
+                time_start: (task.dt_start || "").slice(11, 16) || "09:00",
+                time_stop: (task.dt_stop || "").slice(11, 16) || "18:00",
                 duration_days: start && stop ? dayDiff(parseDay(start), parseDay(stop)) + 1 : 0,
                 allocated_hours: 0,
                 progress: 0,
