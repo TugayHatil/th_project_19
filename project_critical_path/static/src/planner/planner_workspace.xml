@@ -32,16 +32,27 @@
                     <span class="text-muted" t-esc="state.projectName"/>
                 </t>
                 <t t-if="!state.boardMode">
-                    <div class="btn-group ms-3">
+                    <div class="btn-group btn-group-sm ms-3">
+                        <button type="button" class="btn btn-outline-secondary"
+                                t-on-click="() => this.plannerNavigate(-1)">‹</button>
+                        <button type="button" class="btn btn-outline-secondary"
+                                t-on-click="goToday">Today</button>
+                        <button type="button" class="btn btn-outline-secondary"
+                                t-on-click="() => this.plannerNavigate(1)">›</button>
+                    </div>
+                    <input type="date" class="form-control form-control-sm ms-2"
+                           style="width: 140px"
+                           t-att-value="plannerPickerValue"
+                           t-on-change="onPlannerDatePick"/>
+                    <div class="btn-group btn-group-sm ms-2">
                         <t t-foreach="['day', 'week', 'month']" t-as="scale" t-key="scale">
                             <button type="button"
-                                    class="btn btn-sm"
+                                    class="btn"
                                     t-att-class="state.scale === scale ? 'btn-primary' : 'btn-outline-secondary'"
                                     t-on-click="() => this.setScale(scale)"
                                     t-esc="scales[scale].label"/>
                         </t>
                     </div>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" t-on-click="goToday">Today</button>
                     <button type="button" class="btn btn-sm"
                             t-att-class="state.historyOpen ? 'btn-primary' : 'btn-outline-secondary'"
                             t-on-click="toggleHistory">Baseline History</button>
@@ -130,14 +141,14 @@
                             <div class="o_cp_planner_gantt_header position-sticky top-0">
                                 <div class="o_cp_planner_gantt_groups d-flex">
                                     <div t-foreach="columnGroups" t-as="group" t-key="group_index"
-                                         class="o_cp_planner_gantt_group text-truncate"
+                                         class="o_cp_planner_gantt_group text-center text-truncate"
                                          t-att-style="'width:' + group.width + 'px'"
                                          t-esc="group.label"/>
                                 </div>
                                 <div class="o_cp_planner_gantt_cols d-flex">
                                     <div t-foreach="columns" t-as="col" t-key="col_index"
                                          class="o_cp_planner_gantt_col text-center text-truncate"
-                                         t-att-style="'width:' + (col.days * state.pxPerDay) + 'px'"
+                                         t-att-style="'width:' + col.width + 'px'"
                                          t-esc="col.label"/>
                                 </div>
                             </div>

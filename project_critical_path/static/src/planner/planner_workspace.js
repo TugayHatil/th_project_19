@@ -112,8 +112,9 @@ export class PlannerWorkspace extends Component {
             selectedId: null,
             scale: "week",
             pxPerDay: SCALES.week.pxPerDay,
-            rangeStart: new Date(),
-            rangeEnd: new Date(),
+            // Windowed timeline anchor — same day/week/month window model
+            // as the Resource Board and the assignment timeline.
+            anchor: null,
             // Quick Inspector panel
             inspectorOpen: false,
             // When set, the Inspector shows an unsaved subtask draft for
@@ -269,7 +270,14 @@ export class PlannerWorkspace extends Component {
         }
     }
 
+    // Picks the initial window anchor once per project load — today when it
+    // falls inside the task span, otherwise the first task's start, so the
+    // window never opens on an empty stretch. The anchor then only moves
+    // through the nav buttons / date picker / scale snaps.
     computeRange() {
+        if (this.state.anchor) {
+            return;
+        }
         const dates = [];
         for (const task of this.state.tasks) {
             if (task.date_start) {
@@ -281,36 +289,55 @@ export class PlannerWorkspace extends Component {
         }
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        if (!dates.length) {
-            this.state.rangeStart = addDays(today, -7);
-            this.state.rangeEnd = addDays(today, 21);
-            return;
-        }
-        let start = dates[0];
-        let end = dates[0];
-        for (const date of dates) {
-            if (date < start) {
-                start = date;
+        let anchor = today;
+        if (dates.length) {
+            let start = dates[0];
+            let end = dates[0];
+            for (const date of dates) {
+                if (date < start) {
+                    start = date;
+                }
+                if (date > end) {
+                    end = date;
+                }
             }
-            if (date > end) {
-                end = date;
+            if (today < start || today > end) {
+                anchor = start;
             }
         }
-        this.state.rangeStart = addDays(start, -3);
-        this.state.rangeEnd = addDays(end, 3);
+        this.state.anchor = this.snapAnchor(anchor);
     }
 
-    // Origin shared by columns, bars and the today marker so they stay aligned
-    // when the scale snaps column boundaries to week/month starts.
+    snapAnchor(date) {
+        const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        if (this.state.scale === "month") {
+            return startOfMonth(d);
+        }
+        if (this.state.scale === "week") {
+            return startOfWeek(d);
+        }
+        return d;
+    }
+
+    // Windowed range — same semantics as boardRange: one day with hourly
+    // columns, a Monday-based week, or a full calendar month.
+    get plannerRange() {
+        const anchor = this.state.anchor || new Date();
+        if (this.state.scale === "day") {
+            return { start: anchor, end: addDays(anchor, 1) };
+        }
+        if (this.state.scale === "month") {
+            const start = startOfMonth(anchor);
+            const end = startOfMonth(new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1));
+            return { start, end };
+        }
+        const start = startOfWeek(anchor);
+        return { start, end: addDays(start, 7) };
+    }
+
+    // Origin shared by columns, bars and the today marker so they stay aligned.
     get origin() {
-        const { rangeStart, scale } = this.state;
-        if (scale === "week") {
-            return startOfWeek(rangeStart);
-        }
-        if (scale === "month") {
-            return startOfMonth(rangeStart);
-        }
-        return rangeStart;
+        return this.plannerRange.start;
     }
 
     get taskById() {
@@ -335,47 +362,58 @@ export class PlannerWorkspace extends Component {
     }
 
     get columns() {
+        const range = this.plannerRange;
         const cols = [];
-        const { rangeEnd, scale } = this.state;
-        const origin = this.origin;
-        if (scale === "day") {
-            for (let day = origin; day <= rangeEnd; day = addDays(day, 1)) {
-                cols.push({ start: day, days: 1, label: pad2(day.getDate()), group: monthLabel(day) });
-            }
-        } else if (scale === "week") {
-            for (let day = origin; day <= rangeEnd; day = addDays(day, 7)) {
-                cols.push({ start: day, days: 7, label: dayLabel(day), group: monthLabel(day) });
+        if (this.state.scale === "day") {
+            for (let h = 0; h < 24; h++) {
+                cols.push({ label: pad2(h), width: this.state.pxPerDay / 24 });
             }
         } else {
-            for (let day = origin; day <= rangeEnd; day = new Date(day.getFullYear(), day.getMonth() + 1, 1)) {
-                const next = new Date(day.getFullYear(), day.getMonth() + 1, 1);
-                cols.push({ start: day, days: dayDiff(day, next), label: monthLabel(day), group: String(day.getFullYear()) });
+            const fmt = getCalendarFormats();
+            for (let t = range.start.getTime(); t < range.end.getTime(); t += DAY_MS) {
+                const d = new Date(t);
+                cols.push({
+                    label: this.state.scale === "month"
+                        ? pad2(d.getDate())
+                        : `${fmt.weekdayShort.format(d)} ${pad2(d.getDate())}`,
+                    width: this.state.pxPerDay,
+                });
             }
         }
         return cols;
     }
 
-    get columnGroups() {
-        const groups = [];
-        for (const col of this.columns) {
-            const last = groups[groups.length - 1];
-            if (last && last.label === col.group) {
-                last.width += col.days * this.state.pxPerDay;
-            } else {
-                groups.push({ label: col.group, width: col.days * this.state.pxPerDay });
-            }
+    get plannerCaption() {
+        const anchor = this.state.anchor || new Date();
+        if (this.state.scale === "month") {
+            return getCalendarFormats().monthYear.format(anchor);
         }
-        return groups;
+        if (this.state.scale === "week") {
+            return `${getCalendarFormats().monthYear.format(startOfWeek(anchor))} · ${_t("Week")} ${isoWeek(anchor)}`;
+        }
+        return getCalendarFormats().dayCaption.format(anchor);
+    }
+
+    get columnGroups() {
+        return [{ label: this.plannerCaption, width: this.timelineWidth }];
     }
 
     get timelineWidth() {
-        return Math.max(dayDiff(this.origin, this.state.rangeEnd) * this.state.pxPerDay, 1);
+        return Math.max(dayDiff(this.origin, this.plannerRange.end) * this.state.pxPerDay, 1);
     }
 
     get todayLeft() {
+        const range = this.plannerRange;
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        return dayDiff(this.origin, today) * this.state.pxPerDay;
+        if (today < range.start || today >= range.end) {
+            return -9999;
+        }
+        if (this.state.scale === "day") {
+            const now = new Date();
+            return ((now.getHours() + now.getMinutes() / 60) / 24) * this.state.pxPerDay;
+        }
+        return dayDiff(range.start, today) * this.state.pxPerDay;
     }
 
     spanGeometry(startStr, stopStr) {
@@ -384,9 +422,26 @@ export class PlannerWorkspace extends Component {
         }
         const start = parseDay(startStr);
         const stop = parseDay(stopStr);
+        const range = this.plannerRange;
+        // Windowed view — bars fully outside the visible window are skipped
+        // instead of being rendered at off-screen coordinates.
+        if (stop < range.start || start >= range.end) {
+            return false;
+        }
+        const ppd = this.state.pxPerDay;
+        if (this.state.scale === "day") {
+            // Stored timestamps use the 09:00–18:00 convention, matching how
+            // the resource timelines position bars on their day scale.
+            const startFrac = start < range.start ? 0 : 9 / 24;
+            const stopFrac = stop >= range.end ? 1 : 18 / 24;
+            return {
+                left: startFrac * ppd,
+                width: Math.max((stopFrac - startFrac) * ppd, 1),
+            };
+        }
         return {
-            left: dayDiff(this.origin, start) * this.state.pxPerDay,
-            width: Math.max(dayDiff(start, stop) + 1, 1) * this.state.pxPerDay,
+            left: dayDiff(range.start, start) * ppd,
+            width: Math.max(dayDiff(start, stop) + 1, 1) * ppd,
         };
     }
 
@@ -504,7 +559,7 @@ export class PlannerWorkspace extends Component {
     // while a duration decrease shows only through the baseline ghost bar.
     varianceGeometry(task) {
         const dates = this.currentDates(task);
-        if (!dates.start || !dates.stop || !task.baseline_stop) {
+        if (this.state.scale === "day" || !dates.start || !dates.stop || !task.baseline_stop) {
             return false;
         }
         const extra = dayDiff(parseDay(task.baseline_stop), parseDay(dates.stop));
@@ -643,27 +698,55 @@ export class PlannerWorkspace extends Component {
     }
 
     setScale(scale) {
+        if (this.state.scale === scale) {
+            return;
+        }
         this.state.scale = scale;
-        // Refit instead of the fixed pxPerDay — the scale buttons only
-        // change column granularity, the timeline always fills the viewport.
+        this.state.anchor = this.snapAnchor(this.state.anchor || new Date());
+        this.fit();
+    }
+
+    // Same nav pattern as the Resource Board: ‹ › step the whole window,
+    // Today re-anchors on the current day/week/month, and the date input
+    // jumps to any picked day (snapped to the active scale).
+    plannerNavigate(dir) {
+        const base = this.state.anchor || new Date();
+        if (this.state.scale === "month") {
+            this.state.anchor = new Date(base.getFullYear(), base.getMonth() + dir, 1);
+        } else {
+            this.state.anchor = addDays(base, dir * (this.state.scale === "week" ? 7 : 1));
+        }
         this.fit();
     }
 
     goToday() {
-        const el = this.ganttScrollRef.el;
-        if (!el) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        this.state.anchor = this.snapAnchor(today);
+        this.fit();
+    }
+
+    get plannerPickerValue() {
+        return isoDay(this.state.anchor || new Date());
+    }
+
+    onPlannerDatePick(ev) {
+        const val = ev.target.value;
+        if (!val) {
             return;
         }
-        el.scrollLeft = Math.max(this.todayLeft - el.clientWidth / 3, 0);
+        this.state.anchor = this.snapAnchor(parseDay(val));
+        this.fit();
     }
 
     fit() {
         const el = this.ganttScrollRef.el;
         if (!el) {
+            this._pendingFit = true;
             return;
         }
-        const days = Math.max(dayDiff(this.origin, this.state.rangeEnd), 1);
-        this.state.pxPerDay = Math.min(Math.max((el.clientWidth - 4) / days, 0.25), 200);
+        const days = Math.max(dayDiff(this.origin, this.plannerRange.end), 1);
+        this.state.pxPerDay = Math.min(Math.max((el.clientWidth - 4) / days, 0.25), 2000);
         el.scrollLeft = 0;
     }
 
@@ -2818,6 +2901,8 @@ export class PlannerWorkspace extends Component {
     async onProjectChange(ev) {
         this.state.projectId = Number(ev.target.value) || false;
         if (this.state.projectId) {
+            // New project, new window — re-anchor it like the first load.
+            this.state.anchor = null;
             await this.loadProject(this.state.projectId);
             // A different project means a different range — refit it.
             this.fit();
