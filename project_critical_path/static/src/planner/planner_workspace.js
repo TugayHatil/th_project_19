@@ -401,8 +401,20 @@ export class PlannerWorkspace extends Component {
         return this.state.tasks.filter((task) => !hidden.has(task.id));
     }
 
+    // The cell list only depends on range/scale/density — during a drag it
+    // changes only when the range extends, so keep the array stable to
+    // avoid re-diffing thousands of nodes on every pointer move.
     get columns() {
         const range = this.plannerRange;
+        const key = [
+            this.state.scale,
+            range.start.getTime(),
+            range.end.getTime(),
+            this.state.pxPerDay,
+        ].join("|");
+        if (this._colsKey === key) {
+            return this._colsCache;
+        }
         const cols = [];
         if (this.state.scale === "day") {
             // One hour cell per column across every day in the range.
@@ -412,18 +424,20 @@ export class PlannerWorkspace extends Component {
                     cols.push({ label: pad2(h), width: hourWidth });
                 }
             }
-            return cols;
+        } else {
+            const fmt = getCalendarFormats();
+            for (let t = range.start.getTime(); t < range.end.getTime(); t += DAY_MS) {
+                const d = new Date(t);
+                cols.push({
+                    label: this.state.scale === "month"
+                        ? pad2(d.getDate())
+                        : `${fmt.weekdayShort.format(d)} ${pad2(d.getDate())}`,
+                    width: this.state.pxPerDay,
+                });
+            }
         }
-        const fmt = getCalendarFormats();
-        for (let t = range.start.getTime(); t < range.end.getTime(); t += DAY_MS) {
-            const d = new Date(t);
-            cols.push({
-                label: this.state.scale === "month"
-                    ? pad2(d.getDate())
-                    : `${fmt.weekdayShort.format(d)} ${pad2(d.getDate())}`,
-                width: this.state.pxPerDay,
-            });
-        }
+        this._colsKey = key;
+        this._colsCache = cols;
         return cols;
     }
 
@@ -432,6 +446,15 @@ export class PlannerWorkspace extends Component {
     // the timeline scrolls continuously instead of ending at a page edge.
     get columnGroups() {
         const range = this.plannerRange;
+        const key = [
+            this.state.scale,
+            range.start.getTime(),
+            range.end.getTime(),
+            this.state.pxPerDay,
+        ].join("|");
+        if (this._groupsKey === key) {
+            return this._groupsCache;
+        }
         const fmt = getCalendarFormats();
         const groups = [];
         const ppd = this.state.pxPerDay;
@@ -457,6 +480,8 @@ export class PlannerWorkspace extends Component {
             });
             t = clipped;
         }
+        this._groupsKey = key;
+        this._groupsCache = groups;
         return groups;
     }
 
@@ -1510,8 +1535,12 @@ export class PlannerWorkspace extends Component {
             delta = -Math.min(4 + (rect.left + margin - this._lastDragX) * 0.25, 24);
         }
         if (delta) {
+            const before = el.scrollLeft;
             el.scrollLeft += delta;
-            dragging.extraDx += delta;
+            // Only count the scroll that actually happened — at the track
+            // end (before the range extension renders) the bar must wait
+            // rather than run ahead of the viewport.
+            dragging.extraDx += el.scrollLeft - before;
             this.applyDragDelta(this._lastDragX - dragging.startX + dragging.extraDx);
         }
         const drag = this.state.drag;
