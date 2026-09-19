@@ -877,18 +877,20 @@ export class PlannerWorkspace extends Component {
 
     // Grow the buffered range until it covers the given date — used by
     // nav, the picker and edge scrolling so nothing can land outside.
+    // No scroll compensation here: the callers immediately scroll to an
+    // absolute position in the new coordinate system.
     ensureRangeCovers(date) {
         let guard = 0;
         while (date < this.plannerRange.start && guard++ < 120) {
-            this.extendRange("left");
+            this.extendRange("left", false);
         }
         guard = 0;
         while (date >= this.plannerRange.end && guard++ < 120) {
-            this.extendRange("right");
+            this.extendRange("right", false);
         }
     }
 
-    extendRange(direction) {
+    extendRange(direction, compensate = true) {
         if (!this.state.rangeStart || !this.state.rangeEnd) {
             this.computeRange();
             return;
@@ -900,6 +902,9 @@ export class PlannerWorkspace extends Component {
         }
         const oldStart = this.state.rangeStart;
         this.state.rangeStart = this.snapRangeStart(addDays(this.state.rangeStart, -days));
+        if (!compensate) {
+            return;
+        }
         // Prepending shifts all content right — the patch compensates the
         // scroll position so the view does not jump (see onPatched).
         this._leftExtendPx = (this._leftExtendPx || 0)
