@@ -574,3 +574,40 @@ class TestCriticalPath(TransactionCase):
         self.assertAlmostEqual(
             task.allocated_hours, 3 * _planner_hours_per_day(task), places=2,
         )
+
+    def test_parent_window_rolls_up_from_children(self):
+        """A parent's date range mirrors min/max over its dated children —
+        after child moves and cascade shifts, and on reparenting."""
+        project = self.env["project.project"].create({"name": "Rollup"})
+        parent = self.env["project.task"].create({
+            "name": "P", "project_id": project.id,
+        })
+        child_a = self.env["project.task"].create({
+            "name": "A", "project_id": project.id, "parent_id": parent.id,
+            "date_assign": "2026-09-14 09:00:00", "date_deadline": "2026-09-15 18:00:00",
+        })
+        child_b = self.env["project.task"].create({
+            "name": "B", "project_id": project.id, "parent_id": parent.id,
+            "date_assign": "2026-09-16 09:00:00", "date_deadline": "2026-09-17 18:00:00",
+        })
+        self.assertEqual(str(parent.date_assign)[:16], "2026-09-14 09:00")
+        self.assertEqual(str(parent.date_deadline)[:16], "2026-09-17 18:00")
+
+        # Moving a child widens the parent window.
+        child_a.write({"date_assign": "2026-09-12 09:00:00"})
+        self.assertEqual(str(parent.date_assign)[:16], "2026-09-12 09:00")
+
+        # Moving the last child shrinks the trailing edge too.
+        child_b.write({
+            "date_assign": "2026-09-15 09:00:00",
+            "date_deadline": "2026-09-15 18:00:00",
+        })
+        self.assertEqual(str(parent.date_deadline)[:16], "2026-09-15 18:00")
+
+        # Reparenting recomputes both the old and the new parent's window.
+        other = self.env["project.task"].create({
+            "name": "Q", "project_id": project.id,
+        })
+        child_b.write({"parent_id": other.id})
+        self.assertEqual(str(other.date_assign)[:16], "2026-09-15 09:00")
+        self.assertEqual(str(parent.date_deadline)[:16], "2026-09-15 18:00")

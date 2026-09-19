@@ -44,10 +44,12 @@ class ProjectTask(models.Model):
     def create(self, vals_list):
         tasks = super().create(vals_list)
         tasks.mapped("project_id")._recalculate_critical_paths()
+        tasks.mapped("parent_id")._sync_parent_window()
         return tasks
 
     def write(self, vals):
         affected_projects = self.mapped("project_id")
+        old_parents = self.mapped("parent_id") if "parent_id" in vals else self.env["project.task"]
         result = super().write(vals)
         if {"project_id", "parent_id", "allocated_hours", "depend_on_ids", "dependent_ids"}.intersection(vals):
             (affected_projects | self.mapped("project_id"))._recalculate_critical_paths()
@@ -61,7 +63,32 @@ class ProjectTask(models.Model):
                 project._schedule_dependents(
                     self.filtered(lambda task: task.project_id == project)
                 )
+        # Parent window rollup: a parent's date range mirrors the min/max of
+        # its dated children. The parent write re-enters this hook, so the
+        # rollup bubbles all the way to the root.
+        if {"date_assign", "date_deadline", "parent_id"}.intersection(vals):
+            (self.mapped("parent_id") | old_parents)._sync_parent_window()
         return result
+
+    def _sync_parent_window(self):
+        """``self`` = parent tasks — recompute each one's date window as the
+        min/max over its dated children, so parent bars stay consistent with
+        the WBS children after moves, resizes and cascade shifts."""
+        for parent in self:
+            children = parent.child_ids.filtered(
+                lambda child: child.date_assign and child.date_deadline
+            )
+            if not children:
+                continue
+            start = min(children.mapped("date_assign"))
+            stop = max(children.mapped("date_deadline"))
+            vals = {}
+            if parent.date_assign != start:
+                vals["date_assign"] = start
+            if parent.date_deadline != stop:
+                vals["date_deadline"] = stop
+            if vals:
+                parent.write(vals)
 
     def unlink(self):
         affected_projects = self.mapped("project_id")
