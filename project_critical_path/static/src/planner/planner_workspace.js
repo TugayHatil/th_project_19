@@ -112,8 +112,11 @@ export class PlannerWorkspace extends Component {
             selectedId: null,
             scale: "week",
             pxPerDay: SCALES.week.pxPerDay,
-            // Windowed timeline anchor — same day/week/month window model
-            // as the Resource Board and the assignment timeline.
+            // Continuous timeline: rangeStart/rangeEnd cover the task span
+            // plus a per-scale buffer and grow on scroll/drag; the anchor
+            // is only the navigation focus (Today, ‹ ›, date picker).
+            rangeStart: null,
+            rangeEnd: null,
             anchor: null,
             // Quick Inspector panel
             inspectorOpen: false,
@@ -227,6 +230,13 @@ export class PlannerWorkspace extends Component {
                 this._pendingFit = false;
                 this.fit();
             }
+            if (this._leftExtendPx) {
+                const el = this.ganttScrollRef.el;
+                if (el) {
+                    el.scrollLeft += this._leftExtendPx;
+                }
+                this._leftExtendPx = 0;
+            }
         });
         onMounted(async () => {
             try {
@@ -281,14 +291,18 @@ export class PlannerWorkspace extends Component {
         }
     }
 
-    // Picks the initial window anchor once per project load — today when it
-    // falls inside the task span, otherwise the first task's start, so the
-    // window never opens on an empty stretch. The anchor then only moves
-    // through the nav buttons / date picker / scale snaps.
+    // Buffer days added on each side of the task span per scale — the
+    // continuous timeline grows further on scroll/drag, so this is a
+    // starting margin, not a hard bound.
+    get rangeBufferDays() {
+        return { day: 14, week: 42, month: 180 }[this.state.scale] || 42;
+    }
+
+    // Continuous timeline range: covers every task plus a scale-dependent
+    // buffer on both ends, snapped to clean period boundaries so group
+    // headers start aligned. The anchor is only a navigation focus — it
+    // decides where ‹ › / Today / the picker scroll to, not what exists.
     computeRange() {
-        if (this.state.anchor) {
-            return;
-        }
         const dates = [];
         for (const task of this.state.tasks) {
             if (task.date_start) {
@@ -300,23 +314,23 @@ export class PlannerWorkspace extends Component {
         }
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        let anchor = today;
-        if (dates.length) {
-            let start = dates[0];
-            let end = dates[0];
-            for (const date of dates) {
-                if (date < start) {
-                    start = date;
-                }
-                if (date > end) {
-                    end = date;
-                }
+        let start = today;
+        let end = today;
+        for (const date of dates) {
+            if (date < start) {
+                start = date;
             }
-            if (today < start || today > end) {
-                anchor = start;
+            if (date > end) {
+                end = date;
             }
         }
-        this.state.anchor = this.snapAnchor(anchor);
+        const buffer = this.rangeBufferDays;
+        this.state.rangeStart = this.snapRangeStart(addDays(start, -buffer));
+        this.state.rangeEnd = this.snapRangeEnd(addDays(end, buffer));
+        if (!this.state.anchor) {
+            const focus = today < start || today > end ? start : today;
+            this.state.anchor = this.snapAnchor(focus);
+        }
     }
 
     snapAnchor(date) {
@@ -330,20 +344,28 @@ export class PlannerWorkspace extends Component {
         return d;
     }
 
-    // Windowed range — same semantics as boardRange: one day with hourly
-    // columns, a Monday-based week, or a full calendar month.
-    get plannerRange() {
-        const anchor = this.state.anchor || new Date();
-        if (this.state.scale === "day") {
-            return { start: anchor, end: addDays(anchor, 1) };
-        }
+    snapRangeStart(date) {
+        return this.snapAnchor(date);
+    }
+
+    // Exclusive end boundary — first day of the next period.
+    snapRangeEnd(date) {
+        const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
         if (this.state.scale === "month") {
-            const start = startOfMonth(anchor);
-            const end = startOfMonth(new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1));
-            return { start, end };
+            return startOfMonth(new Date(d.getFullYear(), d.getMonth() + 1, 1));
         }
-        const start = startOfWeek(anchor);
-        return { start, end: addDays(start, 7) };
+        if (this.state.scale === "week") {
+            return addDays(startOfWeek(d), 7);
+        }
+        return addDays(d, 1);
+    }
+
+    // Continuous range — columns, bars, edges and the today marker all
+    // share this origin; the range grows on scroll/drag, never on scale.
+    get plannerRange() {
+        const start = this.state.rangeStart || this.snapRangeStart(new Date());
+        const end = this.state.rangeEnd || this.snapRangeEnd(new Date());
+        return { start, end };
     }
 
     // Origin shared by columns, bars and the today marker so they stay aligned.
@@ -376,37 +398,59 @@ export class PlannerWorkspace extends Component {
         const range = this.plannerRange;
         const cols = [];
         if (this.state.scale === "day") {
-            for (let h = 0; h < 24; h++) {
-                cols.push({ label: pad2(h), width: this.state.pxPerDay / 24 });
-            }
-        } else {
-            const fmt = getCalendarFormats();
+            // One hour cell per column across every day in the range.
+            const hourWidth = this.state.pxPerDay / 24;
             for (let t = range.start.getTime(); t < range.end.getTime(); t += DAY_MS) {
-                const d = new Date(t);
-                cols.push({
-                    label: this.state.scale === "month"
-                        ? pad2(d.getDate())
-                        : `${fmt.weekdayShort.format(d)} ${pad2(d.getDate())}`,
-                    width: this.state.pxPerDay,
-                });
+                for (let h = 0; h < 24; h++) {
+                    cols.push({ label: pad2(h), width: hourWidth });
+                }
             }
+            return cols;
+        }
+        const fmt = getCalendarFormats();
+        for (let t = range.start.getTime(); t < range.end.getTime(); t += DAY_MS) {
+            const d = new Date(t);
+            cols.push({
+                label: this.state.scale === "month"
+                    ? pad2(d.getDate())
+                    : `${fmt.weekdayShort.format(d)} ${pad2(d.getDate())}`,
+                width: this.state.pxPerDay,
+            });
         }
         return cols;
     }
 
-    get plannerCaption() {
-        const anchor = this.state.anchor || new Date();
-        if (this.state.scale === "month") {
-            return getCalendarFormats().monthYear.format(anchor);
-        }
-        if (this.state.scale === "week") {
-            return `${getCalendarFormats().monthYear.format(startOfWeek(anchor))} · ${_t("Week")} ${isoWeek(anchor)}`;
-        }
-        return getCalendarFormats().dayCaption.format(anchor);
-    }
-
+    // Period headers above the day/hour cells — one group per day (day
+    // scale), ISO week or calendar month, so boundaries stay visible as
+    // the timeline scrolls continuously instead of ending at a page edge.
     get columnGroups() {
-        return [{ label: this.plannerCaption, width: this.timelineWidth }];
+        const range = this.plannerRange;
+        const fmt = getCalendarFormats();
+        const groups = [];
+        const ppd = this.state.pxPerDay;
+        let t = range.start.getTime();
+        while (t < range.end.getTime()) {
+            const d = new Date(t);
+            let label;
+            let next;
+            if (this.state.scale === "month") {
+                label = fmt.monthYear.format(d);
+                next = startOfMonth(new Date(d.getFullYear(), d.getMonth() + 1, 1)).getTime();
+            } else if (this.state.scale === "week") {
+                label = `${fmt.monthYear.format(d)} · ${_t("Week")} ${isoWeek(d)}`;
+                next = addDays(startOfWeek(d), 7).getTime();
+            } else {
+                label = fmt.dayCaption.format(d);
+                next = t + DAY_MS;
+            }
+            const clipped = Math.min(next, range.end.getTime());
+            groups.push({
+                label,
+                width: Math.max(dayDiff(d, new Date(clipped)) * ppd, ppd),
+            });
+            t = clipped;
+        }
+        return groups;
     }
 
     get timelineWidth() {
@@ -420,11 +464,12 @@ export class PlannerWorkspace extends Component {
         if (today < range.start || today >= range.end) {
             return -9999;
         }
+        const dayPx = dayDiff(range.start, today) * this.state.pxPerDay;
         if (this.state.scale === "day") {
             const now = new Date();
-            return ((now.getHours() + now.getMinutes() / 60) / 24) * this.state.pxPerDay;
+            return dayPx + ((now.getHours() + now.getMinutes() / 60) / 24) * this.state.pxPerDay;
         }
-        return dayDiff(range.start, today) * this.state.pxPerDay;
+        return dayPx;
     }
 
     spanGeometry(startStr, stopStr, dtStart, dtStop) {
@@ -441,23 +486,19 @@ export class PlannerWorkspace extends Component {
         }
         const ppd = this.state.pxPerDay;
         if (this.state.scale === "day") {
-            // Hour precision on the day scale: real stored times when the
-            // payload carries them, otherwise the 09:00–18:00 convention
-            // (matching how the resource timelines position day bars).
-            const dayStartMs = range.start.getTime();
-            const dayEndMs = range.end.getTime();
+            // Hour precision across the continuous range: real stored
+            // times when the payload carries them, otherwise the
+            // 09:00–18:00 convention (same as the resource timelines).
+            const originMs = range.start.getTime();
             const startMs = dtStart
                 ? parseDt(dtStart).getTime()
-                : start < range.start ? dayStartMs : dayStartMs + 9 * 3600000;
+                : start.getTime() + 9 * 3600000;
             const stopMs = dtStop
                 ? parseDt(dtStop).getTime()
-                : stop >= range.end ? dayEndMs : dayStartMs + 18 * 3600000;
-            const leftMs = Math.min(Math.max(startMs, dayStartMs), dayEndMs);
-            const rightMs = Math.min(Math.max(stopMs, leftMs), dayEndMs);
-            return {
-                left: ((leftMs - dayStartMs) / DAY_MS) * ppd,
-                width: Math.max(((rightMs - leftMs) / DAY_MS) * ppd, 1),
-            };
+                : stop.getTime() + 18 * 3600000;
+            const left = Math.max((startMs - originMs) / DAY_MS * ppd, 0);
+            const right = Math.min((stopMs - originMs) / DAY_MS * ppd, this.timelineWidth);
+            return { left, width: Math.max(right - left, 1) };
         }
         return {
             left: dayDiff(range.start, start) * ppd,
@@ -729,12 +770,12 @@ export class PlannerWorkspace extends Component {
         }
         this.state.scale = scale;
         this.state.anchor = this.snapAnchor(this.state.anchor || new Date());
+        this.computeRange(); // buffer and snapping differ per scale
         this.fit();
     }
 
-    // Same nav pattern as the Resource Board: ‹ › step the whole window,
-    // Today re-anchors on the current day/week/month, and the date input
-    // jumps to any picked day (snapped to the active scale).
+    // ‹ › move the focus one period through the continuous timeline; the
+    // range auto-extends when the target lands outside the buffer.
     plannerNavigate(dir) {
         const base = this.state.anchor || new Date();
         if (this.state.scale === "month") {
@@ -742,14 +783,16 @@ export class PlannerWorkspace extends Component {
         } else {
             this.state.anchor = addDays(base, dir * (this.state.scale === "week" ? 7 : 1));
         }
-        this.fit();
+        this.ensureRangeCovers(this.state.anchor);
+        this.scrollToDate(this.state.anchor);
     }
 
     goToday() {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         this.state.anchor = this.snapAnchor(today);
-        this.fit();
+        this.ensureRangeCovers(this.state.anchor);
+        this.scrollToDate(today);
     }
 
     get plannerPickerValue() {
@@ -762,18 +805,64 @@ export class PlannerWorkspace extends Component {
             return;
         }
         this.state.anchor = this.snapAnchor(parseDay(val));
-        this.fit();
+        this.ensureRangeCovers(this.state.anchor);
+        this.scrollToDate(parseDay(val));
     }
 
+    // The scale only sets grid density — one period fills the viewport
+    // (day → 24h, week → 7d, month → ~30d); the timeline keeps scrolling.
     fit() {
         const el = this.ganttScrollRef.el;
         if (!el) {
             this._pendingFit = true;
             return;
         }
-        const days = Math.max(dayDiff(this.origin, this.plannerRange.end), 1);
-        this.state.pxPerDay = Math.min(Math.max((el.clientWidth - 4) / days, 0.25), 2000);
-        el.scrollLeft = 0;
+        const periodDays = { day: 1, week: 7, month: 30 }[this.state.scale] || 7;
+        this.state.pxPerDay = Math.min(Math.max((el.clientWidth - 4) / periodDays, 0.25), 2000);
+        this.scrollToDate(this.state.anchor || new Date());
+    }
+
+    scrollToDate(date) {
+        const el = this.ganttScrollRef.el;
+        if (!el || !date) {
+            return;
+        }
+        let px = dayDiff(this.origin, date) * this.state.pxPerDay;
+        if (this.state.scale === "day") {
+            px += ((date.getHours() + date.getMinutes() / 60) / 24) * this.state.pxPerDay;
+        }
+        el.scrollLeft = Math.max(px - 40, 0);
+    }
+
+    // Grow the buffered range until it covers the given date — used by
+    // nav, the picker and edge scrolling so nothing can land outside.
+    ensureRangeCovers(date) {
+        let guard = 0;
+        while (date < this.plannerRange.start && guard++ < 120) {
+            this.extendRange("left");
+        }
+        guard = 0;
+        while (date >= this.plannerRange.end && guard++ < 120) {
+            this.extendRange("right");
+        }
+    }
+
+    extendRange(direction) {
+        if (!this.state.rangeStart || !this.state.rangeEnd) {
+            this.computeRange();
+            return;
+        }
+        const days = this.rangeBufferDays;
+        if (direction === "right") {
+            this.state.rangeEnd = this.snapRangeEnd(addDays(this.state.rangeEnd, days));
+            return;
+        }
+        const oldStart = this.state.rangeStart;
+        this.state.rangeStart = this.snapRangeStart(addDays(this.state.rangeStart, -days));
+        // Prepending shifts all content right — the patch compensates the
+        // scroll position so the view does not jump (see onPatched).
+        this._leftExtendPx = (this._leftExtendPx || 0)
+            + dayDiff(this.state.rangeStart, oldStart) * this.state.pxPerDay;
     }
 
     toggleCollapse(task, ev) {
@@ -1369,13 +1458,19 @@ export class PlannerWorkspace extends Component {
             task,
             mode,
             startX: ev.clientX,
+            extraDx: 0, // px added by edge auto-scroll — keeps dx in sync
             moved: false,
         };
+        this._lastDragX = ev.clientX;
+        this._dragScrollTimer = setInterval(() => this.tickDragAutoScroll(), 30);
         const onMove = (e) => this.onDragMove(e);
         const onUp = () => {
             window.removeEventListener("pointermove", onMove);
             window.removeEventListener("pointerup", onUp);
             window.removeEventListener("pointercancel", onUp);
+            clearInterval(this._dragScrollTimer);
+            this._dragScrollTimer = null;
+            this._lastDragX = null;
             this.onDragEnd();
         };
         window.addEventListener("pointermove", onMove);
@@ -1383,12 +1478,52 @@ export class PlannerWorkspace extends Component {
         window.addEventListener("pointercancel", onUp);
     }
 
+    // While a bar is held near either timeline edge the view scrolls on
+    // its own; extraDx compensates the scrolled px so the drag delta
+    // keeps tracking the pointer, and the range grows ahead of the bar.
+    tickDragAutoScroll() {
+        const el = this.ganttScrollRef.el;
+        const dragging = this.dragging;
+        if (!el || !dragging || this._lastDragX == null) {
+            return;
+        }
+        const rect = el.getBoundingClientRect();
+        const margin = 64;
+        let delta = 0;
+        if (this._lastDragX > rect.right - margin) {
+            delta = Math.min(4 + (this._lastDragX - (rect.right - margin)) * 0.25, 24);
+        } else if (this._lastDragX < rect.left + margin) {
+            delta = -Math.min(4 + (rect.left + margin - this._lastDragX) * 0.25, 24);
+        }
+        if (delta) {
+            el.scrollLeft += delta;
+            dragging.extraDx += delta;
+            this.applyDragDelta(this._lastDragX - dragging.startX + dragging.extraDx);
+        }
+        const drag = this.state.drag;
+        if (drag) {
+            if (parseDay(drag.stop) >= addDays(this.plannerRange.end, -3)) {
+                this.extendRange("right");
+            } else if (parseDay(drag.start) <= addDays(this.plannerRange.start, 3)) {
+                this.extendRange("left");
+            }
+        }
+    }
+
     onDragMove(ev) {
         const dragging = this.dragging;
         if (!dragging) {
             return;
         }
-        const dx = ev.clientX - dragging.startX;
+        this._lastDragX = ev.clientX;
+        this.applyDragDelta(ev.clientX - dragging.startX + (dragging.extraDx || 0));
+    }
+
+    applyDragDelta(dx) {
+        const dragging = this.dragging;
+        if (!dragging) {
+            return;
+        }
         if (!dragging.moved && Math.abs(dx) < 4) {
             return; // click threshold — avoids accidental micro-drags
         }
@@ -2736,6 +2871,16 @@ export class PlannerWorkspace extends Component {
         const wbsEl = this.wbsRowsRef.el;
         if (scrollEl && wbsEl && wbsEl.scrollTop !== scrollEl.scrollTop) {
             wbsEl.scrollTop = scrollEl.scrollTop;
+        }
+        // Continuous timeline — grow the buffered range as the viewport
+        // approaches either end so the axis never visibly cuts off.
+        if (scrollEl) {
+            const margin = scrollEl.clientWidth * 0.6;
+            if (scrollEl.scrollLeft + scrollEl.clientWidth > this.timelineWidth - margin) {
+                this.extendRange("right");
+            } else if (scrollEl.scrollLeft < margin && this.state.rangeStart) {
+                this.extendRange("left");
+            }
         }
     }
 
