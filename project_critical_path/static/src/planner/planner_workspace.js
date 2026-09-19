@@ -335,8 +335,10 @@ export class PlannerWorkspace extends Component {
         this.state.rangeStart = this.snapRangeStart(addDays(start, -buffer));
         this.state.rangeEnd = this.snapRangeEnd(addDays(end, buffer));
         if (!this.state.anchor) {
-            const focus = today < start || today > end ? start : today;
-            this.state.anchor = this.snapAnchor(focus);
+            // Unsnapped on purpose — the initial scroll puts this date at
+            // the viewport edge, so snapping to the period start could
+            // leave the first task just out of view.
+            this.state.anchor = today < start || today > end ? start : today;
         }
     }
 
