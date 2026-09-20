@@ -19,6 +19,13 @@ Her release/deploy öncesi çalıştırılır. Otomatik: `odoo-bin -d <db> -u pr
 - [ ] 4. Date picker ileri (örn. 15 Ara) ve geri (örn. 15 Tem) doğru tarihe iniyor.
 - [ ] 5. `Bugün` butonu today marker'ı viewport'a getiriyor.
 
+### Zoom (− / + / Fit)
+- [ ] Z1. `+` saat/gün kolonlarını görünür şekilde genişletiyor; `−` sıkıştırıyor.
+- [ ] Z2. Anchor preservation: zoom sonrası viewport merkezindeki tarih/saat yerinde kalıyor.
+- [ ] Z3. Min/max sınırda butonlar güvenli (disabled veya no-op); NaN/Infinity yok.
+- [ ] Z4. `Fit` proje aralığını viewport'a sığdırıyor; ölçek (Day/Week/Month) değişmiyor.
+- [ ] Z5. Ölçek geçişi zoom seviyesini koruyor; zoom sonrası scroll/drag/resize/oklar/baseline doğru.
+
 ### Continuous Timeline
 - [ ] 6. Day: `23:00 → 00:00 → 01:00` kesintisiz; gün grupları art arda.
 - [ ] 7. Sağ kenara scroll → buffer genişliyor, viewport sıçramıyor.

@@ -45,6 +45,16 @@
                            t-att-value="plannerPickerValue"
                            t-on-change="onPlannerDatePick"/>
                     <div class="btn-group btn-group-sm ms-2">
+                        <button type="button" class="btn btn-outline-secondary"
+                                title="Zoom Out" t-att-disabled="zoomOutDisabled"
+                                t-on-click="zoomOut">−</button>
+                        <button type="button" class="btn btn-outline-secondary"
+                                title="Zoom In" t-att-disabled="zoomInDisabled"
+                                t-on-click="zoomIn">+</button>
+                        <button type="button" class="btn btn-outline-secondary"
+                                title="Fit Timeline" t-on-click="fitTimeline">Fit</button>
+                    </div>
+                    <div class="btn-group btn-group-sm ms-2">
                         <t t-foreach="['day', 'week', 'month']" t-as="scale" t-key="scale">
                             <button type="button"
                                     class="btn"

@@ -51,7 +51,9 @@ function assertScaleGroups(pattern, label) {
 }
 
 registry.category("web_tour.tours").add("planner_workspace_certification", {
-    steps: () => [
+    steps: () => {
+        let colWidth = 0;
+        return [
         {
             trigger: ".o_cp_planner_workspace",
             run: selectProject,
@@ -74,5 +76,43 @@ registry.category("web_tour.tours").add("planner_workspace_certification", {
         // Back to Day — hour columns return.
         { trigger: ".o_cp_planner_toolbar button:contains('Day')", run: "click" },
         { trigger: ".o_cp_planner_gantt_col", run: assertDayContinuity },
-    ],
+        // Zoom controls: + widens columns, − narrows them back.
+        {
+            trigger: ".o_cp_planner_gantt_col",
+            run() {
+                colWidth = document
+                    .querySelector(".o_cp_planner_gantt_col")
+                    .getBoundingClientRect().width;
+            },
+        },
+        { trigger: ".o_cp_planner_toolbar button[title='Zoom In']", run: "click" },
+        {
+            trigger: ".o_cp_planner_gantt_col",
+            run() {
+                const w = document
+                    .querySelector(".o_cp_planner_gantt_col")
+                    .getBoundingClientRect().width;
+                if (w <= colWidth) {
+                    throw new Error(`zoom in: column width did not grow (${colWidth} -> ${w})`);
+                }
+                colWidth = w;
+            },
+        },
+        { trigger: ".o_cp_planner_toolbar button[title='Zoom Out']", run: "click" },
+        {
+            trigger: ".o_cp_planner_gantt_col",
+            run() {
+                const w = document
+                    .querySelector(".o_cp_planner_gantt_col")
+                    .getBoundingClientRect().width;
+                if (w >= colWidth) {
+                    throw new Error(`zoom out: column width did not shrink (${colWidth} -> ${w})`);
+                }
+            },
+        },
+        // Fit Timeline keeps the scale and leaves task bars rendered.
+        { trigger: ".o_cp_planner_toolbar button[title='Fit Timeline']", run: "click" },
+        { trigger: ".o_cp_planner_gantt_scroll .o_cp_planner_bar" },
+        ];
+    },
 });

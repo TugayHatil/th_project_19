@@ -11,6 +11,11 @@ const SCALES = {
     week: { pxPerDay: 6, label: _t("Week") },
     month: { pxPerDay: 1.6, label: _t("Month") },
 };
+// Zoom = density multiplier per scale. The level 0 baseline is the
+// fitted pxPerDay captured by fit(); each step multiplies it.
+const ZOOM_FACTOR = 1.6;
+const ZOOM_MIN = -3;
+const ZOOM_MAX = 3;
 
 // Selectable bar-info fields (BRD-17): at most BAR_INFO_MAX may be picked,
 // the choice is remembered per project in localStorage.
@@ -112,6 +117,9 @@ export class PlannerWorkspace extends Component {
             selectedId: null,
             scale: "week",
             pxPerDay: SCALES.week.pxPerDay,
+            // Per-scale zoom levels (BRD Zoom Controls) — density only,
+            // the time unit never changes. Level 0 = the fitted density.
+            zoom: { day: 0, week: 0, month: 0 },
             // Continuous timeline: rangeStart/rangeEnd cover the task span
             // plus a per-scale buffer and grow on scroll/drag; the anchor
             // is only the navigation focus (Today, ‹ ›, date picker).
@@ -199,6 +207,7 @@ export class PlannerWorkspace extends Component {
             boardTip: null,
         });
         this.scales = SCALES;
+        this._zoomBase = {}; // fitted pxPerDay per scale (zoom level 0)
         this.barInfoFields = BAR_INFO_FIELDS;
         this.resTlScales = { day: _t("Day"), week: _t("Week"), month: _t("Month") };
         useExternalListener(document.body, "keydown", (ev) => {
@@ -243,6 +252,16 @@ export class PlannerWorkspace extends Component {
                     el.scrollLeft = Math.max(this._pendingScrollPx - 40, 0);
                 }
                 this._pendingScrollPx = null;
+            }
+            if (this._pendingZoomAnchor) {
+                const el = this.ganttScrollRef.el;
+                if (el) {
+                    const anchor = this._pendingZoomAnchor;
+                    const px = (anchor.ms - this.origin.getTime()) / DAY_MS
+                        * this.state.pxPerDay;
+                    el.scrollLeft = Math.max(px - anchor.frac * el.clientWidth, 0);
+                }
+                this._pendingZoomAnchor = null;
             }
         });
         onMounted(async () => {
@@ -845,6 +864,7 @@ export class PlannerWorkspace extends Component {
 
     // The scale only sets grid density — one period fills the viewport
     // (day → 24h, week → 7d, month → ~30d); the timeline keeps scrolling.
+    // The fitted density is the zoom level-0 baseline for this scale.
     fit() {
         const el = this.ganttScrollRef.el;
         if (!el) {
@@ -852,8 +872,104 @@ export class PlannerWorkspace extends Component {
             return;
         }
         const periodDays = { day: 1, week: 7, month: 30 }[this.state.scale] || 7;
-        this.state.pxPerDay = Math.min(Math.max((el.clientWidth - 4) / periodDays, 0.25), 2000);
+        this._zoomBase[this.state.scale] = Math.min(
+            Math.max((el.clientWidth - 4) / periodDays, 0.25), 2000,
+        );
+        this.state.pxPerDay = this.zoomDensity(this.state.scale);
         this.scrollToDate(this.state.anchor || new Date());
+    }
+
+    zoomDensity(scale) {
+        const base = this._zoomBase[scale] || SCALES[scale].pxPerDay;
+        return base * Math.pow(ZOOM_FACTOR, this.state.zoom[scale] || 0);
+    }
+
+    get zoomInDisabled() {
+        return (this.state.zoom[this.state.scale] || 0) >= ZOOM_MAX;
+    }
+
+    get zoomOutDisabled() {
+        return (this.state.zoom[this.state.scale] || 0) <= ZOOM_MIN;
+    }
+
+    zoomIn() {
+        this.zoomBy(1);
+    }
+
+    zoomOut() {
+        this.zoomBy(-1);
+    }
+
+    // Density change only — the scale and its time unit stay the same.
+    // The datetime at the viewport centre is re-anchored after the patch
+    // so the view does not jump to another date (see onPatched).
+    zoomBy(dir) {
+        const scale = this.state.scale;
+        const level = Math.min(
+            Math.max((this.state.zoom[scale] || 0) + dir, ZOOM_MIN), ZOOM_MAX,
+        );
+        if (level === (this.state.zoom[scale] || 0)) {
+            return;
+        }
+        this.state.zoom[scale] = level;
+        const el = this.ganttScrollRef.el;
+        if (!el) {
+            this.state.pxPerDay = this.zoomDensity(scale);
+            return;
+        }
+        // Rapid consecutive presses keep the SAME datetime anchored —
+        // the pending one already holds it until the patch lands.
+        const pending = this._pendingZoomAnchor;
+        const centerPx = el.scrollLeft + el.clientWidth / 2;
+        this._pendingZoomAnchor = {
+            ms: pending ? pending.ms
+                : this.origin.getTime() + (centerPx / this.state.pxPerDay) * DAY_MS,
+            frac: pending ? pending.frac : 0.5,
+        };
+        this.state.pxPerDay = this.zoomDensity(scale);
+    }
+
+    // Fit the whole dated task span into the viewport — picks the zoom
+    // level closest to the required density, then anchors the project
+    // start near the left edge. The scale's time unit never changes.
+    fitTimeline() {
+        const el = this.ganttScrollRef.el;
+        let startMs = Infinity;
+        let stopMs = -Infinity;
+        for (const task of this.state.tasks) {
+            const s = task.dt_start
+                ? parseDt(task.dt_start).getTime()
+                : task.date_start ? parseDay(task.date_start).getTime() : null;
+            const e = task.dt_stop
+                ? parseDt(task.dt_stop).getTime()
+                : task.date_stop ? parseDay(task.date_stop).getTime() : null;
+            if (s != null && s < startMs) {
+                startMs = s;
+            }
+            if (e != null && e > stopMs) {
+                stopMs = e;
+            }
+        }
+        if (!el || !isFinite(startMs) || !isFinite(stopMs)) {
+            return;
+        }
+        const spanDays = Math.max((stopMs - startMs) / DAY_MS, 1);
+        const base = this._zoomBase[this.state.scale] || this.state.pxPerDay;
+        const target = Math.max(el.clientWidth - 80, 200) / spanDays;
+        const level = Math.min(Math.max(
+            Math.round(Math.log(target / base) / Math.log(ZOOM_FACTOR)),
+            ZOOM_MIN, ZOOM_MAX,
+        ));
+        this.state.zoom[this.state.scale] = level;
+        const ppd = this.zoomDensity(this.state.scale);
+        if (ppd === this.state.pxPerDay) {
+            // No re-render — nothing will consume a pending anchor.
+            const px = (startMs - this.origin.getTime()) / DAY_MS * ppd;
+            el.scrollLeft = Math.max(px - 0.05 * el.clientWidth, 0);
+        } else {
+            this._pendingZoomAnchor = { ms: startMs, frac: 0.05 };
+            this.state.pxPerDay = ppd;
+        }
     }
 
     scrollToDate(date) {
