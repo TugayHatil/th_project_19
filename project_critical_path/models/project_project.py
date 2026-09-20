@@ -184,6 +184,20 @@ class ProjectProject(models.Model):
             "context": {"default_project_id": self.id},
         }
 
+    def action_open_material_requirement(self):
+        """Material Requirement (BRD phase 2): consolidated stock-availability
+        view derived from this project's Material Plan lines — same project
+        context, standard read-only list/form views."""
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Material Requirements"),
+            "res_model": "project.material.requirement",
+            "view_mode": "list,form",
+            "domain": [("project_id", "=", self.id)],
+            "context": {"default_project_id": self.id, "create": False},
+        }
+
     def action_open_resource_roles(self):
         return {
             "type": "ir.actions.act_window",

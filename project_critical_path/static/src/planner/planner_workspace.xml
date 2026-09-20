@@ -23,6 +23,12 @@
                         t-on-click="openMaterialPlan">
                     <i class="fa fa-cubes me-1"/><span>Material Plan</span>
                 </button>
+                <button t-if="state.projectId" type="button"
+                        class="btn btn-sm btn-outline-secondary"
+                        title="Material Requirement"
+                        t-on-click="openMaterialRequirement">
+                    <i class="fa fa-list-alt me-1"/><span>Material Requirement</span>
+                </button>
                 <t t-if="state.projects.length &amp;&amp; !props.action?.params?.project_id">
                     <select class="form-select form-select-sm w-auto"
                             t-on-change="onProjectChange">

@@ -1967,3 +1967,65 @@ msgstr "Planlanan miktar sıfırdan büyük olmalıdır."
 #: code:addons/project_critical_path/models/project_material_plan.py:0
 msgid "The selected task does not belong to this project."
 msgstr "Seçilen görev bu projeye ait değil."
+
+#. module: project_critical_path
+#: model:ir.model,name:project_critical_path.model_project_material_requirement
+msgid "Project Material Requirement"
+msgstr "Proje Malzeme İhtiyacı"
+
+#. module: project_critical_path
+#: model:ir.actions.act_window,name:project_critical_path.action_project_material_requirement
+#: model:ir.ui.menu,name:project_critical_path.menu_project_material_requirement
+msgid "Material Requirements"
+msgstr "Malzeme İhtiyaçları"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_material_requirement
+#: model_terms:project_critical_path.planner_workspace
+msgid "Material Requirement"
+msgstr "Malzeme İhtiyacı"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_material_requirement__available_quantity
+msgid "Available Quantity"
+msgstr "Mevcut Miktar"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_material_requirement__shortage_quantity
+msgid "Shortage Quantity"
+msgstr "Eksik Miktar"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_material_requirement__status
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_requirement_search
+msgid "Status"
+msgstr "Durum"
+
+#. module: project_critical_path
+#: model:ir.model.fields.selection,name:project_critical_path.selection__project_material_requirement__status__not_available
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_requirement_search
+msgid "Not Available"
+msgstr "Stokta Yok"
+
+#. module: project_critical_path
+#: model:ir.model.fields.selection,name:project_critical_path.selection__project_material_requirement__status__partially_available
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_requirement_search
+msgid "Partially Available"
+msgstr "Kısmen Mevcut"
+
+#. module: project_critical_path
+#: model:ir.model.fields.selection,name:project_critical_path.selection__project_material_requirement__status__available
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_requirement_search
+msgid "Available"
+msgstr "Mevcut"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_material_requirement__material_plan_line_ids
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_requirement_form
+msgid "Source Material Plan Lines"
+msgstr "Kaynak Malzeme Planı Satırları"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_requirement_list
+msgid "Material Requirements"
+msgstr "Malzeme İhtiyaçları"

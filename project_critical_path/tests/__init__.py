@@ -9,4 +9,5 @@ from . import test_planner_certification
 from . import test_planner_wbs_actions
 from . import test_planner_filters
 from . import test_material_plan
+from . import test_material_requirement
 from . import test_planner_tour
