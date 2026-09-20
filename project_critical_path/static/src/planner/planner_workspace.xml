@@ -229,31 +229,30 @@
                             <span class="o_cp_planner_group_label text-truncate" t-esc="row.label"/>
                             <span class="o_cp_planner_group_count ms-1" t-esc="row.count"/>
                         </div>
-                        <t t-else="" t-set="task" t-value="row.task">
-                        <div
+                        <div t-else=""
                              class="o_cp_planner_wbs_row d-flex align-items-center px-2"
-                             t-att-data-task-id="task.id"
-                             t-att-class="{selected: state.selectedId === task.id, parent: task.has_children, dropbefore: state.wbsDropBeforeId === task.id, dropafter: state.wbsDropAfterId === task.id, dragging: state.wbsDragId === task.id}"
-                             t-on-click="() => this.selectTask(task)"
-                             t-on-dblclick="() => this.openTask(task)"
-                             t-on-pointerdown="(ev) => this.onWbsRowPointerDown(task, ev)">
-                            <span class="o_cp_planner_toggle" t-on-click="(ev) => this.toggleCollapse(task, ev)">
-                                <i t-if="task.has_children"
+                             t-att-data-task-id="row.task.id"
+                             t-att-class="{selected: state.selectedId === row.task.id, parent: row.task.has_children, dropbefore: state.wbsDropBeforeId === row.task.id, dropafter: state.wbsDropAfterId === row.task.id, dragging: state.wbsDragId === row.task.id}"
+                             t-on-click="() => this.selectTask(row.task)"
+                             t-on-dblclick="() => this.openTask(row.task)"
+                             t-on-pointerdown="(ev) => this.onWbsRowPointerDown(row.task, ev)">
+                            <span class="o_cp_planner_toggle" t-on-click="(ev) => this.toggleCollapse(row.task, ev)">
+                                <i t-if="row.task.has_children"
                                    class="fa fa-fw"
-                                   t-att-class="state.collapsedIds.has(task.id) ? 'fa-caret-right' : 'fa-caret-down'"/>
+                                   t-att-class="state.collapsedIds.has(row.task.id) ? 'fa-caret-right' : 'fa-caret-down'"/>
                             </span>
-                            <span class="o_cp_planner_wbs_code text-muted me-2" t-esc="task.wbs_code"/>
-                            <span t-if="state.renamingId !== task.id"
+                            <span class="o_cp_planner_wbs_code text-muted me-2" t-esc="row.task.wbs_code"/>
+                            <span t-if="state.renamingId !== row.task.id"
                                   class="o_cp_planner_task_name text-truncate"
-                                  t-att-class="{done: task.is_done}"
-                                  t-att-style="'margin-left:' + (Math.max((task.wbs_level || 1) - 1, 0) * 18) + 'px'"
-                                  t-esc="task.name"/>
+                                  t-att-class="{done: row.task.is_done}"
+                                  t-att-style="'margin-left:' + (Math.max((row.task.wbs_level || 1) - 1, 0) * 18) + 'px'"
+                                  t-esc="row.task.name"/>
                             <input t-else="" type="text" class="o_cp_planner_rename_input form-control form-control-sm"
-                                   t-att-style="'margin-left:' + (Math.max((task.wbs_level || 1) - 1, 0) * 18) + 'px'"
+                                   t-att-style="'margin-left:' + (Math.max((row.task.wbs_level || 1) - 1, 0) * 18) + 'px'"
                                    t-att-value="state.renameValue"
                                    t-on-input="(ev) => this.state.renameValue = ev.target.value"
-                                   t-on-keydown="(ev) => this.onRenameKeydown(task, ev)"
-                                   t-on-blur="() => this.commitRename(task)"
+                                   t-on-keydown="(ev) => this.onRenameKeydown(row.task, ev)"
+                                   t-on-blur="() => this.commitRename(row.task)"
                                    t-on-click="(ev) => ev.stopPropagation()"/>
                             <!-- BRD: one-click subtask creation — the tiny "+"
                                  icon creates a child task and puts its name
@@ -261,14 +260,13 @@
                                  exclusively in the Inspector. -->
                             <i class="o_cp_planner_add_child fa fa-plus"
                                role="button" title="Add subtask"
-                               t-on-click="(ev) => this.quickAddSubtask(task, ev)"/>
+                               t-on-click="(ev) => this.quickAddSubtask(row.task, ev)"/>
                             <span t-if="state.showStartCol" class="o_cp_planner_date_col ms-auto small"
-                                  t-esc="formatColDate(currentDates(task).start)"/>
+                                  t-esc="formatColDate(currentDates(row.task).start)"/>
                             <span t-if="state.showFinishCol" class="o_cp_planner_date_col small"
                                   t-att-class="{'ms-auto': !state.showStartCol}"
-                                  t-esc="formatColDate(currentDates(task).stop)"/>
+                                  t-esc="formatColDate(currentDates(row.task).stop)"/>
                         </div>
-                        </t>
                         </t>
                         <div t-if="!state.loading &amp;&amp; !visibleTasks.length" class="p-3 text-muted">No tasks</div>
                     </div>
@@ -296,56 +294,54 @@
                                 <t t-foreach="displayRows" t-as="row" t-key="row.key">
                                 <div t-if="row.type === 'group'"
                                      class="o_cp_planner_gantt_row o_cp_planner_group_row"/>
-                                <t t-else="" t-set="task" t-value="row.task">
-                                <div
+                                <div t-else=""
                                      class="o_cp_planner_gantt_row"
-                                     t-att-class="{selected: state.selectedId === task.id}"
-                                     t-on-click="() => this.onRowClick(task)"
-                                     t-on-dblclick="() => this.openTask(task)">
-                                    <div t-if="task.baseline_start &amp;&amp; task.baseline_stop"
+                                     t-att-class="{selected: state.selectedId === row.task.id}"
+                                     t-on-click="() => this.onRowClick(row.task)"
+                                     t-on-dblclick="() => this.openTask(row.task)">
+                                    <div t-if="row.task.baseline_start &amp;&amp; row.task.baseline_stop"
                                          class="o_cp_planner_baseline_bar"
-                                         t-att-style="baselineStyle(task)"
-                                         t-att-title="baselineTooltip(task)"/>
-                                    <div t-if="task.date_start &amp;&amp; task.date_stop &amp;&amp; (state.slackVisible || task.is_done || isOverdue(task))"
+                                         t-att-style="baselineStyle(row.task)"
+                                         t-att-title="baselineTooltip(row.task)"/>
+                                    <div t-if="row.task.date_start &amp;&amp; row.task.date_stop &amp;&amp; (state.slackVisible || row.task.is_done || isOverdue(row.task))"
                                          class="o_cp_planner_barlead"
-                                         t-att-style="barLeadStyle(task)">
+                                         t-att-style="barLeadStyle(row.task)">
                                         <span t-if="state.slackVisible"
                                               class="o_cp_planner_slack"
-                                              t-att-class="{critical: task.is_critical}"
-                                              t-att-title="slackText(task)"
-                                              t-esc="slackText(task)"/>
-                                        <i t-if="isOverdue(task)"
+                                              t-att-class="{critical: row.task.is_critical}"
+                                              t-att-title="slackText(row.task)"
+                                              t-esc="slackText(row.task)"/>
+                                        <i t-if="isOverdue(row.task)"
                                            class="fa fa-exclamation-circle o_cp_planner_overdue_icon"
                                            title="Overdue"/>
-                                        <i t-if="task.is_done" class="fa fa-check o_cp_planner_done_icon"/>
+                                        <i t-if="row.task.is_done" class="fa fa-check o_cp_planner_done_icon"/>
                                     </div>
-                                    <div t-if="task.date_start &amp;&amp; task.date_stop"
+                                    <div t-if="row.task.date_start &amp;&amp; row.task.date_stop"
                                          class="o_cp_planner_bar"
-                                         t-att-class="{selected: state.selectedId === task.id, critical: task.is_critical, done: task.is_done, dragging: state.drag?.taskId === task.id}"
-                                         t-att-style="barStyle(task)"
-                                         t-att-title="barTitle(task)"
-                                         t-on-pointerdown="(ev) => this.onBarPointerDown(task, 'move', ev)"/>
-                                    <div t-if="task.date_start &amp;&amp; task.date_stop &amp;&amp; task.baseline_stop &amp;&amp; task.date_stop &gt; task.baseline_stop"
+                                         t-att-class="{selected: state.selectedId === row.task.id, critical: row.task.is_critical, done: row.task.is_done, dragging: state.drag?.taskId === row.task.id}"
+                                         t-att-style="barStyle(row.task)"
+                                         t-att-title="barTitle(row.task)"
+                                         t-on-pointerdown="(ev) => this.onBarPointerDown(row.task, 'move', ev)"/>
+                                    <div t-if="row.task.date_start &amp;&amp; row.task.date_stop &amp;&amp; row.task.baseline_stop &amp;&amp; row.task.date_stop &gt; row.task.baseline_stop"
                                          class="o_cp_planner_variance_bar"
-                                         t-att-style="varianceStyle(task)"
-                                         t-att-title="varianceTooltip(task)"
-                                         t-on-pointerdown="(ev) => this.onBarPointerDown(task, 'move', ev)"/>
-                                    <div t-if="task.date_start &amp;&amp; task.date_stop &amp;&amp; !task.is_done"
+                                         t-att-style="varianceStyle(row.task)"
+                                         t-att-title="varianceTooltip(row.task)"
+                                         t-on-pointerdown="(ev) => this.onBarPointerDown(row.task, 'move', ev)"/>
+                                    <div t-if="row.task.date_start &amp;&amp; row.task.date_stop &amp;&amp; !row.task.is_done"
                                          class="o_cp_planner_grip o_cp_planner_grip_left"
-                                         t-att-style="gripStyle(task, 'left')"
+                                         t-att-style="gripStyle(row.task, 'left')"
                                          title="Change start"
-                                         t-on-pointerdown="(ev) => this.onBarPointerDown(task, 'left', ev)"/>
-                                    <div t-if="task.date_start &amp;&amp; task.date_stop"
+                                         t-on-pointerdown="(ev) => this.onBarPointerDown(row.task, 'left', ev)"/>
+                                    <div t-if="row.task.date_start &amp;&amp; row.task.date_stop"
                                          class="o_cp_planner_bar_info"
-                                         t-att-style="barInfoStyle(task)"
-                                         t-esc="barInfoText(task)"/>
-                                    <div t-if="task.date_start &amp;&amp; task.date_stop &amp;&amp; !task.is_done"
+                                         t-att-style="barInfoStyle(row.task)"
+                                         t-esc="barInfoText(row.task)"/>
+                                    <div t-if="row.task.date_start &amp;&amp; row.task.date_stop &amp;&amp; !row.task.is_done"
                                          class="o_cp_planner_grip o_cp_planner_grip_right"
-                                         t-att-style="gripStyle(task, 'right')"
+                                         t-att-style="gripStyle(row.task, 'right')"
                                          title="Change finish"
-                                         t-on-pointerdown="(ev) => this.onBarPointerDown(task, 'right', ev)"/>
+                                         t-on-pointerdown="(ev) => this.onBarPointerDown(row.task, 'right', ev)"/>
                                 </div>
-                                </t>
                                 </t>
                                 <div t-if="dragTip" class="o_cp_planner_dragtip"
                                      t-att-style="dragTip.style" t-esc="dragTip.text"/>
