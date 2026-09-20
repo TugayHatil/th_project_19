@@ -14,7 +14,9 @@ const SCALES = {
 // Zoom = density multiplier per scale. The level 0 baseline is the
 // fitted pxPerDay captured by fit(); each step multiplies it.
 const ZOOM_FACTOR = 1.6;
-const ZOOM_MIN = -3;
+// The deep negative end exists for Fit: a multi-week project span must
+// reach ~13 px/day to fit a ~900 px viewport on the day scale.
+const ZOOM_MIN = -9;
 const ZOOM_MAX = 3;
 
 // Selectable bar-info fields (BRD-17): at most BAR_INFO_MAX may be picked,
