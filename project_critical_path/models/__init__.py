@@ -16,3 +16,4 @@ from . import project_task_gantt
 from . import project_planner
 from . import project_task_dependency
 from . import project_baseline_title
+from . import project_material_plan

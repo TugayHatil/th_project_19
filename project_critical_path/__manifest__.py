@@ -3,7 +3,7 @@
 {
     "name": "Project Critical Path",
     "summary": "Calculate and store critical paths from task dependencies",
-    "version": "19.0.1.41.0",
+    "version": "19.0.1.42.0",
     "category": "Project",
     "author": "Projet Solutions",
     "license": "LGPL-3",
@@ -17,6 +17,7 @@
         "views/project_resource_role_views.xml",
         "views/project_resource_rate_views.xml",
         "views/project_baseline_title_views.xml",
+        "views/project_material_plan_views.xml",
     ],
     "demo": [
         "demo/project_wbs_demo.xml",

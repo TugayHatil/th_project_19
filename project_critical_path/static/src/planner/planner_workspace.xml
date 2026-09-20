@@ -17,6 +17,12 @@
                             t-att-class="state.boardMode ? 'btn-primary' : 'btn-outline-secondary'"
                             t-on-click="() => this.setBoardMode(true)">Resource Board</button>
                 </div>
+                <button t-if="state.projectId" type="button"
+                        class="btn btn-sm btn-outline-secondary"
+                        title="Material Plan"
+                        t-on-click="openMaterialPlan">
+                    <i class="fa fa-cubes me-1"/><span>Material Plan</span>
+                </button>
                 <t t-if="state.projects.length &amp;&amp; !props.action?.params?.project_id">
                     <select class="form-select form-select-sm w-auto"
                             t-on-change="onProjectChange">

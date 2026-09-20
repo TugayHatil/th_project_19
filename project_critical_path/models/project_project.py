@@ -170,6 +170,20 @@ class ProjectProject(models.Model):
         self.ensure_one()
         return "\n".join(sorted(self.critical_path_ids.mapped("task_path")))
 
+    def action_open_material_plan(self):
+        """Material Plan (BRD): project-scoped standard list view — the
+        single entry point for material planning, next to Planner and the
+        Resource Board."""
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Material Plan"),
+            "res_model": "project.material.plan",
+            "view_mode": "list,form",
+            "domain": [("project_id", "=", self.id)],
+            "context": {"default_project_id": self.id},
+        }
+
     def action_open_resource_roles(self):
         return {
             "type": "ir.actions.act_window",

@@ -3816,6 +3816,24 @@ export class PlannerWorkspace extends Component {
         });
     }
 
+    // Material Plan (BRD): quick hop from the Planner toolbar to the
+    // project-scoped material list — same project context, standard
+    // list/form views, Filters & Group By come from the search view.
+    openMaterialPlan() {
+        if (!this.state.projectId) {
+            return;
+        }
+        this.action.doAction({
+            type: "ir.actions.act_window",
+            name: _t("Material Plan"),
+            res_model: "project.material.plan",
+            views: [[false, "list"], [false, "form"]],
+            domain: [["project_id", "=", this.state.projectId]],
+            context: { default_project_id: this.state.projectId },
+            target: "current",
+        });
+    }
+
     async onProjectChange(ev) {
         this.state.projectId = Number(ev.target.value) || false;
         if (this.state.projectId) {

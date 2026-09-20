@@ -1931,3 +1931,39 @@ msgstr "Atanan"
 #: model_terms:project_critical_path.planner_workspace
 msgid "Dates"
 msgstr "Tarihler"
+
+#. module: project_critical_path
+#: model:ir.model,name:project_critical_path.model_project_material_plan
+msgid "Project Material Plan"
+msgstr "Proje Malzeme Planı"
+
+#. module: project_critical_path
+#: model:ir.actions.act_window,name:project_critical_path.action_project_material_plan
+#: model:ir.ui.menu,name:project_critical_path.menu_project_material_plan
+msgid "Material Plan"
+msgstr "Malzeme Planı"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_plan_search
+msgid "Task / WBS"
+msgstr "Görev / WBS"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_material_plan__planned_quantity
+msgid "Planned Quantity"
+msgstr "Planlanan Miktar"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_material_plan__required_date
+msgid "Required Date"
+msgstr "Gereken Tarih"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_material_plan.py:0
+msgid "Planned quantity must be greater than zero."
+msgstr "Planlanan miktar sıfırdan büyük olmalıdır."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_material_plan.py:0
+msgid "The selected task does not belong to this project."
+msgstr "Seçilen görev bu projeye ait değil."
