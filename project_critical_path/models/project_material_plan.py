@@ -60,10 +60,6 @@ class ProjectMaterialPlan(models.Model):
     unit_cost = fields.Float(
         string="Unit Cost", related="product_id.standard_price", readonly=True,
     )
-    # Lets the form restrict the UoM picker to the product's own category.
-    product_uom_category_id = fields.Many2one(
-        "uom.category", related="product_id.uom_id.category_id",
-    )
     planned_cost = fields.Monetary(
         string="Planned Cost", currency_field="currency_id",
         compute="_compute_planned_cost",
