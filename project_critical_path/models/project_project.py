@@ -657,6 +657,12 @@ class ProjectProject(models.Model):
             current = times(task)
             if not current:
                 continue
+            # WBS parents mirror their dated children via _sync_parent_window —
+            # auto-shifting them for their own dependency bounds would clobber
+            # the rolled-up window. Their successors are still checked against
+            # the parent's current window.
+            if task.child_ids:
+                continue
             start, stop = current
             span = stop - start
             required_start = start  # bounds only ever push forward

@@ -611,3 +611,35 @@ class TestCriticalPath(TransactionCase):
         child_b.write({"parent_id": other.id})
         self.assertEqual(str(other.date_assign)[:16], "2026-09-15 09:00")
         self.assertEqual(str(parent.date_deadline)[:16], "2026-09-15 18:00")
+
+    def test_rollup_survives_parent_level_dependency(self):
+        """A WBS parent that still carries a depend_on edge must keep the
+        min/max window over its children — the auto-scheduler must not push
+        the parent itself (only its successors)."""
+        project = self.env["project.project"].create({"name": "RollupDep"})
+        blocker = self.env["project.task"].create({
+            "name": "Blocker", "project_id": project.id,
+            "date_assign": "2026-09-10 09:00:00", "date_deadline": "2026-09-20 18:00:00",
+        })
+        parent = self.env["project.task"].create({
+            "name": "P", "project_id": project.id,
+            "depend_on_ids": [(4, blocker.id)],
+        })
+        self.env["project.task"].create({
+            "name": "A", "project_id": project.id, "parent_id": parent.id,
+            "date_assign": "2026-09-01 09:00:00", "date_deadline": "2026-09-02 18:00:00",
+        })
+        # The rolled-up window starts long before the FS bound would allow —
+        # the parent must not be auto-shifted into the dependency's window.
+        self.assertEqual(str(parent.date_assign)[:16], "2026-09-01 09:00")
+        self.assertEqual(str(parent.date_deadline)[:16], "2026-09-02 18:00")
+
+        # A child write re-triggers both cascade and rollup; window stays.
+        child_b = self.env["project.task"].create({
+            "name": "B", "project_id": project.id, "parent_id": parent.id,
+            "date_assign": "2026-09-03 09:00:00", "date_deadline": "2026-09-04 18:00:00",
+        })
+        self.assertEqual(str(parent.date_deadline)[:16], "2026-09-04 18:00")
+        child_b.write({"date_assign": "2026-08-31 09:00:00"})
+        self.assertEqual(str(parent.date_assign)[:16], "2026-08-31 09:00")
+        self.assertEqual(str(parent.date_deadline)[:16], "2026-09-04 18:00")
