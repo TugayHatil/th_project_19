@@ -643,3 +643,21 @@ class TestCriticalPath(TransactionCase):
         child_b.write({"date_assign": "2026-08-31 09:00:00"})
         self.assertEqual(str(parent.date_assign)[:16], "2026-08-31 09:00")
         self.assertEqual(str(parent.date_deadline)[:16], "2026-09-04 18:00")
+
+    def test_inspector_save_keeps_dates_when_unassigned(self):
+        """Saving an unassigned task must not wipe date_assign — Odoo's
+        native write() clears the assigning date when the assignee set is
+        emptied, so update_planner_task applies user_ids first."""
+        project = self.env["project.project"].create({"name": "Unassigned"})
+        task = self.env["project.task"].create({
+            "name": "T", "project_id": project.id,
+            "date_assign": "2026-09-15 06:00:00",
+            "date_deadline": "2026-09-15 15:00:00",
+        })
+        task.update_planner_task({
+            "dt_start": "2026-09-16 10:00", "dt_stop": "2026-09-16 19:00",
+            "user_ids": [],
+        })
+        self.assertTrue(task.date_assign)
+        self.assertTrue(task.date_deadline)
+        self.assertEqual(str(task.date_assign)[:10], "2026-09-16")

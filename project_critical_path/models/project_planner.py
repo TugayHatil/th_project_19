@@ -519,7 +519,11 @@ class ProjectTaskPlanner(models.Model):
         if "stage_id" in values:
             vals["stage_id"] = values["stage_id"] or False
         if "user_ids" in values:
-            vals["user_ids"] = [Command.set(values["user_ids"] or [])]
+            # Odoo clears date_assign (the native "assigning date" the
+            # Planner reuses as planned start) inside write() whenever the
+            # assignee set ends up empty. Apply the assignee change first so
+            # the date fields written afterwards survive the same save.
+            self.write({"user_ids": [Command.set(values["user_ids"] or [])]})
         if "depend_on_ids" in values:
             vals["depend_on_ids"] = [Command.set(values["depend_on_ids"] or [])]
         if "dependent_ids" in values:
