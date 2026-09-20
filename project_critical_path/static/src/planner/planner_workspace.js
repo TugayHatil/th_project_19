@@ -960,8 +960,8 @@ export class PlannerWorkspace extends Component {
         const target = Math.max(el.clientWidth - 80, 200) / spanDays;
         const level = Math.min(Math.max(
             Math.round(Math.log(target / base) / Math.log(ZOOM_FACTOR)),
-            ZOOM_MIN, ZOOM_MAX,
-        ));
+            ZOOM_MIN,
+        ), ZOOM_MAX);
         this.state.zoom[this.state.scale] = level;
         const ppd = this.zoomDensity(this.state.scale);
         if (ppd === this.state.pxPerDay) {
