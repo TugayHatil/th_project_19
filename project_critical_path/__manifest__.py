@@ -3,7 +3,7 @@
 {
     "name": "Project Critical Path",
     "summary": "Calculate and store critical paths from task dependencies",
-    "version": "19.0.1.37.0",
+    "version": "19.0.1.38.0",
     "category": "Project",
     "author": "Projet Solutions",
     "license": "LGPL-3",
@@ -31,6 +31,9 @@
             "project_critical_path/static/src/planner/planner_workspace.js",
             "project_critical_path/static/src/planner/planner_workspace.xml",
             "project_critical_path/static/src/planner/planner_workspace.scss",
+        ],
+        "web.assets_tests": [
+            "project_critical_path/static/tests/tours/planner_workspace_tour.js",
         ],
     },
     "installable": True,
