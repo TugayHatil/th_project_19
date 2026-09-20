@@ -175,6 +175,12 @@ class ProjectProjectPlanner(models.Model):
                     "role_names": sorted(set(
                         task.resource_requirement_ids.mapped("role_id.name")
                     )),
+                    # Requirement categories — needed (not only assigned)
+                    # resource types, so the Resource Type group-by sees
+                    # open requirements too.
+                    "role_categories": sorted(set(
+                        task.resource_requirement_ids.mapped("role_id.category")
+                    )),
                     "depend_on_ids": task.depend_on_ids.ids,
                     "dependencies": [
                         dependency_rows[(task.id, dependency.id)]._serialize()

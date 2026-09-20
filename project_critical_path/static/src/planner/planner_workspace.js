@@ -636,9 +636,8 @@ export class PlannerWorkspace extends Component {
                     ? { key: `r:${task.role_names.join("|")}`, label: task.role_names.join(", ") }
                     : { ...none, label: _t("No Role") };
             case "restype": {
-                const res = task.resources || {};
-                const key = res.human && res.equipment
-                    ? "both" : res.human ? "human" : res.equipment ? "equipment" : "__none__";
+                const cats = task.role_categories || [];
+                const key = cats.length > 1 ? "both" : cats[0] || "__none__";
                 const label = {
                     both: _t("Human + Equipment"),
                     human: _t("Human"),
