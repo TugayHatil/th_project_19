@@ -70,9 +70,10 @@ class ProjectProjectPlanner(models.Model):
         WBS ancestors so the hierarchy stays readable (BRD-XX).
         """
         self.ensure_one()
-        tasks = self.env["project.task"].with_context(active_test=False).search(
+        all_tasks = self.env["project.task"].with_context(active_test=False).search(
             [("project_id", "=", self.id)]
         )
+        tasks = all_tasks
         if domain:
             matched = self.env["project.task"].with_context(active_test=False).search(
                 [("project_id", "=", self.id)] + list(domain)
@@ -84,7 +85,7 @@ class ProjectProjectPlanner(models.Model):
                 if parent and parent.project_id == self and parent.id not in keep:
                     keep.add(parent.id)
                     queue.append(parent.parent_id)
-            tasks = tasks.filtered(lambda task: task.id in keep)
+            tasks = all_tasks.filtered(lambda task: task.id in keep)
         ordered = tasks.sorted(key=lambda task: (task.wbs_sort_key or "", task.sequence, task.id))
         baseline = self.delay_impact_baseline_id
         if baseline_id:
@@ -115,8 +116,36 @@ class ProjectProjectPlanner(models.Model):
                 entry["names"].append(
                     (assignment.employee_id or assignment.equipment_id).display_name
                 )
+        # Standard Filters & Group By (BRD): option lists come from the FULL
+        # project task set — they stay available even while a filter hides
+        # the tasks that produced them.
+        stages = self.type_ids
+        if not stages:
+            stages = self.env["project.task.type"].search(
+                [("project_ids", "in", self.id)]
+            )
+        if not stages:
+            stages = self.env["project.task.type"].search([])
+        meta = {
+            "users": [
+                {"id": user.id, "name": user.name}
+                for user in all_tasks.mapped("user_ids")
+            ],
+            "roles": [
+                {"id": role.id, "name": role.name, "category": role.category}
+                for role in requirements.mapped("role_id")
+            ],
+            "stages": [{"id": stage.id, "name": stage.name} for stage in stages],
+            "parents": [
+                {"id": task.id, "name": task.name, "wbs_code": task.wbs_code or ""}
+                for task in all_tasks.filtered(lambda task: not task.parent_id).sorted(
+                    key=lambda task: (task.wbs_sort_key or "", task.sequence, task.id)
+                )
+            ],
+        }
         return {
             "project": {"id": self.id, "name": self.display_name},
+            "meta": meta,
             "tasks": [
                 {
                     "id": task.id,
@@ -138,6 +167,14 @@ class ProjectProjectPlanner(models.Model):
                     "critical_slack": task.critical_slack or 0.0,
                     # Done is the Odoo task state, never a progress threshold
                     "is_done": task.state == "1_done",
+                    # Group By keys (BRD Standard Filters) — display values
+                    # only; filtering itself runs on real fields via domain.
+                    "user_ids": task.user_ids.ids,
+                    "user_names": task.user_ids.mapped("name"),
+                    "stage_name": task.stage_id.name or "",
+                    "role_names": sorted(set(
+                        task.resource_requirement_ids.mapped("role_id.name")
+                    )),
                     "depend_on_ids": task.depend_on_ids.ids,
                     "dependencies": [
                         dependency_rows[(task.id, dependency.id)]._serialize()

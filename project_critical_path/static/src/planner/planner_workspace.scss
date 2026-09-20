@@ -143,6 +143,61 @@ $o_cp_planner_bar_critical: #e8a33d;
     white-space: nowrap;
 }
 
+// Standard Filters & Group By (BRD) — the filters popover is wider and
+// left-aligned so the field selects stay readable; group rows occupy a
+// full-height row in BOTH panels so WBS list and timeline stay aligned.
+.o_cp_planner_filtermenu_pop {
+    right: auto;
+    left: 0;
+    min-width: 220px;
+    max-height: 70vh;
+    overflow-y: auto;
+    white-space: normal;
+}
+
+.o_cp_planner_filter_section {
+    font-size: 0.66rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #98a2b3;
+    margin: 6px 0 2px;
+}
+
+.o_cp_planner_filter_lbl {
+    flex: 0 0 52px;
+}
+
+.o_cp_planner_groupby_item {
+    padding: 3px 4px;
+    border-radius: 4px;
+    cursor: pointer;
+
+    &:hover {
+        background: #f8f9fa;
+    }
+
+    &.active {
+        font-weight: 600;
+    }
+}
+
+.o_cp_planner_group_row {
+    background: #f1f3f5;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #495057;
+    cursor: default;
+
+    &:hover {
+        background: #f1f3f5;
+    }
+
+    .o_cp_planner_group_count {
+        color: #98a2b3;
+        font-weight: 400;
+    }
+}
+
 .o_cp_planner_toggle {
     width: 18px;
     flex: 0 0 18px;

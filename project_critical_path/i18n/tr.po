@@ -1846,3 +1846,88 @@ msgstr "Görev dışarı alınamadı."
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
 msgid "The task could not be reordered."
 msgstr "Görev yeniden sıralanamadı."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Not Completed"
+msgstr "Tamamlanmayan"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Resource Type"
+msgstr "Kaynak Türü"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "WBS / Parent"
+msgstr "WBS / Üst Görev"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Unassigned"
+msgstr "Atanmamış"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "No Role"
+msgstr "Rol Yok"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "No Resource"
+msgstr "Kaynak Yok"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "No Stage"
+msgstr "Aşama Yok"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Other"
+msgstr "Diğer"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The task cannot be indented here."
+msgstr "Görev burada içeri alınamaz."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The task cannot be outdented here."
+msgstr "Görev burada dışarı alınamaz."
+
+#. module: project_critical_path
+#: model_terms:project_critical_path.planner_workspace
+msgid "Filters"
+msgstr "Filtreler"
+
+#. module: project_critical_path
+#: model_terms:project_critical_path.planner_workspace
+msgid "Group By"
+msgstr "Grupla"
+
+#. module: project_critical_path
+#: model_terms:project_critical_path.planner_workspace
+msgid "Any"
+msgstr "Tümü"
+
+#. module: project_critical_path
+#: model_terms:project_critical_path.planner_workspace
+msgid "Clear All"
+msgstr "Tümünü Temizle"
+
+#. module: project_critical_path
+#: model_terms:project_critical_path.planner_workspace
+msgid "None"
+msgstr "Yok"
+
+#. module: project_critical_path
+#: model_terms:project_critical_path.planner_workspace
+msgid "Assigned To"
+msgstr "Atanan"
+
+#. module: project_critical_path
+#: model_terms:project_critical_path.planner_workspace
+msgid "Dates"
+msgstr "Tarihler"

@@ -76,6 +76,104 @@
                     <button type="button" class="btn btn-sm"
                             t-att-class="state.historyOpen ? 'btn-primary' : 'btn-outline-secondary'"
                             t-on-click="toggleHistory">Baseline History</button>
+                <!-- Standard Filters & Group By (BRD) — Odoo-style
+                     dropdowns. Filters build a project.task domain; Group
+                     By only re-arranges rendered rows. Neither writes data. -->
+                <div class="o_cp_planner_filtermenu position-relative">
+                    <button type="button" class="btn btn-sm"
+                            t-att-class="hasActiveFilters ? 'btn-primary' : 'btn-outline-secondary'"
+                            t-on-click="() => { state.filtersOpen = !state.filtersOpen; state.groupByOpen = false; state.colMenuOpen = false; }">
+                        <i class="fa fa-filter me-1"/>Filters
+                        <span t-if="activeFilterCount" class="badge text-bg-light ms-1" t-esc="activeFilterCount"/>
+                        <i class="fa fa-caret-down ms-1"/>
+                    </button>
+                    <div t-if="state.filtersOpen" class="o_cp_planner_colmenu_pop o_cp_planner_filtermenu_pop border rounded shadow-sm bg-white p-2">
+                        <div class="o_cp_planner_filter_section">Status</div>
+                        <label t-foreach="statusFilters" t-as="flt" t-key="flt.key"
+                               class="d-flex align-items-center gap-2 small mb-1">
+                            <input type="checkbox" t-att-checked="state.filters[flt.key]"
+                                   t-on-change="() => this.toggleStatusFilter(flt.key)"/>
+                            <t t-esc="flt.label"/>
+                        </label>
+                        <div class="o_cp_planner_filter_section">Assigned To</div>
+                        <select class="form-select form-select-sm mb-1"
+                                t-on-change="(ev) => this.onFilterSelect('userId', ev)">
+                            <option value="">Any</option>
+                            <option value="none" t-att-selected="state.filters.userId === 'none'">Unassigned</option>
+                            <t t-foreach="state.meta.users" t-as="u" t-key="u.id">
+                                <option t-att-value="u.id" t-att-selected="state.filters.userId === u.id" t-esc="u.name"/>
+                            </t>
+                        </select>
+                        <div class="o_cp_planner_filter_section">Role</div>
+                        <select class="form-select form-select-sm mb-1"
+                                t-on-change="(ev) => this.onFilterSelect('roleId', ev)">
+                            <option value="">Any</option>
+                            <t t-foreach="state.meta.roles" t-as="r" t-key="r.id">
+                                <option t-att-value="r.id" t-att-selected="state.filters.roleId === r.id" t-esc="r.name"/>
+                            </t>
+                        </select>
+                        <div class="o_cp_planner_filter_section">Resource Type</div>
+                        <select class="form-select form-select-sm mb-1"
+                                t-on-change="(ev) => this.onFilterSelect('resType', ev)">
+                            <option value="">Any</option>
+                            <option value="human" t-att-selected="state.filters.resType === 'human'">Human</option>
+                            <option value="equipment" t-att-selected="state.filters.resType === 'equipment'">Equipment</option>
+                        </select>
+                        <div class="o_cp_planner_filter_section">Stage</div>
+                        <select class="form-select form-select-sm mb-1"
+                                t-on-change="(ev) => this.onFilterSelect('stageId', ev)">
+                            <option value="">Any</option>
+                            <t t-foreach="state.meta.stages" t-as="s" t-key="s.id">
+                                <option t-att-value="s.id" t-att-selected="state.filters.stageId === s.id" t-esc="s.name"/>
+                            </t>
+                        </select>
+                        <div class="o_cp_planner_filter_section">WBS / Parent</div>
+                        <select class="form-select form-select-sm mb-1"
+                                t-on-change="(ev) => this.onFilterSelect('parentId', ev)">
+                            <option value="">Any</option>
+                            <t t-foreach="state.meta.parents" t-as="p" t-key="p.id">
+                                <option t-att-value="p.id" t-att-selected="state.filters.parentId === p.id"><t t-esc="p.wbs_code"/> <t t-esc="p.name"/></option>
+                            </t>
+                        </select>
+                        <div class="o_cp_planner_filter_section">Dates</div>
+                        <div class="d-flex align-items-center gap-1 mb-1">
+                            <span class="small text-muted o_cp_planner_filter_lbl">Start ≥</span>
+                            <input type="date" class="form-control form-control-sm"
+                                   t-att-value="state.filters.dateStart"
+                                   t-on-change="(ev) => this.onFilterDate('dateStart', ev)"/>
+                        </div>
+                        <div class="d-flex align-items-center gap-1 mb-1">
+                            <span class="small text-muted o_cp_planner_filter_lbl">Finish ≤</span>
+                            <input type="date" class="form-control form-control-sm"
+                                   t-att-value="state.filters.dateStop"
+                                   t-on-change="(ev) => this.onFilterDate('dateStop', ev)"/>
+                        </div>
+                        <button t-if="hasActiveFilters" type="button"
+                                class="btn btn-sm btn-link text-danger p-0 mt-1"
+                                t-on-click="clearFilters">Clear All</button>
+                    </div>
+                </div>
+                <div class="o_cp_planner_groupbymenu position-relative">
+                    <button type="button" class="btn btn-sm"
+                            t-att-class="state.groupBy ? 'btn-primary' : 'btn-outline-secondary'"
+                            t-on-click="() => { state.groupByOpen = !state.groupByOpen; state.filtersOpen = false; state.colMenuOpen = false; }">
+                        <i class="fa fa-bars me-1"/>Group By <i class="fa fa-caret-down"/>
+                    </button>
+                    <div t-if="state.groupByOpen" class="o_cp_planner_colmenu_pop border rounded shadow-sm bg-white p-2">
+                        <div class="o_cp_planner_groupby_item d-flex align-items-center gap-2 small"
+                             t-att-class="{active: !state.groupBy}"
+                             t-on-click="() => this.setGroupBy('')">
+                            <i class="fa fa-fw" t-att-class="!state.groupBy ? 'fa-check' : ''"/>None
+                        </div>
+                        <div t-foreach="groupByOptions" t-as="opt" t-key="opt.key"
+                             class="o_cp_planner_groupby_item d-flex align-items-center gap-2 small"
+                             t-att-class="{active: state.groupBy === opt.key}"
+                             t-on-click="() => this.setGroupBy(opt.key)">
+                            <i class="fa fa-fw" t-att-class="state.groupBy === opt.key ? 'fa-check' : ''"/>
+                            <t t-esc="opt.label"/>
+                        </div>
+                    </div>
+                </div>
                 <div class="o_cp_planner_colmenu position-relative">
                     <button type="button" class="btn btn-sm"
                             t-att-class="state.showStartCol || state.showFinishCol ? 'btn-primary' : 'btn-outline-secondary'"
@@ -124,8 +222,17 @@
                                      t-att-class="{dragging: state.wbsDragId}"
                                      t-ref="wbsRows" t-on-scroll="onWbsScroll"
                                      t-on-click="onBackgroundClick">
-                        <div t-foreach="visibleTasks" t-as="task" t-key="task.id"
+                        <t t-foreach="displayRows" t-as="row" t-key="row.key">
+                        <div t-if="row.type === 'group'"
+                             class="o_cp_planner_wbs_row o_cp_planner_group_row d-flex align-items-center px-2">
+                            <i class="fa fa-folder-open-o me-1"/>
+                            <span class="o_cp_planner_group_label text-truncate" t-esc="row.label"/>
+                            <span class="o_cp_planner_group_count ms-1" t-esc="row.count"/>
+                        </div>
+                        <t t-else="" t-set="task" t-value="row.task">
+                        <div
                              class="o_cp_planner_wbs_row d-flex align-items-center px-2"
+                             t-att-data-task-id="task.id"
                              t-att-class="{selected: state.selectedId === task.id, parent: task.has_children, dropbefore: state.wbsDropBeforeId === task.id, dropafter: state.wbsDropAfterId === task.id, dragging: state.wbsDragId === task.id}"
                              t-on-click="() => this.selectTask(task)"
                              t-on-dblclick="() => this.openTask(task)"
@@ -161,6 +268,8 @@
                                   t-att-class="{'ms-auto': !state.showStartCol}"
                                   t-esc="formatColDate(currentDates(task).stop)"/>
                         </div>
+                        </t>
+                        </t>
                         <div t-if="!state.loading &amp;&amp; !visibleTasks.length" class="p-3 text-muted">No tasks</div>
                     </div>
                 </div>
@@ -184,7 +293,11 @@
                                 </div>
                             </div>
                             <div class="o_cp_planner_gantt_rows">
-                                <div t-foreach="visibleTasks" t-as="task" t-key="task.id"
+                                <t t-foreach="displayRows" t-as="row" t-key="row.key">
+                                <div t-if="row.type === 'group'"
+                                     class="o_cp_planner_gantt_row o_cp_planner_group_row"/>
+                                <t t-else="" t-set="task" t-value="row.task">
+                                <div
                                      class="o_cp_planner_gantt_row"
                                      t-att-class="{selected: state.selectedId === task.id}"
                                      t-on-click="() => this.onRowClick(task)"
@@ -232,11 +345,13 @@
                                          title="Change finish"
                                          t-on-pointerdown="(ev) => this.onBarPointerDown(task, 'right', ev)"/>
                                 </div>
+                                </t>
+                                </t>
                                 <div t-if="dragTip" class="o_cp_planner_dragtip"
                                      t-att-style="dragTip.style" t-esc="dragTip.text"/>
                                 <svg class="o_cp_planner_deps"
                                      t-att-width="timelineWidth"
-                                     t-att-height="visibleTasks.length * 32">
+                                     t-att-height="displayRows.length * 32">
                                     <t t-foreach="dependencyEdges" t-as="edge" t-key="edge.key">
                                         <!-- Invisible wide stroke makes the
                                              connector an easy click target

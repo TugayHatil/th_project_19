@@ -33,6 +33,31 @@ const BAR_INFO_FIELDS = [
     { key: "name", label: _t("Task Name") },
 ];
 
+// Standard Filters & Group By (BRD): the status/time filters each map to a
+// project.task domain evaluated server-side — matching tasks keep their WBS
+// ancestors so the tree stays readable. Group By only re-arranges the
+// rendered rows; task data, hierarchy and scheduling never change.
+const PLANNER_STATUS_FILTERS = [
+    { key: "critical", label: _t("Critical Path") },
+    { key: "overdue", label: _t("Overdue") },
+    { key: "today", label: _t("Today") },
+    { key: "week", label: _t("This Week") },
+    { key: "done", label: _t("Completed") },
+    { key: "notdone", label: _t("Not Completed") },
+];
+const GROUP_BY_OPTIONS = [
+    { key: "assignee", label: _t("Assignee") },
+    { key: "role", label: _t("Role") },
+    { key: "restype", label: _t("Resource Type") },
+    { key: "stage", label: _t("Status") },
+    { key: "wbs", label: _t("WBS / Parent") },
+];
+const EMPTY_FILTERS = () => ({
+    critical: false, overdue: false, today: false, week: false,
+    done: false, notdone: false, userId: false, roleId: false,
+    resType: "", stageId: false, parentId: false, dateStart: "", dateStop: "",
+});
+
 const parseDay = (str) => {
     const [y, m, d] = str.split("-").map(Number);
     return new Date(y, m - 1, d);
@@ -178,6 +203,16 @@ export class PlannerWorkspace extends Component {
             // Toolbar task search — the submitted text becomes a simple
             // name/wbs_code ilike domain sent with get_planner_data
             searchDomain: [],
+            // Standard Filters & Group By (BRD) — Odoo-style dropdowns.
+            // Filter state is intentionally in-memory only: like standard
+            // Odoo views, non-favorite filters reset on reload.
+            filtersOpen: false,
+            groupByOpen: false,
+            filters: EMPTY_FILTERS(),
+            groupBy: "",
+            // Option lists for the dropdowns — full-project users, roles,
+            // stages and root tasks (from the get_planner_data meta block).
+            meta: { users: [], roles: [], stages: [], parents: [] },
             // Write access on project.task — checked once on mount; when
             // false, bar drags are blocked up-front with a warning instead
             // of silently reverting after a failed RPC.
@@ -219,6 +254,8 @@ export class PlannerWorkspace extends Component {
         this.scales = SCALES;
         this._zoomBase = {}; // fitted pxPerDay per scale (zoom level 0)
         this.barInfoFields = BAR_INFO_FIELDS;
+        this.statusFilters = PLANNER_STATUS_FILTERS;
+        this.groupByOptions = GROUP_BY_OPTIONS;
         this.resTlScales = { day: _t("Day"), week: _t("Week"), month: _t("Month") };
         useExternalListener(document.body, "keydown", (ev) => {
             if (ev.key !== "Escape") {
@@ -232,6 +269,10 @@ export class PlannerWorkspace extends Component {
                 this.state.barInfoOpen = false;
             } else if (this.state.historyOpen) {
                 this.toggleHistory();
+            } else if (this.state.filtersOpen) {
+                this.state.filtersOpen = false;
+            } else if (this.state.groupByOpen) {
+                this.state.groupByOpen = false;
             } else if (this.state.colMenuOpen) {
                 this.state.colMenuOpen = false;
             }
@@ -239,6 +280,12 @@ export class PlannerWorkspace extends Component {
         useExternalListener(document.body, "click", (ev) => {
             if (this.state.colMenuOpen && !ev.target.closest(".o_cp_planner_colmenu")) {
                 this.state.colMenuOpen = false;
+            }
+            if (this.state.filtersOpen && !ev.target.closest(".o_cp_planner_filtermenu")) {
+                this.state.filtersOpen = false;
+            }
+            if (this.state.groupByOpen && !ev.target.closest(".o_cp_planner_groupbymenu")) {
+                this.state.groupByOpen = false;
             }
         });
         // The gantt scroll element unmounts while the Resource Board is
@@ -319,14 +366,23 @@ export class PlannerWorkspace extends Component {
             if (this.state.compareBaselineId) {
                 kwargs.baseline_id = this.state.compareBaselineId;
             }
-            if (this.state.searchDomain?.length) {
-                kwargs.domain = this.state.searchDomain;
+            // Toolbar search text and the Filters dropdown build one AND-ed
+            // domain — the backend keeps the WBS ancestors of every match.
+            const domain = [
+                ...(this.state.searchDomain || []),
+                ...this.filterDomain,
+            ];
+            if (domain.length) {
+                kwargs.domain = domain;
             }
             const data = await this.orm.call(
                 "project.project", "get_planner_data", [projectId], kwargs,
             );
             this.state.projectName = data.project.name;
             this.state.tasks = data.tasks;
+            if (data.meta) {
+                this.state.meta = data.meta;
+            }
             this.computeRange();
         } catch (error) {
             this.state.tasks = [];
@@ -439,6 +495,227 @@ export class PlannerWorkspace extends Component {
             }
         }
         return this.state.tasks.filter((task) => !hidden.has(task.id));
+    }
+
+    // ---- Standard Filters & Group By (BRD) ---------------------------------
+    // Filters build a project.task domain evaluated server-side; Group By
+    // only re-arranges rendered rows. Neither ever writes task data.
+
+    get hasActiveFilters() {
+        const f = this.state.filters;
+        return !!(
+            f.critical || f.overdue || f.today || f.week || f.done || f.notdone
+            || f.userId || f.roleId || f.resType || f.stageId || f.parentId
+            || f.dateStart || f.dateStop
+        );
+    }
+
+    get activeFilterCount() {
+        const f = this.state.filters;
+        return [
+            f.critical, f.overdue, f.today, f.week, f.done, f.notdone,
+            f.userId, f.roleId, f.resType, f.stageId, f.parentId,
+            f.dateStart, f.dateStop,
+        ].filter(Boolean).length;
+    }
+
+    // Status/time filters as a project.task domain. Date bounds are local
+    // day boundaries; the backend keeps the WBS ancestors of every match.
+    get filterDomain() {
+        const f = this.state.filters;
+        const dom = [];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (f.critical) {
+            dom.push(["is_critical", "=", true]);
+        }
+        if (f.overdue) {
+            dom.push(
+                ["date_deadline", "!=", false],
+                ["date_deadline", "<", isoDay(today)],
+                ["state", "!=", "1_done"],
+            );
+        }
+        if (f.today) {
+            dom.push(
+                ["date_assign", "<=", `${isoDay(today)} 23:59:59`],
+                ["date_deadline", ">=", isoDay(today)],
+            );
+        }
+        if (f.week) {
+            const weekStart = startOfWeek(today);
+            const weekEnd = addDays(weekStart, 6);
+            dom.push(
+                ["date_assign", "<=", `${isoDay(weekEnd)} 23:59:59`],
+                ["date_deadline", ">=", isoDay(weekStart)],
+            );
+        }
+        if (f.done) {
+            dom.push(["state", "=", "1_done"]);
+        }
+        if (f.notdone) {
+            dom.push(["state", "!=", "1_done"]);
+        }
+        if (f.userId === "none") {
+            dom.push(["user_ids", "=", false]);
+        } else if (f.userId) {
+            dom.push(["user_ids", "in", [f.userId]]);
+        }
+        if (f.roleId) {
+            dom.push(["resource_requirement_ids.role_id", "in", [f.roleId]]);
+        }
+        if (f.resType) {
+            dom.push(["resource_requirement_ids.role_id.category", "=", f.resType]);
+        }
+        if (f.stageId) {
+            dom.push(["stage_id", "in", [f.stageId]]);
+        }
+        if (f.parentId) {
+            dom.push(["id", "child_of", f.parentId]);
+        }
+        if (f.dateStart) {
+            dom.push(["date_assign", ">=", f.dateStart]);
+        }
+        if (f.dateStop) {
+            dom.push(["date_deadline", "<=", `${f.dateStop} 23:59:59`]);
+        }
+        return dom;
+    }
+
+    async applyFilters() {
+        if (this.state.projectId) {
+            await this.loadProject(this.state.projectId);
+        }
+    }
+
+    async toggleStatusFilter(key) {
+        this.state.filters[key] = !this.state.filters[key];
+        await this.applyFilters();
+    }
+
+    async setFilterField(key, value) {
+        this.state.filters[key] = value;
+        await this.applyFilters();
+    }
+
+    onFilterSelect(key, ev) {
+        const raw = ev.target.value;
+        // resType carries string values ("human"/"equipment"); the id-based
+        // selects carry numbers. "none" = the explicit Unassigned filter.
+        const value = raw === "" ? (key === "resType" ? "" : false)
+            : raw === "none" ? "none"
+            : key === "resType" ? raw : Number(raw);
+        this.setFilterField(key, value);
+    }
+
+    onFilterDate(key, ev) {
+        this.setFilterField(key, ev.target.value || "");
+    }
+
+    async clearFilters() {
+        this.state.filters = EMPTY_FILTERS();
+        await this.applyFilters();
+    }
+
+    setGroupBy(key) {
+        this.state.groupBy = this.state.groupBy === key ? "" : key;
+    }
+
+    // The key+label a task belongs to under the active Group By. Tasks
+    // never duplicate across groups: multi-valued fields join into one
+    // label, empty values land in a trailing "Undefined"-style group.
+    taskGroup(task, groupBy) {
+        const none = { key: "__none__" };
+        switch (groupBy) {
+            case "assignee":
+                return task.user_names?.length
+                    ? { key: `u${task.user_ids[0]}`, label: task.user_names.join(", ") }
+                    : { ...none, label: _t("Unassigned") };
+            case "role":
+                return task.role_names?.length
+                    ? { key: `r:${task.role_names.join("|")}`, label: task.role_names.join(", ") }
+                    : { ...none, label: _t("No Role") };
+            case "restype": {
+                const res = task.resources || {};
+                const key = res.human && res.equipment
+                    ? "both" : res.human ? "human" : res.equipment ? "equipment" : "__none__";
+                const label = {
+                    both: _t("Human + Equipment"),
+                    human: _t("Human"),
+                    equipment: _t("Equipment"),
+                    __none__: _t("No Resource"),
+                }[key];
+                return { key, label };
+            }
+            case "stage":
+                return task.stage_name
+                    ? { key: `s:${task.stage_name}`, label: task.stage_name }
+                    : { ...none, label: _t("No Stage") };
+            case "wbs": {
+                // Group under the top-level WBS ancestor (the task itself
+                // when it is already a root).
+                const byId = this.taskById;
+                let root = task;
+                while (root.parent_id && byId.get(root.parent_id)) {
+                    root = byId.get(root.parent_id);
+                }
+                return { key: `p${root.id}`, label: `${root.wbs_code} ${root.name}` };
+            }
+        }
+        return { ...none, label: _t("Other") };
+    }
+
+    // Rows rendered by BOTH panels: group headers interleaved with task
+    // rows while Group By is active, otherwise a plain pass-through so row
+    // indices, connectors and row heights stay exactly as before.
+    get displayRows() {
+        const tasks = this.visibleTasks;
+        const groupBy = this.state.groupBy;
+        if (!groupBy) {
+            return tasks.map((task) => ({ type: "task", task, key: `t${task.id}` }));
+        }
+        const groups = new Map();
+        for (const task of tasks) {
+            const g = this.taskGroup(task, groupBy);
+            let group = groups.get(g.key);
+            if (!group) {
+                group = { key: g.key, label: g.label, count: 0 };
+                groups.set(g.key, group);
+            }
+            group.count += 1;
+            group.tasks = group.tasks || [];
+            group.tasks.push(task);
+        }
+        const ordered = [...groups.values()].sort((a, b) => {
+            if (a.key === "__none__") {
+                return 1;
+            }
+            if (b.key === "__none__") {
+                return -1;
+            }
+            return a.label.localeCompare(b.label);
+        });
+        const rows = [];
+        for (const group of ordered) {
+            rows.push({ type: "group", key: `g:${group.key}`, label: group.label, count: group.count });
+            for (const task of group.tasks) {
+                rows.push({ type: "task", task, key: `t${task.id}` });
+            }
+        }
+        return rows;
+    }
+
+    // Rendered row index per task — group headers occupy rows too, so the
+    // dependency connector Y positions and the drag tooltip must index
+    // into displayRows, not visibleTasks.
+    get rowIndexById() {
+        const map = new Map();
+        this.displayRows.forEach((row, i) => {
+            if (row.type === "task") {
+                map.set(row.task.id, i);
+            }
+        });
+        return map;
     }
 
     // The cell list only depends on range/scale/density — during a drag it
@@ -750,7 +1027,9 @@ export class PlannerWorkspace extends Component {
     // same-direction arrows from overlapping.
     get dependencyEdges() {
         const visible = this.visibleTasks;
-        const indexById = new Map(visible.map((task, i) => [task.id, i]));
+        // Row positions come from displayRows so Group By header rows shift
+        // the connector endpoints along with the task rows they sit above.
+        const indexById = this.rowIndexById;
         const byId = this.taskById;
         const selected = this.state.selectedId;
         const raw = [];
@@ -1514,6 +1793,13 @@ export class PlannerWorkspace extends Component {
         if (!task || this.state.renamingId) {
             return false;
         }
+        // Under an active filter/grouping the visible sibling list is
+        // incomplete — let the backend decide using the REAL WBS hierarchy
+        // (it returns False for a first sibling instead of guessing from
+        // the filtered rows).
+        if (this.hasActiveFilters || this.state.groupBy) {
+            return true;
+        }
         const siblings = this.state.tasks.filter((row) => row.parent_id === task.parent_id);
         return siblings.findIndex((row) => row.id === task.id) > 0;
     }
@@ -1529,7 +1815,15 @@ export class PlannerWorkspace extends Component {
             return;
         }
         try {
-            await this.orm.call("project.task", "planner_wbs_indent", [task.id]);
+            const result = await this.orm.call("project.task", "planner_wbs_indent", [task.id]);
+            if (result === false) {
+                // Real WBS has no previous sibling to nest under — possible
+                // while a filter hides siblings.
+                this.notification.add(_t("The task cannot be indented here."), {
+                    type: "warning",
+                });
+                return;
+            }
             await this.loadProject(this.state.projectId);
             this.state.selectedId = task.id;
         } catch (error) {
@@ -1545,7 +1839,13 @@ export class PlannerWorkspace extends Component {
             return;
         }
         try {
-            await this.orm.call("project.task", "planner_wbs_outdent", [task.id]);
+            const result = await this.orm.call("project.task", "planner_wbs_outdent", [task.id]);
+            if (result === false) {
+                this.notification.add(_t("The task cannot be outdented here."), {
+                    type: "warning",
+                });
+                return;
+            }
             await this.loadProject(this.state.projectId);
             this.state.selectedId = task.id;
         } catch (error) {
@@ -1561,6 +1861,12 @@ export class PlannerWorkspace extends Component {
         if (
             ev.button !== 0
             || this.state.renamingId
+            // Ordering drag is disabled while filters or Group By are
+            // active: hidden siblings would make the computed drop slot
+            // meaningless and could corrupt the real sequence (BRD: never
+            // produce a wrong WBS order — hierarchy/ordering stay real).
+            || this.hasActiveFilters
+            || this.state.groupBy
             || ev.target.closest(".o_cp_planner_add_child, .o_cp_planner_toggle, input, button, a")
         ) {
             return;
@@ -1586,14 +1892,10 @@ export class PlannerWorkspace extends Component {
         // the dragged task's parent — the drop can therefore never move the
         // task into a different branch.
         const siblings = this.visibleTasks.filter((row) => row.parent_id === task.parent_id);
-        const rowEls = [...this.wbsRowsRef.el.querySelectorAll(".o_cp_planner_wbs_row")];
-        const vis = this.visibleTasks;
-        const rowById = new Map();
-        rowEls.forEach((el, i) => {
-            if (vis[i]) {
-                rowById.set(vis[i].id, el);
-            }
-        });
+        const rowEls = [...this.wbsRowsRef.el.querySelectorAll(".o_cp_planner_wbs_row[data-task-id]")];
+        const rowById = new Map(
+            rowEls.map((el) => [Number(el.dataset.taskId), el]),
+        );
         let slot = siblings.length;
         for (let i = 0; i < siblings.length; i++) {
             const el = rowById.get(siblings[i].id);
@@ -1889,7 +2191,7 @@ export class PlannerWorkspace extends Component {
         }
         dragging.moved = true;
         const task = dragging.task;
-        const rowIdx = this.visibleTasks.findIndex((row) => row.id === task.id);
+        const rowIdx = this.rowIndexById.get(task.id) ?? 0;
         if (this.state.scale === "day") {
             // Day scale drags at hour precision — one column = one hour.
             const deltaH = Math.round(dx / (this.state.pxPerDay / 24));
@@ -2139,7 +2441,7 @@ export class PlannerWorkspace extends Component {
         this.state.selectedId = task.id;
         this.state.inspectorOpen = true;
         await this.loadInspector(task.id);
-        const idx = this.visibleTasks.findIndex((row) => row.id === task.id);
+        const idx = this.rowIndexById.get(task.id) ?? 0;
         const top = Math.max(idx * PLANNER_ROW_H - PLANNER_ROW_H * 2, 0);
         if (this.wbsRowsRef.el) {
             this.wbsRowsRef.el.scrollTop = top;
