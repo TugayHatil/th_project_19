@@ -522,8 +522,13 @@ class ProjectTaskPlanner(models.Model):
             # Odoo clears date_assign (the native "assigning date" the
             # Planner reuses as planned start) inside write() whenever the
             # assignee set ends up empty. Apply the assignee change first so
-            # the date fields written afterwards survive the same save.
+            # the date fields written afterwards survive the same save —
+            # and restore the planned start when it was cleared without an
+            # explicit start in this update (e.g. a stop-only save).
+            preserved_start = self.date_assign
             self.write({"user_ids": [Command.set(values["user_ids"] or [])]})
+            if preserved_start and not self.date_assign and "date_assign" not in vals:
+                vals["date_assign"] = preserved_start
         if "depend_on_ids" in values:
             vals["depend_on_ids"] = [Command.set(values["depend_on_ids"] or [])]
         if "dependent_ids" in values:

@@ -140,3 +140,18 @@ class TestPlannerCertification(TransactionCase):
             _planner_hours_per_day,
         )
         self.assertAlmostEqual(task.allocated_hours, 5 * _planner_hours_per_day(task), places=2)
+
+    def test_unassigned_stop_only_save_keeps_start(self):
+        """A stop-only Inspector save on an unassigned task must keep the
+        planned start — Odoo clears date_assign inside write() whenever the
+        assignee set is empty, so update_planner_task has to restore it."""
+        project = self.env["project.project"].create({"name": "Unassigned"})
+        task = self._task(project, "T", "2026-09-15 09:00:00", "2026-09-15 18:00:00")
+        self.assertFalse(task.user_ids)
+        start_before = task.date_assign
+        task.update_planner_task({
+            "dt_stop": "2026-09-16 21:00",
+            "user_ids": [],
+        })
+        self.assertEqual(task.date_assign, start_before)
+        self.assertTrue(task.date_deadline)
