@@ -162,6 +162,14 @@ export class PlannerWorkspace extends Component {
             colMenuOpen: false,
             showStartCol: false,
             showFinishCol: false,
+            // WBS quick-create: the new child row enters inline rename mode
+            // (Enter saves the name, Escape removes the just-created task).
+            renamingId: null,
+            renameValue: "",
+            // WBS drag reorder — ordering only, hierarchy never changes.
+            wbsDragId: null,
+            wbsDropBeforeId: null,
+            wbsDropAfterId: null,
             // Bar info field selector (BRD-17) — per-project selection
             barInfoOpen: false,
             barInfoKeys: [...BAR_INFO_DEFAULT],
@@ -264,6 +272,15 @@ export class PlannerWorkspace extends Component {
                     el.scrollLeft = Math.max(px - anchor.frac * el.clientWidth, 0);
                 }
                 this._pendingZoomAnchor = null;
+            }
+            // WBS quick-create inline rename: focus the input once the new
+            // child row has been patched in.
+            if (this.state.renamingId) {
+                const input = this.wbsRowsRef.el?.querySelector(".o_cp_planner_rename_input");
+                if (input && document.activeElement !== input) {
+                    input.focus();
+                    input.select();
+                }
             }
         });
         onMounted(async () => {
@@ -1415,44 +1432,219 @@ export class PlannerWorkspace extends Component {
         }
     }
 
-    // BRD (quick subtask creation): the small "+" next to each WBS row
-    // name opens the Quick Inspector as an unsaved draft for a child of
-    // that row. No record is created until the user presses Save —
-    // closing the Inspector without saving leaves nothing behind.
+    // BRD (WBS quick create): the small "+" next to each WBS row creates a
+    // child task immediately and puts its name into inline edit mode —
+    // Enter commits the name, Escape removes the just-created task so no
+    // half-made record is left behind. Resource assignment stays in the
+    // Inspector.
     async quickAddSubtask(task, ev) {
         ev.stopPropagation();
         try {
-            // Reuse the parent's detail call to populate state.options
-            // (the assignee select) — no record is created here.
-            const detail = await this.orm.call("project.task", "get_planner_detail", [task.id]);
-            this.state.selectedId = 0;
-            this.state.inspector = null;
-            this.state.inspectorOpen = true;
-            this.state.inspectorLoading = false;
-            this.state.draftParentId = task.id;
-            this.state.baseline = null;
-            this.state.impact = null;
-            this.state.options = detail.options;
-            this.state.depOpen = false;
-            const start = task.date_start || "";
-            const stop = task.date_stop || "";
-            this.state.form = {
-                name: "",
-                date_start: start,
-                date_stop: stop,
-                time_start: (task.dt_start || "").slice(11, 16) || "09:00",
-                time_stop: (task.dt_stop || "").slice(11, 16) || "18:00",
-                duration_days: start && stop ? dayDiff(parseDay(start), parseDay(stop)) + 1 : 0,
-                allocated_hours: 0,
-                progress: 0,
-                user_id: false,
-                depend_on_ids: [],
-                dependent_ids: [],
-                addPredecessorId: "",
-                addSuccessorId: "",
-            };
+            const created = await this.orm.call(
+                "project.task", "planner_add_subtask", [task.id], { name: "" },
+            );
+            this.state.collapsedIds.delete(task.id);
+            await this.loadProject(this.state.projectId);
+            this.state.selectedId = created.id;
+            this.state.renamingId = created.id;
+            this.state.renameValue = created.name;
         } catch (error) {
             this.notification.add(error.data?.message || _t("The subtask could not be created."), {
+                type: "danger",
+            });
+        }
+    }
+
+    onRenameKeydown(task, ev) {
+        ev.stopPropagation();
+        if (ev.key === "Enter") {
+            ev.preventDefault();
+            this.commitRename(task);
+        } else if (ev.key === "Escape") {
+            ev.preventDefault();
+            this.cancelRename(task);
+        }
+    }
+
+    async commitRename(task) {
+        if (this.state.renamingId !== task.id) {
+            return;
+        }
+        this.state.renamingId = null;
+        const name = (this.state.renameValue || "").trim();
+        if (!name || name === task.name) {
+            return;
+        }
+        try {
+            await this.orm.write("project.task", [task.id], { name });
+            await this.loadProject(this.state.projectId);
+            this.state.selectedId = task.id;
+        } catch (error) {
+            this.notification.add(error.data?.message || _t("The task could not be renamed."), {
+                type: "danger",
+            });
+        }
+    }
+
+    async cancelRename(task) {
+        if (this.state.renamingId !== task.id) {
+            return;
+        }
+        this.state.renamingId = null;
+        try {
+            await this.orm.unlink("project.task", [task.id]);
+            await this.loadProject(this.state.projectId);
+        } catch (error) {
+            this.notification.add(error.data?.message || _t("The task could not be removed."), {
+                type: "danger",
+            });
+        }
+    }
+
+    // ---- WBS Indent / Outdent ----------------------------------------------
+    // Hierarchy changes are explicit button actions only — the WBS drag
+    // gesture is ordering-only and can never reparent a task (BRD).
+
+    get selectedWbsTask() {
+        return this.taskById.get(this.state.selectedId) || null;
+    }
+
+    get canIndent() {
+        const task = this.selectedWbsTask;
+        if (!task || this.state.renamingId) {
+            return false;
+        }
+        const siblings = this.state.tasks.filter((row) => row.parent_id === task.parent_id);
+        return siblings.findIndex((row) => row.id === task.id) > 0;
+    }
+
+    get canOutdent() {
+        const task = this.selectedWbsTask;
+        return !!task && !!task.parent_id && !this.state.renamingId;
+    }
+
+    async indentTask() {
+        const task = this.selectedWbsTask;
+        if (!task || !this.canIndent) {
+            return;
+        }
+        try {
+            await this.orm.call("project.task", "planner_wbs_indent", [task.id]);
+            await this.loadProject(this.state.projectId);
+            this.state.selectedId = task.id;
+        } catch (error) {
+            this.notification.add(error.data?.message || _t("The task could not be indented."), {
+                type: "danger",
+            });
+        }
+    }
+
+    async outdentTask() {
+        const task = this.selectedWbsTask;
+        if (!task || !this.canOutdent) {
+            return;
+        }
+        try {
+            await this.orm.call("project.task", "planner_wbs_outdent", [task.id]);
+            await this.loadProject(this.state.projectId);
+            this.state.selectedId = task.id;
+        } catch (error) {
+            this.notification.add(error.data?.message || _t("The task could not be outdented."), {
+                type: "danger",
+            });
+        }
+    }
+
+    // ---- WBS drag reorder (ordering only — never a hierarchy change) -------
+
+    onWbsRowPointerDown(task, ev) {
+        if (
+            ev.button !== 0
+            || this.state.renamingId
+            || ev.target.closest(".o_cp_planner_add_child, .o_cp_planner_toggle, input, button, a")
+        ) {
+            return;
+        }
+        const startY = ev.clientY;
+        const move = (e) => this._wbsDragMove(task, startY, e);
+        const up = (e) => {
+            window.removeEventListener("pointermove", move);
+            window.removeEventListener("pointerup", up);
+            this._wbsDragEnd(task, e);
+        };
+        window.addEventListener("pointermove", move);
+        window.addEventListener("pointerup", up);
+    }
+
+    _wbsDragMove(task, startY, ev) {
+        if (!this._wbsDragActive && Math.abs(ev.clientY - startY) < 5) {
+            return;
+        }
+        this._wbsDragActive = true;
+        this.state.wbsDragId = task.id;
+        // The insertion slot is computed only among VISIBLE rows that share
+        // the dragged task's parent — the drop can therefore never move the
+        // task into a different branch.
+        const siblings = this.visibleTasks.filter((row) => row.parent_id === task.parent_id);
+        const rowEls = [...this.wbsRowsRef.el.querySelectorAll(".o_cp_planner_wbs_row")];
+        const vis = this.visibleTasks;
+        const rowById = new Map();
+        rowEls.forEach((el, i) => {
+            if (vis[i]) {
+                rowById.set(vis[i].id, el);
+            }
+        });
+        let slot = siblings.length;
+        for (let i = 0; i < siblings.length; i++) {
+            const el = rowById.get(siblings[i].id);
+            if (!el) {
+                continue;
+            }
+            const rect = el.getBoundingClientRect();
+            if (ev.clientY < rect.top + rect.height / 2) {
+                slot = i;
+                break;
+            }
+        }
+        const before = siblings[slot];
+        this.state.wbsDropBeforeId = before ? before.id : null;
+        this.state.wbsDropAfterId = !before && siblings.length
+            ? siblings[siblings.length - 1].id
+            : null;
+    }
+
+    async _wbsDragEnd(task, ev) {
+        const active = this._wbsDragActive;
+        const beforeId = this.state.wbsDropBeforeId;
+        const afterId = this.state.wbsDropAfterId;
+        this._wbsDragActive = false;
+        this.state.wbsDragId = null;
+        this.state.wbsDropBeforeId = null;
+        this.state.wbsDropAfterId = null;
+        if (!active) {
+            return;
+        }
+        ev.preventDefault();
+        // Dropped on itself or already in place — nothing to do.
+        if (beforeId === task.id || afterId === task.id) {
+            return;
+        }
+        const siblings = this.state.tasks.filter((row) => row.parent_id === task.parent_id);
+        const index = siblings.findIndex((row) => row.id === task.id);
+        if (
+            (beforeId && siblings[index + 1]?.id === beforeId)
+            || (!beforeId && afterId && siblings[index - 1]?.id === afterId)
+        ) {
+            return;
+        }
+        try {
+            await this.orm.call("project.task", "planner_wbs_move_before", [task.id], {
+                before_id: beforeId || false,
+            });
+            await this.loadProject(this.state.projectId);
+            this.state.selectedId = task.id;
+        } catch (error) {
+            this.notification.add(error.data?.message || _t("The task could not be reordered."), {
                 type: "danger",
             });
         }

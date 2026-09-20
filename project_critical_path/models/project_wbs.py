@@ -162,9 +162,96 @@ class ProjectTaskWBS(models.Model):
             affected_projects._recalculate_wbs()
         return result
 
+    # ---- Planner WBS actions ------------------------------------------------
+    # Mouse drag = ordering only; Indent/Outdent = hierarchy. Both go through
+    # these helpers so the two concerns never mix, and every write re-enters
+    # the normal hooks (WBS recompute, parent rollup, critical-path recalc).
 
+    def _planner_wbs_children(self, parent):
+        """Ordered children of ``parent`` (``False`` = root) in this project."""
+        self.ensure_one()
+        return self.env["project.task"].with_context(active_test=False).search(
+            [
+                ("project_id", "=", self.project_id.id),
+                ("parent_id", "=", parent.id if parent else False),
+            ],
+            order="sequence, id",
+        )
 
+    def _planner_wbs_normalize(self, ordered_tasks):
+        """Rewrite sibling sequences as 10, 20, 30… so inserts stay stable."""
+        for index, task in enumerate(ordered_tasks):
+            sequence = (index + 1) * 10
+            if task.sequence != sequence:
+                task.write({"sequence": sequence})
 
+    def planner_add_subtask(self, name=""):
+        """WBS "+" — create a child task that the Planner renames inline."""
+        self.ensure_one()
+        siblings = self._planner_wbs_children(self)
+        task = self.env["project.task"].create({
+            "name": (name or "").strip() or _("New Task"),
+            "project_id": self.project_id.id,
+            "parent_id": self.id,
+            "sequence": (siblings[-1].sequence + 10) if siblings else 10,
+        })
+        return {"id": task.id, "name": task.name}
+
+    def planner_wbs_indent(self):
+        """Move the task one level deeper: it becomes the last child of the
+        sibling directly above it. The first sibling cannot indent (BRD)."""
+        self.ensure_one()
+        siblings = self._planner_wbs_children(self.parent_id)
+        index = siblings.ids.index(self.id)
+        if index <= 0:
+            return False
+        new_parent = siblings[index - 1]
+        # sudo: the planner surface is the WBS editor — the "+" quick-create
+        # already lets planner users grow the hierarchy via create().
+        self.sudo().write({"parent_id": new_parent.id})
+        ordered = list(self._planner_wbs_children(new_parent).filtered(
+            lambda task: task.id != self.id
+        )) + [self]
+        self._planner_wbs_normalize(ordered)
+        return True
+
+    def planner_wbs_outdent(self):
+        """Move the task up one level, landing directly after its former
+        parent (BRD ordering). A root task cannot outdent."""
+        self.ensure_one()
+        parent = self.parent_id
+        if not parent:
+            return False
+        self.sudo().write({"parent_id": parent.parent_id.id or False})
+        siblings = list(self._planner_wbs_children(parent.parent_id).filtered(
+            lambda task: task.id != self.id
+        ))
+        position = [task.id for task in siblings].index(parent.id) + 1
+        siblings.insert(position, self)
+        self._planner_wbs_normalize(siblings)
+        return True
+
+    def planner_wbs_move_before(self, before_id=False):
+        """Reorder within the same parent. Drag & drop never reparents a
+        task, so a target in another branch is rejected."""
+        self.ensure_one()
+        siblings = list(self._planner_wbs_children(self.parent_id).filtered(
+            lambda task: task.id != self.id
+        ))
+        if before_id:
+            before = self.env["project.task"].browse(before_id)
+            if (
+                not before.exists()
+                or before.project_id != self.project_id
+                or before.parent_id != self.parent_id
+            ):
+                return False
+            position = [task.id for task in siblings].index(before_id)
+            siblings.insert(position, self)
+        else:
+            siblings.append(self)
+        self._planner_wbs_normalize(siblings)
+        return True
 
 class ProjectProjectWBS(models.Model):
     _inherit = "project.project"

@@ -33,6 +33,10 @@ $o_cp_planner_bar_critical: #e8a33d;
 .o_cp_planner_wbs_rows {
     overflow-y: auto;
     overflow-x: hidden;
+
+    &.dragging {
+        user-select: none;
+    }
 }
 
 .o_cp_planner_wbs_row {
@@ -53,6 +57,29 @@ $o_cp_planner_bar_critical: #e8a33d;
     &.parent .o_cp_planner_task_name {
         font-weight: 700;
     }
+
+    // WBS drag reorder: ordering only — a line shows where the row will
+    // land among its siblings; the task can never change parent this way.
+    &.dragging {
+        opacity: 0.45;
+    }
+
+    &.dropbefore {
+        box-shadow: inset 0 2px 0 #175cd3;
+    }
+
+    &.dropafter {
+        box-shadow: inset 0 -2px 0 #175cd3;
+    }
+}
+
+// Inline rename input shown in place of the task name right after the
+// WBS "+" quick-create.
+.o_cp_planner_rename_input {
+    min-width: 0;
+    height: 22px;
+    padding: 0 4px;
+    font-size: 0.72rem;
 }
 
 // Indented per WBS level (see template margin); the code column itself

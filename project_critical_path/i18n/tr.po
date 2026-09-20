@@ -1801,3 +1801,48 @@ msgstr "Bağımlılık kaydedilemedi."
 #. module: project_critical_path
 msgid "You do not have permission to edit tasks in this project."
 msgstr "Bu projedeki görevleri düzenleme yetkiniz yok."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Indent"
+msgstr "İçeri Al"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Outdent"
+msgstr "Dışarı Al"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Add subtask"
+msgstr "Alt görev ekle"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_wbs.py:0
+msgid "New Task"
+msgstr "Yeni Görev"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The task could not be renamed."
+msgstr "Görev yeniden adlandırılamadı."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The task could not be removed."
+msgstr "Görev kaldırılamadı."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The task could not be indented."
+msgstr "Görev içeri alınamadı."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The task could not be outdented."
+msgstr "Görev dışarı alınamadı."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The task could not be reordered."
+msgstr "Görev yeniden sıralanamadı."
