@@ -1,0 +1,1055 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* project_critical_path
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-16 00:00+0000\n"
+"PO-Revision-Date: 2026-09-16 00:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Bar Info"
+msgstr "Balkeninfos"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Select the information shown next to the task bars."
+msgstr "Wählen Sie die Informationen, die neben den Aufgabenbalken angezeigt werden."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Selected"
+msgstr "Ausgewählt"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Planned Hours"
+msgstr "Geplante Stunden"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Actual Hours"
+msgstr "Ist-Stunden"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Progress %"
+msgstr "Fortschritt %"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Start Date"
+msgstr "Startdatum"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "End Date"
+msgstr "Enddatum"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Task Name"
+msgstr "Aufgabenname"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "You can select up to 3 fields."
+msgstr "Sie können bis zu 3 Felder auswählen."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Slack (Float)"
+msgstr "Slack (Puffer)"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Shown left of the bar — does not count toward the limit."
+msgstr "Wird links vom Balken angezeigt — zählt nicht zum Limit."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Week"
+msgstr "Woche"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Assign"
+msgstr "Zuweisen"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Edit"
+msgstr "Bearbeiten"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Delete"
+msgstr "Löschen"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Save"
+msgstr "Speichern"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Are you sure you want to delete this resource assignment?"
+msgstr "Möchten Sie diese Ressourcenzuweisung wirklich löschen?"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Overdue"
+msgstr "Überfällig"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Select a project…"
+msgstr "Projekt auswählen…"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Columns"
+msgstr "Spalten"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Task"
+msgstr "Vorgang"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Start"
+msgstr "Start"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Finish"
+msgstr "Ende"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "No tasks"
+msgstr "Keine Vorgänge"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Unassigned or partially assigned requirements"
+msgstr "Nicht oder teilweise zugewiesene Anforderungen"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Critical Path"
+msgstr "Kritischer Pfad"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Close"
+msgstr "Schließen"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Loading…"
+msgstr "Wird geladen…"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Current Plan"
+msgstr "Aktueller Plan"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Duration"
+msgstr "Dauer"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "hours"
+msgstr "Stunden"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Assignee"
+msgstr "Zugewiesen an"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Baseline"
+msgstr "Basisplan"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Current"
+msgstr "Aktuell"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Variance"
+msgstr "Abweichung"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Total Delay"
+msgstr "Gesamtverzögerung"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Impact"
+msgstr "Auswirkung"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Task was not part of"
+msgstr "Vorgang war nicht Teil von"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "No baseline exists for this project yet."
+msgstr "Für dieses Projekt existiert noch kein Basisplan."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "View Baseline History"
+msgstr "Basisplan-Historie anzeigen"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Dependencies"
+msgstr "Abhängigkeiten"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Predecessors"
+msgstr "Vorgänger"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Successors"
+msgstr "Nachfolger"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Remove"
+msgstr "Entfernen"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Add predecessor…"
+msgstr "Vorgänger hinzufügen…"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Add successor…"
+msgstr "Nachfolger hinzufügen…"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Resources"
+msgstr "Ressourcen"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Manage"
+msgstr "Verwalten"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Saving…"
+msgstr "Wird gespeichert…"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Open Full Task"
+msgstr "Vollständigen Vorgang öffnen"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Baseline History"
+msgstr "Basisplan-Historie"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "No baselines exist for this project yet."
+msgstr "Für dieses Projekt existieren noch keine Basispläne."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Initial"
+msgstr "Initial"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Project Duration"
+msgstr "Projektdauer"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Previous Baseline"
+msgstr "Vorheriger Basisplan"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Tasks Changed"
+msgstr "Geänderte Vorgänge"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Critical Path Changes"
+msgstr "Änderungen am kritischen Pfad"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Initial baseline —"
+msgstr "Initialer Basisplan —"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "task snapshots."
+msgstr "Vorgangssnapshots."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Changes"
+msgstr "Änderungen"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Gantt shows this baseline vs the current plan."
+msgstr "Gantt zeigt diesen Basisplan im Vergleich zum aktuellen Plan."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "No task changes in this baseline."
+msgstr "Keine Vorgangsänderungen in diesem Basisplan."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Entered Critical Path"
+msgstr "In kritischen Pfad eingetreten"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Left Critical Path"
+msgstr "Kritischen Pfad verlassen"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Added to plan"
+msgstr "Zum Plan hinzugefügt"
+
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Removed from plan"
+msgstr "Aus Plan entfernt"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Dates shifted"
+msgstr "Daten verschoben"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Resource Planning"
+msgstr "Ressourcenplanung"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Requirements"
+msgstr "Anforderungen"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Add"
+msgstr "Hinzufügen"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Role"
+msgstr "Rolle"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Req"
+msgstr "Bedarf"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Assigned"
+msgstr "Zugewiesen"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Status"
+msgstr "Status"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Edit requirement"
+msgstr "Anforderung bearbeiten"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Remove requirement"
+msgstr "Anforderung entfernen"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "No resource requirements for this task."
+msgstr "Keine Ressourcenanforderungen für diesen Vorgang."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Resource role…"
+msgstr "Ressourcenrolle…"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Qty"
+msgstr "Menge"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Planned hours"
+msgstr "Geplante Stunden"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Required quantity"
+msgstr "Benötigte Menge"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Start (defaults to task start)"
+msgstr "Start (Standard: Vorgangsbeginn)"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "End (defaults to task finish)"
+msgstr "Ende (Standard: Vorgangsende)"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Description (optional)"
+msgstr "Beschreibung (optional)"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "required"
+msgstr "benötigt"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "planned"
+msgstr "geplant"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Unassign"
+msgstr "Zuweisung aufheben"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Candidate Resources"
+msgstr "Verfügbare Ressourcen"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Resource"
+msgstr "Ressource"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Availability"
+msgstr "Verfügbarkeit"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Booked"
+msgstr "Gebucht"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "No matching resources for this role."
+msgstr "Keine passenden Ressourcen für diese Rolle."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Timeline —"
+msgstr "Zeitachse —"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Previous period"
+msgstr "Vorheriger Zeitraum"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Next period"
+msgstr "Nächster Zeitraum"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Jump to date"
+msgstr "Zu Datum springen"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Required"
+msgstr "Benötigt"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Required period"
+msgstr "Benötigter Zeitraum"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "No existing assignments in this window — resource is free."
+msgstr "Keine Zuweisungen in diesem Zeitraum — Ressource ist frei."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Planned assignment"
+msgstr "Geplante Zuweisung"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Overlaps an existing assignment of this resource."
+msgstr "Überschneidet sich mit einer bestehenden Zuweisung dieser Ressource."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Outside the required period — the assignment cannot be saved."
+msgstr "Außerhalb des benötigten Zeitraums — die Zuweisung kann nicht gespeichert werden."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "This assignment belongs to a different requirement — view only."
+msgstr "Diese Zuweisung gehört zu einer anderen Anforderung — nur Ansicht."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Assignment start"
+msgstr "Zuweisungsbeginn"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Assignment end"
+msgstr "Zuweisungsende"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Overlaps an existing assignment."
+msgstr "Überschneidet sich mit einer bestehenden Zuweisung."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Outside the required period."
+msgstr "Außerhalb des benötigten Zeitraums."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Select a requirement to see candidate resources."
+msgstr "Wählen Sie eine Anforderung, um verfügbare Ressourcen zu sehen."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Change start"
+msgstr "Beginn ändern"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Change finish"
+msgstr "Ende ändern"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Drag across the timeline to preview an assignment, then click Assign · click an assignment for details · drag or resize your own assignments."
+msgstr "Über die Zeitachse ziehen, um eine Zuweisung vorzuschauen, dann auf Zuweisen klicken · für Details auf eine Zuweisung klicken · eigene Zuweisungen können verschoben oder in der Größe geändert werden."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Hour"
+msgstr "Stunde"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Day"
+msgstr "Tag"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Month"
+msgstr "Monat"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Today"
+msgstr "Heute"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Critical Impact"
+msgstr "Kritische Auswirkung"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Within Slack"
+msgstr "Innerhalb des Puffers"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Duration Reduced"
+msgstr "Dauer reduziert"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "No Impact"
+msgstr "Keine Auswirkung"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The planner data could not be loaded."
+msgstr "Die Planner-Daten konnten nicht geladen werden."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The task could not be loaded."
+msgstr "Der Vorgang konnte nicht geladen werden."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Baseline history could not be opened."
+msgstr "Die Basisplan-Historie konnte nicht geöffnet werden."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The task could not be saved."
+msgstr "Der Vorgang konnte nicht gespeichert werden."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The task dates could not be saved."
+msgstr "Die Vorgangsdaten konnten nicht gespeichert werden."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The baseline history could not be loaded."
+msgstr "Die Basisplan-Historie konnte nicht geladen werden."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The baseline summary could not be loaded."
+msgstr "Die Basisplan-Zusammenfassung konnte nicht geladen werden."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "This task is no longer part of the current project plan."
+msgstr "Dieser Vorgang ist nicht mehr Teil des aktuellen Projektplans."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Resources could not be loaded."
+msgstr "Ressourcen konnten nicht geladen werden."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Select a resource role first."
+msgstr "Wählen Sie zuerst eine Ressourcenrolle."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The requirement could not be saved."
+msgstr "Die Anforderung konnte nicht gespeichert werden."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The requirement could not be removed."
+msgstr "Die Anforderung konnte nicht entfernt werden."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The resource could not be assigned."
+msgstr "Die Ressource konnte nicht zugewiesen werden."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The assignment could not be removed."
+msgstr "Die Zuweisung konnte nicht entfernt werden."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Manage resources"
+msgstr "Ressourcen verwalten"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "No resource requirements yet"
+msgstr "Noch keine Ressourcenanforderungen"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "unassigned requirements"
+msgstr "nicht zugewiesene Anforderungen"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Pending"
+msgstr "Ausstehend"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Partial"
+msgstr "Teilweise"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Fully available"
+msgstr "Voll verfügbar"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Partially occupied"
+msgstr "Teilweise belegt"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Conflict"
+msgstr "Konflikt"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Person"
+msgstr "Person"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Equipment"
+msgstr "Ausrüstung"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Start must be before finish — the assignment was not changed."
+msgstr "Beginn muss vor dem Ende liegen — die Zuweisung wurde nicht geändert."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The assignment could not be updated."
+msgstr "Die Zuweisung konnte nicht aktualisiert werden."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Saved — the new position overlaps another assignment of this resource."
+msgstr "Gespeichert — die neue Position überschneidet sich mit einer anderen Zuweisung dieser Ressource."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Current finish"
+msgstr "Aktuelles Ende"
+
+#. module: project_critical_path
+#: model:ir.actions.act_window,name:project_critical_path.action_project_resource_role
+#: model:ir.ui.menu,name:project_critical_path.menu_project_resource_role
+msgid "Resource Roles"
+msgstr "Ressourcenrollen"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Critical"
+msgstr "Kritisch"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "This Week"
+msgstr "Diese Woche"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Completed"
+msgstr "Abgeschlossen"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Total"
+msgstr "Gesamt"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Tasks on the critical path."
+msgstr "Vorgänge auf dem kritischen Pfad."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Tasks past their finish date and not Done."
+msgstr "Vorgänge nach dem Enddatum, die nicht erledigt sind."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Tasks planned to finish by the end of this week, not Done."
+msgstr "Vorgänge, die bis Ende dieser Woche enden sollen und nicht erledigt sind."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Tasks in the Done state."
+msgstr "Vorgänge im Status Erledigt."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Total planned hours across all tasks."
+msgstr "Summe der geplanten Stunden aller Vorgänge."
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.planner_workspace
+msgid "Resource Board"
+msgstr "Ressourcen-Board"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.planner_workspace
+msgid "Personnel"
+msgstr "Personal"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.planner_workspace
+msgid "No eligible resources."
+msgstr "Keine geeigneten Ressourcen."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Resources could not be loaded."
+msgstr "Ressourcen konnten nicht geladen werden."
+
+#. module: project_critical_path
+msgid "Resource Rate Template"
+msgstr "Ressourcen-Tarifvorlage"
+
+#. module: project_critical_path
+msgid "Resource Rate Templates"
+msgstr "Ressourcen-Tarifvorlagen"
+
+#. module: project_critical_path
+msgid "Rates"
+msgstr "Tarife"
+
+#. module: project_critical_path
+msgid "Hourly Rate"
+msgstr "Stundensatz"
+
+#. module: project_critical_path
+msgid "Planned Cost"
+msgstr "Plankosten"
+
+#. module: project_critical_path
+msgid "Planned Resource Cost"
+msgstr "Geplante Ressourcenkosten"
+
+#. module: project_critical_path
+msgid "Currency"
+msgstr "Währung"
+
+#. module: project_critical_path
+msgid "Personnel:"
+msgstr "Personal:"
+
+#. module: project_critical_path
+msgid "Not assigned yet"
+msgstr "Noch nicht zugewiesen"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "No hourly rate for this role in the project rate templates."
+msgstr "Kein Stundensatz für diese Rolle in den Projekttarifvorlagen."
+
+#. module: project_critical_path
+msgid "The hourly rate cannot be negative."
+msgstr "Der Stundensatz darf nicht negativ sein."
+
+#. module: project_critical_path
+msgid "Resource Role"
+msgstr "Ressourcenrolle"
+
+#. module: project_critical_path
+msgid "Cost Variance"
+msgstr "Kostenabweichung"
+
+#. module: project_critical_path
+msgid "Planned Resource Hours"
+msgstr "Geplante Ressourcenstunden"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+msgid "Planned cost: %(old)s → %(new)s (%(delta)s)"
+msgstr "Plankosten: %(old)s → %(new)s (%(delta)s)"
+
+#. module: project_critical_path
+msgid "Cost Change"
+msgstr "Kostenänderung"
+
+#. module: project_critical_path
+msgid "Resource Currency"
+msgstr "Ressourcenwährung"
+
+#. module: project_critical_path
+msgid "Back to Project"
+msgstr "Zurück zum Projekt"
+
+#. module: project_critical_path
+msgid "Project"
+msgstr "Projekt"
+
+#. module: project_critical_path
+msgid "Critical Tasks"
+msgstr "Kritische Aufgaben"
+
+#. module: project_critical_path
+msgid "Delayed Tasks"
+msgstr "Verspätete Aufgaben"
+
+#. module: project_critical_path
+msgid "Completed Tasks"
+msgstr "Abgeschlossene Aufgaben"
+
+#. module: project_critical_path
+msgid "Assignees"
+msgstr "Zugewiesene"
+
+#. module: project_critical_path
+msgid "Stage"
+msgstr "Phase"
+
+#. module: project_critical_path
+msgid "WBS Level"
+msgstr "WBS-Ebene"
+
+#. module: project_critical_path
+msgid "Baseline Save"
+msgstr "Baseline speichern"
+
+#. module: project_critical_path
+msgid "Baseline name…"
+msgstr "Baseline-Name…"
+
+#. module: project_critical_path
+msgid "Please enter a baseline name."
+msgstr "Bitte einen Baseline-Namen eingeben."
+
+#. module: project_critical_path
+msgid "The baseline could not be created."
+msgstr "Die Baseline konnte nicht erstellt werden."
+
+#. module: project_critical_path
+msgid "Baseline Titles"
+msgstr "Baseline-Titel"
+
+#. module: project_critical_path
+msgid "Select a baseline title…"
+msgstr "Baseline-Titel auswählen…"
+
+#. module: project_critical_path
+msgid "No baseline titles defined. Add them under Configuration → Baseline Titles."
+msgstr "Keine Baseline-Titel definiert. Unter Konfiguration → Baseline-Titel hinzufügen."
+
+#. module: project_critical_path
+msgid "Please select a baseline title."
+msgstr "Bitte einen Baseline-Titel auswählen."
+
+#. module: project_critical_path
+msgid "The baseline title cannot exceed 15 characters."
+msgstr "Der Baseline-Titel darf maximal 15 Zeichen lang sein."
+
+#. module: project_critical_path
+msgid "Task Dependency"
+msgstr "Aufgabenabhängigkeit"
+
+#. module: project_critical_path
+msgid "Depends On"
+msgstr "Abhängig von"
+
+#. module: project_critical_path
+msgid "Relationship Type"
+msgstr "Beziehungstyp"
+
+#. module: project_critical_path
+msgid "Relationship"
+msgstr "Beziehung"
+
+#. module: project_critical_path
+msgid "Lag"
+msgstr "Lag"
+
+#. module: project_critical_path
+msgid "Lag Unit"
+msgstr "Lag-Einheit"
+
+#. module: project_critical_path
+msgid "Lag (Hours)"
+msgstr "Lag (Stunden)"
+
+#. module: project_critical_path
+msgid "Hours"
+msgstr "Stunden"
+
+#. module: project_critical_path
+msgid "Days"
+msgstr "Tage"
+
+#. module: project_critical_path
+msgid "Positive = wait, negative = lead."
+msgstr "Positiv = Wartezeit, negativ = Vorlauf."
+
+#. module: project_critical_path
+msgid "Edit relationship"
+msgstr "Beziehung bearbeiten"
+
+#. module: project_critical_path
+msgid "Finish-to-Start (FS)"
+msgstr "Ende-Beginn (FS)"
+
+#. module: project_critical_path
+msgid "Start-to-Start (SS)"
+msgstr "Beginn-Beginn (SS)"
+
+#. module: project_critical_path
+msgid "Finish-to-Finish (FF)"
+msgstr "Ende-Ende (FF)"
+
+#. module: project_critical_path
+msgid "Start-to-Finish (SF)"
+msgstr "Beginn-Ende (SF)"
+
+#. module: project_critical_path
+msgid "A dependency between these two tasks already exists."
+msgstr "Zwischen diesen beiden Aufgaben besteht bereits eine Abhängigkeit."
+
+#. module: project_critical_path
+msgid "The dependency no longer exists."
+msgstr "Die Abhängigkeit existiert nicht mehr."
+
+#. module: project_critical_path
+msgid "The dependency could not be saved."
+msgstr "Die Abhängigkeit konnte nicht gespeichert werden."
+
+#. module: project_critical_path
+msgid "You do not have permission to edit tasks in this project."
+msgstr "Sie haben keine Berechtigung, Aufgaben in diesem Projekt zu bearbeiten."

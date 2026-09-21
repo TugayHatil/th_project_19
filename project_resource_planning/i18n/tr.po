@@ -1,0 +1,2097 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* project_critical_path
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-16 00:00+0000\n"
+"PO-Revision-Date: 2026-09-16 00:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: tr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Bar Info"
+msgstr "Bar Bilgileri"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Select the information shown next to the task bars."
+msgstr "Görev çubuklarının yanında gösterilecek bilgileri seçin."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Selected"
+msgstr "Seçili"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Planned Hours"
+msgstr "Planlanan Saat"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Actual Hours"
+msgstr "Gerçekleşen Saat"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Progress %"
+msgstr "Tamamlanma %"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Start Date"
+msgstr "Başlama Tarihi"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "End Date"
+msgstr "Bitiş Tarihi"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Task Name"
+msgstr "Görev Adı"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "You can select up to 3 fields."
+msgstr "En fazla 3 alan seçebilirsiniz."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Slack (Float)"
+msgstr "Slack (Gecikme Payı)"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Shown left of the bar — does not count toward the limit."
+msgstr "Barın solunda gösterilir — limite dahil edilmez."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Week"
+msgstr "Hafta"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Assign"
+msgstr "Ata"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Edit"
+msgstr "Düzenle"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Delete"
+msgstr "Sil"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Save"
+msgstr "Kaydet"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Cancel"
+msgstr "İptal"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Are you sure you want to delete this resource assignment?"
+msgstr "Bu kaynak atamasını silmek istediğinize emin misiniz?"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Overdue"
+msgstr "Gecikmiş"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Select a project…"
+msgstr "Proje seçin…"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Columns"
+msgstr "Sütunlar"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Task"
+msgstr "Görev"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Start"
+msgstr "Başlangıç"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Finish"
+msgstr "Bitiş"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "No tasks"
+msgstr "Görev yok"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Unassigned or partially assigned requirements"
+msgstr "Atanmamış veya kısmen atanmış gereksinimler"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Critical Path"
+msgstr "Kritik Yol"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Close"
+msgstr "Kapat"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Loading…"
+msgstr "Yükleniyor…"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Current Plan"
+msgstr "Güncel Plan"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Duration"
+msgstr "Süre"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "hours"
+msgstr "saat"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Assignee"
+msgstr "Atanan"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Baseline"
+msgstr "Referans"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Current"
+msgstr "Güncel"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Variance"
+msgstr "Sapma"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Total Delay"
+msgstr "Toplam Gecikme"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Impact"
+msgstr "Etki"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Task was not part of"
+msgstr "Görev şu referansın parçası değildi:"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "No baseline exists for this project yet."
+msgstr "Bu proje için henüz referans yok."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "View Baseline History"
+msgstr "Referans Geçmişini Görüntüle"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Dependencies"
+msgstr "Bağımlılıklar"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Predecessors"
+msgstr "Önceki Görevler"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Successors"
+msgstr "Sonraki Görevler"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Remove"
+msgstr "Kaldır"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Add predecessor…"
+msgstr "Önceki görev ekle…"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Add successor…"
+msgstr "Sonraki görev ekle…"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Resources"
+msgstr "Kaynaklar"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Manage"
+msgstr "Yönet"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Saving…"
+msgstr "Kaydediliyor…"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Open Full Task"
+msgstr "Görevi Tam Aç"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Baseline History"
+msgstr "Referans Geçmişi"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "No baselines exist for this project yet."
+msgstr "Bu proje için henüz referans yok."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Initial"
+msgstr "İlk"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Project Duration"
+msgstr "Proje Süresi"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Previous Baseline"
+msgstr "Önceki Referans"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Tasks Changed"
+msgstr "Değişen Görev"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Critical Path Changes"
+msgstr "Kritik Yol Değişikliği"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Initial baseline —"
+msgstr "İlk referans —"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "task snapshots."
+msgstr "görev anlık görüntüsü."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Changes"
+msgstr "Değişiklikler"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Gantt shows this baseline vs the current plan."
+msgstr "Gantt bu referansı güncel planla karşılaştırır."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "No task changes in this baseline."
+msgstr "Bu referansta görev değişikliği yok."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Entered Critical Path"
+msgstr "Kritik Yola Girdi"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Left Critical Path"
+msgstr "Kritik Yoldan Çıktı"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Added to plan"
+msgstr "Plana Eklendi"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Removed from plan"
+msgstr "Plandan Çıkarıldı"
+
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Dates shifted"
+msgstr "Tarihler Kaydı"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Resource Planning"
+msgstr "Kaynak Planlama"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Requirements"
+msgstr "Gereksinimler"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Add"
+msgstr "Ekle"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Role"
+msgstr "Rol"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Req"
+msgstr "Gereken"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Assigned"
+msgstr "Atanan"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Status"
+msgstr "Durum"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Edit requirement"
+msgstr "Gereksinimi düzenle"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Remove requirement"
+msgstr "Gereksinimi kaldır"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "No resource requirements for this task."
+msgstr "Bu görev için kaynak gereksinimi yok."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Resource role…"
+msgstr "Kaynak rolü…"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Qty"
+msgstr "Adet"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Planned hours"
+msgstr "Planlanan saat"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Required quantity"
+msgstr "Gerekli miktar"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Start (defaults to task start)"
+msgstr "Başlangıç (varsayılan: görev başlangıcı)"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "End (defaults to task finish)"
+msgstr "Bitiş (varsayılan: görev bitişi)"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Description (optional)"
+msgstr "Açıklama (opsiyonel)"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "required"
+msgstr "gerekli"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "planned"
+msgstr "planlandı"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Unassign"
+msgstr "Atamayı Kaldır"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Candidate Resources"
+msgstr "Aday Kaynaklar"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Resource"
+msgstr "Kaynak"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Availability"
+msgstr "Müsaitlik"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Booked"
+msgstr "Rezerve"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "No matching resources for this role."
+msgstr "Bu role uygun kaynak yok."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Timeline —"
+msgstr "Zaman Çizelgesi —"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Previous period"
+msgstr "Önceki dönem"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Next period"
+msgstr "Sonraki dönem"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Jump to date"
+msgstr "Tarihe git"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Required"
+msgstr "Gerekli"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Required period"
+msgstr "Gerekli dönem"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "No existing assignments in this window — resource is free."
+msgstr "Bu aralıkta atama yok — kaynak müsait."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Planned assignment"
+msgstr "Planlanan atama"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Overlaps an existing assignment of this resource."
+msgstr "Bu kaynağın mevcut bir atamasıyla çakışıyor."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Outside the required period — the assignment cannot be saved."
+msgstr "Gerekli dönemin dışında — atama kaydedilemez."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "This assignment belongs to a different requirement — view only."
+msgstr "Bu atama farklı bir gereksinime ait — yalnızca görüntüleme."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Assignment start"
+msgstr "Atama başlangıcı"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Assignment end"
+msgstr "Atama bitişi"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Overlaps an existing assignment."
+msgstr "Mevcut bir atamayla çakışıyor."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Outside the required period."
+msgstr "Gerekli dönemin dışında."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Select a requirement to see candidate resources."
+msgstr "Aday kaynakları görmek için bir gereksinim seçin."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Change start"
+msgstr "Başlangıcı değiştir"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Change finish"
+msgstr "Bitişi değiştir"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Drag across the timeline to preview an assignment, then click Assign · click an assignment for details · drag or resize your own assignments."
+msgstr "Zaman çizelgesinde sürükleyerek atama önizleyin, ardından Ata'ya tıklayın · ayrıntılar için bir atamaya tıklayın · kendi atamalarınızı sürükleyin veya yeniden boyutlandırın."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Hour"
+msgstr "Saat"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Day"
+msgstr "Gün"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Month"
+msgstr "Ay"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Today"
+msgstr "Bugün"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Critical Impact"
+msgstr "Kritik Etki"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Within Slack"
+msgstr "Pay İçinde"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Duration Reduced"
+msgstr "Süre Azaldı"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "No Impact"
+msgstr "Etki Yok"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The planner data could not be loaded."
+msgstr "Planner verileri yüklenemedi."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The task could not be loaded."
+msgstr "Görev yüklenemedi."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Baseline history could not be opened."
+msgstr "Referans geçmişi açılamadı."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The task could not be saved."
+msgstr "Görev kaydedilemedi."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The task dates could not be saved."
+msgstr "Görev tarihleri kaydedilemedi."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The baseline history could not be loaded."
+msgstr "Referans geçmişi yüklenemedi."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The baseline summary could not be loaded."
+msgstr "Referans özeti yüklenemedi."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "This task is no longer part of the current project plan."
+msgstr "Bu görev artık mevcut proje planında yer almıyor."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Resources could not be loaded."
+msgstr "Kaynaklar yüklenemedi."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Select a resource role first."
+msgstr "Önce bir kaynak rolü seçin."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The requirement could not be saved."
+msgstr "Gereksinim kaydedilemedi."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The requirement could not be removed."
+msgstr "Gereksinim kaldırılamadı."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The resource could not be assigned."
+msgstr "Kaynak atanamadı."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The assignment could not be removed."
+msgstr "Atama kaldırılamadı."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Manage resources"
+msgstr "Kaynakları yönet"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "No resource requirements yet"
+msgstr "Henüz kaynak gereksinimi yok"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "unassigned requirements"
+msgstr "atanmamış gereksinim"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Pending"
+msgstr "Bekliyor"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Partial"
+msgstr "Kısmi"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Fully available"
+msgstr "Tamamen müsait"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Partially occupied"
+msgstr "Kısmen dolu"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Conflict"
+msgstr "Çakışma"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Person"
+msgstr "Kişi"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Equipment"
+msgstr "Ekipman"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Start must be before finish — the assignment was not changed."
+msgstr "Başlangıç bitişten önce olmalı — atama değiştirilmedi."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The assignment could not be updated."
+msgstr "Atama güncellenemedi."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Saved — the new position overlaps another assignment of this resource."
+msgstr "Kaydedildi — yeni konum bu kaynağın başka bir atamasıyla çakışıyor."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Current finish"
+msgstr "Güncel bitiş"
+
+#. module: project_critical_path
+#: model:ir.actions.act_window,name:project_critical_path.action_project_resource_role
+#: model:ir.ui.menu,name:project_critical_path.menu_project_resource_role
+msgid "Resource Roles"
+msgstr "Kaynak Rolleri"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Critical"
+msgstr "Kritik"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "This Week"
+msgstr "Bu Hafta"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Completed"
+msgstr "Tamamlanan"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Total"
+msgstr "Toplam"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Tasks on the critical path."
+msgstr "Kritik yol üzerindeki görev sayısı."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Tasks past their finish date and not Done."
+msgstr "Bitiş tarihi geçmiş ve Yapıldı olmayan görev sayısı."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Tasks planned to finish by the end of this week, not Done."
+msgstr "Bu hafta sonuna kadar bitmesi planlanan ve Yapıldı olmayan görev sayısı."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Tasks in the Done state."
+msgstr "Yapıldı durumundaki toplam görev sayısı."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Total planned hours across all tasks."
+msgstr "Tüm görevlerin toplam planlanan saati."
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Calculate Critical Paths"
+msgstr "Kritik Yolları Hesapla"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Create Baseline"
+msgstr "Referans Oluştur"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Work Breakdown Structure"
+msgstr "İş Kırılım Yapısı"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Level"
+msgstr "Seviye"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Task Title"
+msgstr "Görev Başlığı"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_wbs.py:0
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Work Package"
+msgstr "İş Paketi"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Progress (%)"
+msgstr "İlerleme (%)"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Planned Roll-up"
+msgstr "Planlanan Toplam"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Actual Roll-up"
+msgstr "Gerçekleşen Toplam"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_wbs.py:0
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Progress Roll-up (%)"
+msgstr "İlerleme Toplamı (%)"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Critical Paths"
+msgstr "Kritik Yollar"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_project.py:0
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Plan Baselines"
+msgstr "Plan Referansları"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "View Baselines"
+msgstr "Referansları Görüntüle"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Delay Impact"
+msgstr "Gecikme Etkisi"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Project Impact Summary"
+msgstr "Proje Etkisi Özeti"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Resource Plan"
+msgstr "Kaynak Planı"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Manage Resource Roles"
+msgstr "Kaynak Rollerini Yönet"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Resource Summary"
+msgstr "Kaynak Özeti"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Task Resource Requirements"
+msgstr "Görev Kaynak Gereksinimleri"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Actual Resource Assignments"
+msgstr "Gerçekleşen Kaynak Atamaları"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Critical Path Schedule"
+msgstr "Kritik Yol Çizelgesi"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Early Dates"
+msgstr "Erken Tarihler"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Late Dates"
+msgstr "Geç Tarihler"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Delay Impact Analysis"
+msgstr "Gecikme Etkisi Analizi"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_task.py:0
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Resource Requirements"
+msgstr "Kaynak Gereksinimleri"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Plan Resources"
+msgstr "Kaynakları Planla"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Assign Resources"
+msgstr "Kaynak Ata"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Open Task"
+msgstr "Görevi Aç"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Open Assignment Timeline"
+msgstr "Atama Zaman Çizelgesini Aç"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Requirement Window"
+msgstr "Gereksinim Aralığı"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Timeline"
+msgstr "Zaman Çizelgesi"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Team Planner"
+msgstr "Ekip Planlayıcı"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_wbs.py:0
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "WBS Code"
+msgstr "WBS Kodu"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_wbs.py:0
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "WBS Level"
+msgstr "WBS Seviyesi"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_wbs.py:0
+msgid "WBS Sort Key"
+msgstr "WBS Sıralama Anahtarı"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Work Packages"
+msgstr "İş Paketleri"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Root Tasks (WBS L1)"
+msgstr "Kök Görevler (WBS S1)"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Parent Work Package"
+msgstr "Üst İş Paketi"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Current Plan Comparison"
+msgstr "Güncel Plan Karşılaştırması"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Previous Baseline Comparison"
+msgstr "Önceki Referans Karşılaştırması"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+msgid "Previous Baseline Change Summary"
+msgstr "Önceki Referans Değişiklik Özeti"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Critical Path Comparison"
+msgstr "Kritik Yol Karşılaştırması"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+msgid "Critical Path Change Analysis"
+msgstr "Kritik Yol Değişiklik Analizi"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_task.py:0
+msgid "Early Start"
+msgstr "Erken Başlangıç"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_task.py:0
+msgid "Early Finish"
+msgstr "Erken Bitiş"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_task.py:0
+msgid "Late Start"
+msgstr "Geç Başlangıç"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_task.py:0
+msgid "Late Finish"
+msgstr "Geç Bitiş"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_task.py:0
+msgid "Slack"
+msgstr "Gecikme Payı"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_task.py:0
+msgid "Critical Task"
+msgstr "Kritik Görev"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_project.py:0
+msgid "Critical Path Count"
+msgstr "Kritik Yol Sayısı"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_project.py:0
+msgid "Critical Path Duration"
+msgstr "Kritik Yol Süresi"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_project.py:0
+#: code:addons/project_critical_path/models/project_task.py:0
+msgid "Baseline Duration"
+msgstr "Referans Süresi"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_project.py:0
+msgid "Current Duration"
+msgstr "Güncel Süre"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_task.py:0
+msgid "Duration Variance"
+msgstr "Süre Sapması"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_task.py:0
+msgid "Project Impact"
+msgstr "Proje Etkisi"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_task.py:0
+msgid "Impact Status"
+msgstr "Etki Durumu"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_task.py:0
+msgid "Impact Chain"
+msgstr "Etki Zinciri"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_wbs.py:0
+msgid "Planned Hours Roll-up"
+msgstr "Planlanan Saat Toplamı"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_wbs.py:0
+msgid "Actual Hours Roll-up"
+msgstr "Gerçekleşen Saat Toplamı"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+msgid "Task Snapshots"
+msgstr "Görev Anlık Görüntüleri"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+msgid "Project Duration Variance"
+msgstr "Proje Süresi Sapması"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+msgid "Critical Path Duration Variance"
+msgstr "Kritik Yol Süresi Sapması"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+msgid "Previous Baseline CP Changed"
+msgstr "Önceki Referans KY Değişti"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource.py:0
+msgid "Requirement Start"
+msgstr "Gereksinim Başlangıcı"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource.py:0
+msgid "Requirement End"
+msgstr "Gereksinim Bitişi"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource.py:0
+msgid "Assignments"
+msgstr "Atamalar"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource.py:0
+msgid "Assigned Quantity"
+msgstr "Atanan Miktar"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource.py:0
+#: code:addons/project_critical_path/models/project_resource_assignment.py:0
+msgid "Assigned Hours"
+msgstr "Atanan Saat"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource.py:0
+msgid "Assignment Status"
+msgstr "Atama Durumu"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource.py:0
+#: code:addons/project_critical_path/models/project_resource_assignment.py:0
+#: code:addons/project_critical_path/models/project_resource_planner.py:0
+msgid "Employee"
+msgstr "Çalışan"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource_assignment.py:0
+msgid "Assignment Start"
+msgstr "Atama Başlangıcı"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource_assignment.py:0
+msgid "Assignment End"
+msgstr "Atama Bitişi"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource.py:0
+msgid "Waiting"
+msgstr "Bekliyor"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource.py:0
+msgid "Human"
+msgstr "İnsan"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+msgid "Project Critical Path Baseline"
+msgstr "Proje Kritik Yol Referansı"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+msgid "Project Critical Path Baseline Task"
+msgstr "Proje Kritik Yol Referans Görevi"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_critical_path_change.py:0
+msgid "Project Critical Path Change"
+msgstr "Proje Kritik Yol Değişikliği"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_critical_path.py:0
+msgid "Project Critical Path"
+msgstr "Proje Kritik Yolu"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_task_delay_impact.py:0
+msgid "Project Task Delay Impact"
+msgstr "Proje Görevi Gecikme Etkisi"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource.py:0
+msgid "Project Resource Role"
+msgstr "Proje Kaynak Rolü"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource.py:0
+msgid "Project Task Resource Requirement"
+msgstr "Proje Görevi Kaynak Gereksinimi"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource.py:0
+msgid "Project Resource Plan Summary"
+msgstr "Proje Kaynak Planı Özeti"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource_assignment.py:0
+msgid "Project Task Resource Assignment"
+msgstr "Proje Görevi Kaynak Ataması"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource_planner.py:0
+msgid "Project Resource Planner"
+msgstr "Proje Kaynak Planlayıcı"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource_planner.py:0
+msgid "Project Resource Planner Line"
+msgstr "Proje Kaynak Planlayıcı Satırı"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_planner.py:0
+msgid "This resource requirement does not belong to the task."
+msgstr "Bu kaynak gereksinimi göreve ait değil."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_planner.py:0
+msgid "This assignment does not belong to the task."
+msgstr "Bu atama göreve ait değil."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_project.py:0
+msgid "Critical paths cannot be calculated because task dependencies contain a cycle."
+msgstr "Görev bağımlılıkları döngü içerdiği için kritik yollar hesaplanamıyor."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource_assignment.py:0
+msgid "Human resource requirements require exactly one employee."
+msgstr "İnsan kaynağı gereksinimleri tam olarak bir çalışan gerektirir."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource_assignment.py:0
+msgid "Selected employee does not have the '%s' resource role."
+msgstr "Seçilen çalışan '%s' kaynak rolüne sahip değil."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource_assignment.py:0
+msgid "Equipment resource requirements require exactly one equipment record."
+msgstr "Ekipman gereksinimleri tam olarak bir ekipman kaydı gerektirir."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource_assignment.py:0
+msgid "Assignment end date must not be earlier than its start date."
+msgstr "Atama bitiş tarihi başlangıç tarihinden önce olamaz."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource_assignment.py:0
+msgid "Assignment start must be within the requirement date range."
+msgstr "Atama başlangıcı gereksinim tarih aralığı içinde olmalıdır."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource_assignment.py:0
+msgid "Assignment end must be within the requirement date range."
+msgstr "Atama bitişi gereksinim tarih aralığı içinde olmalıdır."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource_assignment.py:0
+msgid "The same resource cannot have overlapping assignments within one requirement."
+msgstr "Aynı kaynağın aynı gereksinim içindeki atamaları çakışamaz."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource_assignment.py:0
+msgid "Assigned resource quantity cannot exceed the required quantity."
+msgstr "Atanan kaynak miktarı gerekli miktarı aşamaz."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource_assignment.py:0
+msgid "Assigned planned hours cannot exceed the required planned hours."
+msgstr "Atanan planlanan saat gerekli planlanan saati aşamaz."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource_planner.py:0
+msgid "Available"
+msgstr "Müsait"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_resource_planner.py:0
+msgid "Assign Resource"
+msgstr "Kaynak Ata"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_task_gantt.py:0
+msgid "Choose FS, SS, FF or SF as the dependency type."
+msgstr "Bağımlılık türü olarak FS, SS, FF veya SF seçin."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_task_gantt.py:0
+msgid "Lag must be a finite number of days."
+msgstr "Gecikme sonlu bir gün sayısı olmalıdır."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_task_gantt.py:0
+msgid "Invalid dependency visualization data."
+msgstr "Geçersiz bağımlılık görselleştirme verisi."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_task_gantt.py:0
+msgid "Visualization data must refer to an existing native dependency."
+msgstr "Görselleştirme verisi mevcut bir bağımlılığa işaret etmelidir."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_task_gantt.py:0
+msgid "Choose a predecessor task."
+msgstr "Önceki bir görev seçin."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_task_gantt.py:0
+msgid "The predecessor task no longer exists."
+msgstr "Önceki görev artık mevcut değil."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_task_gantt.py:0
+msgid "A task cannot depend on itself."
+msgstr "Bir görev kendisine bağımlı olamaz."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_task_gantt.py:0
+msgid "These tasks are already linked. Edit the existing dependency instead."
+msgstr "Bu görevler zaten bağlı. Mevcut bağımlılığı düzenleyin."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_task_gantt.py:0
+msgid "This dependency no longer exists. Refresh the Gantt view."
+msgstr "Bu bağımlılık artık mevcut değil. Gantt görünümünü yenileyin."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_task_gantt.py:0
+msgid "Circular dependencies are not allowed."
+msgstr "Döngüsel bağımlılıklara izin verilmez."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_wbs.py:0
+msgid "Only Project Managers are allowed to modify the WBS task hierarchy."
+msgstr "WBS görev hiyerarşisini yalnızca Proje Yöneticileri değiştirebilir."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+msgid "Critical Path changed."
+msgstr "Kritik Yol değişti."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+msgid "Entered Critical Path: %s"
+msgstr "Kritik Yola Girdi: %s"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+msgid "Left Critical Path: %s"
+msgstr "Kritik Yoldan Çıktı: %s"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+msgid "Duration: %(old).2f h → %(new).2f h (%(delta)+.2f h)"
+msgstr "Süre: %(old).2f sa → %(new).2f sa (%(delta)+.2f sa)"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+msgid "Compared with %s."
+msgstr "%s ile karşılaştırıldı."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+msgid "Project duration: %(old).2f h → %(new).2f h (%(delta)+.2f h)"
+msgstr "Proje süresi: %(old).2f sa → %(new).2f sa (%(delta)+.2f sa)"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+msgid "Entered: %s"
+msgstr "Giren: %s"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+msgid "Left: %s"
+msgstr "Çıkan: %s"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+msgid "Baseline snapshots cannot be modified."
+msgstr "Referans anlık görüntüleri değiştirilemez."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+msgid "Baseline snapshots cannot be deleted."
+msgstr "Referans anlık görüntüleri silinemez."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+msgid "Baseline task snapshots cannot be modified."
+msgstr "Referans görev anlık görüntüleri değiştirilemez."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+msgid "Baseline task snapshots cannot be deleted."
+msgstr "Referans görev anlık görüntüleri silinemez."
+
+#. module: project_critical_path
+#: model:ir.actions.act_window,name:project_critical_path.action_project_planner
+#: model_terms:ir.ui.view,arch_db:project_critical_path.planner_workspace
+msgid "Planner"
+msgstr "Planlayıcı"
+
+#. module: project_critical_path
+#: model:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit
+#: model_terms:ir.ui.view,arch_db:project_critical_path.planner_workspace
+msgid "WBS"
+msgstr "WBS"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.gantt_dependencies
+msgid "Hide Dependencies"
+msgstr "Bağımlılıkları Gizle"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.gantt_dependencies
+msgid "Show Dependencies"
+msgstr "Bağımlılıkları Göster"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.gantt_dependencies
+msgid "Add Dependency"
+msgstr "Bağımlılık Ekle"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.gantt_dependencies
+msgid "Edit Dependency"
+msgstr "Bağımlılığı Düzenle"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.gantt_dependencies
+msgid "Remove Dependency"
+msgstr "Bağımlılığı Kaldır"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/gantt_dependencies.js:0
+msgid "Task Dependency"
+msgstr "Görev Bağımlılığı"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.gantt_dependencies
+msgid "Type and lag affect visualization only. Scheduling, Critical Path and Baseline calculations are unchanged."
+msgstr "Tür ve gecikme yalnızca görselleştirmeyi etkiler. Çizelgeleme, Kritik Yol ve Referans hesaplamaları değişmez."
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.gantt_dependencies
+msgid "Task selection is limited to tasks loaded in the current Gantt view."
+msgstr "Görev seçimi, mevcut Gantt görünümünde yüklü görevlerle sınırlıdır."
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.gantt_dependencies
+msgid "Dependency"
+msgstr "Bağımlılık"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.gantt_dependencies
+msgid "No dependencies between the loaded tasks"
+msgstr "Yüklü görevler arasında bağımlılık yok"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.gantt_dependencies
+msgid "Predecessor"
+msgstr "Önceki Görev"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.gantt_dependencies
+msgid "Successor"
+msgstr "Sonraki Görev"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.gantt_dependencies
+msgid "Dependency Type"
+msgstr "Bağımlılık Türü"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.gantt_dependencies
+msgid "Visual Lag (calendar days)"
+msgstr "Görsel Gecikme (takvim günü)"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.gantt_dependencies
+msgid "Remove this native dependency? Other links will remain unchanged."
+msgstr "Bu bağımlılık kaldırılsın mı? Diğer bağlantılar değişmeyecek."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/gantt_dependencies.js:0
+msgid "Finish-to-Start"
+msgstr "Bitiş-Başlangıç"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/gantt_dependencies.js:0
+msgid "Start-to-Start"
+msgstr "Başlangıç-Başlangıç"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/gantt_dependencies.js:0
+msgid "Finish-to-Finish"
+msgstr "Bitiş-Bitiş"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/gantt_dependencies.js:0
+msgid "Start-to-Finish"
+msgstr "Başlangıç-Bitiş"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/gantt_dependencies.js:0
+msgid "The dependency could not be saved."
+msgstr "Bağımlılık kaydedilemedi."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/gantt_dependencies.js:0
+msgid "Enter a finite number of days."
+msgstr "Sonlu bir gün sayısı girin."
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.planner_workspace
+msgid "Initial baseline"
+msgstr "İlk Referans"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.planner_workspace
+msgid "WBS:"
+msgstr "WBS:"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.gantt_dependencies
+msgid "d"
+msgstr "g"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.planner_workspace
+msgid "Resource Board"
+msgstr "Kaynak Panosu"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.planner_workspace
+msgid "Personnel"
+msgstr "Personel"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.planner_workspace
+msgid "No eligible resources."
+msgstr "Uygun kaynak bulunamadı."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Resources could not be loaded."
+msgstr "Kaynaklar yüklenemedi."
+
+#. module: project_critical_path
+msgid "Resource Rate Template"
+msgstr "Kaynak Tarife Şablonu"
+
+#. module: project_critical_path
+msgid "Resource Rate Templates"
+msgstr "Kaynak Tarife Şablonları"
+
+#. module: project_critical_path
+msgid "Rates"
+msgstr "Tarifeler"
+
+#. module: project_critical_path
+msgid "Hourly Rate"
+msgstr "Saatlik Tarife"
+
+#. module: project_critical_path
+msgid "Planned Cost"
+msgstr "Planlanan Maliyet"
+
+#. module: project_critical_path
+msgid "Planned Resource Cost"
+msgstr "Planlanan Kaynak Maliyeti"
+
+#. module: project_critical_path
+msgid "Currency"
+msgstr "Para Birimi"
+
+#. module: project_critical_path
+msgid "Personnel:"
+msgstr "Personel:"
+
+#. module: project_critical_path
+msgid "Not assigned yet"
+msgstr "Henüz atanmadı"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "No hourly rate for this role in the project rate templates."
+msgstr "Proje tarife şablonlarında bu rol için saatlik tarife yok."
+
+#. module: project_critical_path
+msgid "The hourly rate cannot be negative."
+msgstr "Saatlik tarife negatif olamaz."
+
+#. module: project_critical_path
+msgid "Resource Role"
+msgstr "Kaynak Rolü"
+
+#. module: project_critical_path
+msgid "Cost Variance"
+msgstr "Maliyet Farkı"
+
+#. module: project_critical_path
+msgid "Planned Resource Hours"
+msgstr "Planlanan Kaynak Saati"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+msgid "Planned cost: %(old)s → %(new)s (%(delta)s)"
+msgstr "Planlanan maliyet: %(old)s → %(new)s (%(delta)s)"
+
+#. module: project_critical_path
+msgid "Cost Change"
+msgstr "Maliyet Değişimi"
+
+#. module: project_critical_path
+msgid "Resource Currency"
+msgstr "Kaynak Para Birimi"
+
+#. module: project_critical_path
+msgid "Back to Project"
+msgstr "Projeye Dön"
+
+#. module: project_critical_path
+msgid "Project"
+msgstr "Proje"
+
+#. module: project_critical_path
+msgid "Critical Tasks"
+msgstr "Kritik Görevler"
+
+#. module: project_critical_path
+msgid "Delayed Tasks"
+msgstr "Geciken Görevler"
+
+#. module: project_critical_path
+msgid "Completed Tasks"
+msgstr "Tamamlanan Görevler"
+
+#. module: project_critical_path
+msgid "Assignees"
+msgstr "Atananlar"
+
+#. module: project_critical_path
+msgid "Stage"
+msgstr "Aşama"
+
+#. module: project_critical_path
+msgid "Baseline Save"
+msgstr "Baseline Kaydet"
+
+#. module: project_critical_path
+msgid "Baseline name…"
+msgstr "Baseline adı…"
+
+#. module: project_critical_path
+msgid "Please enter a baseline name."
+msgstr "Lütfen bir baseline adı girin."
+
+#. module: project_critical_path
+msgid "The baseline could not be created."
+msgstr "Baseline oluşturulamadı."
+
+#. module: project_critical_path
+msgid "Baseline Titles"
+msgstr "Baseline Başlıkları"
+
+#. module: project_critical_path
+msgid "Select a baseline title…"
+msgstr "Bir baseline başlığı seçin…"
+
+#. module: project_critical_path
+msgid "No baseline titles defined. Add them under Configuration → Baseline Titles."
+msgstr "Tanımlı baseline başlığı yok. Yapılandırma → Baseline Başlıkları altından ekleyin."
+
+#. module: project_critical_path
+msgid "Please select a baseline title."
+msgstr "Lütfen bir baseline başlığı seçin."
+
+#. module: project_critical_path
+msgid "The baseline title cannot exceed 15 characters."
+msgstr "Baseline başlığı 15 karakteri geçemez."
+
+#. module: project_critical_path
+msgid "Task Dependency"
+msgstr "Görev Bağımlılığı"
+
+#. module: project_critical_path
+msgid "Depends On"
+msgstr "Bağlı Olduğu"
+
+#. module: project_critical_path
+msgid "Relationship Type"
+msgstr "İlişki Tipi"
+
+#. module: project_critical_path
+msgid "Relationship"
+msgstr "İlişki"
+
+#. module: project_critical_path
+msgid "Lag"
+msgstr "Lag"
+
+#. module: project_critical_path
+msgid "Lag Unit"
+msgstr "Lag Birimi"
+
+#. module: project_critical_path
+msgid "Lag (Hours)"
+msgstr "Lag (Saat)"
+
+#. module: project_critical_path
+msgid "Hours"
+msgstr "Saat"
+
+#. module: project_critical_path
+msgid "Days"
+msgstr "Gün"
+
+#. module: project_critical_path
+msgid "Positive = wait, negative = lead."
+msgstr "Pozitif = bekleme, negatif = erken başlama (lead)."
+
+#. module: project_critical_path
+msgid "Edit relationship"
+msgstr "İlişkiyi düzenle"
+
+#. module: project_critical_path
+msgid "Finish-to-Start (FS)"
+msgstr "Bitiş-Başlangıç (FS)"
+
+#. module: project_critical_path
+msgid "Start-to-Start (SS)"
+msgstr "Başlangıç-Başlangıç (SS)"
+
+#. module: project_critical_path
+msgid "Finish-to-Finish (FF)"
+msgstr "Bitiş-Bitiş (FF)"
+
+#. module: project_critical_path
+msgid "Start-to-Finish (SF)"
+msgstr "Başlangıç-Bitiş (SF)"
+
+#. module: project_critical_path
+msgid "A dependency between these two tasks already exists."
+msgstr "Bu iki görev arasında zaten bir bağımlılık var."
+
+#. module: project_critical_path
+msgid "The dependency no longer exists."
+msgstr "Bağımlılık artık mevcut değil."
+
+#. module: project_critical_path
+msgid "The dependency could not be saved."
+msgstr "Bağımlılık kaydedilemedi."
+
+#. module: project_critical_path
+msgid "You do not have permission to edit tasks in this project."
+msgstr "Bu projedeki görevleri düzenleme yetkiniz yok."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Indent"
+msgstr "İçeri Al"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Outdent"
+msgstr "Dışarı Al"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Add subtask"
+msgstr "Alt görev ekle"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_wbs.py:0
+msgid "New Task"
+msgstr "Yeni Görev"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The task could not be renamed."
+msgstr "Görev yeniden adlandırılamadı."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The task could not be removed."
+msgstr "Görev kaldırılamadı."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The task could not be indented."
+msgstr "Görev içeri alınamadı."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The task could not be outdented."
+msgstr "Görev dışarı alınamadı."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The task could not be reordered."
+msgstr "Görev yeniden sıralanamadı."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Not Completed"
+msgstr "Tamamlanmayan"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Resource Type"
+msgstr "Kaynak Türü"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "WBS / Parent"
+msgstr "WBS / Üst Görev"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Unassigned"
+msgstr "Atanmamış"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "No Role"
+msgstr "Rol Yok"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "No Resource"
+msgstr "Kaynak Yok"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "No Stage"
+msgstr "Aşama Yok"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Other"
+msgstr "Diğer"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The task cannot be indented here."
+msgstr "Görev burada içeri alınamaz."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "The task cannot be outdented here."
+msgstr "Görev burada dışarı alınamaz."
+
+#. module: project_critical_path
+#: model_terms:project_critical_path.planner_workspace
+msgid "Filters"
+msgstr "Filtreler"
+
+#. module: project_critical_path
+#: model_terms:project_critical_path.planner_workspace
+msgid "Group By"
+msgstr "Grupla"
+
+#. module: project_critical_path
+#: model_terms:project_critical_path.planner_workspace
+msgid "Any"
+msgstr "Tümü"
+
+#. module: project_critical_path
+#: model_terms:project_critical_path.planner_workspace
+msgid "Clear All"
+msgstr "Tümünü Temizle"
+
+#. module: project_critical_path
+#: model_terms:project_critical_path.planner_workspace
+msgid "None"
+msgstr "Yok"
+
+#. module: project_critical_path
+#: model_terms:project_critical_path.planner_workspace
+msgid "Assigned To"
+msgstr "Atanan"
+
+#. module: project_critical_path
+#: model_terms:project_critical_path.planner_workspace
+msgid "Dates"
+msgstr "Tarihler"
+
+#. module: project_critical_path
+#: model:ir.model,name:project_critical_path.model_project_material_plan
+msgid "Project Material Plan"
+msgstr "Proje Malzeme Planı"
+
+#. module: project_critical_path
+#: model:ir.actions.act_window,name:project_critical_path.action_project_material_plan
+#: model:ir.ui.menu,name:project_critical_path.menu_project_material_plan
+msgid "Material Plan"
+msgstr "Malzeme Planı"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_plan_search
+msgid "Task / WBS"
+msgstr "Görev / WBS"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_material_plan__planned_quantity
+msgid "Quantity"
+msgstr "Miktar"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_material_plan__required_date
+msgid "Required Date"
+msgstr "Gereken Tarih"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_material_plan__source_location_id
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_plan_search
+msgid "Source Location"
+msgstr "Kaynak Konum"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_material_plan__destination_location_id
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_plan_search
+msgid "Destination Location"
+msgstr "Hedef Konum"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_material_plan__state
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_plan_search
+msgid "Status"
+msgstr "Durum"
+
+#. module: project_critical_path
+#: model:ir.model.fields.selection,name:project_critical_path.selection__project_material_plan__state__draft
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_plan_search
+msgid "Draft"
+msgstr "Taslak"
+
+#. module: project_critical_path
+#: model:ir.model.fields.selection,name:project_critical_path.selection__project_material_plan__state__approved
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_plan_search
+msgid "Approved"
+msgstr "Onaylı"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_material_plan__picking_ids
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_plan_form
+msgid "Transfers"
+msgstr "Transferler"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_plan_form
+#: model:ir.actions.server,name:project_critical_path.action_material_plan_approve
+msgid "Approve"
+msgstr "Onayla"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_plan_form
+msgid "Open Transfer"
+msgstr "Transferi Aç"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_plan_form
+msgid "Stock Transfer"
+msgstr "Stok Transferi"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_project__material_source_location_id
+msgid "Material Source Location"
+msgstr "Malzeme Kaynak Konumu"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_project__material_destination_location_id
+msgid "Material Destination Location"
+msgstr "Malzeme Hedef Konumu"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
+msgid "Default Stock Locations"
+msgstr "Varsayılan Stok Konumları"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
+msgid "Open Material Plan"
+msgstr "Malzeme Planını Aç"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_stock_move__material_plan_line_id
+msgid "Material Plan Line"
+msgstr "Malzeme Planı Satırı"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_stock_picking__material_plan_line_ids
+#: model_terms:ir.ui.view,arch_db:project_critical_path.stock_picking_form_inherit_material_plan
+msgid "Material Plan Lines"
+msgstr "Malzeme Planı Satırları"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_material_plan.py:0
+msgid "Quantity must be greater than zero."
+msgstr "Miktar sıfırdan büyük olmalıdır."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_material_plan.py:0
+msgid "The selected task does not belong to this project."
+msgstr "Seçilen görev bu projeye ait değil."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_material_plan.py:0
+msgid "Approved material plan lines cannot be modified. Create a new draft line instead."
+msgstr "Onaylı malzeme planı satırları değiştirilemez. Bunun yerine yeni bir taslak satır oluşturun."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_material_plan.py:0
+msgid "There are no draft lines to approve."
+msgstr "Onaylanacak taslak satır yok."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_material_plan.py:0
+msgid "No internal transfer operation type found. Configure a warehouse with an internal picking type."
+msgstr "Dahili transfer operasyon tipi bulunamadı. Dahili picking tipi olan bir depo yapılandırın."
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_material_plan__picking_id
+msgid "Transfer"
+msgstr "Transfer"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_material_plan__picking_count
+msgid "Transfer Count"
+msgstr "Transfer Sayısı"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_project__material_picking_ids
+msgid "Material Transfers"
+msgstr "Malzeme Transferleri"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_project__material_picking_count
+msgid "Material Transfer Count"
+msgstr "Malzeme Transferi Sayısı"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
+msgid "Stock Transfers"
+msgstr "Stok Transferleri"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
+msgid "Open Transfers"
+msgstr "Transferleri Aç"

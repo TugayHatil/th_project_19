@@ -185,9 +185,9 @@ class ProjectTaskResourceRequirement(models.Model):
             "res_model": "project.task.resource.assignment",
             "view_mode": "gantt,list,form",
             "views": [
-                (self.env.ref("project_critical_path.%s" % gantt_xmlid).id, "gantt"),
-                (self.env.ref("project_critical_path.project_task_resource_assignment_list").id, "list"),
-                (self.env.ref("project_critical_path.project_task_resource_assignment_form").id, "form"),
+                (self.env.ref("project_resource_planning.%s" % gantt_xmlid).id, "gantt"),
+                (self.env.ref("project_resource_planning.project_task_resource_assignment_list").id, "list"),
+                (self.env.ref("project_resource_planning.project_task_resource_assignment_form").id, "form"),
             ],
             "domain": [
                 ("resource_category", "=", category),

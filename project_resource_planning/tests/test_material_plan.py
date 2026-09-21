@@ -259,12 +259,12 @@ class TestMaterialPlan(TransactionCase):
 
     # ── Editable-list planning UX (BRD: List-first Material Plan) ────
     def test_material_plan_list_action(self):
-        action = self.env.ref("project_critical_path.action_project_material_plan")
+        action = self.env.ref("project_resource_planning.action_project_material_plan")
         self.assertEqual(action.view_mode.split(",")[0], "list")
         project_action = self.project.action_open_material_plan()
         self.assertEqual(project_action["view_mode"], "list,form")
         arch = self.env.ref(
-            "project_critical_path.project_material_plan_list").arch_db
+            "project_resource_planning.project_material_plan_list").arch_db
         self.assertIn('editable="bottom"', arch)
 
     def test_draft_line_inline_edit(self):
