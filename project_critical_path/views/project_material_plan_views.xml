@@ -9,17 +9,20 @@
         <field name="name">project.material.plan.list</field>
         <field name="model">project.material.plan</field>
         <field name="arch" type="xml">
-            <list string="Material Plan" editable="bottom"
+            <list string="Material Plan"
                   decoration-warning="state == 'draft'"
                   decoration-info="state == 'approved'">
-                <field name="task_id" readonly="state == 'approved'"/>
-                <field name="product_id" readonly="state == 'approved'"/>
-                <field name="planned_quantity" readonly="state == 'approved'"/>
-                <field name="uom_id" readonly="state == 'approved'"/>
-                <field name="required_date" readonly="state == 'approved'"/>
-                <field name="source_location_id" readonly="state == 'approved'" optional="show"/>
-                <field name="destination_location_id" readonly="state == 'approved'" optional="show"/>
+                <field name="task_id"/>
+                <field name="product_id"/>
+                <field name="planned_quantity"/>
+                <field name="uom_id"/>
+                <field name="required_date"/>
+                <field name="source_location_id" optional="show"/>
+                <field name="destination_location_id" optional="show"/>
                 <field name="picking_id" readonly="1" optional="show"/>
+                <button name="action_open_transfers" type="object"
+                        icon="fa-truck" title="Open Transfer"
+                        invisible="not picking_ids"/>
                 <field name="picking_ids" widget="many2many_tags" readonly="1" optional="hide"/>
                 <field name="state" widget="badge"
                        decoration-warning="state == 'draft'"
@@ -77,6 +80,8 @@
                             <field name="destination_location_id" readonly="state == 'approved'"/>
                         </group>
                         <group>
+                            <field name="picking_id" readonly="1"
+                                   invisible="not picking_id"/>
                             <field name="picking_ids" widget="many2many_tags" readonly="1"
                                    invisible="not picking_ids"/>
                         </group>
@@ -147,6 +152,12 @@
             <xpath expr="//field[@name='origin']" position="after">
                 <field name="material_plan_line_ids" widget="many2many_tags"
                        readonly="1" invisible="not material_plan_line_ids"/>
+            </xpath>
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_open_material_plan_lines" type="object"
+                        class="oe_stat_button" icon="fa-cubes"
+                        string="Material Plan"
+                        invisible="not material_plan_line_ids"/>
             </xpath>
         </field>
     </record>
