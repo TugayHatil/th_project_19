@@ -3,21 +3,21 @@
 {
     "name": "Project Critical Path",
     "summary": "Calculate and store critical paths from task dependencies",
-    "version": "19.0.1.44.0",
+    "version": "19.0.2.0.0",
     "category": "Project",
     "author": "Projet Solutions",
     "license": "LGPL-3",
-    "depends": ["project", "hr", "hr_timesheet", "maintenance", "web_gantt", "product", "stock"],
+    # Core planner only — resource planning (roles, assignments, Resource
+    # Board, Material Plan, stock integration) lives in the optional
+    # project_resource_planning addon which depends on this one.
+    "depends": ["project", "hr_timesheet", "web_gantt"],
 
     "data": [
         "security/ir.model.access.csv",
         "views/project_project_views.xml",
         "views/project_task_kanban.xml",
         "views/project_planner_views.xml",
-        "views/project_resource_role_views.xml",
-        "views/project_resource_rate_views.xml",
         "views/project_baseline_title_views.xml",
-        "views/project_material_plan_views.xml",
     ],
     "demo": [
         "demo/project_wbs_demo.xml",
@@ -29,9 +29,6 @@
             "project_critical_path/static/src/gantt_dependencies.xml",
             "project_critical_path/static/src/gantt_dependencies.scss",
             "project_critical_path/static/src/scss/critical_path_kanban.scss",
-            "project_critical_path/static/src/fields/material_transfer_badge.js",
-            "project_critical_path/static/src/fields/material_transfer_badge.xml",
-            "project_critical_path/static/src/fields/material_transfer_badge.scss",
             "project_critical_path/static/src/planner/planner_workspace.js",
             "project_critical_path/static/src/planner/planner_workspace.xml",
             "project_critical_path/static/src/planner/planner_workspace.scss",

@@ -82,6 +82,20 @@ class ProjectCriticalPathBaseline(models.Model):
             baseline.current_critical_path_signature = current_signature
             baseline.critical_path_changed = current_signature != (baseline.critical_path_signature or False)
 
+    def _get_task_resource_snapshot(self, task):
+        """Planned resource hours/cost frozen on one baseline line.
+
+        Empty hook in the core addon — ``project_resource_planning``
+        overrides it with the task's requirement totals. Standalone core
+        writes zeros so baselines work identically either way.
+        """
+        self.ensure_one()
+        return {
+            "planned_hours": 0.0,
+            "planned_cost": 0.0,
+            "currency_id": False,
+        }
+
     def _create_snapshot_lines(self):
         for baseline in self:
             tasks = self.env["project.task"].with_context(active_test=False).search(
@@ -94,19 +108,7 @@ class ProjectCriticalPathBaseline(models.Model):
                     "task_name": task.display_name,
                     "parent_task_name": task.parent_id.display_name if task.parent_id else False,
                     "allocated_hours": task.allocated_hours,
-                    # Planned resource cost snapshot: quantity × hours × rate
-                    # is already aggregated per requirement — the baseline
-                    # just freezes the task totals (BRD §3/§7).
-                    "planned_hours": sum(
-                        task.resource_requirement_ids.mapped("planned_hours")
-                    ),
-                    "planned_cost": sum(
-                        task.resource_requirement_ids.mapped("planned_cost")
-                    ),
-                    "currency_id": (
-                        task.resource_requirement_ids[:1].currency_id
-                        or baseline.project_id.resource_cost_currency_id
-                    ).id or False,
+                    **baseline._get_task_resource_snapshot(task),
                     # Odoo Project exposes its scheduled dates as date_assign and
                     # date_deadline.  Check the model fields for compatibility
                     # with installations that do not provide a planned_date_* API.

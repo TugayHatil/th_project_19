@@ -22,23 +22,18 @@ class ProjectTask(models.Model):
         ("no_impact", "No Impact"),
     ], string="Impact Status", readonly=True)
     delay_impact_chain = fields.Text(string="Impact Chain", readonly=True)
-    resource_requirement_ids = fields.One2many(
-        "project.task.resource.requirement", "task_id", string="Resource Requirements",
-    )
-    resource_cost_currency_id = fields.Many2one(
-        related="project_id.resource_cost_currency_id",
-    )
-    planned_resource_cost = fields.Monetary(
-        string="Planned Resource Cost", compute="_compute_planned_resource_cost",
-        currency_field="resource_cost_currency_id", readonly=True,
-    )
 
-    @api.depends("resource_requirement_ids.planned_cost")
-    def _compute_planned_resource_cost(self):
-        for task in self:
-            task.planned_resource_cost = sum(
-                task.resource_requirement_ids.mapped("planned_cost")
-            )
+    def _planner_resource_fields(self):
+        """Resource labels/summary for the planner payload.
+
+        Empty hook in the core addon — ``project_resource_planning``
+        overrides it with the task's real role names/categories and the
+        human/equipment/open counts used by the row badges.
+        """
+        return {
+            "role_names": [],
+            "role_categories": [],
+        }
 
     @api.model_create_multi
     def create(self, vals_list):

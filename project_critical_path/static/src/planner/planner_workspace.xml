@@ -13,11 +13,11 @@
                     <button type="button" class="btn btn-sm"
                             t-att-class="!state.boardMode ? 'btn-primary' : 'btn-outline-secondary'"
                             t-on-click="() => this.setBoardMode(false)">Planner</button>
-                    <button type="button" class="btn btn-sm"
+                    <button t-if="state.hasResources" type="button" class="btn btn-sm"
                             t-att-class="state.boardMode ? 'btn-primary' : 'btn-outline-secondary'"
                             t-on-click="() => this.setBoardMode(true)">Resource Board</button>
                 </div>
-                <button t-if="state.projectId" type="button"
+                <button t-if="state.projectId &amp;&amp; state.hasResources" type="button"
                         class="btn btn-sm btn-outline-secondary"
                         title="Material Plan"
                         t-on-click="openMaterialPlan">
@@ -111,6 +111,7 @@
                                 <option t-att-value="u.id" t-att-selected="state.filters.userId === u.id" t-esc="u.name"/>
                             </t>
                         </select>
+                        <t t-if="state.hasResources">
                         <div class="o_cp_planner_filter_section">Role</div>
                         <select class="form-select form-select-sm mb-1"
                                 t-on-change="(ev) => this.onFilterSelect('roleId', ev)">
@@ -126,6 +127,7 @@
                             <option value="human" t-att-selected="state.filters.resType === 'human'">Human</option>
                             <option value="equipment" t-att-selected="state.filters.resType === 'equipment'">Equipment</option>
                         </select>
+                        </t>
                         <div class="o_cp_planner_filter_section">Stage</div>
                         <select class="form-select form-select-sm mb-1"
                                 t-on-change="(ev) => this.onFilterSelect('stageId', ev)">
@@ -557,7 +559,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="o_cp_planner_inspector_section mb-3">
+                            <div t-if="state.hasResources" class="o_cp_planner_inspector_section mb-3">
                                 <div class="fw-bold small text-uppercase text-muted mb-2">Resources</div>
                                 <div class="d-flex align-items-center gap-2">
                                     <span class="small text-muted text-truncate"
