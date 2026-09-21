@@ -347,6 +347,6 @@ class ProjectMaterialPlan(models.Model):
             "name": _("Transfers"),
             "res_model": "stock.picking",
             "domain": [["id", "in", pickings.ids]],
-            "view_mode": "list,form",
+            "views": [[False, "list"], [False, "form"]],
             "target": "current",
         }

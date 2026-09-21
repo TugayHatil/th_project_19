@@ -225,6 +225,7 @@ class TestMaterialPlan(TransactionCase):
         domain_ids = next(v for f, _, v in action["domain"] if f == "id")
         self.assertEqual(set(domain_ids), set((a | b).picking_ids.ids))
         self.assertEqual(len(domain_ids), 2)
+        self.assertEqual(action["views"], [[False, "list"], [False, "form"]])
 
     def test_project_picking_isolation(self):
         a = self._line(qty=100.0)
