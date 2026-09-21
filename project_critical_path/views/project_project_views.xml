@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- Orphan cleanup: records from the removed Material Requirement
+         feature stay in the DB after its XML file is dropped — delete
+         them before the project form inherit is re-validated (the old
+         button calls a method that no longer exists). -->
+    <delete model="ir.ui.view" id="project_project_form_inherit_material_requirement"/>
+    <delete model="ir.ui.view" id="project_material_requirement_list"/>
+    <delete model="ir.ui.view" id="project_material_requirement_form"/>
+    <delete model="ir.ui.view" id="project_material_requirement_search"/>
+    <delete model="ir.actions.act_window" id="action_project_material_requirement"/>
+    <delete model="ir.ui.menu" id="menu_project_material_requirement"/>
+    <delete model="ir.model.access" id="access_project_material_requirement_user"/>
+
     <record id="project_project_form_inherit_critical_path" model="ir.ui.view">
         <field name="name">project.project.form.inherit.critical.path</field>
         <field name="model">project.project</field>
