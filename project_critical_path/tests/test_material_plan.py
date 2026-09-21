@@ -256,6 +256,90 @@ class TestMaterialPlan(TransactionCase):
         self.assertEqual(picking.move_ids.material_plan_line_id, line)
         self.assertIn(line, picking.material_plan_line_ids)
 
+    # ── Editable-list planning UX (BRD: List-first Material Plan) ────
+    def test_material_plan_list_action(self):
+        action = self.env.ref("project_critical_path.action_project_material_plan")
+        self.assertEqual(action.view_mode.split(",")[0], "list")
+        project_action = self.project.action_open_material_plan()
+        self.assertEqual(project_action["view_mode"], "list,form")
+        arch = self.env.ref(
+            "project_critical_path.project_material_plan_list").arch_db
+        self.assertIn('editable="bottom"', arch)
+
+    def test_draft_line_inline_edit(self):
+        """Inline edits on a draft line are plain writes — no form needed,
+        no picking created."""
+        line = self._line(qty=100.0)
+        line.write({"planned_quantity": 120.0})
+        line.write({
+            "product_id": self.product_b.id,
+            "task_id": self.task_b.id,
+            "required_date": "2027-01-01",
+            "source_location_id": self.other_location.id,
+            "destination_location_id": self.dest_location.id,
+        })
+        line.invalidate_recordset()
+        self.assertEqual(line.planned_quantity, 120.0)
+        self.assertEqual(line.product_id, self.product_b)
+        self.assertEqual(line.task_id, self.task_b)
+        self.assertEqual(str(line.required_date), "2027-01-01")
+        self.assertEqual(line.source_location_id, self.other_location)
+        self.assertEqual(line.state, "draft")
+        self.assertFalse(line.move_ids)
+
+    def test_draft_defaults(self):
+        """Minimal inline create (project + task + product only) still gets
+        project locations, product UoM and task deadline defaults."""
+        line = self.plan_model.create({
+            "project_id": self.project.id,
+            "task_id": self.task_a.id,
+            "product_id": self.product.id,
+            "planned_quantity": 5.0,
+        })
+        self.assertEqual(line.source_location_id, self.stock_location)
+        self.assertEqual(line.destination_location_id, self.dest_location)
+        self.assertEqual(line.uom_id, self.product.uom_id)
+        self.assertEqual(str(line.required_date), "2026-10-15")
+
+    def test_approved_line_immutable(self):
+        line = self._line(qty=100.0)
+        line.action_approve()
+        for vals in (
+            {"planned_quantity": 130.0},
+            {"product_id": self.product_b.id},
+            {"task_id": self.task_b.id},
+            {"required_date": "2027-01-01"},
+            {"source_location_id": self.other_location.id},
+            {"destination_location_id": self.stock_location.id},
+        ):
+            with self.assertRaises(UserError):
+                line.write(vals)
+        with self.assertRaises(UserError):
+            line.unlink()
+
+    def test_bulk_approval(self):
+        """Selecting a mixed recordset only approves the drafts; grouping
+        rules still apply inside the same approval call."""
+        a = self._line(qty=100.0)
+        b = self._line(task=self.task_b, product=self.product_b, qty=50.0)
+        c = self._line(task=self.task_b, qty=30.0,
+                       source_location_id=self.other_location.id)
+        d = self._line(qty=5.0)
+        d.action_approve()
+        (a | b | c | d).action_approve()
+        self.assertEqual(set((a | b | c).mapped("state")), {"approved"})
+        self.assertEqual(a.picking_ids, b.picking_ids)
+        self.assertNotEqual(c.picking_ids, a.picking_ids)
+        self.assertEqual(len((a | b | c | d).picking_ids), 3)
+
+    def test_transfer_navigation_relation(self):
+        line = self._line(qty=100.0)
+        line.action_approve()
+        self.assertEqual(line.picking_id, line.picking_ids)
+        action = line.action_open_transfers()
+        self.assertEqual(action["res_model"], "stock.picking")
+        self.assertEqual(action["res_id"], line.picking_ids.id)
+
     # ── UoM / planner integration ────────────────────────────────────
     def test_uom_carried_to_move(self):
         uom_km = self.env["uom.uom"].search([

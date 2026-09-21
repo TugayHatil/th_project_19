@@ -319,6 +319,18 @@ class ProjectMaterialPlan(models.Model):
             ))
         return picking_type
 
+    def action_open_form(self):
+        """Editable lists don't navigate to the record form on row click —
+        the per-row button opens the standard form for detail/traceability."""
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "res_model": "project.material.plan",
+            "res_id": self.id,
+            "views": [[False, "form"]],
+            "target": "current",
+        }
+
     def action_open_transfers(self):
         pickings = self.picking_ids
         if len(pickings) == 1:
