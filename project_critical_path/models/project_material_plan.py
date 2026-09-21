@@ -109,7 +109,8 @@ class ProjectMaterialPlan(models.Model):
     @api.depends("product_id")
     def _compute_uom_id(self):
         for line in self:
-            line.uom_id = line.product_id.uom_id
+            if line.product_id:
+                line.uom_id = line.product_id.uom_id
 
     @api.depends("task_id.date_deadline")
     def _compute_required_date(self):
@@ -145,6 +146,29 @@ class ProjectMaterialPlan(models.Model):
     def _compute_picking_ids(self):
         for line in self:
             line.picking_ids = line.move_ids.picking_id
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Fill editable defaults deterministically — the compute-based
+        defaults only cover form/onchange flows; programmatic creates
+        (RPC, import, server actions) get them here."""
+        for vals in vals_list:
+            product = self.env["product.product"].browse(vals.get("product_id"))
+            if product and not vals.get("uom_id"):
+                vals["uom_id"] = product.uom_id.id
+            task = self.env["project.task"].browse(vals.get("task_id"))
+            if task and not vals.get("required_date"):
+                deadline = task.date_deadline
+                vals["required_date"] = deadline.date() if deadline else fields.Date.today()
+            project = self.env["project.project"].browse(vals.get("project_id"))
+            if project:
+                if not vals.get("source_location_id"):
+                    vals["source_location_id"] = (
+                        project.material_source_location_id.id or False)
+                if not vals.get("destination_location_id"):
+                    vals["destination_location_id"] = (
+                        project.material_destination_location_id.id or False)
+        return super().create(vals_list)
 
     @api.constrains("planned_quantity")
     def _check_planned_quantity(self):
