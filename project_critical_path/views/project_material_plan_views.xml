@@ -96,12 +96,6 @@
                         domain="[('state', '=', 'draft')]"/>
                 <filter name="filter_approved" string="Approved"
                         domain="[('state', '=', 'approved')]"/>
-                <separator/>
-                <filter name="filter_required_week" string="Required This Week"
-                        domain="[('required_date', '&gt;=', (context_today() - relativedelta(days=context_today().weekday())).strftime('%Y-%m-%d')),
-                                 ('required_date', '&lt;=', (context_today() + relativedelta(days=6-context_today().weekday())).strftime('%Y-%m-%d'))]"/>
-                <filter name="filter_required_passed" string="Required Date Passed"
-                        domain="[('required_date', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
                 <group expand="0" string="Group By">
                     <filter name="group_product" string="Product" context="{'group_by': 'product_id'}"/>
                     <filter name="group_task" string="Task / WBS" context="{'group_by': 'task_id'}"/>
