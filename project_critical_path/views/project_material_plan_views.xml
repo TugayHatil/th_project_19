@@ -96,7 +96,9 @@
                         domain="[('state', '=', 'draft')]"/>
                 <filter name="filter_approved" string="Approved"
                         domain="[('state', '=', 'approved')]"/>
-                <group expand="0" string="Group By">
+                <filter name="filter_required_passed" string="Required Date Passed"
+                        domain="[('required_date', '&lt;', 'today')]"/>
+                <group>
                     <filter name="group_product" string="Product" context="{'group_by': 'product_id'}"/>
                     <filter name="group_task" string="Task / WBS" context="{'group_by': 'task_id'}"/>
                     <filter name="group_parent" string="WBS / Parent" context="{'group_by': 'parent_task_id'}"/>
