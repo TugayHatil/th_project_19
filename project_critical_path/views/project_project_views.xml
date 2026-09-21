@@ -12,6 +12,42 @@
     <delete model="ir.ui.menu" id="menu_project_material_requirement"/>
     <delete model="ir.model.access" id="access_project_material_requirement_user"/>
 
+    <!-- Orphan cleanup: these records moved to project_resource_planning.
+         Odoo does not remove module data on upgrade, so the old copies
+         would stay active — an inherited view calling a method that no
+         longer exists on the model breaks form rendering/validation.
+         The addon recreates the same XML IDs under its own namespace. -->
+    <delete model="ir.ui.view" id="project_project_form_inherit_material_plan"/>
+    <delete model="ir.ui.view" id="stock_picking_form_inherit_material_plan"/>
+    <delete model="ir.ui.view" id="project_material_plan_list"/>
+    <delete model="ir.ui.view" id="project_material_plan_form"/>
+    <delete model="ir.ui.view" id="project_material_plan_search"/>
+    <delete model="ir.actions.act_window" id="action_project_material_plan"/>
+    <delete model="ir.actions.server" id="action_material_plan_approve"/>
+    <delete model="ir.ui.menu" id="menu_project_material_plan"/>
+    <delete model="ir.ui.view" id="project_resource_role_list"/>
+    <delete model="ir.ui.view" id="project_resource_role_form"/>
+    <delete model="ir.actions.act_window" id="action_project_resource_role"/>
+    <delete model="ir.ui.menu" id="menu_project_resource_role"/>
+    <delete model="ir.ui.view" id="project_resource_rate_template_list"/>
+    <delete model="ir.ui.view" id="project_resource_rate_template_form"/>
+    <delete model="ir.actions.act_window" id="action_project_resource_rate_template"/>
+    <delete model="ir.ui.menu" id="menu_project_resource_rate_template"/>
+    <delete model="ir.ui.view" id="project_task_resource_assignment_list"/>
+    <delete model="ir.ui.view" id="project_task_resource_assignment_form"/>
+    <delete model="ir.ui.view" id="hr_employee_form_inherit_resource_roles"/>
+    <delete model="ir.ui.view" id="project_resource_planner_form"/>
+    <delete model="ir.ui.view" id="project_task_resource_assignment_gantt_employee"/>
+    <delete model="ir.ui.view" id="project_task_resource_assignment_gantt_equipment"/>
+    <delete model="ir.model.access" id="access_project_resource_role_user"/>
+    <delete model="ir.model.access" id="access_project_task_resource_requirement_user"/>
+    <delete model="ir.model.access" id="access_project_resource_plan_summary_user"/>
+    <delete model="ir.model.access" id="access_project_task_resource_assignment_user"/>
+    <delete model="ir.model.access" id="access_project_resource_planner_user"/>
+    <delete model="ir.model.access" id="access_project_resource_planner_line_user"/>
+    <delete model="ir.model.access" id="access_project_resource_rate_template_user"/>
+    <delete model="ir.model.access" id="access_project_material_plan_user"/>
+
     <record id="project_project_form_inherit_critical_path" model="ir.ui.view">
         <field name="name">project.project.form.inherit.critical.path</field>
         <field name="model">project.project</field>
