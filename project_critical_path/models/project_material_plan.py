@@ -209,7 +209,10 @@ class ProjectMaterialPlan(models.Model):
 
     def unlink(self):
         locked = self.filtered(lambda line: line.state == "approved")
-        if locked:
+        # material_plan_force_unlink: admin/test cleanup escape hatch —
+        # never exposed in the UI; cancelled pickings should be removed
+        # first so no stock reservation lingers.
+        if locked and not self.env.context.get("material_plan_force_unlink"):
             raise UserError(_(
                 "Approved material plan lines cannot be deleted — "
                 "they are linked to stock transfers."
