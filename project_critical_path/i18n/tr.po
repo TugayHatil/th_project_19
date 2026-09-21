@@ -1950,8 +1950,8 @@ msgstr "Görev / WBS"
 
 #. module: project_critical_path
 #: model:ir.model.fields,field_description:project_critical_path.field_project_material_plan__planned_quantity
-msgid "Planned Quantity"
-msgstr "Planlanan Miktar"
+msgid "Quantity"
+msgstr "Miktar"
 
 #. module: project_critical_path
 #: model:ir.model.fields,field_description:project_critical_path.field_project_material_plan__required_date
@@ -1959,9 +1959,92 @@ msgid "Required Date"
 msgstr "Gereken Tarih"
 
 #. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_material_plan__source_location_id
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_plan_search
+msgid "Source Location"
+msgstr "Kaynak Konum"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_material_plan__destination_location_id
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_plan_search
+msgid "Destination Location"
+msgstr "Hedef Konum"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_material_plan__state
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_plan_search
+msgid "Status"
+msgstr "Durum"
+
+#. module: project_critical_path
+#: model:ir.model.fields.selection,name:project_critical_path.selection__project_material_plan__state__draft
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_plan_search
+msgid "Draft"
+msgstr "Taslak"
+
+#. module: project_critical_path
+#: model:ir.model.fields.selection,name:project_critical_path.selection__project_material_plan__state__approved
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_plan_search
+msgid "Approved"
+msgstr "Onaylı"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_material_plan__picking_ids
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_plan_form
+msgid "Transfers"
+msgstr "Transferler"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_plan_form
+#: model:ir.actions.server,name:project_critical_path.action_material_plan_approve
+msgid "Approve"
+msgstr "Onayla"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_plan_form
+msgid "Open Transfer"
+msgstr "Transferi Aç"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_plan_form
+msgid "Stock Transfer"
+msgstr "Stok Transferi"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_project__material_source_location_id
+msgid "Material Source Location"
+msgstr "Malzeme Kaynak Konumu"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_project__material_destination_location_id
+msgid "Material Destination Location"
+msgstr "Malzeme Hedef Konumu"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
+msgid "Default Stock Locations"
+msgstr "Varsayılan Stok Konumları"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
+msgid "Open Material Plan"
+msgstr "Malzeme Planını Aç"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_stock_move__material_plan_line_id
+msgid "Material Plan Line"
+msgstr "Malzeme Planı Satırı"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_stock_picking__material_plan_line_ids
+#: model_terms:ir.ui.view,arch_db:project_critical_path.stock_picking_form_inherit_material_plan
+msgid "Material Plan Lines"
+msgstr "Malzeme Planı Satırları"
+
+#. module: project_critical_path
 #: code:addons/project_critical_path/models/project_material_plan.py:0
-msgid "Planned quantity must be greater than zero."
-msgstr "Planlanan miktar sıfırdan büyük olmalıdır."
+msgid "Quantity must be greater than zero."
+msgstr "Miktar sıfırdan büyük olmalıdır."
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_material_plan.py:0
@@ -1969,63 +2052,16 @@ msgid "The selected task does not belong to this project."
 msgstr "Seçilen görev bu projeye ait değil."
 
 #. module: project_critical_path
-#: model:ir.model,name:project_critical_path.model_project_material_requirement
-msgid "Project Material Requirement"
-msgstr "Proje Malzeme İhtiyacı"
+#: code:addons/project_critical_path/models/project_material_plan.py:0
+msgid "Approved material plan lines cannot be modified. Create a new draft line instead."
+msgstr "Onaylı malzeme planı satırları değiştirilemez. Bunun yerine yeni bir taslak satır oluşturun."
 
 #. module: project_critical_path
-#: model:ir.actions.act_window,name:project_critical_path.action_project_material_requirement
-#: model:ir.ui.menu,name:project_critical_path.menu_project_material_requirement
-msgid "Material Requirements"
-msgstr "Malzeme İhtiyaçları"
+#: code:addons/project_critical_path/models/project_material_plan.py:0
+msgid "There are no draft lines to approve."
+msgstr "Onaylanacak taslak satır yok."
 
 #. module: project_critical_path
-#: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_material_requirement
-#: model_terms:project_critical_path.planner_workspace
-msgid "Material Requirement"
-msgstr "Malzeme İhtiyacı"
-
-#. module: project_critical_path
-#: model:ir.model.fields,field_description:project_critical_path.field_project_material_requirement__available_quantity
-msgid "Available Quantity"
-msgstr "Mevcut Miktar"
-
-#. module: project_critical_path
-#: model:ir.model.fields,field_description:project_critical_path.field_project_material_requirement__shortage_quantity
-msgid "Shortage Quantity"
-msgstr "Eksik Miktar"
-
-#. module: project_critical_path
-#: model:ir.model.fields,field_description:project_critical_path.field_project_material_requirement__status
-#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_requirement_search
-msgid "Status"
-msgstr "Durum"
-
-#. module: project_critical_path
-#: model:ir.model.fields.selection,name:project_critical_path.selection__project_material_requirement__status__not_available
-#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_requirement_search
-msgid "Not Available"
-msgstr "Stokta Yok"
-
-#. module: project_critical_path
-#: model:ir.model.fields.selection,name:project_critical_path.selection__project_material_requirement__status__partially_available
-#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_requirement_search
-msgid "Partially Available"
-msgstr "Kısmen Mevcut"
-
-#. module: project_critical_path
-#: model:ir.model.fields.selection,name:project_critical_path.selection__project_material_requirement__status__available
-#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_requirement_search
-msgid "Available"
-msgstr "Mevcut"
-
-#. module: project_critical_path
-#: model:ir.model.fields,field_description:project_critical_path.field_project_material_requirement__material_plan_line_ids
-#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_requirement_form
-msgid "Source Material Plan Lines"
-msgstr "Kaynak Malzeme Planı Satırları"
-
-#. module: project_critical_path
-#: model_terms:ir.ui.view,arch_db:project_critical_path.project_material_requirement_list
-msgid "Material Requirements"
-msgstr "Malzeme İhtiyaçları"
+#: code:addons/project_critical_path/models/project_material_plan.py:0
+msgid "No internal transfer operation type found. Configure a warehouse with an internal picking type."
+msgstr "Dahili transfer operasyon tipi bulunamadı. Dahili picking tipi olan bir depo yapılandırın."

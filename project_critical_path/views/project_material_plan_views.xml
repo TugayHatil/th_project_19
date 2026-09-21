@@ -1,22 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Material Plan (BRD): a single standard list view per project.
-         Stock/Purchase/MRP columns intentionally omitted — that is a
-         later phase; the plan itself stays product × task × quantity. -->
+    <!-- ════════════════════════════════════════════════════════════════
+         MATERIAL PLAN  (BRD: Material Plan → Odoo Stock)
+         Taslak → Onaylı lifecycle. Approval creates standard
+         stock.picking / stock.move grouped by source+destination.
+         ════════════════════════════════════════════════════════════════ -->
     <record id="project_material_plan_list" model="ir.ui.view">
         <field name="name">project.material.plan.list</field>
         <field name="model">project.material.plan</field>
         <field name="arch" type="xml">
-            <list string="Material Plan" editable="bottom">
-                <field name="project_id" column_invisible="1"/>
-                <field name="task_id" domain="[('project_id', '=', project_id)]"/>
-                <field name="product_id"/>
-                <field name="planned_quantity" sum="Total"/>
-                <field name="uom_id" optional="show"/>
-                <field name="required_date"/>
-                <field name="description" optional="hide"/>
+            <list string="Material Plan" editable="bottom"
+                  decoration-warning="state == 'draft'"
+                  decoration-info="state == 'approved'">
+                <field name="task_id" readonly="state == 'approved'"/>
+                <field name="product_id" readonly="state == 'approved'"/>
+                <field name="planned_quantity" readonly="state == 'approved'"/>
+                <field name="uom_id" readonly="state == 'approved'"/>
+                <field name="required_date" readonly="state == 'approved'"/>
+                <field name="source_location_id" readonly="state == 'approved'" optional="show"/>
+                <field name="destination_location_id" readonly="state == 'approved'" optional="show"/>
+                <field name="picking_ids" widget="many2many_tags" readonly="1" optional="show"/>
+                <field name="state" widget="badge"
+                       decoration-warning="state == 'draft'"
+                       decoration-success="state == 'approved'"/>
+                <field name="planned_cost" sum="Total" optional="hide" readonly="1"/>
                 <field name="currency_id" column_invisible="1"/>
-                <field name="planned_cost" optional="hide" sum="Total Cost"/>
+                <field name="project_id" column_invisible="1"/>
             </list>
         </field>
     </record>
@@ -25,29 +34,49 @@
         <field name="name">project.material.plan.form</field>
         <field name="model">project.material.plan</field>
         <field name="arch" type="xml">
-            <form string="Material Plan Line">
+            <form string="Material Plan">
+                <header>
+                    <button name="action_approve" string="Approve" type="object"
+                            class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_open_transfers" string="Open Transfer"
+                            type="object" class="btn-secondary"
+                            invisible="state != 'approved' or not picking_ids"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,approved"/>
+                </header>
                 <sheet>
                     <group>
                         <group>
-                            <field name="project_id" readonly="1"/>
-                            <field name="task_id" domain="[('project_id', '=', project_id)]"/>
-                            <field name="product_id"/>
+                            <field name="project_id" readonly="state == 'approved'"/>
+                            <field name="task_id" readonly="state == 'approved'"/>
+                            <field name="wbs_code" readonly="1" invisible="not wbs_code"/>
+                            <field name="product_id" readonly="state == 'approved'"/>
+                            <field name="description" readonly="state == 'approved'"/>
                         </group>
                         <group>
-                            <field name="planned_quantity"/>
-                            <field name="uom_id"/>
-                            <field name="required_date"/>
+                            <field name="planned_quantity" readonly="state == 'approved'"/>
+                            <field name="uom_id" readonly="state == 'approved'"/>
+                            <field name="required_date" readonly="state == 'approved'"/>
+                            <field name="unit_cost" readonly="1"/>
+                            <field name="planned_cost" readonly="1"/>
+                            <field name="currency_id" invisible="1"/>
                         </group>
                     </group>
-                    <group string="Details">
-                        <field name="description" placeholder="e.g. installation cable run"/>
-                        <field name="currency_id" invisible="1"/>
-                        <field name="unit_cost" readonly="1"/>
-                        <field name="planned_cost" readonly="1"/>
+                    <group string="Stock Transfer">
+                        <group>
+                            <field name="source_location_id" readonly="state == 'approved'"/>
+                            <field name="destination_location_id" readonly="state == 'approved'"/>
+                        </group>
+                        <group>
+                            <field name="picking_ids" widget="many2many_tags" readonly="1"
+                                   invisible="not picking_ids"/>
+                        </group>
                     </group>
-                    <group string="Notes">
-                        <field name="notes" nolabel="1"/>
-                    </group>
+                    <notebook>
+                        <page name="notes" string="Notes">
+                            <field name="notes" readonly="state == 'approved'"/>
+                        </page>
+                    </notebook>
                 </sheet>
             </form>
         </field>
@@ -57,28 +86,32 @@
         <field name="name">project.material.plan.search</field>
         <field name="model">project.material.plan</field>
         <field name="arch" type="xml">
-            <search>
-                <field name="task_id"/>
+            <search string="Material Plan">
                 <field name="product_id"/>
-                <field name="required_date"/>
-                <field name="planned_quantity"/>
+                <field name="task_id"/>
+                <field name="project_id"/>
+                <field name="source_location_id"/>
+                <field name="destination_location_id"/>
+                <filter name="filter_draft" string="Draft"
+                        domain="[('state', '=', 'draft')]"/>
+                <filter name="filter_approved" string="Approved"
+                        domain="[('state', '=', 'approved')]"/>
                 <separator/>
-                <filter name="filter_required_this_week" string="Required This Week"
-                        domain="[('required_date', '&gt;=', context_today().strftime('%Y-%m-%d')),
-                                 ('required_date', '&lt;', (context_today() + relativedelta(days=(7 - context_today().weekday()))).strftime('%Y-%m-%d'))]"/>
-                <filter name="filter_required_past" string="Required Date Passed"
+                <filter name="filter_required_week" string="Required This Week"
+                        domain="[('required_date', '&gt;=', (context_today() - relativedelta(days=context_today().weekday())).strftime('%Y-%m-%d')),
+                                 ('required_date', '&lt;=', (context_today() + relativedelta(days=6-context_today().weekday())).strftime('%Y-%m-%d'))]"/>
+                <filter name="filter_required_passed" string="Required Date Passed"
                         domain="[('required_date', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
-                <separator/>
-                <filter name="group_task" string="Task / WBS"
-                        context="{'group_by': 'task_id'}"/>
-                <filter name="group_parent" string="WBS / Parent"
-                        context="{'group_by': 'parent_task_id'}"/>
-                <filter name="group_product" string="Product"
-                        context="{'group_by': 'product_id'}"/>
-                <filter name="group_required_date" string="Required Date"
-                        context="{'group_by': 'required_date'}"/>
-                <filter name="group_project" string="Project"
-                        context="{'group_by': 'project_id'}"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_product" string="Product" context="{'group_by': 'product_id'}"/>
+                    <filter name="group_task" string="Task / WBS" context="{'group_by': 'task_id'}"/>
+                    <filter name="group_parent" string="WBS / Parent" context="{'group_by': 'parent_task_id'}"/>
+                    <filter name="group_source" string="Source Location" context="{'group_by': 'source_location_id'}"/>
+                    <filter name="group_destination" string="Destination Location" context="{'group_by': 'destination_location_id'}"/>
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                    <filter name="group_required_date" string="Required Date" context="{'group_by': 'required_date'}"/>
+                    <filter name="group_project" string="Project" context="{'group_by': 'project_id'}"/>
+                </group>
             </search>
         </field>
     </record>
@@ -87,26 +120,44 @@
         <field name="name">Material Plan</field>
         <field name="res_model">project.material.plan</field>
         <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="project_material_plan_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Plan the materials this project needs
+            </p>
+            <p>
+                Each line links a product to a task with a required date.
+                Approving draft lines creates a standard Odoo stock transfer —
+                reservation and replenishment are handled by Odoo.
+            </p>
+        </field>
     </record>
 
-    <!-- Project form header: sits next to the Planner button, same level. -->
-    <record id="project_project_form_inherit_material_plan" model="ir.ui.view">
-        <field name="name">project.project.form.inherit.material.plan</field>
-        <field name="model">project.project</field>
-        <field name="inherit_id" ref="project.edit_project"/>
+    <!-- Traceability back: picking form shows its source plan lines -->
+    <record id="stock_picking_form_inherit_material_plan" model="ir.ui.view">
+        <field name="name">stock.picking.form.inherit.material.plan</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//header/button[@name='action_open_planner_workspace']" position="after">
-                <button name="action_open_material_plan"
-                        string="Material Plan"
-                        type="object"
-                        class="btn-secondary"/>
+            <xpath expr="//field[@name='origin']" position="after">
+                <field name="material_plan_line_ids" widget="many2many_tags"
+                       readonly="1" invisible="not material_plan_line_ids"/>
             </xpath>
         </field>
     </record>
 
+    <!-- Multi-select approval: ⚙ Action → Approve on the list view -->
+    <record id="action_material_plan_approve" model="ir.actions.server">
+        <field name="name">Approve</field>
+        <field name="model_id" ref="project_critical_path.model_project_material_plan"/>
+        <field name="binding_model_id" ref="project_critical_path.model_project_material_plan"/>
+        <field name="state">code</field>
+        <field name="code">records.action_approve()</field>
+    </record>
+
     <menuitem id="menu_project_material_plan"
-              name="Material Plans"
-              parent="project.menu_main_pm"
+              name="Material Plan"
+              parent="project.menu_project_config"
               action="action_project_material_plan"
-              sequence="35"/>
+              sequence="50"/>
 </odoo>

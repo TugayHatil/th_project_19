@@ -14,4 +14,3 @@ access_project_resource_rate_template_user,project.resource.rate.template user,m
 access_project_baseline_title_user,project.baseline.title user,model_project_baseline_title,base.group_user,1,1,1,1
 access_project_task_dependency_user,project.task.dependency user,model_project_task_dependency,base.group_user,1,1,1,1
 access_project_material_plan_user,project.material.plan user,model_project_material_plan,base.group_user,1,1,1,1
-access_project_material_requirement_user,project.material.requirement user,model_project_material_requirement,base.group_user,1,0,0,0

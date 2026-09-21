@@ -165,6 +165,18 @@
                         </field>
                     </group>
                 </page>
+                <page name="material_plan_settings" string="Material Plan">
+                    <group string="Default Stock Locations">
+                        <group>
+                            <field name="material_source_location_id"/>
+                            <field name="material_destination_location_id"/>
+                        </group>
+                        <group>
+                            <button name="action_open_material_plan" string="Open Material Plan"
+                                    type="object" class="btn-secondary"/>
+                        </group>
+                    </group>
+                </page>
             </xpath>
         </field>
     </record>

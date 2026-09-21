@@ -17,4 +17,5 @@ from . import project_planner
 from . import project_task_dependency
 from . import project_baseline_title
 from . import project_material_plan
-from . import project_material_requirement
+from . import stock_move
+from . import stock_picking

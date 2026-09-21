@@ -3834,23 +3834,6 @@ export class PlannerWorkspace extends Component {
         });
     }
 
-    // Material Requirement (BRD phase 2): consolidated availability view —
-    // same project context, read-only derived list.
-    openMaterialRequirement() {
-        if (!this.state.projectId) {
-            return;
-        }
-        this.action.doAction({
-            type: "ir.actions.act_window",
-            name: _t("Material Requirements"),
-            res_model: "project.material.requirement",
-            views: [[false, "list"], [false, "form"]],
-            domain: [["project_id", "=", this.state.projectId]],
-            context: { default_project_id: this.state.projectId, create: false },
-            target: "current",
-        });
-    }
-
     async onProjectChange(ev) {
         this.state.projectId = Number(ev.target.value) || false;
         if (this.state.projectId) {

@@ -58,6 +58,18 @@ class ProjectProject(models.Model):
         string="Planned Resource Cost", compute="_compute_planned_resource_cost",
         currency_field="resource_cost_currency_id", readonly=True,
     )
+    # Material Plan defaults (BRD §6): every new plan line starts with the
+    # project's source/destination — both are editable per line.
+    material_source_location_id = fields.Many2one(
+        "stock.location", string="Material Source Location",
+        domain="[('usage', '=', 'internal')]",
+        help="Default source location for this project's material plan lines.",
+    )
+    material_destination_location_id = fields.Many2one(
+        "stock.location", string="Material Destination Location",
+        domain="[('usage', '=', 'internal')]",
+        help="Default destination location for this project's material plan lines.",
+    )
 
     @api.depends("resource_currency_id", "resource_rate_template_ids.currency_id")
     def _compute_resource_cost_currency(self):
@@ -182,20 +194,6 @@ class ProjectProject(models.Model):
             "view_mode": "list,form",
             "domain": [("project_id", "=", self.id)],
             "context": {"default_project_id": self.id},
-        }
-
-    def action_open_material_requirement(self):
-        """Material Requirement (BRD phase 2): consolidated stock-availability
-        view derived from this project's Material Plan lines — same project
-        context, standard read-only list/form views."""
-        self.ensure_one()
-        return {
-            "type": "ir.actions.act_window",
-            "name": _("Material Requirements"),
-            "res_model": "project.material.requirement",
-            "view_mode": "list,form",
-            "domain": [("project_id", "=", self.id)],
-            "context": {"default_project_id": self.id, "create": False},
         }
 
     def action_open_resource_roles(self):

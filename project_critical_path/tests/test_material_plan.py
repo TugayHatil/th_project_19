@@ -1,19 +1,33 @@
 # -*- coding: utf-8 -*-
 
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests.common import TransactionCase
 
 
 class TestMaterialPlan(TransactionCase):
-    """Material Plan (BRD) — project-scoped product lines on Task/WBS:
-    required fields, duplicate prevention, quantity validation, project
-    isolation, UoM default and product aggregation via read_group."""
+    """Material Plan → Odoo Stock (BRD): project-scoped draft/approved
+    lifecycle. Approving draft lines creates standard stock.picking /
+    stock.move grouped by (source, destination); reservation and
+    replenishment stay standard Odoo — no custom procurement."""
 
     def setUp(self):
         super().setUp()
         Plan = self.env["project.material.plan"]
         self.plan_model = Plan
-        self.project = self.env["project.project"].create({"name": "MP Project"})
+        self.stock_location = self.env.ref("stock.stock_location_stock")
+        self.other_location = self.env["stock.location"].create({
+            "name": "WH/Other", "usage": "internal",
+            "location_id": self.stock_location.location_id.id,
+        })
+        self.dest_location = self.env["stock.location"].create({
+            "name": "WH/Projects/Project A", "usage": "internal",
+            "location_id": self.stock_location.location_id.id,
+        })
+        self.project = self.env["project.project"].create({
+            "name": "MP Project",
+            "material_source_location_id": self.stock_location.id,
+            "material_destination_location_id": self.dest_location.id,
+        })
         self.other_project = self.env["project.project"].create({"name": "Other"})
         self.task_a = self.env["project.task"].create({
             "name": "1.2 Cable Works", "project_id": self.project.id,
@@ -25,8 +39,20 @@ class TestMaterialPlan(TransactionCase):
         self.other_task = self.env["project.task"].create({
             "name": "Foreign Task", "project_id": self.other_project.id,
         })
-        self.product = self.env["product.product"].create({"name": "NYY 3x2.5"})
-        self.product_b = self.env["product.product"].create({"name": "Cable Tray"})
+        self.product = self.env["product.product"].create({
+            "name": "NYY 3x2.5", "is_storable": True,
+        })
+        self.product_b = self.env["product.product"].create({
+            "name": "Cable Tray", "is_storable": True,
+        })
+        self.service_product = self.env["product.product"].create({
+            "name": "Consulting", "is_storable": False,
+        })
+        Picking = self.env["stock.picking"]
+        Move = self.env["stock.move"]
+        self._picking_count = lambda: Picking.search_count([
+            ("move_ids.material_plan_line_id.project_id", "=", self.project.id)])
+        self._move_model = Move
 
     def _line(self, task=None, product=None, qty=10.0, **values):
         vals = {
@@ -38,39 +64,22 @@ class TestMaterialPlan(TransactionCase):
         vals.update(values)
         return self.plan_model.create(vals)
 
-    def test_create_and_uom_default(self):
+    # ── Defaults ─────────────────────────────────────────────────────
+    def test_material_plan_defaults(self):
         line = self._line(qty=40.0)
-        self.assertEqual(line.project_id, self.project)
+        self.assertEqual(line.state, "draft")
         self.assertEqual(line.uom_id, self.product.uom_id)
-        self.assertTrue(line.display_name)
-
-    def test_required_date_defaults_to_task_deadline(self):
-        line = self._line()
         self.assertEqual(str(line.required_date), "2026-10-15")
+        self.assertEqual(line.source_location_id, self.stock_location)
+        self.assertEqual(line.destination_location_id, self.dest_location)
 
-    def test_same_product_different_tasks(self):
-        a = self._line(task=self.task_a, qty=40.0)
-        b = self._line(task=self.task_b, qty=60.0)
-        self.assertNotEqual(a.id, b.id)
-        grouped = self.plan_model.read_group(
-            [("project_id", "=", self.project.id), ("product_id", "=", self.product.id)],
-            ["planned_quantity"], ["product_id"],
-        )
-        self.assertEqual(grouped[0]["planned_quantity"], 100.0)
+    def test_material_plan_location_override(self):
+        line = self._line(source_location_id=self.other_location.id)
+        self.assertEqual(line.source_location_id, self.other_location)
+        self.assertEqual(self.project.material_source_location_id, self.stock_location)
 
-    def test_duplicate_project_task_product_rejected(self):
-        self._line(task=self.task_a)
-        with self.assertRaises(ValidationError):
-            self._line(task=self.task_a, qty=5.0)
-
-    def test_quantity_must_be_positive(self):
-        with self.assertRaises(ValidationError):
-            self._line(qty=0.0)
-        line = self._line()
-        with self.assertRaises(ValidationError):
-            line.planned_quantity = -10
-
-    def test_task_must_belong_to_project(self):
+    # ── Validations ──────────────────────────────────────────────────
+    def test_material_plan_task_project_validation(self):
         with self.assertRaises(ValidationError):
             self.plan_model.create({
                 "project_id": self.project.id,
@@ -79,14 +88,137 @@ class TestMaterialPlan(TransactionCase):
                 "planned_quantity": 1.0,
             })
 
+    def test_quantity_must_be_positive(self):
+        with self.assertRaises(ValidationError):
+            self._line(qty=0.0)
+        line = self._line()
+        with self.assertRaises(ValidationError):
+            line.planned_quantity = -10
+
+    def test_non_storable_product_rejected(self):
+        with self.assertRaises(ValidationError):
+            self._line(product=self.service_product)
+
+    def test_duplicate_product_is_allowed(self):
+        a = self._line(qty=100.0)
+        b = self._line(task=self.task_b, qty=30.0)
+        self.assertNotEqual(a.id, b.id)
+        self.assertEqual(a.product_id, b.product_id)
+
     def test_project_isolation(self):
         self._line()
         lines = self.plan_model.search([("project_id", "=", self.other_project.id)])
         self.assertFalse(lines)
 
+    # ── Draft ────────────────────────────────────────────────────────
+    def test_material_plan_draft_no_picking(self):
+        line = self._line(qty=100.0)
+        self.assertEqual(line.state, "draft")
+        self.assertFalse(line.move_ids)
+        self.assertFalse(line.picking_ids)
+        self.assertFalse(line.move_ids.picking_id)
+        self.assertEqual(self._picking_count(), 0)
+
+    # ── Approval ─────────────────────────────────────────────────────
+    def test_material_plan_approval_creates_picking(self):
+        line = self._line(qty=100.0)
+        line.action_approve()
+        self.assertEqual(line.state, "approved")
+        self.assertEqual(len(line.picking_ids), 1)
+        picking = line.picking_ids
+        self.assertEqual(picking.picking_type_id.code, "internal")
+        self.assertEqual(picking.location_id, self.stock_location)
+        self.assertEqual(picking.location_dest_id, self.dest_location)
+        self.assertEqual(len(picking.move_ids), 1)
+        move = picking.move_ids
+        self.assertEqual(move.product_id, self.product)
+        self.assertEqual(move.product_uom_qty, 100.0)
+        self.assertEqual(move.product_uom, self.product.uom_id)
+        self.assertEqual(move.material_plan_line_id, line)
+        # required_date carried onto the move's scheduled date
+        self.assertEqual(str(move.date.date()), "2026-10-15")
+
+    def test_material_plan_same_source_single_picking(self):
+        a = self._line(qty=100.0)
+        b = self._line(task=self.task_b, product=self.product_b, qty=10.0)
+        (a | b).action_approve()
+        self.assertEqual(a.picking_ids, b.picking_ids)
+        self.assertEqual(len(a.picking_ids.move_ids), 2)
+
+    def test_material_plan_different_source_multiple_pickings(self):
+        a = self._line(qty=100.0)
+        b = self._line(task=self.task_b, product=self.product_b, qty=10.0,
+                       source_location_id=self.other_location.id)
+        (a | b).action_approve()
+        self.assertNotEqual(a.picking_ids, b.picking_ids)
+        self.assertEqual(len(a.picking_ids | b.picking_ids), 2)
+
+    def test_material_plan_grouping_by_source_destination(self):
+        a = self._line(qty=100.0)
+        b = self._line(task=self.task_b, product=self.product_b, qty=10.0)
+        c = self._line(task=self.task_b, product=self.product, qty=50.0,
+                       source_location_id=self.other_location.id)
+        (a | b | c).action_approve()
+        pickings = (a | b | c).picking_ids
+        self.assertEqual(len(pickings), 2)
+        self.assertEqual(a.picking_ids, b.picking_ids)
+        self.assertNotEqual(c.picking_ids, a.picking_ids)
+
+    def test_approve_twice_noop(self):
+        line = self._line()
+        line.action_approve()
+        with self.assertRaises(UserError):
+            line.action_approve()
+
+    # ── Approved lines are read-only / new need = new line ───────────
+    def test_material_plan_approved_readonly(self):
+        line = self._line(qty=100.0)
+        line.action_approve()
+        with self.assertRaises(UserError):
+            line.write({"planned_quantity": 130.0})
+        with self.assertRaises(UserError):
+            line.write({"product_id": self.product_b.id})
+        with self.assertRaises(UserError):
+            line.write({"task_id": self.task_b.id})
+
+    def test_material_plan_new_requirement(self):
+        first = self._line(qty=100.0)
+        first.action_approve()
+        second = self._line(task=self.task_b, qty=30.0)
+        self.assertEqual(second.state, "draft")
+        self.assertEqual(first.planned_quantity, 100.0)
+        self.assertEqual(len(first.picking_ids), 1)
+        second.action_approve()
+        self.assertEqual(first.planned_quantity, 100.0)
+        self.assertNotEqual(first.picking_ids, second.picking_ids)
+
+    # ── Traceability ─────────────────────────────────────────────────
+    def test_material_plan_traceability(self):
+        line = self._line(qty=100.0)
+        line.action_approve()
+        picking = line.picking_ids
+        self.assertTrue(picking)
+        # plan → picking
+        action = line.action_open_transfers()
+        self.assertEqual(action["res_model"], "stock.picking")
+        # picking → plan
+        self.assertIn(line, picking.material_plan_line_ids)
+        self.assertIn("MP", (picking.origin or "") or "MP")
+        self.assertIn("Material Plan", picking.origin or "")
+
+    # ── UoM / planner integration ────────────────────────────────────
+    def test_uom_carried_to_move(self):
+        uom_km = self.env["uom.uom"].search([
+            ("name", "=", "km")], limit=1)
+        if not uom_km:
+            self.skipTest("km UoM not installed")
+        line = self._line(qty=0.1, uom_id=uom_km.id)
+        line.action_approve()
+        move = line.move_ids
+        self.assertEqual(move.product_uom, uom_km)
+        self.assertEqual(move.product_uom_qty, 0.1)
+
     def test_planner_integration_same_task_source(self):
-        # The material line references the very same project.task record
-        # the Planner renders — no shadow task/WBS model is created.
         line = self._line(task=self.task_a)
         data = self.project.get_planner_data()
         planner_ids = {task["id"] for task in data["tasks"]}
