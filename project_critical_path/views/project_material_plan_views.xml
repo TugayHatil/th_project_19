@@ -22,10 +22,8 @@
                 <field name="state" widget="badge"
                        decoration-warning="state == 'draft'"
                        decoration-success="state == 'approved'"/>
-                <field name="picking_id" readonly="1" optional="show"/>
-                <button name="action_open_transfers" type="object"
-                        icon="fa-truck" title="Open Transfer"
-                        invisible="not picking_ids"/>
+                <field name="picking_count" string="Transfer" readonly="1"
+                       widget="material_transfer_badge" optional="show"/>
                 <button name="action_open_form" type="object"
                         icon="fa-external-link" title="Open"/>
                 <field name="picking_ids" widget="many2many_tags" readonly="1" optional="hide"/>

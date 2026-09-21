@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="project_critical_path.MaterialTransferBadge">
+        <span t-if="count > 0" class="o_mp_transfer" role="button" tabindex="0"
+              t-attf-title="#{count} #{count > 1 ? 'Transfers' : 'Transfer'}"
+              t-on-click.stop="openTransfers" t-on-keydown="onKeydown">
+            <i class="fa fa-truck"/>
+            <span class="o_mp_transfer_count"><t t-esc="count"/></span>
+        </span>
+    </t>
+</templates>

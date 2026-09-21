@@ -207,7 +207,7 @@ class TestMaterialPlan(TransactionCase):
         self.assertIn("Material Plan", picking.origin or "")
 
     # ── UI navigation (BRD: Material Plan → Odoo Transfer) ──────────
-    def test_material_plan_picking_navigation(self):
+    def test_single_picking_navigation(self):
         line = self._line(qty=100.0)
         line.action_approve()
         action = line.action_open_transfers()
@@ -215,7 +215,7 @@ class TestMaterialPlan(TransactionCase):
         self.assertEqual(action["res_id"], line.picking_ids.id)
         self.assertEqual(action["views"], [[False, "form"]])
 
-    def test_material_plan_multiple_pickings_navigation(self):
+    def test_multiple_picking_navigation(self):
         a = self._line(qty=100.0)
         b = self._line(task=self.task_b, product=self.product_b, qty=10.0,
                        source_location_id=self.other_location.id)
@@ -339,6 +339,34 @@ class TestMaterialPlan(TransactionCase):
         action = line.action_open_transfers()
         self.assertEqual(action["res_model"], "stock.picking")
         self.assertEqual(action["res_id"], line.picking_ids.id)
+
+    def test_material_picking_count(self):
+        """Badge counter: 0 on draft, tracks linked pickings on approve."""
+        line = self._line(qty=100.0)
+        self.assertEqual(line.picking_count, 0)
+        line.action_approve()
+        self.assertEqual(line.picking_count, 1)
+        # A second (forced) move on another picking raises the badge count
+        other_picking = self.env["stock.picking"].create({
+            "picking_type_id": line.picking_ids.picking_type_id.id,
+            "location_id": self.other_location.id,
+            "location_dest_id": self.dest_location.id,
+        })
+        self.env["stock.move"].create({
+            "name": self.product_b.display_name,
+            "product_id": self.product_b.id,
+            "product_uom_qty": 10.0,
+            "product_uom": self.product_b.uom_id.id,
+            "location_id": self.other_location.id,
+            "location_dest_id": self.dest_location.id,
+            "picking_id": other_picking.id,
+            "material_plan_line_id": line.id,
+        })
+        line.invalidate_recordset()
+        self.assertEqual(line.picking_count, 2)
+        action = line.action_open_transfers()
+        domain_ids = next(v for f, _, v in action["domain"] if f == "id")
+        self.assertEqual(len(domain_ids), 2)
 
     # ── UoM / planner integration ────────────────────────────────────
     def test_uom_carried_to_move(self):

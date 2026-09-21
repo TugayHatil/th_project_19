@@ -1,0 +1,33 @@
+// Material Plan transfer badge — truck icon + corner count badge.
+.o_mp_transfer {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--o-brand-primary, #714b67);
+    font-size: 0.95rem;
+    line-height: 1;
+    padding: 2px 4px;
+
+    &:hover, &:focus {
+        color: var(--o-link-color, #017e84);
+    }
+
+    .o_mp_transfer_count {
+        position: absolute;
+        bottom: -6px;
+        right: -7px;
+        min-width: 14px;
+        height: 14px;
+        padding: 0 3px;
+        border-radius: 7px;
+        font-size: 0.62rem;
+        font-weight: 700;
+        line-height: 14px;
+        text-align: center;
+        background: var(--o-brand-primary, #714b67);
+        color: #fff;
+        pointer-events: none;
+    }
+}
