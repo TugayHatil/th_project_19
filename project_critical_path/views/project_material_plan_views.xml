@@ -19,7 +19,8 @@
                 <field name="required_date" readonly="state == 'approved'"/>
                 <field name="source_location_id" readonly="state == 'approved'" optional="show"/>
                 <field name="destination_location_id" readonly="state == 'approved'" optional="show"/>
-                <field name="picking_ids" widget="many2many_tags" readonly="1" optional="show"/>
+                <field name="picking_id" readonly="1" optional="show"/>
+                <field name="picking_ids" widget="many2many_tags" readonly="1" optional="hide"/>
                 <field name="state" widget="badge"
                        decoration-warning="state == 'draft'"
                        decoration-success="state == 'approved'"/>
@@ -45,6 +46,14 @@
                            statusbar_visible="draft,approved"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_transfers" type="object"
+                                class="oe_stat_button" icon="fa-truck"
+                                invisible="picking_count == 0">
+                            <field name="picking_count" widget="statinfo"
+                                   string="Transfers"/>
+                        </button>
+                    </div>
                     <group>
                         <group>
                             <field name="project_id" readonly="state == 'approved'"/>
@@ -162,6 +171,12 @@
                         string="Material Plan"
                         type="object"
                         class="btn-secondary"/>
+                <field name="material_picking_count" invisible="1"/>
+                <button name="action_open_material_transfers"
+                        string="Transfers"
+                        type="object"
+                        class="btn-secondary"
+                        invisible="material_picking_count == 0"/>
             </xpath>
         </field>
     </record>

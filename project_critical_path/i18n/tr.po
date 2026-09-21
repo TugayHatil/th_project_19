@@ -2065,3 +2065,33 @@ msgstr "Onaylanacak taslak satır yok."
 #: code:addons/project_critical_path/models/project_material_plan.py:0
 msgid "No internal transfer operation type found. Configure a warehouse with an internal picking type."
 msgstr "Dahili transfer operasyon tipi bulunamadı. Dahili picking tipi olan bir depo yapılandırın."
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_material_plan__picking_id
+msgid "Transfer"
+msgstr "Transfer"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_material_plan__picking_count
+msgid "Transfer Count"
+msgstr "Transfer Sayısı"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_project__material_picking_ids
+msgid "Material Transfers"
+msgstr "Malzeme Transferleri"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_project__material_picking_count
+msgid "Material Transfer Count"
+msgstr "Malzeme Transferi Sayısı"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
+msgid "Stock Transfers"
+msgstr "Stok Transferleri"
+
+#. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
+msgid "Open Transfers"
+msgstr "Transferleri Aç"

@@ -206,6 +206,56 @@ class TestMaterialPlan(TransactionCase):
         self.assertIn("MP", (picking.origin or "") or "MP")
         self.assertIn("Material Plan", picking.origin or "")
 
+    # ── UI navigation (BRD: Material Plan → Odoo Transfer) ──────────
+    def test_material_plan_picking_navigation(self):
+        line = self._line(qty=100.0)
+        line.action_approve()
+        action = line.action_open_transfers()
+        self.assertEqual(action["res_model"], "stock.picking")
+        self.assertEqual(action["res_id"], line.picking_ids.id)
+        self.assertEqual(action["views"], [[False, "form"]])
+
+    def test_material_plan_multiple_pickings_navigation(self):
+        a = self._line(qty=100.0)
+        b = self._line(task=self.task_b, product=self.product_b, qty=10.0,
+                       source_location_id=self.other_location.id)
+        (a | b).action_approve()
+        action = (a | b).action_open_transfers()
+        self.assertEqual(action["res_model"], "stock.picking")
+        domain_ids = next(v for f, _, v in action["domain"] if f == "id")
+        self.assertEqual(set(domain_ids), set((a | b).picking_ids.ids))
+        self.assertEqual(len(domain_ids), 2)
+
+    def test_project_picking_isolation(self):
+        a = self._line(qty=100.0)
+        b = self._line(task=self.task_b, product=self.product_b, qty=10.0,
+                       source_location_id=self.other_location.id)
+        (a | b).action_approve()
+        other_line = self.plan_model.create({
+            "project_id": self.other_project.id,
+            "task_id": self.other_task.id,
+            "product_id": self.product.id,
+            "planned_quantity": 5.0,
+            "source_location_id": self.stock_location.id,
+            "destination_location_id": self.dest_location.id,
+        })
+        other_line.action_approve()
+        action = self.project.action_open_material_transfers()
+        self.assertEqual(action["res_model"], "stock.picking")
+        domain_ids = next(v for f, _, v in action["domain"] if f == "id")
+        self.assertEqual(set(domain_ids), set((a | b).picking_ids.ids))
+        self.assertNotIn(other_line.picking_ids.id, domain_ids)
+
+    def test_material_plan_line_picking_relation(self):
+        line = self._line(qty=100.0)
+        line.action_approve()
+        picking = line.picking_ids
+        self.assertEqual(line.picking_id, picking)
+        self.assertEqual(line.picking_count, 1)
+        self.assertEqual(line.move_ids.picking_id, picking)
+        self.assertEqual(picking.move_ids.material_plan_line_id, line)
+        self.assertIn(line, picking.material_plan_line_ids)
+
     # ── UoM / planner integration ────────────────────────────────────
     def test_uom_carried_to_move(self):
         uom_km = self.env["uom.uom"].search([

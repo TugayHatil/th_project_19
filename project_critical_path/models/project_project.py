@@ -70,6 +70,16 @@ class ProjectProject(models.Model):
         domain="[('usage', '=', 'internal')]",
         help="Default destination location for this project's material plan lines.",
     )
+    # Transfers created by this project's material plan lines — resolved
+    # through the stored stock.move link; no redundant relation on
+    # stock.picking (BRD: UI navigation only).
+    material_picking_ids = fields.Many2many(
+        "stock.picking", string="Material Transfers",
+        compute="_compute_material_pickings",
+    )
+    material_picking_count = fields.Integer(
+        string="Material Transfer Count", compute="_compute_material_pickings",
+    )
 
     @api.depends("resource_currency_id", "resource_rate_template_ids.currency_id")
     def _compute_resource_cost_currency(self):
@@ -194,6 +204,30 @@ class ProjectProject(models.Model):
             "view_mode": "list,form",
             "domain": [("project_id", "=", self.id)],
             "context": {"default_project_id": self.id},
+        }
+
+    def _compute_material_pickings(self):
+        Picking = self.env["stock.picking"]
+        for project in self:
+            pickings = Picking.search([
+                ("move_ids.material_plan_line_id.project_id", "=", project.id),
+            ])
+            project.material_picking_ids = pickings
+            project.material_picking_count = len(pickings)
+
+    def action_open_material_transfers(self):
+        """Project → Transfers (BRD §6/§10): the standard stock.picking
+        list scoped to pickings created by THIS project's material plan
+        lines — existing relations only, no custom transfer screen."""
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Transfers"),
+            "res_model": "stock.picking",
+            "view_mode": "list,form",
+            "views": [[False, "list"], [False, "form"]],
+            "domain": [("id", "in", self.material_picking_ids.ids)],
+            "context": {"create": False},
         }
 
     def action_open_resource_roles(self):

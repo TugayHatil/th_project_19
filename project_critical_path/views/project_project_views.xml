@@ -188,6 +188,15 @@
                                     type="object" class="btn-secondary"/>
                         </group>
                     </group>
+                    <group string="Stock Transfers">
+                        <group>
+                            <field name="material_picking_count" readonly="1"/>
+                        </group>
+                        <group>
+                            <button name="action_open_material_transfers" string="Open Transfers"
+                                    type="object" class="btn-secondary"/>
+                        </group>
+                    </group>
                 </page>
             </xpath>
         </field>

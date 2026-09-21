@@ -78,6 +78,15 @@ class ProjectMaterialPlan(models.Model):
         "stock.picking", string="Transfers",
         compute="_compute_picking_ids",
     )
+    # First transfer as a clickable M2O — the list column links straight
+    # into the standard stock.picking form (BRD: UI navigation).
+    picking_id = fields.Many2one(
+        "stock.picking", string="Transfer",
+        compute="_compute_picking_ids",
+    )
+    picking_count = fields.Integer(
+        string="Transfer Count", compute="_compute_picking_ids",
+    )
     notes = fields.Text(string="Notes")
     company_id = fields.Many2one(
         "res.company", string="Company",
@@ -145,7 +154,10 @@ class ProjectMaterialPlan(models.Model):
     @api.depends("move_ids.picking_id")
     def _compute_picking_ids(self):
         for line in self:
-            line.picking_ids = line.move_ids.picking_id
+            pickings = line.move_ids.picking_id
+            line.picking_ids = pickings
+            line.picking_id = pickings[:1]
+            line.picking_count = len(pickings)
 
     @api.model_create_multi
     def create(self, vals_list):
