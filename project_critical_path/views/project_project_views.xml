@@ -69,7 +69,8 @@
                  page's spare group — no new tab. -->
             <xpath expr="//page[@name='settings']//group[@name='extra_settings']" position="inside">
                 <group string="Planning">
-                    <field name="planning_precision" widget="radio"/>
+                    <field name="planning_precision" widget="radio"
+                           options="{'horizontal': true}"/>
                 </group>
             </xpath>
             <xpath expr="//notebook" position="inside">
