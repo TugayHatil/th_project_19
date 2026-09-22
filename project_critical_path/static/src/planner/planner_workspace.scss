@@ -429,7 +429,10 @@ $o_cp_planner_bar_critical: #e8a33d;
 // areas; the flag itself re-enables them for its own hover tooltip.
 .o_cp_planner_finish_tail {
     position: absolute;
-    top: 14px; // bar center: 11px + (10px - 3px) / 2
+    // Just under the bar's bottom edge (bar spans y11-21) — the line can
+    // never strike through the vertically-centered bar-info text, and it
+    // stays clear of the baseline ghost bar parked at y25-30.
+    top: 21px;
     height: 3px;
     border-radius: 999px;
     pointer-events: none;
@@ -444,13 +447,14 @@ $o_cp_planner_bar_critical: #e8a33d;
     }
 }
 
-// The "+Ng/-Ng" pill sits below the bar at the tail tip (BRD v2 §5):
-// bar-height labels — CP chip, lag text, bar-info — stay unobstructed.
+// The "+Ng/-Ng" pill rides in the free band at the TOP of the row
+// (y0-11): the bar, its centered info text, the tail line and the
+// baseline ghost all sit lower, so the flag can't cover any of them.
 // `.flip` pins the pill inside the viewport when it would otherwise
 // overflow the gantt canvas or slide under the sticky WBS panel.
 .o_cp_planner_finish_flag {
     position: absolute;
-    top: 6px; // tail top 14px + 6 → pill row at y20, below the 10px bar
+    top: -21px; // tail top 21px − 21 → pill row at y0, above the bar
     height: 11px;
     line-height: 11px;
     padding: 0 4px;
