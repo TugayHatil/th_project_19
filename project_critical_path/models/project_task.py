@@ -23,6 +23,50 @@ class ProjectTask(models.Model):
     ], string="Impact Status", readonly=True)
     delay_impact_chain = fields.Text(string="Impact Chain", readonly=True)
 
+    # Finish Variance (BRD): the actual close timestamp, stamped when the
+    # task moves to the done state and cleared on reopen. Read-only so it
+    # always reflects the real transition, never a manual edit.
+    date_done = fields.Datetime(string="Actual Finish", readonly=True, copy=False)
+    # Stored so the Planner status filters (Completed Late/Early/On Time)
+    # can search it directly as a project.task domain leaf.
+    finish_variance_state = fields.Selection(
+        [
+            ("late", "Completed Late"),
+            ("early", "Completed Early"),
+            ("on_time", "Completed On Time"),
+        ],
+        string="Finish Variance",
+        compute="_compute_finish_variance_state",
+        store=True,
+        readonly=True,
+    )
+
+    @api.depends("state", "date_done", "date_deadline")
+    def _compute_finish_variance_state(self):
+        for task in self:
+            if task.state != "1_done" or not task.date_done or not task.date_deadline:
+                task.finish_variance_state = False
+            elif task.date_done > task.date_deadline:
+                task.finish_variance_state = "late"
+            elif task.date_done < task.date_deadline:
+                task.finish_variance_state = "early"
+            else:
+                task.finish_variance_state = "on_time"
+
+    def _planner_effective_done(self):
+        """Actual close used by the Finish Variance tail.
+
+        Leaf tasks report their own ``date_done``. A parent's close is the
+        latest close across its children — it counts as done only once
+        every child has one; if the parent itself was closed earlier that
+        stamp is used as the fallback.
+        """
+        self.ensure_one()
+        children_done = [child._planner_effective_done() for child in self.child_ids]
+        if children_done and all(children_done):
+            return max(children_done)
+        return self.date_done
+
     def _planner_resource_fields(self):
         """Resource labels/summary for the planner payload.
 
@@ -37,6 +81,9 @@ class ProjectTask(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get("state") == "1_done" and not vals.get("date_done"):
+                vals["date_done"] = fields.Datetime.now()
         tasks = super().create(vals_list)
         tasks.mapped("project_id")._recalculate_critical_paths()
         tasks.mapped("parent_id")._sync_parent_window()
@@ -45,6 +92,12 @@ class ProjectTask(models.Model):
     def write(self, vals):
         affected_projects = self.mapped("project_id")
         old_parents = self.mapped("parent_id") if "parent_id" in vals else self.env["project.task"]
+        # Stamp the actual close on completion, clear it on reopen —
+        # unless the caller passes an explicit value (tests, migration).
+        if "state" in vals and "date_done" not in vals:
+            vals["date_done"] = (
+                fields.Datetime.now() if vals["state"] == "1_done" else False
+            )
         result = super().write(vals)
         if {"project_id", "parent_id", "allocated_hours", "depend_on_ids", "dependent_ids"}.intersection(vals):
             (affected_projects | self.mapped("project_id"))._recalculate_critical_paths()

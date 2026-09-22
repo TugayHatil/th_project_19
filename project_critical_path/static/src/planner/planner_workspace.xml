@@ -336,6 +336,15 @@
                                          t-att-style="varianceStyle(row.task)"
                                          t-att-title="varianceTooltip(row.task)"
                                          t-on-pointerdown="(ev) => this.onBarPointerDown(row.task, 'move', ev)"/>
+                                    <!-- Finish Variance Tail (BRD): thin
+                                         centered tail — red right when the
+                                         task closed late, green inside the
+                                         bar when it closed early. -->
+                                    <div t-if="row.task.date_start &amp;&amp; row.task.date_stop &amp;&amp; row.task.date_done"
+                                         class="o_cp_planner_finish_tail"
+                                         t-att-class="finishTailKind(row.task)"
+                                         t-att-style="finishTailStyle(row.task)"
+                                         t-att-title="finishTailTooltip(row.task)"/>
                                     <div t-if="row.task.date_start &amp;&amp; row.task.date_stop &amp;&amp; !row.task.is_done"
                                          class="o_cp_planner_grip o_cp_planner_grip_left"
                                          t-att-style="gripStyle(row.task, 'left')"
@@ -448,6 +457,30 @@
                                     </select>
                                 </div>
                             </div>
+                            <!-- Finish Variance (BRD §10) — only for tasks
+                                 with an actual close (own date_done or a
+                                 fully-closed child set on parents). -->
+                            <t t-if="state.inspector?.id &amp;&amp; state.inspector?.date_done">
+                                <div class="o_cp_planner_inspector_section mb-3">
+                                    <div class="fw-bold small text-uppercase text-muted mb-2">Finish Variance</div>
+                                    <div class="d-flex align-items-center gap-1 small mb-1">
+                                        <i class="fa fa-check o_cp_planner_done_icon"/>Done
+                                    </div>
+                                    <div class="d-flex justify-content-between small">
+                                        <span class="text-muted">Plan</span>
+                                        <span t-esc="formatDay(state.inspector.date_stop)"/>
+                                    </div>
+                                    <div class="d-flex justify-content-between small">
+                                        <span class="text-muted">Actual</span>
+                                        <span t-esc="formatDay(state.inspector.date_done)"/>
+                                    </div>
+                                    <div class="d-flex justify-content-between small">
+                                        <span class="text-muted">Variance</span>
+                                        <span t-att-class="varianceClass(inspectorFinishVariance)"
+                                              t-esc="formatDayVariance(inspectorFinishVariance)"/>
+                                    </div>
+                                </div>
+                            </t>
                             <!-- Baseline / Dependencies / Resources need a
                                  saved record — hidden while the Inspector
                                  holds an unsaved subtask draft. -->

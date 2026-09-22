@@ -44,6 +44,11 @@ const PLANNER_STATUS_FILTERS = [
     { key: "week", label: _t("This Week") },
     { key: "done", label: _t("Completed") },
     { key: "notdone", label: _t("Not Completed") },
+    // Finish Variance (BRD): server-side domain on the stored
+    // finish_variance_state field — never display-text matching.
+    { key: "doneLate", label: _t("Completed Late") },
+    { key: "doneEarly", label: _t("Completed Early") },
+    { key: "doneOnTime", label: _t("Completed On Time") },
 ];
 const GROUP_BY_OPTIONS = [
     { key: "assignee", label: _t("Assignee") },
@@ -57,7 +62,9 @@ const GROUP_BY_OPTIONS = [
 const RESOURCE_GROUP_KEYS = new Set(["role", "restype"]);
 const EMPTY_FILTERS = () => ({
     critical: false, overdue: false, today: false, week: false,
-    done: false, notdone: false, userId: false, roleId: false,
+    done: false, notdone: false,
+    doneLate: false, doneEarly: false, doneOnTime: false,
+    userId: false, roleId: false,
     resType: "", stageId: false, parentId: false, dateStart: "", dateStop: "",
 });
 
@@ -512,6 +519,7 @@ export class PlannerWorkspace extends Component {
         const f = this.state.filters;
         return !!(
             f.critical || f.overdue || f.today || f.week || f.done || f.notdone
+            || f.doneLate || f.doneEarly || f.doneOnTime
             || f.userId || f.roleId || f.resType || f.stageId || f.parentId
             || f.dateStart || f.dateStop
         );
@@ -521,6 +529,7 @@ export class PlannerWorkspace extends Component {
         const f = this.state.filters;
         return [
             f.critical, f.overdue, f.today, f.week, f.done, f.notdone,
+            f.doneLate, f.doneEarly, f.doneOnTime,
             f.userId, f.roleId, f.resType, f.stageId, f.parentId,
             f.dateStart, f.dateStop,
         ].filter(Boolean).length;
@@ -562,6 +571,17 @@ export class PlannerWorkspace extends Component {
         }
         if (f.notdone) {
             dom.push(["state", "!=", "1_done"]);
+        }
+        // Finish Variance (BRD) — the stored finish_variance_state field
+        // already encodes "done and late/early/on-time".
+        if (f.doneLate) {
+            dom.push(["finish_variance_state", "=", "late"]);
+        }
+        if (f.doneEarly) {
+            dom.push(["finish_variance_state", "=", "early"]);
+        }
+        if (f.doneOnTime) {
+            dom.push(["finish_variance_state", "=", "on_time"]);
         }
         if (f.userId === "none") {
             dom.push(["user_ids", "=", false]);
@@ -894,7 +914,11 @@ export class PlannerWorkspace extends Component {
     }
 
     barTitle(task) {
-        return task.is_critical ? `${task.name} — ${_t("Critical Path")}` : task.name;
+        let title = task.is_critical ? `${task.name} — ${_t("Critical Path")}` : task.name;
+        if (task.date_done) {
+            title += `\n${this.finishTailTooltip(task).split("\n").slice(1).join("\n")}`;
+        }
+        return title;
     }
 
     resRoleLabel(role) {
@@ -1012,6 +1036,111 @@ export class PlannerWorkspace extends Component {
         const stop = this.currentDates(task).stop;
         const days = dayDiff(parseDay(task.baseline_stop), parseDay(stop));
         return `${_t("Current finish")}: ${dayLabel(parseDay(stop))}\n${_t("Variance")}: +${days}d`;
+    }
+
+    // ---- Finish Variance Tail (BRD) --------------------------------------
+    // Red right tail when the task closed after its planned finish, green
+    // tail inside the bar end when it closed early. Day scale keeps hour
+    // precision via dt_done/dt_stop; week and month stay day-based. All
+    // positions use the shared `origin`, so zoom changes never shift it.
+
+    finishTail(task) {
+        if (!task.date_done || !task.date_start || !task.date_stop) {
+            return false;
+        }
+        const ppd = this.state.pxPerDay;
+        const dates = this.currentDates(task);
+        const drag = this.state.drag;
+        const dragging = drag && drag.taskId === task.id;
+        if (this.state.scale === "day") {
+            const originMs = this.origin.getTime();
+            const stopStr = dragging ? drag.dtStop : task.dt_stop;
+            const stopMs = stopStr
+                ? parseDt(stopStr).getTime()
+                : parseDay(dates.stop).getTime() + 18 * 3600000;
+            const doneMs = task.dt_done
+                ? parseDt(task.dt_done).getTime()
+                : parseDay(task.date_done).getTime() + 18 * 3600000;
+            if (doneMs === stopMs) {
+                return false; // on time — no tail
+            }
+            const lo = Math.min(doneMs, stopMs);
+            const hi = Math.max(doneMs, stopMs);
+            const left = Math.max(((lo - originMs) / DAY_MS) * ppd, 0);
+            const right = Math.min(((hi - originMs) / DAY_MS) * ppd, this.timelineWidth);
+            if (right <= left) {
+                return false;
+            }
+            return {
+                left,
+                width: Math.max(right - left, 1.5),
+                kind: doneMs > stopMs ? "late" : "early",
+            };
+        }
+        const stop = parseDay(dates.stop);
+        const done = parseDay(task.date_done);
+        const diff = dayDiff(stop, done); // >0 late, <0 early
+        if (!diff) {
+            return false;
+        }
+        if (diff > 0) {
+            // Late tail starts at the bar's right edge (stop day included).
+            const left = (dayDiff(this.origin, stop) + 1) * ppd;
+            const width = diff * ppd;
+            if (left >= this.timelineWidth || left + width <= 0) {
+                return false;
+            }
+            return { left, width: Math.max(width, 1.5), kind: "late" };
+        }
+        // Early tail sits inside the bar: actual close day → finish day.
+        const left = dayDiff(this.origin, done) * ppd;
+        const width = (dayDiff(done, stop) + 1) * ppd;
+        if (left >= this.timelineWidth || left + width <= 0) {
+            return false;
+        }
+        return { left, width: Math.max(width, 1.5), kind: "early" };
+    }
+
+    finishTailStyle(task) {
+        const tail = this.finishTail(task);
+        if (!tail) {
+            return "display:none";
+        }
+        return `left:${tail.left}px;width:${tail.width}px`;
+    }
+
+    finishTailKind(task) {
+        const tail = this.finishTail(task);
+        return tail ? tail.kind : "";
+    }
+
+    // "+4d" / "−2d", switching to hours when the drift is under a day —
+    // that's the only shape the day-scale hour precision needs.
+    finishVarianceText(task) {
+        if (!task.date_done || !task.date_stop) {
+            return "";
+        }
+        const done = task.dt_done ? parseDt(task.dt_done) : parseDay(task.date_done);
+        const stop = task.dt_stop ? parseDt(task.dt_stop) : parseDay(task.date_stop);
+        const ms = done.getTime() - stop.getTime();
+        if (ms === 0) {
+            return "0d";
+        }
+        const sign = ms > 0 ? "+" : "−";
+        if (Math.abs(ms) < DAY_MS) {
+            const hours = Math.round((Math.abs(ms) / 3600000) * 10) / 10;
+            return `${sign}${hours}h`;
+        }
+        return `${sign}${Math.round(Math.abs(ms) / DAY_MS)}d`;
+    }
+
+    finishTailTooltip(task) {
+        const fmt = (day, dt) =>
+            dt ? `${dayLabel(parseDay(day))} ${dt.split(" ")[1] || ""}`.trim() : dayLabel(parseDay(day));
+        return `${task.name}\n${_t("Done")}\n`
+            + `${_t("Planned Finish")}: ${fmt(task.date_stop, task.dt_stop)}\n`
+            + `${_t("Actual Finish")}: ${fmt(task.date_done, task.dt_done)}\n`
+            + `${_t("Finish Variance")}: ${this.finishVarianceText(task)}`;
     }
 
     barStyle(task) {
@@ -1451,6 +1580,16 @@ export class PlannerWorkspace extends Component {
             return "o_cp_planner_var_gain";
         }
         return "text-muted";
+    }
+
+    // Finish Variance (BRD §10): day difference between the planned finish
+    // and the effective actual close shown in the Inspector section.
+    get inspectorFinishVariance() {
+        const inspector = this.state.inspector;
+        if (!inspector?.date_done || !inspector?.date_stop) {
+            return false;
+        }
+        return dayDiff(parseDay(inspector.date_stop), parseDay(inspector.date_done));
     }
 
     get baselineStartVariance() {

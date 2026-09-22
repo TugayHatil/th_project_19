@@ -2095,3 +2095,44 @@ msgstr "Stok Transferleri"
 #: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
 msgid "Open Transfers"
 msgstr "Transferleri Aç"
+
+#. module: project_critical_path
+#: code:project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Completed Late"
+msgstr "Geç Tamamlanan"
+
+#. module: project_critical_path
+#: code:project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Completed Early"
+msgstr "Erken Tamamlanan"
+
+#. module: project_critical_path
+#: code:project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Completed On Time"
+msgstr "Zamanında Tamamlanan"
+
+#. module: project_critical_path
+#: code:project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Done"
+msgstr "Tamamlandı"
+
+#. module: project_critical_path
+#: code:project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Planned Finish"
+msgstr "Planlanan Bitiş"
+
+#. module: project_critical_path
+#: code:project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Actual Finish"
+msgstr "Gerçek Kapanış"
+
+#. module: project_critical_path
+#: code:project_critical_path/static/src/planner/planner_workspace.js:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task__finish_variance_state
+msgid "Finish Variance"
+msgstr "Bitiş Sapması"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task__date_done
+msgid "Actual Finish"
+msgstr "Gerçek Kapanış"

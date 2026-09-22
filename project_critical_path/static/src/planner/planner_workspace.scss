@@ -423,6 +423,26 @@ $o_cp_planner_bar_critical: #e8a33d;
     );
 }
 
+// Finish Variance Tail (BRD): a thin pill centered on the bar — red to the
+// right when the task closed late, green inside the bar end when early.
+// pointer-events:none so grips and the bar keep their hit areas.
+.o_cp_planner_finish_tail {
+    position: absolute;
+    top: 14px; // bar center: 11px + (10px - 3px) / 2
+    height: 3px;
+    border-radius: 999px;
+    pointer-events: none;
+    z-index: 2;
+
+    &.late {
+        background: #dc3545;
+    }
+
+    &.early {
+        background: #198754;
+    }
+}
+
 .o_cp_planner_gantt_rows {
     position: relative;
 }

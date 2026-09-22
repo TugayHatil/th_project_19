@@ -119,6 +119,12 @@ class ProjectProjectPlanner(models.Model):
         # ships empty badges.
         resource_data = self._get_planner_resource_data(ordered)
         resources_by_task = resource_data["resources_by_task"]
+        # Finish Variance (BRD): effective close per task — a leaf's own
+        # date_done; a parent's the latest child close once every child
+        # is done. Visual only — scheduling and CPM never read this.
+        done_by_task = {
+            task.id: task._planner_effective_done() for task in ordered
+        }
         # Standard Filters & Group By (BRD): option lists come from the FULL
         # project task set — they stay available even while a filter hides
         # the tasks that produced them.
@@ -167,6 +173,16 @@ class ProjectProjectPlanner(models.Model):
                     "critical_slack": task.critical_slack or 0.0,
                     # Done is the Odoo task state, never a progress threshold
                     "is_done": task.state == "1_done",
+                    # Finish Variance (BRD): own close for leaves; for
+                    # parents the latest close across fully-done children.
+                    "date_done": (
+                        _serialize_planner_day(task, done_by_task[task.id])
+                        if done_by_task[task.id] else False
+                    ),
+                    "dt_done": (
+                        _serialize_planner_dt(task, done_by_task[task.id])
+                        if done_by_task[task.id] else False
+                    ),
                     # Group By keys (BRD Standard Filters) — display values
                     # only; filtering itself runs on real fields via domain.
                     "user_ids": task.user_ids.ids,
@@ -354,6 +370,7 @@ class ProjectTaskPlanner(models.Model):
         baseline_start = _serialize_planner_day(line, line.planned_date_begin) if line else False
         baseline_stop = _serialize_planner_day(line, line.planned_date_end) if line else False
         dependency_rows = project._ensure_dependency_records() if project else {}
+        effective_done = self._planner_effective_done()
         return {
             "task": {
                 "id": self.id,
@@ -361,6 +378,17 @@ class ProjectTaskPlanner(models.Model):
                 "wbs_code": self.wbs_code or "",
                 "is_critical": bool(self.is_critical),
                 "critical_slack": self.critical_slack or 0.0,
+                "is_done": self.state == "1_done",
+                # Finish Variance (BRD): parent rows report the latest
+                # fully-done child close, same as the timeline payload.
+                "date_done": (
+                    _serialize_planner_day(self, effective_done)
+                    if effective_done else False
+                ),
+                "dt_done": (
+                    _serialize_planner_dt(self, effective_done)
+                    if effective_done else False
+                ),
                 "date_start": _serialize_planner_day(self, self.date_assign),
                 "date_stop": _serialize_planner_day(self, self.date_deadline),
                 # Localized datetimes — the Inspector time inputs and the
