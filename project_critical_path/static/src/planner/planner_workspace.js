@@ -1041,11 +1041,12 @@ export class PlannerWorkspace extends Component {
         return `${_t("Current finish")}: ${dayLabel(parseDay(stop))}\n${_t("Variance")}: +${days}d`;
     }
 
-    // ---- Finish Variance Tail (BRD) --------------------------------------
+    // ---- Finish Variance Tail (BRD v2) -----------------------------------
     // Red right tail when the task closed after its planned finish, green
-    // tail inside the bar end when it closed early. Day scale keeps hour
-    // precision via dt_done/dt_stop; week and month stay day-based. All
-    // positions use the shared `origin`, so zoom changes never shift it.
+    // tail inside the bar end when it closed early. The variance is
+    // calendar-day based — the hour component never counts, so a same-day
+    // close at 22:00 against an 18:00 plan is still on time. Identical
+    // day math on every scale keeps the tail fixed across zoom changes.
 
     finishTail(task) {
         if (!task.date_done || !task.date_start || !task.date_stop) {
@@ -1053,74 +1054,45 @@ export class PlannerWorkspace extends Component {
         }
         const ppd = this.state.pxPerDay;
         const dates = this.currentDates(task);
-        const drag = this.state.drag;
-        const dragging = drag && drag.taskId === task.id;
-        let tail;
-        if (this.state.scale === "day") {
-            const originMs = this.origin.getTime();
-            const stopStr = dragging ? drag.dtStop : task.dt_stop;
-            const stopMs = stopStr
-                ? parseDt(stopStr).getTime()
-                : parseDay(dates.stop).getTime() + 18 * 3600000;
-            const doneMs = task.dt_done
-                ? parseDt(task.dt_done).getTime()
-                : parseDay(task.date_done).getTime() + 18 * 3600000;
-            if (doneMs === stopMs) {
-                return false; // on time — no tail
-            }
-            const lo = Math.min(doneMs, stopMs);
-            const hi = Math.max(doneMs, stopMs);
-            const left = Math.max(((lo - originMs) / DAY_MS) * ppd, 0);
-            const right = Math.min(((hi - originMs) / DAY_MS) * ppd, this.timelineWidth);
-            if (right <= left) {
-                return false;
-            }
-            tail = {
-                left,
-                width: Math.max(right - left, 1.5),
-                kind: doneMs > stopMs ? "late" : "early",
-            };
-        } else {
-            const stop = parseDay(dates.stop);
-            const done = parseDay(task.date_done);
-            const diff = dayDiff(stop, done); // >0 late, <0 early
-            if (!diff) {
-                return false;
-            }
-            if (diff > 0) {
-                // Late tail starts at the bar's right edge (stop day included).
-                const left = (dayDiff(this.origin, stop) + 1) * ppd;
-                const width = diff * ppd;
-                if (left >= this.timelineWidth || left + width <= 0) {
-                    return false;
-                }
-                tail = { left, width: Math.max(width, 1.5), kind: "late" };
-            } else {
-                // Early tail sits inside the bar: actual close day → finish day.
-                const left = dayDiff(this.origin, done) * ppd;
-                const width = (dayDiff(done, stop) + 1) * ppd;
-                if (left >= this.timelineWidth || left + width <= 0) {
-                    return false;
-                }
-                tail = { left, width: Math.max(width, 1.5), kind: "early" };
-            }
+        const stop = parseDay(dates.stop);
+        const done = parseDay(task.date_done);
+        const diff = dayDiff(stop, done); // >0 late, <0 early
+        if (!diff) {
+            return false;
         }
-        // Flag (BRD §5-7): the "+Ng/-Ng" pill hangs off the tail end. It
-        // flips inward when it would leave the gantt viewport — the flag
-        // must never cross into the sticky WBS panel or past the canvas
-        // edge — and rises into the row-gap corridor when the task has
-        // dependency arrows running at bar height.
+        let tail;
+        if (diff > 0) {
+            // Late tail starts at the bar's right edge (stop day included).
+            const left = (dayDiff(this.origin, stop) + 1) * ppd;
+            const width = diff * ppd;
+            if (left >= this.timelineWidth || left + width <= 0) {
+                return false;
+            }
+            tail = { left, width: Math.max(width, 1.5), kind: "late" };
+        } else {
+            // Early tail sits inside the bar: actual close day → finish day.
+            const left = dayDiff(this.origin, done) * ppd;
+            const width = (dayDiff(done, stop) + 1) * ppd;
+            if (left >= this.timelineWidth || left + width <= 0) {
+                return false;
+            }
+            tail = { left, width: Math.max(width, 1.5), kind: "early" };
+        }
+        // Flag (BRD v2 §5-6): the "+Ng/-Ng" pill sits BELOW the bar at the
+        // tail tip so it can never cover CP/lag/bar-info labels. It flips
+        // inward when the pill would leave the gantt viewport — it must
+        // never cross into the sticky WBS panel or past the canvas edge.
         tail.label = this.finishVarianceLabel(task);
-        tail.up = !!(task.dependencies?.length || task.depend_on_ids?.length);
         const scrollEl = this.ganttScrollRef?.el;
         const vpLeft = scrollEl ? this.state.scrollLeft || 0 : 0;
         const vpRight = scrollEl
             ? (this.state.scrollLeft || 0) + scrollEl.clientWidth
             : this.timelineWidth;
         const flagW = tail.label ? tail.label.length * 7 + 10 : 0;
+        const tipX = tail.kind === "late" ? tail.left + tail.width : tail.left;
         tail.flip = tail.kind === "late"
-            ? tail.left + tail.width + flagW + 4 > vpRight
-            : tail.left - flagW - 4 < vpLeft;
+            ? tipX + flagW / 2 > vpRight
+            : tipX - flagW / 2 < vpLeft;
         return tail;
     }
 
@@ -1137,53 +1109,38 @@ export class PlannerWorkspace extends Component {
         if (!tail) {
             return "";
         }
-        return `${tail.kind}${tail.up ? " up" : ""}${tail.flip ? " flip" : ""}`;
+        return `${tail.kind}${tail.flip ? " flip" : ""}`;
     }
 
-    // Elapsed variance in ms — the single source the flag label, the
-    // tooltip and the day-scale geometry all derive from.
-    _finishVarianceMs(task) {
-        const done = task.dt_done ? parseDt(task.dt_done) : parseDay(task.date_done);
-        const stop = task.dt_stop ? parseDt(task.dt_stop) : parseDay(task.date_stop);
-        return done.getTime() - stop.getTime();
+    // Calendar-day variance — BRD v2 §3: date(date_done) - date(date_stop).
+    _finishVarianceDays(task) {
+        if (!task.date_done || !task.date_stop) {
+            return 0;
+        }
+        return dayDiff(parseDay(task.date_stop), parseDay(task.date_done));
     }
 
-    // Flag label (BRD §4): always whole days — "+4g"/"-2g"; an under-day
-    // drift still draws the tail but shows no "+0g" flag.
+    // Flag label (BRD v2 §6): "+4g"/"-2g"; "0g" is never shown.
     finishVarianceLabel(task) {
-        const days = Math.trunc(this._finishVarianceMs(task) / DAY_MS);
+        const days = this._finishVarianceDays(task);
         if (!days) {
             return "";
         }
         return `${days > 0 ? "+" : "-"}${Math.abs(days)}g`;
     }
 
-    // Tooltip format (BRD §10): "+4 days", "+1 day 4 hours", "+4 hours",
-    // "0 days" when the task closed exactly on plan.
+    // Tooltip/inspector text (BRD v2 §8-9): whole days only — "+4 days",
+    // "-2 days", "0 days" when the task closed exactly on plan.
     finishVarianceText(task) {
-        const ms = this._finishVarianceMs(task);
-        const abs = Math.abs(ms);
-        const days = Math.floor(abs / DAY_MS);
-        const hours = Math.round(((abs % DAY_MS) / 3600000) * 10) / 10;
-        const parts = [];
-        if (days) {
-            parts.push(`${days} ${_t("days")}`);
-        }
-        if (hours) {
-            parts.push(`${hours} ${_t("hours")}`);
-        }
-        if (!parts.length) {
-            parts.push(`0 ${_t("days")}`);
-        }
-        return `${ms > 0 ? "+" : ms < 0 ? "−" : ""}${parts.join(" ")}`;
+        const days = this._finishVarianceDays(task);
+        const sign = days > 0 ? "+" : days < 0 ? "-" : "";
+        return `${sign}${Math.abs(days)} ${_t("days")}`;
     }
 
     finishTailTooltip(task) {
-        const fmt = (day, dt) =>
-            dt ? `${dayLabel(parseDay(day))} ${dt.split(" ")[1] || ""}`.trim() : dayLabel(parseDay(day));
         return `${task.name}\n${_t("Done")}\n`
-            + `${_t("Planned Finish")}: ${fmt(task.date_stop, task.dt_stop)}\n`
-            + `${_t("Actual Finish")}: ${fmt(task.date_done, task.dt_done)}\n`
+            + `${_t("Planned Finish")}: ${dayLabel(parseDay(task.date_stop))}\n`
+            + `${_t("Actual Finish")}: ${dayLabel(parseDay(task.date_done))}\n`
             + `${_t("Finish Variance")}: ${this.finishVarianceText(task)}`;
     }
 

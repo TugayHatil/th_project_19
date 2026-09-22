@@ -43,12 +43,19 @@ class ProjectTask(models.Model):
 
     @api.depends("state", "date_done", "date_deadline")
     def _compute_finish_variance_state(self):
+        # BRD v2: whole-day variance only — closing later in the SAME day
+        # is still on time; the hour component never counts.
         for task in self:
             if task.state != "1_done" or not task.date_done or not task.date_deadline:
                 task.finish_variance_state = False
-            elif task.date_done > task.date_deadline:
+                continue
+            # Compare calendar days in the user's timezone — the same
+            # frame the planner payload serializes dates in.
+            done_day = fields.Datetime.context_timestamp(task, task.date_done).date()
+            stop_day = fields.Datetime.context_timestamp(task, task.date_deadline).date()
+            if done_day > stop_day:
                 task.finish_variance_state = "late"
-            elif task.date_done < task.date_deadline:
+            elif done_day < stop_day:
                 task.finish_variance_state = "early"
             else:
                 task.finish_variance_state = "on_time"

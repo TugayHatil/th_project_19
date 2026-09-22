@@ -444,15 +444,15 @@ $o_cp_planner_bar_critical: #e8a33d;
     }
 }
 
-// The "+Ng/-Ng" pill pinned to the tail end — rounded, filled with the
-// same severity color, white text. `.flip` turns it inward when it would
-// leave the gantt viewport; `.up` lifts it into the row-gap corridor so
-// dependency arrows at bar height stay readable.
+// The "+Ng/-Ng" pill sits below the bar at the tail tip (BRD v2 §5):
+// bar-height labels — CP chip, lag text, bar-info — stay unobstructed.
+// `.flip` pins the pill inside the viewport when it would otherwise
+// overflow the gantt canvas or slide under the sticky WBS panel.
 .o_cp_planner_finish_flag {
     position: absolute;
-    top: -5px; // centered on the 3px tail line
-    height: 13px;
-    line-height: 13px;
+    top: 6px; // tail top 14px + 6 → pill row at y20, below the 10px bar
+    height: 11px;
+    line-height: 11px;
     padding: 0 4px;
     border-radius: 3px;
     font-size: 0.62rem;
@@ -463,27 +463,20 @@ $o_cp_planner_bar_critical: #e8a33d;
 }
 
 .o_cp_planner_finish_tail.late > .o_cp_planner_finish_flag {
-    left: 100%;
-    margin-left: 3px;
+    right: 0;
+    transform: translateX(50%); // centered on the late tip
     background: #dc3545;
 }
 .o_cp_planner_finish_tail.late.flip > .o_cp_planner_finish_flag {
-    left: auto;
-    right: 0;
-    margin-left: 0;
+    transform: none; // pulled fully inside, left of the tip
 }
 .o_cp_planner_finish_tail.early > .o_cp_planner_finish_flag {
-    right: 100%;
-    margin-right: 3px;
+    left: 0;
+    transform: translateX(-50%); // centered on the early tip
     background: #198754;
 }
 .o_cp_planner_finish_tail.early.flip > .o_cp_planner_finish_flag {
-    right: auto;
-    left: 0;
-    margin-right: 0;
-}
-.o_cp_planner_finish_tail.up > .o_cp_planner_finish_flag {
-    transform: translateY(-14px);
+    transform: none; // pulled fully inside, right of the tip
 }
 
 .o_cp_planner_gantt_rows {

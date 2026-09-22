@@ -152,30 +152,31 @@ class TestFinishVariance(TransactionCase):
         self.assertEqual(row["date_done"], "2027-01-14")
 
     def test_day_scale_hour_precision(self):
-        """BRD §5: plan 18:00, close 22:00 — the payload keeps the hour so
-        the day-scale tail spans exactly 4 hours, not a full day."""
+        """The payload keeps hour precision in dt_done/dt_stop even though
+        the variance itself is whole-day (BRD v2) — a same-day 18:00→22:00
+        close is on time and shows no tail."""
         project = self.env["project.project"].create({"name": "Hour drift"})
         task = self._make_task(
-            project, "Four hours late",
+            project, "Four hours later, same day",
             date_assign="2027-01-01 09:00:00",
             date_deadline="2027-01-01 18:00:00",
         )
 
         self._close(task, "2027-01-01 22:00:00")
 
-        self.assertEqual(task.finish_variance_state, "late")
+        self.assertEqual(task.finish_variance_state, "on_time")
         row = next(
             r for r in project.get_planner_data()["tasks"] if r["id"] == task.id
         )
-        # dt_done is the localized "YYYY-MM-DD HH:MM" the day-scale
-        # geometry reads at hour precision.
+        # dt_done is still serialized at minute precision — the day-based
+        # rule lives in the variance, not the data.
         self.assertTrue(row["dt_done"].startswith("2027-01-01"))
         self.assertTrue(row["dt_done"].endswith("22:00"))
         self.assertTrue(row["dt_stop"].endswith("18:00"))
 
     def test_cross_midnight_close(self):
-        """BRD Test 05: plan 23:00, close 02:00 next day — the variance is
-        +3h across the day boundary, still late."""
+        """BRD Test 05: plan 23:00, close 02:00 next day — one calendar day
+        late across the midnight boundary."""
         project = self.env["project.project"].create({"name": "Cross midnight"})
         task = self._make_task(
             project, "Overnight",
