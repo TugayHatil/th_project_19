@@ -355,6 +355,28 @@ $o_cp_planner_bar_critical: #e8a33d;
     color: #b3bac3;
 }
 
+// Assignee avatars right of the task name — 18px circles, slight overlap
+// when several users share the task; title carries the full name.
+.o_cp_planner_avatars {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 4px;
+    flex: none;
+}
+
+.o_cp_planner_avatar {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1px solid #ffffff;
+    object-fit: cover;
+    margin-left: -4px;
+
+    &:first-child {
+        margin-left: 0;
+    }
+}
+
 // Overdue marker: a filled red exclamation circle after the slack chip —
 // big enough to catch the eye at a glance (the bare fa-exclamation stroke
 // was nearly invisible). Done tasks never show it.

@@ -263,6 +263,15 @@
                                    t-on-keydown="(ev) => this.onRenameKeydown(row.task, ev)"
                                    t-on-blur="() => this.commitRename(row.task)"
                                    t-on-click="(ev) => ev.stopPropagation()"/>
+                            <!-- Assignee avatars next to the task name —
+                                 hover shows the full user name. -->
+                            <span t-if="row.task.user_ids?.length" class="o_cp_planner_avatars">
+                                <img t-foreach="row.task.user_ids" t-as="uid" t-key="uid"
+                                     class="o_cp_planner_avatar"
+                                     t-att-src="'/web/image/res.users/' + uid + '/avatar_128'"
+                                     t-att-alt="row.task.user_names[uid_index] || ''"
+                                     t-att-title="row.task.user_names[uid_index] || ''"/>
+                            </span>
                             <!-- BRD: one-click subtask creation — the tiny "+"
                                  icon creates a child task and puts its name
                                  into inline edit. Resource assignment lives
