@@ -10,4 +10,5 @@ from . import test_planner_wbs_actions
 from . import test_planner_filters
 from . import test_finish_variance
 from . import test_finish_variance_day
+from . import test_planning_precision
 from . import test_planner_tour

@@ -31,6 +31,17 @@ class ProjectProject(models.Model):
     delay_impact_line_ids = fields.One2many(
         "project.task.delay.impact", "project_id", string="Delay Impact Summary", readonly=True,
     )
+    # Per-project planning precision (BRD Planning Precision). ``hour`` is
+    # the existing behaviour — the Planner keeps date+time inputs and
+    # hour-granularity drags. ``day`` hides the time pickers and quantizes
+    # drags/resizes to whole calendar days. Display + input precision only;
+    # the datetime storage and the scheduling engine stay untouched.
+    planning_precision = fields.Selection(
+        [("hour", "Hour"), ("day", "Day")],
+        string="Planning Precision",
+        default="hour",
+        required=True,
+    )
 
     def _get_baseline_resource_vals(self):
         """Resource-planning snapshot values for a new baseline.

@@ -1104,3 +1104,12 @@ msgstr "Tage"
 #: code:project_critical_path/static/src/planner/planner_workspace.js:0
 msgid "hours"
 msgstr "Stunden"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_project__planning_precision
+msgid "Planning Precision"
+msgstr "Planungsgenauigkeit"
+
+#. module: project_critical_path
+msgid "Planning"
+msgstr "Planung"

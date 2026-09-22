@@ -150,7 +150,15 @@ class ProjectProjectPlanner(models.Model):
             ],
         }
         return {
-            "project": {"id": self.id, "name": self.display_name},
+            "project": {
+                "id": self.id,
+                "name": self.display_name,
+                # Per-project planning precision + the calendar's
+                # hours-per-day so the frontend can show day-based
+                # durations/lag/slack without recomputing them.
+                "planning_precision": self.planning_precision or "hour",
+                "hours_per_day": _planner_hours_per_day(self),
+            },
             "meta": meta,
             "tasks": [
                 {

@@ -149,6 +149,11 @@ export class PlannerWorkspace extends Component {
             projects: [],
             projectId: params.project_id || context.project_id || false,
             projectName: "",
+            // Project-level planning precision (BRD) — "hour" keeps the
+            // existing date+time behaviour; "day" hides time pickers and
+            // quantizes drags/resizes to whole days.
+            planningPrecision: "hour",
+            hoursPerDay: 8,
             tasks: [],
             collapsedIds: new Set(),
             selectedId: null,
@@ -396,6 +401,11 @@ export class PlannerWorkspace extends Component {
                 "project.project", "get_planner_data", [projectId], kwargs,
             );
             this.state.projectName = data.project.name;
+            // BRD Planning Precision — project-level hour/day planning
+            // granularity. Display + input precision only; the scheduling
+            // engine keeps working on stored datetimes.
+            this.state.planningPrecision = data.project.planning_precision || "hour";
+            this.state.hoursPerDay = data.project.hours_per_day || 8;
             this.state.tasks = data.tasks;
             if (data.meta) {
                 this.state.meta = data.meta;
@@ -1231,9 +1241,7 @@ export class PlannerWorkspace extends Component {
                 parts.push(edge.dep.type.toUpperCase());
             }
             if (edge.dep.lag) {
-                parts.push(
-                    `${edge.dep.lag > 0 ? "+" : ""}${edge.dep.lag}${edge.dep.unit === "days" ? "d" : "h"}`,
-                );
+                parts.push(this.lagText(edge.dep.lag, edge.dep.unit));
             }
             return {
                 key: `${edge.predId}-${edge.task.id}`,
@@ -1687,6 +1695,18 @@ export class PlannerWorkspace extends Component {
         form.allocated_hours = Math.max(Number(ev.target.value) || 0, 0);
     }
 
+    // Day-precision duration input — inclusive calendar days; changing it
+    // stretches the finish date, keeping start fixed (BRD §6).
+    onDayDurationChange(ev) {
+        const form = this.state.form;
+        form.duration_days = Math.max(Math.round(Number(ev.target.value) || 0), 1);
+        if (form.date_start) {
+            form.date_stop = isoDay(
+                addDays(parseDay(form.date_start), form.duration_days - 1),
+            );
+        }
+    }
+
     taskLabel(id) {
         const task = this.taskById.get(id);
         return task ? `${task.wbs_code} ${task.name}`.trim() : `#${id}`;
@@ -1736,9 +1756,7 @@ export class PlannerWorkspace extends Component {
         }
         const parts = [(edge.type || "fs").toUpperCase()];
         if (edge.lag) {
-            parts.push(
-                `${edge.lag > 0 ? "+" : ""}${edge.lag}${edge.unit === "days" ? "d" : "h"}`,
-            );
+            parts.push(this.lagText(edge.lag, edge.unit));
         }
         return `· ${parts.join(" ")}`;
     }
@@ -1751,7 +1769,7 @@ export class PlannerWorkspace extends Component {
             predId,
             type: edge?.type || "fs",
             lag: edge?.lag || 0,
-            unit: edge?.unit || "hours",
+            unit: edge?.unit || (this.isDayPrecision ? "days" : "hours"),
             x: ev.clientX,
             y: ev.clientY,
         };
@@ -1816,21 +1834,27 @@ export class PlannerWorkspace extends Component {
             // finish so it can stretch date_deadline and reschedule the
             // successor chain (BRD Auto-Scheduling).
             const inspector = this.state.inspector || {};
+            // Day precision: time pickers are hidden — the write always
+            // uses the canonical 09:00/18:00 boundary and only the date
+            // parts decide whether the plan changed (BRD §7, §20).
+            const dayMode = this.isDayPrecision;
             const startChanged = isDraft
                 || (form.date_start || "") !== (inspector.date_start || "")
-                || (form.time_start || "09:00")
-                    !== ((inspector.dt_start || "").slice(11, 16) || "09:00");
+                || (!dayMode
+                    && (form.time_start || "09:00")
+                        !== ((inspector.dt_start || "").slice(11, 16) || "09:00"));
             const stopChanged = isDraft
                 || (form.date_stop || "") !== (inspector.date_stop || "")
-                || (form.time_stop || "18:00")
-                    !== ((inspector.dt_stop || "").slice(11, 16) || "18:00");
+                || (!dayMode
+                    && (form.time_stop || "18:00")
+                        !== ((inspector.dt_stop || "").slice(11, 16) || "18:00"));
             await this.orm.call("project.task", "update_planner_task", [savedId], {
                 values: {
                     name: name,
                     ...(startChanged ? {
                         date_start: form.date_start || false,
                         dt_start: form.date_start
-                            ? `${form.date_start} ${form.time_start || "09:00"}`
+                            ? `${form.date_start} ${dayMode ? "09:00" : (form.time_start || "09:00")}`
                             : false,
                     } : {}),
                     ...(stopChanged ? {
@@ -1838,11 +1862,14 @@ export class PlannerWorkspace extends Component {
                         // Time-of-day input — written with dt precision so
                         // the day-scale timeline shows the exact clock time.
                         dt_stop: form.date_stop
-                            ? `${form.date_stop} ${form.time_stop || "18:00"}`
+                            ? `${form.date_stop} ${dayMode ? "18:00" : (form.time_stop || "18:00")}`
                             : false,
                     } : {}),
                     duration_days: form.duration_days,
-                    allocated_hours: form.allocated_hours,
+                    // Day precision edits duration in days — the server
+                    // derives allocated_hours from the inclusive day span;
+                    // sending the stale hour value would win over it.
+                    ...(dayMode ? {} : { allocated_hours: form.allocated_hours }),
                     progress: form.progress || 0,
                     user_ids: form.user_id ? [form.user_id] : [],
                     depend_on_ids: form.depend_on_ids,
@@ -2223,8 +2250,34 @@ export class PlannerWorkspace extends Component {
         if (task.is_critical) {
             return "CP";
         }
-        const slack = Math.round((task.critical_slack || 0) * 10) / 10;
-        return `+${slack}h`;
+        const slack = task.critical_slack || 0;
+        if (this.isDayPrecision) {
+            // Day-precision projects show slack in calendar days — the
+            // stored float stays in allocated hours (BRD §17).
+            const days = Math.round((slack / (this.state.hoursPerDay || 8)) * 10) / 10;
+            return `+${days}d`;
+        }
+        return `+${Math.round(slack * 10) / 10}h`;
+    }
+
+    // BRD Planning Precision — the project plans at day granularity: no
+    // time pickers, day-quantized drags, day-based duration/lag display.
+    get isDayPrecision() {
+        return this.state.planningPrecision === "day";
+    }
+
+    // Compact lag label used on dependency edges and inspector chips —
+    // day-precision projects always express lag in days (BRD §14).
+    lagText(lag, unit) {
+        if (!lag) {
+            return "";
+        }
+        const sign = lag > 0 ? "+" : "";
+        if (this.isDayPrecision && unit !== "days") {
+            const days = Math.round((lag / (this.state.hoursPerDay || 8)) * 10) / 10;
+            return `${sign}${days}d`;
+        }
+        return `${sign}${lag}${unit === "days" ? "d" : "h"}`;
     }
 
     // Approximate width of the lead-in cluster (slack chip + ! + ✓) so
@@ -2348,7 +2401,7 @@ export class PlannerWorkspace extends Component {
         dragging.moved = true;
         const task = dragging.task;
         const rowIdx = this.rowIndexById.get(task.id) ?? 0;
-        if (this.state.scale === "day") {
+        if (this.state.scale === "day" && !this.isDayPrecision) {
             // Day scale drags at hour precision — one column = one hour.
             const deltaH = Math.round(dx / (this.state.pxPerDay / 24));
             const baseStart = task.dt_start

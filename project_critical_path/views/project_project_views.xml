@@ -65,6 +65,13 @@
                         class="btn-secondary"
                         groups="project.group_project_manager"/>
             </xpath>
+            <!-- BRD Planning Precision: lives inside the standard Settings
+                 page's spare group — no new tab. -->
+            <xpath expr="//page[@name='settings']//group[@name='extra_settings']" position="inside">
+                <group string="Planning">
+                    <field name="planning_precision"/>
+                </group>
+            </xpath>
             <xpath expr="//notebook" position="inside">
                 <page name="wbs_structure" string="Work Breakdown Structure">
                     <field name="task_ids" nolabel="1" context="{'default_project_id': id}">
