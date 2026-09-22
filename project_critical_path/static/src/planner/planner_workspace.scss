@@ -204,12 +204,11 @@ $o_cp_planner_bar_critical: #e8a33d;
     text-align: center;
 }
 
-// Compact WBS column (BRD): a small minimum keeps short codes tidy while
-// flex-basis:auto still lets deep codes like "1.2.1.1.2.1" grow naturally.
+// Compact WBS column (BRD): content-fit — the code takes only the width
+// it needs; deep codes like "1.2.1.1.2.1" grow naturally via flex-basis.
 .o_cp_planner_wbs_code {
     font-family: monospace;
     font-size: 0.85em;
-    min-width: 52px;
     flex: 0 0 auto;
 }
 
