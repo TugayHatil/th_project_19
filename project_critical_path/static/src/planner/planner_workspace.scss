@@ -423,9 +423,10 @@ $o_cp_planner_bar_critical: #e8a33d;
     );
 }
 
-// Finish Variance Tail (BRD): a thin pill centered on the bar — red to the
-// right when the task closed late, green inside the bar end when early.
-// pointer-events:none so grips and the bar keep their hit areas.
+// Finish Variance Tail + Flag (BRD): a thin pill centered on the bar —
+// red to the right when the task closed late, green inside the bar end
+// when early. pointer-events:none so grips and the bar keep their hit
+// areas; the flag itself re-enables them for its own hover tooltip.
 .o_cp_planner_finish_tail {
     position: absolute;
     top: 14px; // bar center: 11px + (10px - 3px) / 2
@@ -441,6 +442,48 @@ $o_cp_planner_bar_critical: #e8a33d;
     &.early {
         background: #198754;
     }
+}
+
+// The "+Ng/-Ng" pill pinned to the tail end — rounded, filled with the
+// same severity color, white text. `.flip` turns it inward when it would
+// leave the gantt viewport; `.up` lifts it into the row-gap corridor so
+// dependency arrows at bar height stay readable.
+.o_cp_planner_finish_flag {
+    position: absolute;
+    top: -5px; // centered on the 3px tail line
+    height: 13px;
+    line-height: 13px;
+    padding: 0 4px;
+    border-radius: 3px;
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: #ffffff;
+    white-space: nowrap;
+    pointer-events: auto;
+}
+
+.o_cp_planner_finish_tail.late > .o_cp_planner_finish_flag {
+    left: 100%;
+    margin-left: 3px;
+    background: #dc3545;
+}
+.o_cp_planner_finish_tail.late.flip > .o_cp_planner_finish_flag {
+    left: auto;
+    right: 0;
+    margin-left: 0;
+}
+.o_cp_planner_finish_tail.early > .o_cp_planner_finish_flag {
+    right: 100%;
+    margin-right: 3px;
+    background: #198754;
+}
+.o_cp_planner_finish_tail.early.flip > .o_cp_planner_finish_flag {
+    right: auto;
+    left: 0;
+    margin-right: 0;
+}
+.o_cp_planner_finish_tail.up > .o_cp_planner_finish_flag {
+    transform: translateY(-14px);
 }
 
 .o_cp_planner_gantt_rows {

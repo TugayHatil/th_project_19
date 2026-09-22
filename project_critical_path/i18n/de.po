@@ -1094,3 +1094,13 @@ msgstr "Abschlussabweichung"
 #: model:ir.model.fields,field_description:project_critical_path.field_project_task__date_done
 msgid "Actual Finish"
 msgstr "Tatsächlicher Abschluss"
+
+#. module: project_critical_path
+#: code:project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "days"
+msgstr "Tage"
+
+#. module: project_critical_path
+#: code:project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "hours"
+msgstr "Stunden"

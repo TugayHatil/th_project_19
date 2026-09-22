@@ -220,6 +220,9 @@ export class PlannerWorkspace extends Component {
             groupByOpen: false,
             filters: EMPTY_FILTERS(),
             groupBy: "",
+            // Gantt viewport left edge — finish-variance flags read it to
+            // flip inward before they would overflow the visible area.
+            scrollLeft: 0,
             // Option lists for the dropdowns — full-project users, roles,
             // stages and root tasks (from the get_planner_data meta block).
             meta: { users: [], roles: [], stages: [], parents: [] },
@@ -1052,6 +1055,7 @@ export class PlannerWorkspace extends Component {
         const dates = this.currentDates(task);
         const drag = this.state.drag;
         const dragging = drag && drag.taskId === task.id;
+        let tail;
         if (this.state.scale === "day") {
             const originMs = this.origin.getTime();
             const stopStr = dragging ? drag.dtStop : task.dt_stop;
@@ -1071,34 +1075,53 @@ export class PlannerWorkspace extends Component {
             if (right <= left) {
                 return false;
             }
-            return {
+            tail = {
                 left,
                 width: Math.max(right - left, 1.5),
                 kind: doneMs > stopMs ? "late" : "early",
             };
-        }
-        const stop = parseDay(dates.stop);
-        const done = parseDay(task.date_done);
-        const diff = dayDiff(stop, done); // >0 late, <0 early
-        if (!diff) {
-            return false;
-        }
-        if (diff > 0) {
-            // Late tail starts at the bar's right edge (stop day included).
-            const left = (dayDiff(this.origin, stop) + 1) * ppd;
-            const width = diff * ppd;
-            if (left >= this.timelineWidth || left + width <= 0) {
+        } else {
+            const stop = parseDay(dates.stop);
+            const done = parseDay(task.date_done);
+            const diff = dayDiff(stop, done); // >0 late, <0 early
+            if (!diff) {
                 return false;
             }
-            return { left, width: Math.max(width, 1.5), kind: "late" };
+            if (diff > 0) {
+                // Late tail starts at the bar's right edge (stop day included).
+                const left = (dayDiff(this.origin, stop) + 1) * ppd;
+                const width = diff * ppd;
+                if (left >= this.timelineWidth || left + width <= 0) {
+                    return false;
+                }
+                tail = { left, width: Math.max(width, 1.5), kind: "late" };
+            } else {
+                // Early tail sits inside the bar: actual close day → finish day.
+                const left = dayDiff(this.origin, done) * ppd;
+                const width = (dayDiff(done, stop) + 1) * ppd;
+                if (left >= this.timelineWidth || left + width <= 0) {
+                    return false;
+                }
+                tail = { left, width: Math.max(width, 1.5), kind: "early" };
+            }
         }
-        // Early tail sits inside the bar: actual close day → finish day.
-        const left = dayDiff(this.origin, done) * ppd;
-        const width = (dayDiff(done, stop) + 1) * ppd;
-        if (left >= this.timelineWidth || left + width <= 0) {
-            return false;
-        }
-        return { left, width: Math.max(width, 1.5), kind: "early" };
+        // Flag (BRD §5-7): the "+Ng/-Ng" pill hangs off the tail end. It
+        // flips inward when it would leave the gantt viewport — the flag
+        // must never cross into the sticky WBS panel or past the canvas
+        // edge — and rises into the row-gap corridor when the task has
+        // dependency arrows running at bar height.
+        tail.label = this.finishVarianceLabel(task);
+        tail.up = !!(task.dependencies?.length || task.depend_on_ids?.length);
+        const scrollEl = this.ganttScrollRef?.el;
+        const vpLeft = scrollEl ? this.state.scrollLeft || 0 : 0;
+        const vpRight = scrollEl
+            ? (this.state.scrollLeft || 0) + scrollEl.clientWidth
+            : this.timelineWidth;
+        const flagW = tail.label ? tail.label.length * 7 + 10 : 0;
+        tail.flip = tail.kind === "late"
+            ? tail.left + tail.width + flagW + 4 > vpRight
+            : tail.left - flagW - 4 < vpLeft;
+        return tail;
     }
 
     finishTailStyle(task) {
@@ -1109,29 +1132,50 @@ export class PlannerWorkspace extends Component {
         return `left:${tail.left}px;width:${tail.width}px`;
     }
 
-    finishTailKind(task) {
+    finishTailClass(task) {
         const tail = this.finishTail(task);
-        return tail ? tail.kind : "";
-    }
-
-    // "+4d" / "−2d", switching to hours when the drift is under a day —
-    // that's the only shape the day-scale hour precision needs.
-    finishVarianceText(task) {
-        if (!task.date_done || !task.date_stop) {
+        if (!tail) {
             return "";
         }
+        return `${tail.kind}${tail.up ? " up" : ""}${tail.flip ? " flip" : ""}`;
+    }
+
+    // Elapsed variance in ms — the single source the flag label, the
+    // tooltip and the day-scale geometry all derive from.
+    _finishVarianceMs(task) {
         const done = task.dt_done ? parseDt(task.dt_done) : parseDay(task.date_done);
         const stop = task.dt_stop ? parseDt(task.dt_stop) : parseDay(task.date_stop);
-        const ms = done.getTime() - stop.getTime();
-        if (ms === 0) {
-            return "0d";
+        return done.getTime() - stop.getTime();
+    }
+
+    // Flag label (BRD §4): always whole days — "+4g"/"-2g"; an under-day
+    // drift still draws the tail but shows no "+0g" flag.
+    finishVarianceLabel(task) {
+        const days = Math.trunc(this._finishVarianceMs(task) / DAY_MS);
+        if (!days) {
+            return "";
         }
-        const sign = ms > 0 ? "+" : "−";
-        if (Math.abs(ms) < DAY_MS) {
-            const hours = Math.round((Math.abs(ms) / 3600000) * 10) / 10;
-            return `${sign}${hours}h`;
+        return `${days > 0 ? "+" : "-"}${Math.abs(days)}g`;
+    }
+
+    // Tooltip format (BRD §10): "+4 days", "+1 day 4 hours", "+4 hours",
+    // "0 days" when the task closed exactly on plan.
+    finishVarianceText(task) {
+        const ms = this._finishVarianceMs(task);
+        const abs = Math.abs(ms);
+        const days = Math.floor(abs / DAY_MS);
+        const hours = Math.round(((abs % DAY_MS) / 3600000) * 10) / 10;
+        const parts = [];
+        if (days) {
+            parts.push(`${days} ${_t("days")}`);
         }
-        return `${sign}${Math.round(Math.abs(ms) / DAY_MS)}d`;
+        if (hours) {
+            parts.push(`${hours} ${_t("hours")}`);
+        }
+        if (!parts.length) {
+            parts.push(`0 ${_t("days")}`);
+        }
+        return `${ms > 0 ? "+" : ms < 0 ? "−" : ""}${parts.join(" ")}`;
     }
 
     finishTailTooltip(task) {
@@ -1590,6 +1634,16 @@ export class PlannerWorkspace extends Component {
             return false;
         }
         return dayDiff(parseDay(inspector.date_stop), parseDay(inspector.date_done));
+    }
+
+    // "+4 days" / "−2 days" / "+4 hours" — the inspector shows the same
+    // day+hour decomposition as the tail tooltip.
+    get inspectorFinishVarianceText() {
+        const inspector = this.state.inspector;
+        if (!inspector?.date_done) {
+            return "";
+        }
+        return this.finishVarianceText(inspector);
     }
 
     get baselineStartVariance() {
@@ -2700,6 +2754,11 @@ export class PlannerWorkspace extends Component {
         const wbsEl = this.wbsRowsRef.el;
         if (scrollEl && wbsEl && wbsEl.scrollTop !== scrollEl.scrollTop) {
             wbsEl.scrollTop = scrollEl.scrollTop;
+        }
+        // Finish-variance flags flip inward at the viewport edges — the
+        // reactive scrollLeft keeps that decision current while panning.
+        if (scrollEl && this.state.scrollLeft !== scrollEl.scrollLeft) {
+            this.state.scrollLeft = scrollEl.scrollLeft;
         }
         // Continuous timeline — grow the buffered range as the viewport
         // approaches either end so the axis never visibly cuts off.

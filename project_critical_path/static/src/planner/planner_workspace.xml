@@ -342,9 +342,13 @@
                                          bar when it closed early. -->
                                     <div t-if="row.task.date_start &amp;&amp; row.task.date_stop &amp;&amp; row.task.date_done"
                                          class="o_cp_planner_finish_tail"
-                                         t-att-class="finishTailKind(row.task)"
+                                         t-att-class="finishTailClass(row.task)"
                                          t-att-style="finishTailStyle(row.task)"
-                                         t-att-title="finishTailTooltip(row.task)"/>
+                                         t-att-title="finishTailTooltip(row.task)">
+                                        <span t-if="finishVarianceLabel(row.task)"
+                                              class="o_cp_planner_finish_flag"
+                                              t-esc="finishVarianceLabel(row.task)"/>
+                                    </div>
                                     <div t-if="row.task.date_start &amp;&amp; row.task.date_stop &amp;&amp; !row.task.is_done"
                                          class="o_cp_planner_grip o_cp_planner_grip_left"
                                          t-att-style="gripStyle(row.task, 'left')"
@@ -477,7 +481,7 @@
                                     <div class="d-flex justify-content-between small">
                                         <span class="text-muted">Variance</span>
                                         <span t-att-class="varianceClass(inspectorFinishVariance)"
-                                              t-esc="formatDayVariance(inspectorFinishVariance)"/>
+                                              t-esc="inspectorFinishVarianceText"/>
                                     </div>
                                 </div>
                             </t>
