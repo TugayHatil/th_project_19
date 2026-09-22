@@ -2643,7 +2643,7 @@ export class PlannerWorkspace extends Component {
     // ---- Optional WBS date columns -----------------------------------------
 
     get wbsPanelWidth() {
-        return 340 + (this.state.showStartCol ? 88 : 0) + (this.state.showFinishCol ? 88 : 0);
+        return 280 + (this.state.showStartCol ? 88 : 0) + (this.state.showFinishCol ? 88 : 0);
     }
 
     formatColDate(str) {

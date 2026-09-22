@@ -3,7 +3,7 @@
 
 $o_cp_planner_row_height: 32px;
 $o_cp_planner_bar_height: 10px;
-$o_cp_planner_wbs_width: 340px;
+$o_cp_planner_wbs_width: 280px;
 $o_cp_planner_header_height: 48px;
 $o_cp_planner_bar_critical: #e8a33d;
 
@@ -204,10 +204,12 @@ $o_cp_planner_bar_critical: #e8a33d;
     text-align: center;
 }
 
+// Compact WBS column (BRD): a small minimum keeps short codes tidy while
+// flex-basis:auto still lets deep codes like "1.2.1.1.2.1" grow naturally.
 .o_cp_planner_wbs_code {
     font-family: monospace;
     font-size: 0.85em;
-    min-width: 64px;
+    min-width: 52px;
     flex: 0 0 auto;
 }
 
