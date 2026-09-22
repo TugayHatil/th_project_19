@@ -2155,3 +2155,13 @@ msgstr "Planlama Hassasiyeti"
 #. module: project_critical_path
 msgid "Planning"
 msgstr "Planlama"
+
+#. module: project_critical_path
+#: model:ir.model.fields.selection,name:project_critical_path.selection__project_project__planning_precision__hour
+msgid "Hour"
+msgstr "Saat"
+
+#. module: project_critical_path
+#: model:ir.model.fields.selection,name:project_critical_path.selection__project_project__planning_precision__day
+msgid "Day"
+msgstr "Gün"

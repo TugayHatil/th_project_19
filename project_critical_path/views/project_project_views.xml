@@ -69,7 +69,7 @@
                  page's spare group — no new tab. -->
             <xpath expr="//page[@name='settings']//group[@name='extra_settings']" position="inside">
                 <group string="Planning">
-                    <field name="planning_precision"/>
+                    <field name="planning_precision" class="w-100"/>
                 </group>
             </xpath>
             <xpath expr="//notebook" position="inside">
