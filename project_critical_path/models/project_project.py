@@ -7,6 +7,8 @@ from datetime import timedelta
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
+from .project_planner import check_planner_manager
+
 
 class ProjectProject(models.Model):
     _inherit = "project.project"
@@ -62,6 +64,13 @@ class ProjectProject(models.Model):
         for project in self:
             project.critical_path_baseline_count = len(project.critical_path_baseline_ids)
 
+    def write(self, vals):
+        # Planner configuration is planner data too — non-members get a
+        # read-only planner including its project-level settings.
+        if {"planning_precision"}.intersection(vals):
+            check_planner_manager(self.env)
+        return super().write(vals)
+
     def action_calculate_critical_paths(self):
         self._recalculate_critical_paths()
         return True
@@ -73,6 +82,7 @@ class ProjectProject(models.Model):
         auto-generated version — ``v1.20 - Revize İş Programı``. Callers that
         pass no label keep the plain ``v1.X`` naming (BRD Baseline Save).
         """
+        check_planner_manager(self.env)
         Baseline = self.env["project.critical.path.baseline"]
         label = (baseline_label or "").strip()
         for project in self:

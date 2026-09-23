@@ -4,6 +4,8 @@ from collections import defaultdict
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
+from .project_planner import check_planner_manager
+
 
 class ProjectTaskWBS(models.Model):
     _inherit = "project.task"
@@ -133,12 +135,8 @@ class ProjectTaskWBS(models.Model):
         return tasks
 
     def write(self, vals):
-        if "parent_id" in vals:
-            if not self.env.user.has_group("project.group_project_manager"):
-                for task in self:
-                    if task.parent_id.id != vals["parent_id"]:
-                        raise UserError(_("Only Project Managers are allowed to modify the WBS task hierarchy."))
-
+        # ``parent_id`` is also in PLANNER_GUARDED_FIELDS (project_task.write),
+        # so the Planner Manager gate runs for every hierarchy change.
         affected_projects = self.mapped("project_id")
         result = super().write(vals)
         all_projects = affected_projects | self.mapped("project_id")
@@ -188,6 +186,7 @@ class ProjectTaskWBS(models.Model):
     def planner_add_subtask(self, name=""):
         """WBS "+" — create a child task that the Planner renames inline."""
         self.ensure_one()
+        check_planner_manager(self.env)
         siblings = self._planner_wbs_children(self)
         task = self.env["project.task"].create({
             "name": (name or "").strip() or _("New Task"),
@@ -201,6 +200,9 @@ class ProjectTaskWBS(models.Model):
         """Move the task one level deeper: it becomes the last child of the
         sibling directly above it. The first sibling cannot indent (BRD)."""
         self.ensure_one()
+        # Gate BEFORE the sudo() write below — sudo bypasses the generic
+        # write guard, so this check is the only protection here.
+        check_planner_manager(self.env)
         siblings = self._planner_wbs_children(self.parent_id)
         index = siblings.ids.index(self.id)
         if index <= 0:
@@ -219,6 +221,7 @@ class ProjectTaskWBS(models.Model):
         """Move the task up one level, landing directly after its former
         parent (BRD ordering). A root task cannot outdent."""
         self.ensure_one()
+        check_planner_manager(self.env)
         parent = self.parent_id
         if not parent:
             return False
@@ -235,6 +238,7 @@ class ProjectTaskWBS(models.Model):
         """Reorder within the same parent. Drag & drop never reparents a
         task, so a target in another branch is rejected."""
         self.ensure_one()
+        check_planner_manager(self.env)
         siblings = list(self._planner_wbs_children(self.parent_id).filtered(
             lambda task: task.id != self.id
         ))

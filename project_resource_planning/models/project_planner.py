@@ -9,6 +9,7 @@ from odoo.addons.project_critical_path.models.project_planner import (
     _local_dt_to_utc,
     _serialize_planner_day,
     _serialize_planner_dt,
+    check_planner_manager,
 )
 
 
@@ -208,6 +209,7 @@ class ProjectTaskPlanner(models.Model):
     def planner_save_requirement(self, values):
         """Create or update a requirement from the Planner resource section."""
         self.ensure_one()
+        check_planner_manager(self.env)
         Requirement = self.env["project.task.resource.requirement"]
         vals = {}
         if "role_id" in values:
@@ -243,6 +245,7 @@ class ProjectTaskPlanner(models.Model):
 
     def planner_delete_requirement(self, requirement_id):
         self.ensure_one()
+        check_planner_manager(self.env)
         self._get_planner_requirement(requirement_id).unlink()
         return True
 
@@ -343,6 +346,7 @@ class ProjectTaskPlanner(models.Model):
         inside it (enforced by the assignment model's constraints).
         """
         self.ensure_one()
+        check_planner_manager(self.env)
         requirement = self._get_planner_requirement(requirement_id)
         start = requirement.date_start or self.date_assign
         end = requirement.date_end or self.date_deadline
@@ -397,6 +401,7 @@ class ProjectTaskPlanner(models.Model):
 
     def planner_unassign_resource(self, assignment_id):
         self.ensure_one()
+        check_planner_manager(self.env)
         assignment = self.env["project.task.resource.assignment"].browse(
             assignment_id
         ).exists()
@@ -411,6 +416,7 @@ class ProjectTaskPlanner(models.Model):
         """Move/resize an assignment from the timeline — same conversion and
         model constraints as creation."""
         self.ensure_one()
+        check_planner_manager(self.env)
         assignment = self.env["project.task.resource.assignment"].browse(
             assignment_id
         ).exists()

@@ -62,8 +62,10 @@
                                 title="Fit Timeline" t-on-click="fitTimeline">Fit</button>
                     </div>
                     <!-- WBS hierarchy actions — ordering is done by dragging
-                         the WBS row; these buttons change the level only. -->
-                    <div class="btn-group btn-group-sm ms-2">
+                         the WBS row; these buttons change the level only.
+                         Planner Manager only (BRD): read-only users get no
+                         mutation controls at all. -->
+                    <div t-if="state.canEdit" class="btn-group btn-group-sm ms-2">
                         <button type="button" class="btn btn-outline-secondary"
                                 title="Outdent" t-att-disabled="!canOutdent"
                                 t-on-click="outdentTask"><i class="fa fa-arrow-left"/></button>
@@ -276,7 +278,8 @@
                                  icon creates a child task and puts its name
                                  into inline edit. Resource assignment lives
                                  exclusively in the Inspector. -->
-                            <i class="o_cp_planner_add_child fa fa-plus"
+                            <i t-if="state.canEdit"
+                               class="o_cp_planner_add_child fa fa-plus"
                                role="button" title="Add subtask"
                                t-on-click="(ev) => this.quickAddSubtask(row.task, ev)"/>
                             <span t-if="state.showStartCol" class="o_cp_planner_date_col ms-auto small"
@@ -358,7 +361,7 @@
                                               class="o_cp_planner_finish_flag"
                                               t-esc="finishVarianceLabel(row.task)"/>
                                     </div>
-                                    <div t-if="row.task.date_start &amp;&amp; row.task.date_stop &amp;&amp; !row.task.is_done"
+                                    <div t-if="row.task.date_start &amp;&amp; row.task.date_stop &amp;&amp; !row.task.is_done &amp;&amp; state.canEdit"
                                          class="o_cp_planner_grip o_cp_planner_grip_left"
                                          t-att-style="gripStyle(row.task, 'left')"
                                          title="Change start"
@@ -367,7 +370,7 @@
                                          class="o_cp_planner_bar_info"
                                          t-att-style="barInfoStyle(row.task)"
                                          t-esc="barInfoText(row.task)"/>
-                                    <div t-if="row.task.date_start &amp;&amp; row.task.date_stop &amp;&amp; !row.task.is_done"
+                                    <div t-if="row.task.date_start &amp;&amp; row.task.date_stop &amp;&amp; !row.task.is_done &amp;&amp; state.canEdit"
                                          class="o_cp_planner_grip o_cp_planner_grip_right"
                                          t-att-style="gripStyle(row.task, 'right')"
                                          title="Change finish"
@@ -416,6 +419,7 @@
                                 </div>
                                 <input type="text" class="form-control form-control-sm fw-bold"
                                        placeholder="Task name"
+                                       t-att-readonly="!state.canEdit"
                                        t-att-value="state.form?.name"
                                        t-on-change="(ev) => state.form.name = ev.target.value"/>
                             </div>
@@ -433,20 +437,24 @@
                                 <div class="d-flex align-items-center gap-2 mb-1">
                                     <label class="o_cp_planner_inspector_label">Start</label>
                                     <input type="date" class="form-control form-control-sm"
+                                           t-att-readonly="!state.canEdit"
                                            t-att-value="state.form?.date_start"
                                            t-on-change="onStartChange"/>
                                     <input t-if="!isDayPrecision" type="time" class="form-control form-control-sm"
                                            style="width: 90px"
+                                           t-att-readonly="!state.canEdit"
                                            t-att-value="state.form?.time_start"
                                            t-on-change="(ev) => state.form.time_start = ev.target.value"/>
                                 </div>
                                 <div class="d-flex align-items-center gap-2 mb-1">
                                     <label class="o_cp_planner_inspector_label">Finish</label>
                                     <input type="date" class="form-control form-control-sm"
+                                           t-att-readonly="!state.canEdit"
                                            t-att-value="state.form?.date_stop"
                                            t-on-change="onStopChange"/>
                                     <input t-if="!isDayPrecision" type="time" class="form-control form-control-sm"
                                            style="width: 90px"
+                                           t-att-readonly="!state.canEdit"
                                            t-att-value="state.form?.time_stop"
                                            t-on-change="(ev) => state.form.time_stop = ev.target.value"/>
                                 </div>
@@ -454,12 +462,14 @@
                                     <label class="o_cp_planner_inspector_label">Duration</label>
                                     <t t-if="!isDayPrecision">
                                         <input type="number" min="0" step="0.5" class="form-control form-control-sm"
+                                               t-att-readonly="!state.canEdit"
                                                t-att-value="state.form?.allocated_hours"
                                                t-on-change="onDurationChange"/>
                                         <span class="text-muted small">hours</span>
                                     </t>
                                     <t t-else="">
                                         <input type="number" min="1" step="1" class="form-control form-control-sm"
+                                               t-att-readonly="!state.canEdit"
                                                t-att-value="state.form?.duration_days"
                                                t-on-change="onDayDurationChange"/>
                                         <span class="text-muted small">days</span>
@@ -468,6 +478,7 @@
                                 <div class="d-flex align-items-center gap-2">
                                     <label class="o_cp_planner_inspector_label">Assignee</label>
                                     <select class="form-select form-select-sm"
+                                            t-att-disabled="!state.canEdit"
                                             t-on-change="(ev) => state.form.user_id = Number(ev.target.value) || false">
                                         <option value="">—</option>
                                         <t t-foreach="state.options.users" t-as="user" t-key="user.id">
@@ -578,12 +589,12 @@
                                              class="o_cp_planner_dep_chip d-inline-flex align-items-center gap-1 me-1 mb-1">
                                             <span t-esc="taskLabel(depId)"/>
                                             <span class="text-muted" t-esc="depChipText(depId)"/>
-                                            <i class="fa fa-pencil" role="button" title="Edit relationship"
+                                            <i t-if="state.canEdit" class="fa fa-pencil" role="button" title="Edit relationship"
                                                t-on-click="(ev) => this.openDepEditor(state.inspector?.id, depId, ev)"/>
-                                            <i class="fa fa-times" role="button" title="Remove"
+                                            <i t-if="state.canEdit" class="fa fa-times" role="button" title="Remove"
                                                t-on-click="() => this.removePredecessor(depId)"/>
                                         </div>
-                                        <select class="form-select form-select-sm"
+                                        <select t-if="state.canEdit" class="form-select form-select-sm"
                                                 t-att-value="state.form?.addPredecessorId"
                                                 t-on-change="addPredecessor">
                                             <option value="">Add predecessor…</option>
@@ -598,10 +609,10 @@
                                         <div t-foreach="state.form?.dependent_ids || []" t-as="depId" t-key="depId"
                                              class="o_cp_planner_dep_chip d-inline-flex align-items-center gap-1 me-1 mb-1">
                                             <span t-esc="taskLabel(depId)"/>
-                                            <i class="fa fa-times" role="button" title="Remove"
+                                            <i t-if="state.canEdit" class="fa fa-times" role="button" title="Remove"
                                                t-on-click="() => this.removeSuccessor(depId)"/>
                                         </div>
-                                        <select class="form-select form-select-sm"
+                                        <select t-if="state.canEdit" class="form-select form-select-sm"
                                                 t-att-value="state.form?.addSuccessorId"
                                                 t-on-change="addSuccessor">
                                             <option value="">Add successor…</option>
@@ -618,7 +629,8 @@
                                 <div class="d-flex align-items-center gap-2">
                                     <span class="small text-muted text-truncate"
                                           t-esc="resSummaryText(state.inspector?.id)"/>
-                                    <button type="button" class="btn btn-outline-primary btn-sm ms-auto text-nowrap"
+                                    <button t-if="state.canEdit" type="button"
+                                            class="btn btn-outline-primary btn-sm ms-auto text-nowrap"
                                             t-on-click="() => this.openResourceWorkspace(state.inspector)">
                                         <i class="fa fa-users me-1"/>Manage
                                     </button>
@@ -628,7 +640,7 @@
                         </t>
                     </div>
                     <div class="o_cp_planner_inspector_footer border-top px-3 py-2 d-flex gap-2">
-                        <button type="button" class="btn btn-primary btn-sm"
+                        <button t-if="state.canEdit" type="button" class="btn btn-primary btn-sm"
                                 t-att-disabled="state.saving"
                                 t-on-click="saveInspector">
                             <t t-if="state.saving">Saving…</t>
@@ -645,7 +657,7 @@
                         <button type="button" class="btn-close btn-sm" t-on-click="toggleHistory"/>
                     </div>
                     <div class="px-3 pt-2 pb-2 border-bottom">
-                        <button t-if="!state.baselineSaveOpen" type="button"
+                        <button t-if="!state.baselineSaveOpen &amp;&amp; state.canEdit" type="button"
                                 class="btn btn-primary btn-sm w-100"
                                 t-on-click="openBaselineSave">
                             <i class="fa fa-save me-1"/>Baseline Save

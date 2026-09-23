@@ -1123,3 +1123,24 @@ msgstr "Stunde"
 #: model:ir.model.fields.selection,name:project_critical_path.selection__project_project__planning_precision__day
 msgid "Day"
 msgstr "Tag"
+
+#. module: project_critical_path
+#: model:res.groups.privilege,name:project_critical_path.res_groups_privilege_planner
+msgid "Planner"
+msgstr "Planer"
+
+#. module: project_critical_path
+#: model:res.groups,name:project_critical_path.group_planner_manager
+msgid "Planner Manager"
+msgstr "Planner-Manager"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/models/project_planner.py:0
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Only Planner Managers can modify planner data."
+msgstr "Nur Planner-Manager dürfen Planner-Daten ändern."
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "You do not have permission to edit tasks in this project."
+msgstr "Sie haben keine Berechtigung, Aufgaben in diesem Projekt zu bearbeiten."

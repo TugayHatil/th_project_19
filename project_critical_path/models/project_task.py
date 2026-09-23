@@ -2,6 +2,33 @@
 
 from odoo import api, fields, models
 
+from .project_planner import check_planner_manager
+
+# Planner-managed data (BRD Planner Manager): only members of
+# group_planner_manager may touch these — whether via the Planner, the
+# task form or RPC. Everything the Planner exposes as editable is here:
+# name, schedule, duration, assignee, dependencies, hierarchy
+# and WBS order. The check runs on the incoming vals only, so internal
+# writes (the ``date_done`` stamp on state changes, parent rollups, WBS
+# recomputes under a member's request) still work for every user.
+# Workflow fields (stage_id, state, description, tags) stay free —
+# closing a task is a task operation, not a planner edit.
+# WBS code/level/sort_key/work_package and ``progress`` are deliberately
+# NOT here: they are computed/rollup-driven fields whose assignments
+# re-enter write() during recomputes and would break normal task updates
+# for non-members. ``progress`` stays reachable through update_planner_task
+# only — which is gated — so Planner edits are covered regardless.
+PLANNER_GUARDED_FIELDS = frozenset({
+    "name", "user_ids", "allocated_hours", "sequence",
+    "date_assign", "date_deadline",
+    "depend_on_ids", "dependent_ids",
+    "parent_id", "date_done",
+})
+# Creating a task always carries ``name`` — on create only the planner
+# attributes are gated so a bare task can still be created by anyone
+# with Odoo's own create rights.
+PLANNER_GUARDED_CREATE_FIELDS = PLANNER_GUARDED_FIELDS - {"name"}
+
 
 class ProjectTask(models.Model):
     _inherit = "project.task"
@@ -88,6 +115,11 @@ class ProjectTask(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        if any(
+            PLANNER_GUARDED_CREATE_FIELDS.intersection(vals)
+            for vals in vals_list
+        ):
+            check_planner_manager(self.env)
         for vals in vals_list:
             if vals.get("state") == "1_done" and not vals.get("date_done"):
                 vals["date_done"] = fields.Datetime.now()
@@ -97,6 +129,8 @@ class ProjectTask(models.Model):
         return tasks
 
     def write(self, vals):
+        if PLANNER_GUARDED_FIELDS.intersection(vals):
+            check_planner_manager(self.env)
         affected_projects = self.mapped("project_id")
         old_parents = self.mapped("parent_id") if "parent_id" in vals else self.env["project.task"]
         # Stamp the actual close on completion, clear it on reopen —
@@ -146,6 +180,17 @@ class ProjectTask(models.Model):
                 parent.write(vals)
 
     def unlink(self):
+        # Deleting a planned task deletes planner data — only Planner
+        # Managers may remove tasks that carry a schedule, dependencies or
+        # a place in the WBS hierarchy. Bare tasks stay deletable.
+        if not self.env.su and not self.env.user.has_group(
+            "project_critical_path.group_planner_manager"
+        ) and self.filtered(
+            lambda task: task.date_assign or task.date_deadline
+            or task.depend_on_ids or task.dependent_ids
+            or task.child_ids or task.parent_id
+        ):
+            check_planner_manager(self.env)
         affected_projects = self.mapped("project_id")
         result = super().unlink()
         affected_projects._recalculate_critical_paths()

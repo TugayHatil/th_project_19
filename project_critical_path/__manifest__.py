@@ -3,7 +3,7 @@
 {
     "name": "Project Critical Path",
     "summary": "Calculate and store critical paths from task dependencies",
-    "version": "19.0.4.0.0",
+    "version": "19.0.5.0.0",
     "category": "Project",
     "author": "Projet Solutions",
     "license": "LGPL-3",
@@ -13,6 +13,7 @@
     "depends": ["project", "hr_timesheet", "web_gantt"],
 
     "data": [
+        "security/project_critical_path_security.xml",
         "security/ir.model.access.csv",
         "views/project_project_views.xml",
         "views/project_task_kanban.xml",

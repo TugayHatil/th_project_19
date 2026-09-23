@@ -5,7 +5,20 @@ from datetime import datetime, timedelta
 from pytz import UTC, timezone
 
 from odoo import Command, _, api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import AccessError, UserError
+
+
+def check_planner_manager(env):
+    """BRD Planner Manager: every Planner mutation path calls this gate.
+    Members of ``group_planner_manager`` keep full write access; everyone
+    else gets a read-only Planner. Internal/system writes (env.su) always
+    pass — the gate protects user-initiated changes only."""
+    if not env.su and not env.user.has_group(
+        "project_critical_path.group_planner_manager"
+    ):
+        raise AccessError(
+            _("Only Planner Managers can modify planner data.")
+        )
 
 
 def _serialize_planner_day(record, value):
@@ -159,6 +172,12 @@ class ProjectProjectPlanner(models.Model):
                 "planning_precision": self.planning_precision or "hour",
                 "hours_per_day": _planner_hours_per_day(self),
             },
+            # BRD Planner Manager — the frontend renders read-only for
+            # non-members. Server-side gates are the real enforcement;
+            # this flag only drives the UI.
+            "is_planner_manager": self.env.user.has_group(
+                "project_critical_path.group_planner_manager"
+            ),
             "meta": meta,
             "tasks": [
                 {
@@ -454,6 +473,7 @@ class ProjectTaskPlanner(models.Model):
         shifts across timezones.
         """
         self.ensure_one()
+        check_planner_manager(self.env)
         vals = {}
         if "name" in values:
             vals["name"] = values["name"]
@@ -545,6 +565,7 @@ class ProjectTaskPlanner(models.Model):
         added since the last reconciliation.
         """
         self.ensure_one()
+        check_planner_manager(self.env)
         if depends_on_id not in self.depend_on_ids.ids:
             raise UserError(_("The dependency no longer exists."))
         if relationship_type not in ("fs", "ss", "ff", "sf"):

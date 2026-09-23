@@ -231,10 +231,11 @@ export class PlannerWorkspace extends Component {
             // Option lists for the dropdowns — full-project users, roles,
             // stages and root tasks (from the get_planner_data meta block).
             meta: { users: [], roles: [], stages: [], parents: [] },
-            // Write access on project.task — checked once on mount; when
-            // false, bar drags are blocked up-front with a warning instead
-            // of silently reverting after a failed RPC.
-            canEdit: true,
+            // BRD Planner Manager — read from the get_planner_data payload
+            // (server-side group check). Default false = fail closed: until
+            // a project payload confirms membership the workspace renders
+            // read-only and every mutation entry point is blocked.
+            canEdit: false,
             // False while project_resource_planning is not installed —
             // hides the Resource Board toggle, Material Plan shortcut,
             // resource filters and the inspector resource section.
@@ -353,13 +354,6 @@ export class PlannerWorkspace extends Component {
         });
         onMounted(async () => {
             try {
-                this.state.canEdit = await this.orm.call(
-                    "project.task", "check_access_rights", ["write", false],
-                );
-            } catch {
-                this.state.canEdit = true;
-            }
-            try {
                 const info = await this.orm.call("project.project", "get_planner_projects", []);
                 this.state.projects = info.projects || [];
                 this.state.hasResources = !!info.has_resource_planning;
@@ -406,6 +400,9 @@ export class PlannerWorkspace extends Component {
             // engine keeps working on stored datetimes.
             this.state.planningPrecision = data.project.planning_precision || "hour";
             this.state.hoursPerDay = data.project.hours_per_day || 8;
+            // BRD Planner Manager — authoritative flag from the server.
+            // Absent/false keeps the workspace read-only (fail closed).
+            this.state.canEdit = !!data.is_planner_manager;
             this.state.tasks = data.tasks;
             if (data.meta) {
                 this.state.meta = data.meta;
@@ -417,6 +414,20 @@ export class PlannerWorkspace extends Component {
         } finally {
             this.state.loading = false;
         }
+    }
+
+    // BRD Planner Manager — single front-end gate for every mutation entry
+    // point. The server enforces the group on each RPC too; this check only
+    // keeps the UI honest (and fails closed while canEdit is unresolved).
+    _guardEdit() {
+        if (this.state.canEdit) {
+            return true;
+        }
+        this.notification.add(
+            _t("Only Planner Managers can modify planner data."),
+            { type: "warning" },
+        );
+        return false;
     }
 
     // Buffer days added on each side of the task span per scale — the
@@ -1763,6 +1774,9 @@ export class PlannerWorkspace extends Component {
 
     openDepEditor(taskId, predId, ev) {
         ev.stopPropagation();
+        if (!this._guardEdit()) {
+            return;
+        }
         const edge = this.depEdge(taskId, predId);
         this.state.depEdit = {
             taskId,
@@ -1781,7 +1795,7 @@ export class PlannerWorkspace extends Component {
 
     async saveDepEdit() {
         const edit = this.state.depEdit;
-        if (!edit) {
+        if (!edit || !this._guardEdit()) {
             return;
         }
         try {
@@ -1810,7 +1824,7 @@ export class PlannerWorkspace extends Component {
         const form = this.state.form;
         const isDraft = !!this.state.draftParentId && !this.state.inspector?.id;
         const taskId = this.state.inspector?.id;
-        if ((!taskId && !isDraft) || !form) {
+        if ((!taskId && !isDraft) || !form || !this._guardEdit()) {
             return;
         }
         this.state.saving = true;
@@ -1901,6 +1915,9 @@ export class PlannerWorkspace extends Component {
     // Inspector.
     async quickAddSubtask(task, ev) {
         ev.stopPropagation();
+        if (!this._guardEdit()) {
+            return;
+        }
         try {
             const created = await this.orm.call(
                 "project.task", "planner_add_subtask", [task.id], { name: "" },
@@ -1929,7 +1946,7 @@ export class PlannerWorkspace extends Component {
     }
 
     async commitRename(task) {
-        if (this.state.renamingId !== task.id) {
+        if (this.state.renamingId !== task.id || !this._guardEdit()) {
             return;
         }
         this.state.renamingId = null;
@@ -1949,7 +1966,7 @@ export class PlannerWorkspace extends Component {
     }
 
     async cancelRename(task) {
-        if (this.state.renamingId !== task.id) {
+        if (this.state.renamingId !== task.id || !this._guardEdit()) {
             return;
         }
         this.state.renamingId = null;
@@ -1994,7 +2011,7 @@ export class PlannerWorkspace extends Component {
 
     async indentTask() {
         const task = this.selectedWbsTask;
-        if (!task || !this.canIndent) {
+        if (!task || !this.canIndent || !this._guardEdit()) {
             return;
         }
         try {
@@ -2018,7 +2035,7 @@ export class PlannerWorkspace extends Component {
 
     async outdentTask() {
         const task = this.selectedWbsTask;
-        if (!task || !this.canOutdent) {
+        if (!task || !this.canOutdent || !this._guardEdit()) {
             return;
         }
         try {
@@ -2050,6 +2067,7 @@ export class PlannerWorkspace extends Component {
             // produce a wrong WBS order — hierarchy/ordering stay real).
             || this.hasActiveFilters
             || this.state.groupBy
+            || !this.state.canEdit
             || ev.target.closest(".o_cp_planner_add_child, .o_cp_planner_toggle, input, button, a")
         ) {
             return;
@@ -2120,6 +2138,9 @@ export class PlannerWorkspace extends Component {
             (beforeId && siblings[index + 1]?.id === beforeId)
             || (!beforeId && afterId && siblings[index - 1]?.id === afterId)
         ) {
+            return;
+        }
+        if (!this._guardEdit()) {
             return;
         }
         try {
@@ -2312,11 +2333,7 @@ export class PlannerWorkspace extends Component {
         if (!task.date_start || !task.date_stop || task.is_done || ev.button !== 0) {
             return;
         }
-        if (this.state.canEdit === false) {
-            this.notification.add(
-                _t("You do not have permission to edit tasks in this project."),
-                { type: "warning" },
-            );
+        if (!this._guardEdit()) {
             return;
         }
         ev.preventDefault();
@@ -2479,6 +2496,9 @@ export class PlannerWorkspace extends Component {
     }
 
     async persistTaskDates(task, drag) {
+        if (!this._guardEdit()) {
+            return;
+        }
         // Hour-precision drags (day scale) persist dt_start/dt_stop; other
         // scales keep the day-string + duration_days path unchanged.
         const values = drag.dtStart && drag.dtStop
@@ -2549,6 +2569,9 @@ export class PlannerWorkspace extends Component {
     // Baseline Save — the user picks a predefined active title; the
     // version number keeps auto-incrementing server-side (v1.19 → v1.20).
     async openBaselineSave() {
+        if (!this._guardEdit()) {
+            return;
+        }
         this.state.baselineSaveTitle = "";
         try {
             this.state.baselineTitles = await this.orm.searchRead(
@@ -2570,7 +2593,7 @@ export class PlannerWorkspace extends Component {
 
     async saveBaseline() {
         const label = (this.state.baselineSaveTitle || "").trim();
-        if (!label) {
+        if (!label || !this._guardEdit()) {
             this.notification.add(_t("Please select a baseline title."), { type: "warning" });
             return;
         }

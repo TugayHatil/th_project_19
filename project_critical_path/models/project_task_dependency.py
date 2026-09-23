@@ -2,7 +2,7 @@
 
 from odoo import api, fields, models
 
-from .project_planner import _planner_hours_per_day
+from .project_planner import _planner_hours_per_day, check_planner_manager
 
 
 class ProjectTaskDependency(models.Model):
@@ -64,6 +64,23 @@ class ProjectTaskDependency(models.Model):
                 else 1.0
             )
             dependency.lag_hours = (dependency.lag or 0.0) * factor
+
+    # BRD Planner Manager: edge attributes are planner data — only Planner
+    # Managers may create/edit/delete them directly. The lazy reconciliation
+    # in ``_ensure_dependency_records`` runs under sudo() so read flows stay
+    # unaffected.
+    @api.model_create_multi
+    def create(self, vals_list):
+        check_planner_manager(self.env)
+        return super().create(vals_list)
+
+    def write(self, vals):
+        check_planner_manager(self.env)
+        return super().write(vals)
+
+    def unlink(self):
+        check_planner_manager(self.env)
+        return super().unlink()
 
     def _serialize(self):
         """Compact edge payload for the Planner Workspace."""

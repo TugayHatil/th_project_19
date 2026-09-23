@@ -145,6 +145,9 @@ patch(PlannerWorkspace.prototype, {
 
     async saveRequirement() {
         const form = this.state.resForm;
+        if (!this._guardEdit()) {
+            return;
+        }
         if (!form?.role_id) {
             this.notification.add(_t("Select a resource role first."), { type: "warning" });
             return;
@@ -183,6 +186,9 @@ patch(PlannerWorkspace.prototype, {
     },
 
     async deleteRequirement(req) {
+        if (!this._guardEdit()) {
+            return;
+        }
         try {
             await this.orm.call(
                 "project.task", "planner_delete_requirement", [this.state.resTask.id],
@@ -232,7 +238,7 @@ patch(PlannerWorkspace.prototype, {
 
     async assignResource(opt, startDt, endDt) {
         const req = this.resSelectedReq;
-        if (!req) {
+        if (!req || !this._guardEdit()) {
             return false;
         }
         try {
@@ -257,6 +263,9 @@ patch(PlannerWorkspace.prototype, {
     },
 
     async unassignResource(assignmentId) {
+        if (!this._guardEdit()) {
+            return;
+        }
         try {
             await this.orm.call(
                 "project.task", "planner_unassign_resource", [this.state.resTask.id],
@@ -695,7 +704,7 @@ patch(PlannerWorkspace.prototype, {
     async saveResAssignEdit() {
         const item = this.resSelectedAssignment;
         const edit = this.state.resAssignEdit;
-        if (!item || !edit?.date_start || !edit?.date_end) {
+        if (!item || !edit?.date_start || !edit?.date_end || !this._guardEdit()) {
             return;
         }
         const start = new Date(edit.date_start);
@@ -743,7 +752,7 @@ patch(PlannerWorkspace.prototype, {
     // master data are untouched; refresh updates status and availability.
     async confirmDeleteResAssignment() {
         const item = this.resSelectedAssignment;
-        if (!item?.mine) {
+        if (!item?.mine || !this._guardEdit()) {
             return;
         }
         this.state.resAssignDelConfirm = false;
@@ -802,7 +811,7 @@ patch(PlannerWorkspace.prototype, {
         // Empty track → drag creates a new assignment (bars handle their own
         // pointerdown; the required band does not block creation).
         if (
-            ev.button !== 0 || !this.resSelectedOption
+            ev.button !== 0 || !this.resSelectedOption || !this.state.canEdit
             || ev.target.closest(".o_cp_res_tl_bar, .o_cp_res_tl_new, .o_cp_res_tl_pending")
         ) {
             return;
@@ -823,9 +832,10 @@ patch(PlannerWorkspace.prototype, {
         if (ev.button !== 0) {
             return;
         }
-        if (!item.mine) {
-            // Other resources' bookings are view-only: a click still opens
-            // the detail card so conflicts can be inspected.
+        if (!item.mine || !this.state.canEdit) {
+            // Other resources' bookings are view-only — and so is the whole
+            // timeline for non-Planner-Managers: a click still opens the
+            // detail card so conflicts can be inspected, but no drag starts.
             this.selectResAssignment(item);
             return;
         }
