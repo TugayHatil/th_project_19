@@ -323,7 +323,15 @@
                                     <div t-foreach="offRegions" t-as="reg" t-key="reg_index"
                                          class="o_cp_planner_off"
                                          t-att-class="reg.kind"
-                                         t-att-style="'left:' + reg.left + 'px;width:' + reg.width + 'px'"/>
+                                         t-att-style="'left:' + reg.left + 'px;width:' + reg.width + 'px'">
+                                        <!-- Folded marker — the ◄ ► pair Odoo
+                                             renders on compressed non-working
+                                             columns. Only when the band is
+                                             wide enough to host it. -->
+                                        <span t-if="reg.width >= 14" class="o_cp_planner_offmark">
+                                            <i class="fa fa-caret-left"/><i class="fa fa-caret-right"/>
+                                        </span>
+                                    </div>
                                 </div>
                                 <t t-foreach="displayRows" t-as="row" t-key="row.key">
                                 <div t-if="row.type === 'group'"
