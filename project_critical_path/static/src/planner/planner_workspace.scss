@@ -603,18 +603,11 @@ $o_cp_planner_bar_critical: #e8a33d;
     }
 }
 
-// Collapsed-time marker — the small ◄ ► pair Odoo draws at the top of
-// compressed non-working columns.
-.o_cp_planner_offmark {
-    position: absolute;
-    top: 3px;
-    left: 0;
-    right: 0;
-    text-align: center;
+// Collapsed non-working column header — the "◄ ►" pair Odoo draws in
+// place of an hour label on compressed ranges.
+.o_cp_planner_gantt_col.collapsed {
     font-size: 9px;
-    line-height: 1;
     color: #9a9cab;
-    pointer-events: none;
 
     i + i {
         margin-left: 2px;

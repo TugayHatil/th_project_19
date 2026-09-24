@@ -1041,16 +1041,49 @@ export class PlannerWorkspace extends Component {
             return this._colsCache;
         }
         const cols = [];
-        if (this.state.scale === "day") {
-            // One hour cell per column across every day in the range —
-            // widths come from the folded map so off-hours compress.
+        if (this.state.scale === "day" && this.state.calendar) {
+            // Odoo-gantt style: each working hour is a labelled cell, while
+            // every run of non-working segments collapses into ONE column
+            // carrying the "◄ ►" marker — so the night merges across the
+            // midnight boundary exactly like the standard gantt.
+            const { segs } = this.timeMap;
+            let run = null;
+            const flushRun = () => {
+                if (run) {
+                    cols.push({
+                        mark: true,
+                        off: true,
+                        width: this.timeToX(run[1]) - this.timeToX(run[0]),
+                    });
+                    run = null;
+                }
+            };
+            for (const seg of segs) {
+                if (seg.kind !== "work") {
+                    run = run ? [run[0], seg.t1] : [seg.t0, seg.t1];
+                    continue;
+                }
+                flushRun();
+                for (let h = seg.t0; h < seg.t1;) {
+                    const nxt = Math.min(
+                        Math.floor(h / 3600000) * 3600000 + 3600000, seg.t1
+                    );
+                    cols.push({
+                        label: pad2(new Date(h).getHours()),
+                        width: this.timeToX(nxt) - this.timeToX(h),
+                        off: false,
+                    });
+                    h = nxt;
+                }
+            }
+            flushRun();
+        } else if (this.state.scale === "day") {
             for (let t = range.start.getTime(); t < range.end.getTime(); t += DAY_MS) {
                 for (let h = 0; h < 24; h++) {
-                    const c0 = t + h * 3600000;
                     cols.push({
                         label: pad2(h),
-                        width: this.timeToX(c0 + 3600000) - this.timeToX(c0),
-                        off: this._segKindAt(c0) !== "work",
+                        width: this.timeToX(t + (h + 1) * 3600000) - this.timeToX(t + h * 3600000),
+                        off: false,
                     });
                 }
             }
