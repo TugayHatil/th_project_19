@@ -125,7 +125,7 @@ function getCalendarFormats() {
 // Folded by default like Odoo's gantt: non-working time stays visible as
 // gray bands but compressed to a fraction of the working rate.
 const GAP_RATE = 0.22; // intra-day off time (nights, lunch breaks)
-const OFF_RATE = 0.16; // full non-working days (weekends, leaves)
+const OFF_RATE = 0.08; // full non-working days (weekends, leaves)
 
 const _tzDtf = new Map();
 // UTC offset of `tz` at instant `ms` — resolved via Intl, no library.
@@ -675,11 +675,12 @@ export class PlannerWorkspace extends Component {
                 d0 = d1;
             }
         }
-        // Assign pixels — compressed rates keep a minimum sliver so off
-        // regions stay visible at every zoom level.
+        // Assign pixels — compressed rates keep a minimum width so every
+        // folded region is wide enough to host the "◄ ►" marker, like
+        // Odoo's collapsed columns (~one hour cell at day zoom).
         const rate = this.state.pxPerDay / DAY_MS;
-        const gapMin = Math.min(3, this.state.pxPerDay * 0.07);
-        const offMin = Math.min(4, this.state.pxPerDay * 0.5);
+        const gapMin = Math.min(26, this.state.pxPerDay * 0.08);
+        const offMin = Math.min(26, this.state.pxPerDay * 0.4);
         let px = 0;
         for (const seg of segs) {
             const factor = seg.kind === "work" ? 1 : seg.kind === "gap" ? GAP_RATE : OFF_RATE;
