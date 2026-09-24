@@ -579,55 +579,6 @@ $o_cp_planner_bar_critical: #e8a33d;
     position: relative;
 }
 
-// Working-calendar shading — non-working bands sit behind the rows/bars
-// at full width (Odoo standard gantt style). Two tones per BRD: light
-// for intra-day gaps (nights, lunch), darker for full non-working days
-// (weekends/leaves).
-.o_cp_planner_offlayer {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-}
-
-.o_cp_planner_off {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-
-    &.gap {
-        background: #f0f1f4;
-    }
-
-    &.off {
-        background: #e3e4ea;
-    }
-}
-
-// Collapsed non-working column header — the "◄ ►" pair Odoo draws in
-// place of an hour label on compressed ranges. Click toggles the fold.
-.o_cp_planner_gantt_col.collapsed {
-    font-size: 9px;
-    color: #9a9cab;
-
-    i + i {
-        margin-left: 2px;
-    }
-}
-
-.o_cp_planner_gantt_col.clickable {
-    cursor: pointer;
-
-    &:hover {
-        background: #dfe1e8;
-    }
-}
-
-// Off-day header cells read as non-working too.
-.o_cp_planner_gantt_col.off {
-    background: #e9eaef;
-    color: #adb5bd;
-}
-
 // Finish-to-Start dependency overlay — drawn above the bars, never
 // intercepts clicks, thin enough not to hide bar content.
 .o_cp_planner_deps {

@@ -121,39 +121,6 @@ function getCalendarFormats() {
     }
     return calendarFormats;
 }
-// ---- Working-calendar (folded timeline) helpers --------------------------
-// Folded like Odoo's gantt: every non-working run collapses to a single
-// fixed-width column (one header cell with the "◄ ►" marker), no matter
-// how long the off-time actually is.
-
-const _tzDtf = new Map();
-// UTC offset of `tz` at instant `ms` — resolved via Intl, no library.
-function tzOffsetMs(tz, ms) {
-    let dtf = _tzDtf.get(tz);
-    if (!dtf) {
-        dtf = new Intl.DateTimeFormat("en-US", {
-            timeZone: tz, hourCycle: "h23",
-            year: "numeric", month: "2-digit", day: "2-digit",
-            hour: "2-digit", minute: "2-digit", second: "2-digit",
-        });
-        _tzDtf.set(tz, dtf);
-    }
-    const parts = dtf.formatToParts(new Date(ms));
-    const g = (type) => Number(parts.find((p) => p.type === type).value);
-    return Date.UTC(g("year"), g("month") - 1, g("day"), g("hour") % 24, g("minute"), g("second")) - ms;
-}
-// Wall-clock time in `tz` → absolute ms (two-pass so DST edges resolve).
-function tzWallToMs(tz, y, mo, d, hFrac) {
-    const h = Math.floor(hFrac);
-    const mi = Math.round((hFrac - h) * 60);
-    const wall = Date.UTC(y, mo, d, h, mi);
-    return wall - tzOffsetMs(tz, wall - tzOffsetMs(tz, wall));
-}
-// Calendar-tz calendar day (y/m/d/weekday) containing the instant `ms`.
-function tzDayAt(tz, ms) {
-    const d = new Date(ms + tzOffsetMs(tz, ms));
-    return { y: d.getUTCFullYear(), m: d.getUTCMonth(), d: d.getUTCDate(), wd: d.getUTCDay() };
-}
 const startOfDayMs = (ms) => {
     const d = new Date(ms);
     return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
@@ -196,9 +163,6 @@ export class PlannerWorkspace extends Component {
             // leaves and timezone straight from resource.calendar. False
             // keeps the timeline continuous/uncompressed.
             calendar: null,
-            // Click-to-expand for folded non-working runs (Odoo gantt
-            // behaviour) — holds the run keys currently unfolded.
-            expandedFolds: new Set(),
             tasks: [],
             collapsedIds: new Set(),
             selectedId: null,
@@ -584,7 +548,6 @@ export class PlannerWorkspace extends Component {
             range.end.getTime(),
             this.state.pxPerDay,
             cal?.id || 0,
-            [...this.state.expandedFolds].join(","),
         ].join("|");
         if (this._mapKey === key) {
             return this._mapCache;
@@ -597,134 +560,19 @@ export class PlannerWorkspace extends Component {
     _buildTimeMap(range, cal) {
         const t0 = range.start.getTime();
         const t1 = range.end.getTime();
-        const segs = [];
-        if (!cal || !cal.attendances?.length) {
-            segs.push({ t0, t1, kind: "work" });
-        } else {
-            const leaves = cal.leaves.map((l) => [
-                Date.parse(l.from.replace(" ", "T") + "Z"),
-                Date.parse(l.to.replace(" ", "T") + "Z"),
-            ]);
-            // Iterate real local day boundaries (calendar arithmetic) so
-            // DST-shortened/lengthened days stay aligned.
-            for (let d0 = t0, guard = 0; d0 < t1 && guard++ < 5000;) {
-                const dd = new Date(d0);
-                const d1 = Math.min(
-                    new Date(dd.getFullYear(), dd.getMonth(), dd.getDate() + 1).getTime(),
-                    t1,
-                );
-                // Calendar-tz date at local noon — avoids midnight edge cases.
-                const cday = tzDayAt(cal.tz, d0 + DAY_MS / 2);
-                // Odoo dayofweek is 0=Mon..6=Sun; JS getUTCDay is
-                // 0=Sun..6=Sat — rebase to Odoo's convention.
-                const odooWd = (cday.wd + 6) % 7;
-                // Two-week calendars alternate attendances by week parity
-                // (ISO-week parity approximates Odoo's week_type rhythm).
-                const parity = cal.twoWeeks ? isoWeek(new Date(d0)) % 2 : null;
-                let ints = cal.attendances
-                    .filter((a) => a.weekday === odooWd
-                        && (parity === null || a.weekType === "" || Number(a.weekType) === parity))
-                    .map((a) => [
-                        tzWallToMs(cal.tz, cday.y, cday.m, cday.d, a.from),
-                        tzWallToMs(cal.tz, cday.y, cday.m, cday.d, a.to),
-                    ])
-                    .map(([a, b]) => [Math.max(a, d0), Math.min(b, d1)])
-                    .filter(([a, b]) => b > a)
-                    .sort((x, y) => x[0] - y[0]);
-                // Subtract calendar/global leaves from the day's intervals.
-                for (const [lf, lt] of leaves) {
-                    if (lt <= d0 || lf >= d1) {
-                        continue;
-                    }
-                    ints = ints.flatMap(([a, b]) => {
-                        if (lt <= a || lf >= b) {
-                            return [[a, b]];
-                        }
-                        const out = [];
-                        if (lf > a) {
-                            out.push([a, lf]);
-                        }
-                        if (lt < b) {
-                            out.push([lt, b]);
-                        }
-                        return out;
-                    });
-                }
-                // Merge overlapping/adjacent intervals.
-                const merged = [];
-                for (const [a, b] of ints) {
-                    const last = merged[merged.length - 1];
-                    if (last && a <= last[1]) {
-                        last[1] = Math.max(last[1], b);
-                    } else {
-                        merged.push([a, b]);
-                    }
-                }
-                if (!merged.length) {
-                    segs.push({ t0: d0, t1: d1, kind: "off" });
-                } else {
-                    let cur = d0;
-                    for (const [a, b] of merged) {
-                        if (a > cur) {
-                            segs.push({ t0: cur, t1: a, kind: "gap" });
-                        }
-                        segs.push({ t0: a, t1: b, kind: "work" });
-                        cur = b;
-                    }
-                    if (cur < d1) {
-                        segs.push({ t0: cur, t1: d1, kind: "gap" });
-                    }
-                }
-                d0 = d1;
-            }
-        }
-        // Group contiguous non-working segments into clickable runs — the
-        // run key is the run's start so it stays stable across rebuilds.
-        let runKey = null;
-        for (const seg of segs) {
-            if (seg.kind === "work") {
-                runKey = null;
-                continue;
-            }
-            if (runKey === null) {
-                runKey = seg.t0;
-            }
-            seg.runKey = runKey;
-        }
-        // Assign pixels — working time maps linearly; a folded run
-        // collapses to a single column width ("◄ ►" cell) like Odoo's
-        // gantt, unless the user expanded it (then real widths return).
+        // Continuous timeline — the working-calendar folding was rolled
+        // back, so the map is a single uniform segment.
+        const segs = [{ t0, t1, kind: "work" }];
         const rate = this.state.pxPerDay / DAY_MS;
-        const expanded = this.state.expandedFolds;
-        const folded = this.state.scale === "day"
-            ? Math.max(14, this.state.pxPerDay / 24)   // one hour column
-            : Math.max(6, this.state.pxPerDay * 0.35); // narrow vs a day col
         let px = 0;
         for (const seg of segs) {
-            const w = seg.kind === "work" || expanded.has(seg.runKey)
-                ? (seg.t1 - seg.t0) * rate
-                : folded;
+            const w = (seg.t1 - seg.t0) * rate;
             seg.px0 = px;
             px += w;
             seg.px1 = px;
             seg.rate = w / (seg.t1 - seg.t0);
         }
         return { segs, width: px, t0, t1 };
-    }
-
-    // Click on a collapsed "◄ ►" column expands the whole run to real
-    // widths; clicking any column of an expanded run folds it back.
-    onColumnClick(col) {
-        if (col.runKey == null) {
-            return;
-        }
-        const set = new Set(this.state.expandedFolds);
-        if (set.has(col.runKey)) {
-            set.delete(col.runKey);
-        } else {
-            set.add(col.runKey);
-        }
-        this.state.expandedFolds = set;
     }
 
     // Central datetime→px mapping — every renderer (bars, arrows, today
@@ -771,43 +619,6 @@ export class PlannerWorkspace extends Component {
         }
         const seg = segs[lo];
         return seg.t0 + (px - seg.px0) / seg.rate;
-    }
-
-    // Folded non-working regions painted behind the rows — light for
-    // intra-day gaps (nights/lunch), darker for full off days.
-    get offRegions() {
-        const out = [];
-        for (const seg of this.timeMap.segs) {
-            if (seg.kind === "work") {
-                continue;
-            }
-            const w = seg.px1 - seg.px0;
-            if (w < 0.4) {
-                continue;
-            }
-            out.push({ left: seg.px0, width: w, kind: seg.kind });
-        }
-        return out;
-    }
-
-    // Segment at an instant — used to dim off-day column headers and to
-    // wire their collapse/expand run key.
-    _segAt(ms) {
-        const { segs } = this.timeMap;
-        let lo = 0, hi = segs.length - 1;
-        while (lo < hi) {
-            const mid = (lo + hi + 1) >> 1;
-            if (segs[mid].t0 <= ms) {
-                lo = mid;
-            } else {
-                hi = mid - 1;
-            }
-        }
-        return segs[lo];
-    }
-
-    _segKindAt(ms) {
-        return this._segAt(ms).kind;
     }
 
     get taskById() {
@@ -1075,103 +886,29 @@ export class PlannerWorkspace extends Component {
             range.end.getTime(),
             this.state.pxPerDay,
             this.state.calendar?.id || 0,
-            [...this.state.expandedFolds].join(","),
         ].join("|");
         if (this._colsKey === key) {
             return this._colsCache;
         }
         const cols = [];
-        if (this.state.scale === "day" && this.state.calendar) {
-            // Odoo-gantt style: each working hour is a labelled cell, while
-            // every run of non-working segments collapses into ONE column
-            // carrying the "◄ ►" marker — so the night merges across the
-            // midnight boundary exactly like the standard gantt. Clicking
-            // the marker expands the run: its hours come back as real
-            // columns (dimmed), clicking again folds it.
-            const { segs } = this.timeMap;
-            const expanded = this.state.expandedFolds;
-            const hourCols = (a, b, off, runKey) => {
-                for (let h = a; h < b;) {
-                    const nxt = Math.min(
-                        Math.floor(h / 3600000) * 3600000 + 3600000, b
-                    );
-                    cols.push({
-                        label: pad2(new Date(h).getHours()),
-                        width: this.timeToX(nxt) - this.timeToX(h),
-                        off,
-                        runKey,
-                        title: off ? _t("Fold non-working time") : undefined,
-                    });
-                    h = nxt;
-                }
-            };
-            let run = null;
-            const flushRun = () => {
-                if (!run) {
-                    return;
-                }
-                if (expanded.has(run.key)) {
-                    for (const [a, b] of run.spans) {
-                        hourCols(a, b, true, run.key);
-                    }
-                } else {
-                    cols.push({
-                        mark: true,
-                        off: true,
-                        width: this.timeToX(run.t1) - this.timeToX(run.t0),
-                        runKey: run.key,
-                        title: _t("Show non-working time"),
-                    });
-                }
-                run = null;
-            };
-            for (const seg of segs) {
-                if (seg.kind !== "work") {
-                    if (run && run.key === seg.runKey) {
-                        run.t1 = seg.t1;
-                        run.spans.push([seg.t0, seg.t1]);
-                    } else {
-                        flushRun();
-                        run = { key: seg.runKey, t0: seg.t0, t1: seg.t1, spans: [[seg.t0, seg.t1]] };
-                    }
-                    continue;
-                }
-                flushRun();
-                hourCols(seg.t0, seg.t1, false, null);
-            }
-            flushRun();
-        } else if (this.state.scale === "day") {
+        if (this.state.scale === "day") {
             for (let t = range.start.getTime(); t < range.end.getTime(); t += DAY_MS) {
                 for (let h = 0; h < 24; h++) {
                     cols.push({
                         label: pad2(h),
                         width: this.timeToX(t + (h + 1) * 3600000) - this.timeToX(t + h * 3600000),
-                        off: false,
                     });
                 }
             }
         } else {
             const fmt = getCalendarFormats();
-            const expanded = this.state.expandedFolds;
             for (let t = range.start.getTime(); t < range.end.getTime(); t += DAY_MS) {
                 const d = new Date(t);
-                const seg = this._segAt(t + DAY_MS / 2);
-                const off = seg.kind === "off";
-                const runKey = off ? seg.runKey : null;
-                const isOpen = runKey != null && expanded.has(runKey);
                 cols.push({
                     label: this.state.scale === "month"
                         ? pad2(d.getDate())
                         : `${fmt.weekdayShort.format(d)} ${pad2(d.getDate())}`,
                     width: this.timeToX(t + DAY_MS) - this.timeToX(t),
-                    off,
-                    // Collapsed off days show the "◄ ►" marker instead of
-                    // the label; once expanded the day label comes back.
-                    mark: off && !isOpen,
-                    runKey,
-                    title: off
-                        ? (isOpen ? _t("Fold non-working time") : _t("Show non-working time"))
-                        : undefined,
                 });
             }
         }
