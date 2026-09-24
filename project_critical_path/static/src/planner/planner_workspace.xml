@@ -308,11 +308,22 @@
                                 <div class="o_cp_planner_gantt_cols d-flex">
                                     <div t-foreach="columns" t-as="col" t-key="col_index"
                                          class="o_cp_planner_gantt_col text-center text-truncate"
+                                         t-att-class="{off: col.off}"
                                          t-att-style="'width:' + col.width + 'px'"
                                          t-esc="col.label"/>
                                 </div>
                             </div>
                             <div class="o_cp_planner_gantt_rows">
+                                <!-- Folded working calendar — compressed
+                                     non-working bands behind the rows:
+                                     light = intra-day gap, dark = full
+                                     off day. -->
+                                <div class="o_cp_planner_offlayer">
+                                    <div t-foreach="offRegions" t-as="reg" t-key="reg_index"
+                                         class="o_cp_planner_off"
+                                         t-att-class="reg.kind"
+                                         t-att-style="'left:' + reg.left + 'px;width:' + reg.width + 'px'"/>
+                                </div>
                                 <t t-foreach="displayRows" t-as="row" t-key="row.key">
                                 <div t-if="row.type === 'group'"
                                      class="o_cp_planner_gantt_row o_cp_planner_group_row"/>

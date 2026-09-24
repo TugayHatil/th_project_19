@@ -84,6 +84,61 @@ class ProjectProjectPlanner(models.Model):
         """
         return {"resources_by_task": {}, "roles": []}
 
+    def _planner_calendar_data(self):
+        """Working calendar for the folded (Odoo Gantt-style) timeline.
+
+        Sends the project's ``resource_calendar_id`` attendances and the
+        leaves applying to it (global + calendar-wide, resource-less). The
+        frontend builds the compressed pixel mapping from this raw data —
+        no per-request interval computation happens server-side. Returns
+        False when the project has no calendar so the timeline keeps its
+        continuous, uncompressed layout (BRD backward compatibility).
+        """
+        self.ensure_one()
+        calendar = (
+            self.sudo().resource_calendar_id
+            if "resource_calendar_id" in self._fields
+            else self.env["resource.calendar"]
+        )
+        if not calendar:
+            return False
+        attendances = [
+            {
+                "weekday": int(line.dayofweek),
+                "from": line.hour_from,
+                "to": line.hour_to,
+                "weekType": getattr(line, "week_type", False) or "",
+            }
+            for line in calendar.attendance_ids
+            # Lunch rows are working-time exclusions, not work — the gap
+            # logic renders them light-gray. Date-bound attendances are
+            # exceptional overrides, not the weekly rhythm.
+            if line.day_period != "lunch"
+            and not getattr(line, "date_from", False)
+            and not getattr(line, "date_to", False)
+        ]
+        leaves = [
+            {
+                "from": fields.Datetime.to_string(leave.date_from),
+                "to": fields.Datetime.to_string(leave.date_to),
+            }
+            for leave in self.env["resource.calendar.leaves"].sudo().search(
+                [
+                    ("calendar_id", "in", [calendar.id, False]),
+                    ("resource_id", "=", False),
+                ]
+            )
+        ]
+        return {
+            "id": calendar.id,
+            "name": calendar.name,
+            "tz": calendar.tz or self.env.user.tz or "UTC",
+            "twoWeeks": bool(getattr(calendar, "two_weeks_calendar", False)),
+            "hoursPerDay": calendar.hours_per_day or 8.0,
+            "attendances": attendances,
+            "leaves": leaves,
+        }
+
     def get_planner_data(self, baseline_id=None, domain=None):
         """Return the project's tasks in WBS order for the Planner Workspace.
 
@@ -171,6 +226,9 @@ class ProjectProjectPlanner(models.Model):
                 # durations/lag/slack without recomputing them.
                 "planning_precision": self.planning_precision or "hour",
                 "hours_per_day": _planner_hours_per_day(self),
+                # Working calendar — drives the folded non-working-time
+                # timeline. False when unset → continuous layout unchanged.
+                "calendar": self._planner_calendar_data(),
             },
             # BRD Planner Manager — the frontend renders read-only for
             # non-members. Server-side gates are the real enforcement;

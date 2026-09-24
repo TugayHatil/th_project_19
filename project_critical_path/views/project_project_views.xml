@@ -71,6 +71,7 @@
                 <group string="Planning">
                     <field name="planning_precision" widget="radio"
                            options="{'horizontal': true}"/>
+                    <field name="resource_calendar_id"/>
                 </group>
             </xpath>
             <xpath expr="//notebook" position="inside">

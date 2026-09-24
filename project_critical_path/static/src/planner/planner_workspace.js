@@ -121,6 +121,45 @@ function getCalendarFormats() {
     }
     return calendarFormats;
 }
+// ---- Working-calendar (folded timeline) helpers --------------------------
+// Non-working compression factors — the px/ms rate inside off-time is a
+// fraction of the working rate, so off regions stay visible but narrow.
+const GAP_RATE = 0.22; // intra-day off time (nights, lunch breaks)
+const OFF_RATE = 0.16; // full non-working days (weekends, leaves)
+
+const _tzDtf = new Map();
+// UTC offset of `tz` at instant `ms` — resolved via Intl, no library.
+function tzOffsetMs(tz, ms) {
+    let dtf = _tzDtf.get(tz);
+    if (!dtf) {
+        dtf = new Intl.DateTimeFormat("en-US", {
+            timeZone: tz, hourCycle: "h23",
+            year: "numeric", month: "2-digit", day: "2-digit",
+            hour: "2-digit", minute: "2-digit", second: "2-digit",
+        });
+        _tzDtf.set(tz, dtf);
+    }
+    const parts = dtf.formatToParts(new Date(ms));
+    const g = (type) => Number(parts.find((p) => p.type === type).value);
+    return Date.UTC(g("year"), g("month") - 1, g("day"), g("hour") % 24, g("minute"), g("second")) - ms;
+}
+// Wall-clock time in `tz` → absolute ms (two-pass so DST edges resolve).
+function tzWallToMs(tz, y, mo, d, hFrac) {
+    const h = Math.floor(hFrac);
+    const mi = Math.round((hFrac - h) * 60);
+    const wall = Date.UTC(y, mo, d, h, mi);
+    return wall - tzOffsetMs(tz, wall - tzOffsetMs(tz, wall));
+}
+// Calendar-tz calendar day (y/m/d/weekday) containing the instant `ms`.
+function tzDayAt(tz, ms) {
+    const d = new Date(ms + tzOffsetMs(tz, ms));
+    return { y: d.getUTCFullYear(), m: d.getUTCMonth(), d: d.getUTCDate(), wd: d.getUTCDay() };
+}
+const startOfDayMs = (ms) => {
+    const d = new Date(ms);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+};
+
 const monthLabel = (date) => getCalendarFormats().monthYear.format(date);
 const dayLabel = (date) => getCalendarFormats().dayMonth.format(date);
 const isoDay = (date) => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
@@ -154,6 +193,10 @@ export class PlannerWorkspace extends Component {
             // quantizes drags/resizes to whole days.
             planningPrecision: "hour",
             hoursPerDay: 8,
+            // Project working calendar (BRD Folded Timeline) — attendances,
+            // leaves and timezone straight from resource.calendar. False
+            // keeps the timeline continuous/uncompressed.
+            calendar: null,
             tasks: [],
             collapsedIds: new Set(),
             selectedId: null,
@@ -343,9 +386,9 @@ export class PlannerWorkspace extends Component {
                 const el = this.ganttScrollRef.el;
                 if (el) {
                     const anchor = this._pendingZoomAnchor;
-                    const px = (anchor.ms - this.origin.getTime()) / DAY_MS
-                        * this.state.pxPerDay;
-                    el.scrollLeft = Math.max(px - anchor.frac * el.clientWidth, 0);
+                    el.scrollLeft = Math.max(
+                        this.timeToX(anchor.ms) - anchor.frac * el.clientWidth, 0,
+                    );
                 }
                 this._pendingZoomAnchor = null;
             }
@@ -407,6 +450,9 @@ export class PlannerWorkspace extends Component {
             // engine keeps working on stored datetimes.
             this.state.planningPrecision = data.project.planning_precision || "hour";
             this.state.hoursPerDay = data.project.hours_per_day || 8;
+            // Working calendar — drives the folded timeline. Absent/false
+            // keeps the continuous uncompressed layout.
+            this.state.calendar = data.project.calendar || null;
             // BRD Planner Manager — authoritative flag from the server.
             // Absent/false keeps the workspace read-only (fail closed).
             this.state.canEdit = !!data.is_planner_manager;
@@ -519,6 +565,207 @@ export class PlannerWorkspace extends Component {
     // Origin shared by columns, bars and the today marker so they stay aligned.
     get origin() {
         return this.plannerRange.start;
+    }
+
+    // ---- Folded timeline (working calendar) -------------------------------
+    // Piecewise time→px map over the planner range: contiguous segments
+    // each with their own px/ms rate. Working intervals run at full rate,
+    // intra-day off-time (nights/lunch) is compressed light-gray "gap",
+    // full non-working days are compressed darker "off". No calendar → a
+    // single work segment, identical to the old continuous layout.
+    get timeMap() {
+        const range = this.plannerRange;
+        const cal = this.state.calendar;
+        const key = [
+            this.state.scale,
+            range.start.getTime(),
+            range.end.getTime(),
+            this.state.pxPerDay,
+            cal?.id || 0,
+        ].join("|");
+        if (this._mapKey === key) {
+            return this._mapCache;
+        }
+        this._mapCache = this._buildTimeMap(range, cal);
+        this._mapKey = key;
+        return this._mapCache;
+    }
+
+    _buildTimeMap(range, cal) {
+        const t0 = range.start.getTime();
+        const t1 = range.end.getTime();
+        const segs = [];
+        if (!cal || !cal.attendances?.length) {
+            segs.push({ t0, t1, kind: "work" });
+        } else {
+            const leaves = cal.leaves.map((l) => [
+                Date.parse(l.from.replace(" ", "T") + "Z"),
+                Date.parse(l.to.replace(" ", "T") + "Z"),
+            ]);
+            // Iterate real local day boundaries (calendar arithmetic) so
+            // DST-shortened/lengthened days stay aligned.
+            for (let d0 = t0, guard = 0; d0 < t1 && guard++ < 5000;) {
+                const dd = new Date(d0);
+                const d1 = Math.min(
+                    new Date(dd.getFullYear(), dd.getMonth(), dd.getDate() + 1).getTime(),
+                    t1,
+                );
+                // Calendar-tz date at local noon — avoids midnight edge cases.
+                const cday = tzDayAt(cal.tz, d0 + DAY_MS / 2);
+                // Two-week calendars alternate attendances by week parity
+                // (ISO-week parity approximates Odoo's week_type rhythm).
+                const parity = cal.twoWeeks ? isoWeek(new Date(d0)) % 2 : null;
+                let ints = cal.attendances
+                    .filter((a) => a.weekday === cday.wd
+                        && (parity === null || a.weekType === "" || Number(a.weekType) === parity))
+                    .map((a) => [
+                        tzWallToMs(cal.tz, cday.y, cday.m, cday.d, a.from),
+                        tzWallToMs(cal.tz, cday.y, cday.m, cday.d, a.to),
+                    ])
+                    .map(([a, b]) => [Math.max(a, d0), Math.min(b, d1)])
+                    .filter(([a, b]) => b > a)
+                    .sort((x, y) => x[0] - y[0]);
+                // Subtract calendar/global leaves from the day's intervals.
+                for (const [lf, lt] of leaves) {
+                    if (lt <= d0 || lf >= d1) {
+                        continue;
+                    }
+                    ints = ints.flatMap(([a, b]) => {
+                        if (lt <= a || lf >= b) {
+                            return [[a, b]];
+                        }
+                        const out = [];
+                        if (lf > a) {
+                            out.push([a, lf]);
+                        }
+                        if (lt < b) {
+                            out.push([lt, b]);
+                        }
+                        return out;
+                    });
+                }
+                // Merge overlapping/adjacent intervals.
+                const merged = [];
+                for (const [a, b] of ints) {
+                    const last = merged[merged.length - 1];
+                    if (last && a <= last[1]) {
+                        last[1] = Math.max(last[1], b);
+                    } else {
+                        merged.push([a, b]);
+                    }
+                }
+                if (!merged.length) {
+                    segs.push({ t0: d0, t1: d1, kind: "off" });
+                    continue;
+                }
+                let cur = d0;
+                for (const [a, b] of merged) {
+                    if (a > cur) {
+                        segs.push({ t0: cur, t1: a, kind: "gap" });
+                    }
+                    segs.push({ t0: a, t1: b, kind: "work" });
+                    cur = b;
+                }
+                if (cur < d1) {
+                    segs.push({ t0: cur, t1: d1, kind: "gap" });
+                }
+                d0 = d1;
+            }
+        }
+        // Assign pixels — compressed rates keep a minimum sliver so off
+        // regions stay visible at every zoom level.
+        const rate = this.state.pxPerDay / DAY_MS;
+        const gapMin = Math.min(3, this.state.pxPerDay * 0.07);
+        const offMin = Math.min(4, this.state.pxPerDay * 0.5);
+        let px = 0;
+        for (const seg of segs) {
+            const factor = seg.kind === "work" ? 1 : seg.kind === "gap" ? GAP_RATE : OFF_RATE;
+            const min = seg.kind === "gap" ? gapMin : seg.kind === "off" ? offMin : 0;
+            const w = Math.max((seg.t1 - seg.t0) * rate * factor, min);
+            seg.px0 = px;
+            px += w;
+            seg.px1 = px;
+            seg.rate = w / (seg.t1 - seg.t0);
+        }
+        return { segs, width: px, t0, t1 };
+    }
+
+    // Central datetime→px mapping — every renderer (bars, arrows, today
+    // marker, columns, tails) goes through this so they always agree.
+    timeToX(ms) {
+        const { segs } = this.timeMap;
+        if (!segs.length) {
+            return 0;
+        }
+        if (ms <= segs[0].t0) {
+            return segs[0].px0 + (ms - segs[0].t0) * segs[0].rate;
+        }
+        let lo = 0, hi = segs.length - 1;
+        while (lo < hi) {
+            const mid = (lo + hi + 1) >> 1;
+            if (segs[mid].t0 <= ms) {
+                lo = mid;
+            } else {
+                hi = mid - 1;
+            }
+        }
+        const seg = segs[lo];
+        return seg.px0 + (ms - seg.t0) * seg.rate;
+    }
+
+    // Inverse mapping — drags, resizes and zoom anchors land on real
+    // datetimes even inside compressed regions.
+    xToTime(px) {
+        const { segs } = this.timeMap;
+        if (!segs.length) {
+            return 0;
+        }
+        if (px <= 0) {
+            return segs[0].t0 + px / segs[0].rate;
+        }
+        let lo = 0, hi = segs.length - 1;
+        while (lo < hi) {
+            const mid = (lo + hi + 1) >> 1;
+            if (segs[mid].px0 <= px) {
+                lo = mid;
+            } else {
+                hi = mid - 1;
+            }
+        }
+        const seg = segs[lo];
+        return seg.t0 + (px - seg.px0) / seg.rate;
+    }
+
+    // Compressed non-working regions painted behind the rows — light for
+    // intra-day gaps, darker for full off days.
+    get offRegions() {
+        const out = [];
+        for (const seg of this.timeMap.segs) {
+            if (seg.kind === "work") {
+                continue;
+            }
+            const w = seg.px1 - seg.px0;
+            if (w < 0.4) {
+                continue;
+            }
+            out.push({ left: seg.px0, width: w, kind: seg.kind });
+        }
+        return out;
+    }
+
+    // Segment kind at an instant — used to dim off-day column headers.
+    _segKindAt(ms) {
+        const { segs } = this.timeMap;
+        let lo = 0, hi = segs.length - 1;
+        while (lo < hi) {
+            const mid = (lo + hi + 1) >> 1;
+            if (segs[mid].t0 <= ms) {
+                lo = mid;
+            } else {
+                hi = mid - 1;
+            }
+        }
+        return segs[lo].kind;
     }
 
     get taskById() {
@@ -785,17 +1032,23 @@ export class PlannerWorkspace extends Component {
             range.start.getTime(),
             range.end.getTime(),
             this.state.pxPerDay,
+            this.state.calendar?.id || 0,
         ].join("|");
         if (this._colsKey === key) {
             return this._colsCache;
         }
         const cols = [];
         if (this.state.scale === "day") {
-            // One hour cell per column across every day in the range.
-            const hourWidth = this.state.pxPerDay / 24;
+            // One hour cell per column across every day in the range —
+            // widths come from the folded map so off-hours compress.
             for (let t = range.start.getTime(); t < range.end.getTime(); t += DAY_MS) {
                 for (let h = 0; h < 24; h++) {
-                    cols.push({ label: pad2(h), width: hourWidth });
+                    const c0 = t + h * 3600000;
+                    cols.push({
+                        label: pad2(h),
+                        width: this.timeToX(c0 + 3600000) - this.timeToX(c0),
+                        off: this._segKindAt(c0) !== "work",
+                    });
                 }
             }
         } else {
@@ -806,7 +1059,8 @@ export class PlannerWorkspace extends Component {
                     label: this.state.scale === "month"
                         ? pad2(d.getDate())
                         : `${fmt.weekdayShort.format(d)} ${pad2(d.getDate())}`,
-                    width: this.state.pxPerDay,
+                    width: this.timeToX(t + DAY_MS) - this.timeToX(t),
+                    off: this._segKindAt(t + DAY_MS / 2) === "off",
                 });
             }
         }
@@ -825,13 +1079,13 @@ export class PlannerWorkspace extends Component {
             range.start.getTime(),
             range.end.getTime(),
             this.state.pxPerDay,
+            this.state.calendar?.id || 0,
         ].join("|");
         if (this._groupsKey === key) {
             return this._groupsCache;
         }
         const fmt = getCalendarFormats();
         const groups = [];
-        const ppd = this.state.pxPerDay;
         let t = range.start.getTime();
         while (t < range.end.getTime()) {
             const d = new Date(t);
@@ -850,7 +1104,7 @@ export class PlannerWorkspace extends Component {
             const clipped = Math.min(next, range.end.getTime());
             groups.push({
                 label,
-                width: Math.max(dayDiff(d, new Date(clipped)) * ppd, ppd),
+                width: Math.max(this.timeToX(clipped) - this.timeToX(t), 0.5),
             });
             t = clipped;
         }
@@ -860,22 +1114,16 @@ export class PlannerWorkspace extends Component {
     }
 
     get timelineWidth() {
-        return Math.max(dayDiff(this.origin, this.plannerRange.end) * this.state.pxPerDay, 1);
+        return Math.max(this.timeMap.width, 1);
     }
 
     get todayLeft() {
         const range = this.plannerRange;
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        if (today < range.start || today >= range.end) {
+        const now = new Date();
+        if (now.getTime() < range.start.getTime() || now.getTime() >= range.end.getTime()) {
             return -9999;
         }
-        const dayPx = dayDiff(range.start, today) * this.state.pxPerDay;
-        if (this.state.scale === "day") {
-            const now = new Date();
-            return dayPx + ((now.getHours() + now.getMinutes() / 60) / 24) * this.state.pxPerDay;
-        }
-        return dayPx;
+        return this.timeToX(now.getTime());
     }
 
     spanGeometry(startStr, stopStr, dtStart, dtStop) {
@@ -890,26 +1138,25 @@ export class PlannerWorkspace extends Component {
         if (stop < range.start || start >= range.end) {
             return false;
         }
-        const ppd = this.state.pxPerDay;
+        let startMs, stopMs;
         if (this.state.scale === "day") {
-            // Hour precision across the continuous range: real stored
-            // times when the payload carries them, otherwise the
-            // 09:00–18:00 convention (same as the resource timelines).
-            const originMs = range.start.getTime();
-            const startMs = dtStart
+            // Hour precision across the folded range: real stored times
+            // when the payload carries them, otherwise the 09:00–18:00
+            // convention (same as the resource timelines).
+            startMs = dtStart
                 ? parseDt(dtStart).getTime()
                 : start.getTime() + 9 * 3600000;
-            const stopMs = dtStop
+            stopMs = dtStop
                 ? parseDt(dtStop).getTime()
                 : stop.getTime() + 18 * 3600000;
-            const left = Math.max((startMs - originMs) / DAY_MS * ppd, 0);
-            const right = Math.min((stopMs - originMs) / DAY_MS * ppd, this.timelineWidth);
-            return { left, width: Math.max(right - left, 1) };
+        } else {
+            // Day precision: start at the day's start, end inclusive.
+            startMs = start.getTime();
+            stopMs = stop.getTime() + DAY_MS;
         }
-        return {
-            left: dayDiff(range.start, start) * ppd,
-            width: Math.max(dayDiff(start, stop) + 1, 1) * ppd,
-        };
+        const left = Math.max(this.timeToX(startMs), 0);
+        const right = Math.min(this.timeToX(stopMs), this.timelineWidth);
+        return { left, width: Math.max(right - left, 1) };
     }
 
     // Overdue = planned finish before today (calendar-day granularity,
@@ -1043,9 +1290,9 @@ export class PlannerWorkspace extends Component {
         if (extra <= 0) {
             return false;
         }
-        const ppd = this.state.pxPerDay;
-        const left = (dayDiff(this.origin, parseDay(task.baseline_stop)) + 1) * ppd;
-        return { left, width: Math.max(extra * ppd, 1) };
+        const left = this.timeToX(parseDay(task.baseline_stop).getTime() + DAY_MS);
+        const right = this.timeToX(parseDay(dates.stop).getTime() + DAY_MS);
+        return { left, width: Math.max(right - left, 1) };
     }
 
     varianceStyle(task) {
@@ -1080,7 +1327,6 @@ export class PlannerWorkspace extends Component {
         if (!task.date_done || !task.date_start || !task.date_stop) {
             return false;
         }
-        const ppd = this.state.pxPerDay;
         const dates = this.currentDates(task);
         const stop = parseDay(dates.stop);
         const done = parseDay(task.date_done);
@@ -1088,23 +1334,24 @@ export class PlannerWorkspace extends Component {
         if (!diff) {
             return false;
         }
+        const stopEndMs = stop.getTime() + DAY_MS;
         let tail;
         if (diff > 0) {
             // Late tail starts at the bar's right edge (stop day included).
-            const left = (dayDiff(this.origin, stop) + 1) * ppd;
-            const width = diff * ppd;
-            if (left >= this.timelineWidth || left + width <= 0) {
+            const left = this.timeToX(stopEndMs);
+            const right = this.timeToX(done.getTime() + DAY_MS);
+            if (left >= this.timelineWidth || right <= 0) {
                 return false;
             }
-            tail = { left, width: Math.max(width, 1.5), kind: "late" };
+            tail = { left, width: Math.max(right - left, 1.5), kind: "late" };
         } else {
             // Early tail sits inside the bar: actual close day → finish day.
-            const left = dayDiff(this.origin, done) * ppd;
-            const width = (dayDiff(done, stop) + 1) * ppd;
-            if (left >= this.timelineWidth || left + width <= 0) {
+            const left = this.timeToX(done.getTime());
+            const right = this.timeToX(stopEndMs);
+            if (left >= this.timelineWidth || right <= 0) {
                 return false;
             }
-            tail = { left, width: Math.max(width, 1.5), kind: "early" };
+            tail = { left, width: Math.max(right - left, 1.5), kind: "early" };
         }
         // Flag (BRD v2 §5-6): the "+Ng/-Ng" pill sits BELOW the bar at the
         // tail tip so it can never cover CP/lag/bar-info labels. It flips
@@ -1382,8 +1629,7 @@ export class PlannerWorkspace extends Component {
         const pending = this._pendingZoomAnchor;
         const centerPx = el.scrollLeft + el.clientWidth / 2;
         this._pendingZoomAnchor = {
-            ms: pending ? pending.ms
-                : this.origin.getTime() + (centerPx / this.state.pxPerDay) * DAY_MS,
+            ms: pending ? pending.ms : this.xToTime(centerPx),
             frac: pending ? pending.frac : 0.5,
         };
         this.state.pxPerDay = this.zoomDensity(scale);
@@ -1413,9 +1659,11 @@ export class PlannerWorkspace extends Component {
         if (!el || !isFinite(startMs) || !isFinite(stopMs)) {
             return;
         }
-        const spanDays = Math.max((stopMs - startMs) / DAY_MS, 1);
+        // All segment rates scale linearly with pxPerDay, so the required
+        // density is proportional to the current mapped span width.
+        const spanPx = Math.max(this.timeToX(stopMs) - this.timeToX(startMs), 1);
         const base = this._zoomBase[this.state.scale] || this.state.pxPerDay;
-        const target = Math.max(el.clientWidth - 80, 200) / spanDays;
+        const target = this.state.pxPerDay * Math.max(el.clientWidth - 80, 200) / spanPx;
         const level = Math.min(Math.max(
             Math.round(Math.log(target / base) / Math.log(ZOOM_FACTOR)),
             ZOOM_MIN,
@@ -1424,8 +1672,7 @@ export class PlannerWorkspace extends Component {
         const ppd = this.zoomDensity(this.state.scale);
         if (ppd === this.state.pxPerDay) {
             // No re-render — nothing will consume a pending anchor.
-            const px = (startMs - this.origin.getTime()) / DAY_MS * ppd;
-            el.scrollLeft = Math.max(px - 0.05 * el.clientWidth, 0);
+            el.scrollLeft = Math.max(this.timeToX(startMs) - 0.05 * el.clientWidth, 0);
         } else {
             this._pendingZoomAnchor = { ms: startMs, frac: 0.05 };
             this.state.pxPerDay = ppd;
@@ -1437,10 +1684,7 @@ export class PlannerWorkspace extends Component {
         if (!el || !date) {
             return;
         }
-        let px = dayDiff(this.origin, date) * this.state.pxPerDay;
-        if (this.state.scale === "day") {
-            px += ((date.getHours() + date.getMinutes() / 60) / 24) * this.state.pxPerDay;
-        }
+        const px = this.timeToX(date.getTime());
         const target = Math.max(px - 40, 0);
         el.scrollLeft = target;
         // The timeline widens asynchronously (state → patch). If the
@@ -1482,9 +1726,11 @@ export class PlannerWorkspace extends Component {
             return;
         }
         // Prepending shifts all content right — the patch compensates the
-        // scroll position so the view does not jump (see onPatched).
+        // scroll position so the view does not jump (see onPatched). The
+        // prepended width comes from the folded map, already rebuilt on
+        // the new range.
         this._leftExtendPx = (this._leftExtendPx || 0)
-            + dayDiff(this.state.rangeStart, oldStart) * this.state.pxPerDay;
+            + this.timeToX(oldStart.getTime());
     }
 
     toggleCollapse(task, ev) {
@@ -2493,14 +2739,19 @@ export class PlannerWorkspace extends Component {
         const task = dragging.task;
         const rowIdx = this.rowIndexById.get(task.id) ?? 0;
         if (this.state.scale === "day" && !this.isDayPrecision) {
-            // Day scale drags at hour precision — one column = one hour.
-            const deltaH = Math.round(dx / (this.state.pxPerDay / 24));
+            // Day scale drags at hour precision — the px delta converts
+            // through the folded map so compressed off-time doesn't shift
+            // the landed datetime.
             const baseStart = task.dt_start
                 ? parseDt(task.dt_start)
                 : new Date(parseDay(task.date_start).getTime() + 9 * 3600000);
             const baseStop = task.dt_stop
                 ? parseDt(task.dt_stop)
                 : new Date(parseDay(task.date_stop).getTime() + 18 * 3600000);
+            const x0 = this.timeToX(baseStart.getTime());
+            const deltaH = Math.round(
+                (this.xToTime(x0 + dx) - baseStart.getTime()) / 3600000,
+            );
             let startDt = baseStart;
             let stopDt = baseStop;
             if (dragging.mode === "move") {
@@ -2527,19 +2778,29 @@ export class PlannerWorkspace extends Component {
             };
             return;
         }
-        const delta = Math.round(dx / this.state.pxPerDay);
+        // Day-quantized drag/resize — each edge converts px→datetime
+        // through the folded map, then snaps to the containing day.
+        const startMs0 = parseDay(task.date_start).getTime();
+        const stopMs0 = parseDay(task.date_stop).getTime();
         let start = parseDay(task.date_start);
         let stop = parseDay(task.date_stop);
         if (dragging.mode === "move") {
+            const delta = dayDiff(
+                start,
+                new Date(startOfDayMs(this.xToTime(this.timeToX(startMs0) + dx))),
+            );
             start = addDays(start, delta);
             stop = addDays(stop, delta);
         } else if (dragging.mode === "left") {
-            start = addDays(start, delta);
+            start = new Date(startOfDayMs(this.xToTime(this.timeToX(startMs0) + dx)));
             if (start > stop) {
                 start = stop;
             }
         } else {
-            stop = addDays(stop, delta);
+            // The right edge is the start of the day after stop.
+            stop = new Date(
+                startOfDayMs(this.xToTime(this.timeToX(stopMs0 + DAY_MS) + dx) - 1),
+            );
             if (stop < start) {
                 stop = start;
             }

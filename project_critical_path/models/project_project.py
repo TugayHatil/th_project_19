@@ -67,7 +67,7 @@ class ProjectProject(models.Model):
     def write(self, vals):
         # Planner configuration is planner data too — non-members get a
         # read-only planner including its project-level settings.
-        if {"planning_precision"}.intersection(vals):
+        if {"planning_precision", "resource_calendar_id"}.intersection(vals):
             check_planner_manager(self.env)
         return super().write(vals)
 

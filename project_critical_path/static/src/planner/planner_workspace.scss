@@ -579,6 +579,35 @@ $o_cp_planner_bar_critical: #e8a33d;
     position: relative;
 }
 
+// Folded working-calendar background — compressed non-working bands sit
+// behind the rows/bars. Two tones per BRD: light for intra-day gaps
+// (nights, lunch), darker for full non-working days (weekends/leaves).
+.o_cp_planner_offlayer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.o_cp_planner_off {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+
+    &.gap {
+        background: #f0f1f4;
+    }
+
+    &.off {
+        background: #e3e4ea;
+    }
+}
+
+// Off-day header cells read as non-working too.
+.o_cp_planner_gantt_col.off {
+    background: #e9eaef;
+    color: #adb5bd;
+}
+
 // Finish-to-Start dependency overlay — drawn above the bars, never
 // intercepts clicks, thin enough not to hide bar content.
 .o_cp_planner_deps {

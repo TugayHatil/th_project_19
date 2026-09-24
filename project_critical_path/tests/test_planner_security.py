@@ -171,10 +171,15 @@ class TestPlannerManagerSecurity(TransactionCase):
         self.assertFalse(bare.exists())
 
     def test_viewer_cannot_change_planner_settings(self):
-        """planning_precision is planner configuration — gated too."""
+        """planning_precision and the working calendar are planner
+        configuration — gated too."""
         with self.assertRaises(AccessError):
             self.project.with_user(self.viewer_user).write(
                 {"planning_precision": "day"}
+            )
+        with self.assertRaises(AccessError):
+            self.project.with_user(self.viewer_user).write(
+                {"resource_calendar_id": self.env.company.resource_calendar_id.id}
             )
 
     # -- members keep everything -----------------------------------------------
