@@ -205,9 +205,10 @@ export class PlannerWorkspace extends Component {
             // WBS quick-create: the new child row enters inline rename mode
             // (Enter saves the name, Escape removes the just-created task).
             renamingId: null,
-            // Multi-assignee dropdown in the Inspector (same m2m semantics
-            // as the task form's Assignees field).
+            // Multi-assignee tag picker in the Inspector (same m2m semantics
+            // as the task form's Assignees field — chips + type-ahead).
             assigneeOpen: false,
+            assigneeQuery: "",
             renameValue: "",
             // WBS drag reorder — ordering only, hierarchy never changes.
             wbsDragId: null,
@@ -1513,6 +1514,7 @@ export class PlannerWorkspace extends Component {
             this.state.options = detail.options;
             this.state.depOpen = false;
             this.state.assigneeOpen = false;
+            this.state.assigneeQuery = "";
             this.state.draftParentId = null;
             const t = detail.task;
             this.state.form = {
@@ -1552,21 +1554,27 @@ export class PlannerWorkspace extends Component {
         this.state.inspectorOpen = false;
         this.state.draftParentId = null;
         this.state.assigneeOpen = false;
+        this.state.assigneeQuery = "";
     }
 
-    // Inspector multi-assignee — mirrors the task form's Assignees m2m.
-    get assigneeLabel() {
+    // Inspector multi-assignee — tag picker mirroring the task form's
+    // Assignees m2m: selected users render as chips, typing filters the
+    // remaining candidates, Enter picks the first match.
+    get assigneeTags() {
         const ids = this.state.form?.user_ids || [];
-        if (!ids.length) {
-            return "—";
-        }
-        const names = (this.state.options?.users || [])
-            .filter((u) => ids.includes(u.id))
-            .map((u) => u.name);
-        return names.join(", ") || "—";
+        return (this.state.options?.users || []).filter((u) => ids.includes(u.id));
     }
 
-    toggleAssignee(uid) {
+    get assigneeCandidates() {
+        const ids = this.state.form?.user_ids || [];
+        const query = (this.state.assigneeQuery || "").toLowerCase().trim();
+        return (this.state.options?.users || []).filter(
+            (u) => !ids.includes(u.id)
+                && (!query || (u.name || "").toLowerCase().includes(query))
+        );
+    }
+
+    addAssignee(uid) {
         if (!this._guardEdit()) {
             return;
         }
@@ -1575,11 +1583,39 @@ export class PlannerWorkspace extends Component {
             return;
         }
         const ids = form.user_ids || (form.user_ids = []);
-        const index = ids.indexOf(uid);
+        if (!ids.includes(uid)) {
+            ids.push(uid);
+        }
+        this.state.assigneeQuery = "";
+        this.state.assigneeOpen = true;
+    }
+
+    removeAssignee(uid) {
+        if (!this._guardEdit()) {
+            return;
+        }
+        const ids = this.state.form?.user_ids;
+        const index = ids ? ids.indexOf(uid) : -1;
         if (index >= 0) {
             ids.splice(index, 1);
-        } else {
-            ids.push(uid);
+        }
+    }
+
+    onAssigneeKeydown(ev) {
+        if (ev.key === "Enter") {
+            ev.preventDefault();
+            const first = this.assigneeCandidates[0];
+            if (first) {
+                this.addAssignee(first.id);
+            }
+        } else if (
+            ev.key === "Backspace"
+            && !this.state.assigneeQuery
+            && this.state.form?.user_ids?.length
+        ) {
+            // Same ergonomics as many2many_tags: Backspace on an empty
+            // input pops the last chip.
+            this.state.form.user_ids.pop();
         }
     }
 

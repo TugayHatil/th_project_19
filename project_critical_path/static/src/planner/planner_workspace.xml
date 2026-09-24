@@ -481,25 +481,35 @@
                                 </div>
                                 <div class="d-flex align-items-center gap-2">
                                     <label class="o_cp_planner_inspector_label">Assignees</label>
-                                    <!-- Multi-assignee — checkbox dropdown,
-                                         same m2m semantics as the task form. -->
+                                    <!-- Multi-assignee tag picker — same
+                                         many2many_tags semantics as the
+                                         task form: chips + type-ahead. -->
                                     <div class="o_cp_planner_assignee position-relative flex-grow-1">
-                                        <button type="button"
-                                                class="form-control form-control-sm text-start d-flex align-items-center gap-1"
-                                                t-att-disabled="!state.canEdit"
-                                                t-on-click="() => state.assigneeOpen = !state.assigneeOpen">
-                                            <span class="text-truncate" t-esc="assigneeLabel"/>
-                                            <i t-if="state.canEdit" class="fa fa-caret-down ms-auto"/>
-                                        </button>
+                                        <div class="o_cp_planner_tags form-control form-control-sm d-flex flex-wrap align-items-center gap-1">
+                                            <span t-foreach="assigneeTags" t-as="tag" t-key="tag.id"
+                                                  class="o_cp_planner_tag">
+                                                <t t-esc="tag.name"/>
+                                                <i t-if="state.canEdit" class="fa fa-times o_cp_planner_tag_x"
+                                                   role="button" title="Remove"
+                                                   t-on-click="(ev) => { ev.stopPropagation(); this.removeAssignee(tag.id); }"/>
+                                            </span>
+                                            <input t-if="state.canEdit" type="text"
+                                                   class="o_cp_planner_tag_input"
+                                                   placeholder="Add assignee…"
+                                                   t-att-value="state.assigneeQuery"
+                                                   t-on-input="(ev) => { state.assigneeQuery = ev.target.value; state.assigneeOpen = true; }"
+                                                   t-on-focus="() => state.assigneeOpen = true"
+                                                   t-on-keydown="onAssigneeKeydown"/>
+                                        </div>
                                         <div t-if="state.assigneeOpen &amp;&amp; state.canEdit"
-                                             class="o_cp_planner_colmenu_pop o_cp_planner_assignee_pop border rounded shadow-sm bg-white p-2">
-                                            <label t-foreach="state.options.users" t-as="user" t-key="user.id"
-                                                   class="d-flex align-items-center gap-2 small mb-1">
-                                                <input type="checkbox"
-                                                       t-att-checked="state.form?.user_ids.includes(user.id)"
-                                                       t-on-change="() => this.toggleAssignee(user.id)"/>
-                                                <t t-esc="user.name"/>
-                                            </label>
+                                             class="o_cp_planner_colmenu_pop o_cp_planner_assignee_pop border rounded shadow-sm bg-white p-1">
+                                            <div t-foreach="assigneeCandidates" t-as="user" t-key="user.id"
+                                                 class="o_cp_planner_assignee_opt small px-2 py-1"
+                                                 role="button"
+                                                 t-on-click="() => this.addAssignee(user.id)"
+                                                 t-esc="user.name"/>
+                                            <div t-if="!assigneeCandidates.length"
+                                                 class="text-muted small fst-italic px-2 py-1">No matches</div>
                                         </div>
                                     </div>
                                 </div>

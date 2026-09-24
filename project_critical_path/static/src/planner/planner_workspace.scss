@@ -143,8 +143,48 @@ $o_cp_planner_bar_critical: #e8a33d;
     white-space: nowrap;
 }
 
-// Inspector multi-assignee dropdown — left-aligned, full width of the
-// field, scrollable when the user list is long.
+// Inspector multi-assignee — many2many_tags-style chip container.
+.o_cp_planner_tags {
+    min-height: 30px;
+    height: auto;
+    padding: 2px 6px;
+}
+
+.o_cp_planner_tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #e7e9f2;
+    color: #3f3f46;
+    border-radius: 3px;
+    padding: 1px 6px;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+.o_cp_planner_tag_x {
+    cursor: pointer;
+    font-size: 0.65rem;
+    opacity: 0.6;
+
+    &:hover {
+        opacity: 1;
+        color: #b91c1c;
+    }
+}
+
+.o_cp_planner_tag_input {
+    border: 0;
+    outline: none;
+    box-shadow: none;
+    flex: 1 1 60px;
+    min-width: 60px;
+    font-size: 0.8rem;
+    padding: 1px 2px;
+}
+
+// Type-ahead dropdown — left-aligned, full width of the field.
 .o_cp_planner_assignee_pop {
     right: auto;
     left: 0;
@@ -152,6 +192,15 @@ $o_cp_planner_bar_critical: #e8a33d;
     max-height: 240px;
     overflow-y: auto;
     white-space: normal;
+}
+
+.o_cp_planner_assignee_opt {
+    cursor: pointer;
+    border-radius: 3px;
+
+    &:hover {
+        background: #f0f1f5;
+    }
 }
 
 // Standard Filters & Group By (BRD) — the filters popover is wider and
