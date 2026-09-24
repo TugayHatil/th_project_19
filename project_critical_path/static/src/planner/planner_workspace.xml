@@ -42,15 +42,13 @@
                     <div class="btn-group btn-group-sm ms-3">
                         <button type="button" class="btn btn-outline-secondary"
                                 t-on-click="() => this.plannerNavigate(-1)">‹</button>
-                        <button type="button" class="btn btn-outline-secondary"
-                                t-on-click="goToday">Today</button>
+                        <input type="date" class="form-control form-control-sm"
+                               style="width: 140px"
+                               t-att-value="plannerPickerValue"
+                               t-on-change="onPlannerDatePick"/>
                         <button type="button" class="btn btn-outline-secondary"
                                 t-on-click="() => this.plannerNavigate(1)">›</button>
                     </div>
-                    <input type="date" class="form-control form-control-sm ms-2"
-                           style="width: 140px"
-                           t-att-value="plannerPickerValue"
-                           t-on-change="onPlannerDatePick"/>
                     <div class="btn-group btn-group-sm ms-2">
                         <button type="button" class="btn btn-outline-secondary"
                                 title="Zoom Out" t-att-disabled="zoomOutDisabled"
