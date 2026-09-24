@@ -4,10 +4,10 @@
         <div class="o_cp_planner_workspace d-flex flex-column h-100">
             <div class="o_cp_planner_toolbar d-flex align-items-center gap-2 px-3 py-2 border-bottom">
                 <button t-if="state.projectId" type="button"
-                        class="btn btn-sm btn-outline-secondary"
-                        title="Back to Project"
+                        class="btn btn-sm btn-outline-secondary o_cp_planner_iconbtn"
+                        title="Back to Project" aria-label="Back to Project"
                         t-on-click="openProjectForm">
-                    <i class="fa fa-arrow-left me-1"/><span>Project</span>
+                    <i class="fa fa-arrow-left"/>
                 </button>
                 <div class="btn-group">
                     <button type="button" class="btn btn-sm"
