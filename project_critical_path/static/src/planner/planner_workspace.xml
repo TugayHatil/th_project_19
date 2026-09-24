@@ -80,10 +80,6 @@
                                     t-esc="scales[scale].label"/>
                         </t>
                     </div>
-                    <button type="button" class="btn btn-sm o_cp_planner_iconbtn"
-                            t-att-class="state.historyOpen ? 'btn-primary' : 'btn-outline-secondary'"
-                            title="Baseline History" aria-label="Baseline History"
-                            t-on-click="toggleHistory"><i class="fa fa-history"/></button>
                 <!-- Standard Filters & Group By (BRD) — Odoo-style
                      dropdowns. Filters build a project.task domain; Group
                      By only re-arranges rendered rows. Neither writes data. -->
@@ -184,6 +180,17 @@
                         </div>
                     </div>
                 </div>
+                    <div class="input-group input-group-sm ms-auto o_cp_planner_search">
+                        <span class="input-group-text"><i class="fa fa-search"/></span>
+                        <input type="text" class="form-control"
+                               placeholder="Search tasks…"
+                               title="Type a task name or WBS code and press Enter"
+                               t-on-keydown="onTaskSearch"/>
+                    </div>
+                    <button type="button" class="btn btn-sm o_cp_planner_iconbtn ms-2"
+                            t-att-class="state.historyOpen ? 'btn-primary' : 'btn-outline-secondary'"
+                            title="Baseline History" aria-label="Baseline History"
+                            t-on-click="toggleHistory"><i class="fa fa-history"/></button>
                 <div class="o_cp_planner_colmenu position-relative">
                     <button type="button" class="btn btn-sm o_cp_planner_iconbtn"
                             t-att-class="state.colMenuOpen || state.showStartCol || state.showFinishCol ? 'btn-primary' : 'btn-outline-secondary'"
@@ -210,13 +217,6 @@
                             t-on-click="() => state.barInfoOpen = !state.barInfoOpen">
                         <i class="fa fa-list-alt"/>
                     </button>
-                    <div class="input-group input-group-sm ms-auto o_cp_planner_search">
-                        <span class="input-group-text"><i class="fa fa-search"/></span>
-                        <input type="text" class="form-control"
-                               placeholder="Search tasks…"
-                               title="Type a task name or WBS code and press Enter"
-                               t-on-keydown="onTaskSearch"/>
-                    </div>
                 </t>
             </div>
             <div t-if="!state.boardMode" class="o_cp_planner_body d-flex flex-grow-1 overflow-hidden">
