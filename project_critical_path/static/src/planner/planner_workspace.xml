@@ -43,7 +43,7 @@
                         <button type="button" class="btn btn-outline-secondary"
                                 t-on-click="() => this.plannerNavigate(-1)">‹</button>
                         <input type="date" class="form-control form-control-sm"
-                               style="width: 140px"
+                               style="width: 110px"
                                t-att-value="plannerPickerValue"
                                t-on-change="onPlannerDatePick"/>
                         <button type="button" class="btn btn-outline-secondary"
