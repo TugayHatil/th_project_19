@@ -143,6 +143,17 @@ $o_cp_planner_bar_critical: #e8a33d;
     white-space: nowrap;
 }
 
+// Inspector multi-assignee dropdown — left-aligned, full width of the
+// field, scrollable when the user list is long.
+.o_cp_planner_assignee_pop {
+    right: auto;
+    left: 0;
+    width: 100%;
+    max-height: 240px;
+    overflow-y: auto;
+    white-space: normal;
+}
+
 // Standard Filters & Group By (BRD) — the filters popover is wider and
 // left-aligned so the field selects stay readable; group rows occupy a
 // full-height row in BOTH panels so WBS list and timeline stay aligned.

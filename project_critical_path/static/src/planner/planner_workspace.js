@@ -205,6 +205,9 @@ export class PlannerWorkspace extends Component {
             // WBS quick-create: the new child row enters inline rename mode
             // (Enter saves the name, Escape removes the just-created task).
             renamingId: null,
+            // Multi-assignee dropdown in the Inspector (same m2m semantics
+            // as the task form's Assignees field).
+            assigneeOpen: false,
             renameValue: "",
             // WBS drag reorder — ordering only, hierarchy never changes.
             wbsDragId: null,
@@ -308,6 +311,9 @@ export class PlannerWorkspace extends Component {
             }
             if (this.state.groupByOpen && !ev.target.closest(".o_cp_planner_groupbymenu")) {
                 this.state.groupByOpen = false;
+            }
+            if (this.state.assigneeOpen && !ev.target.closest(".o_cp_planner_assignee")) {
+                this.state.assigneeOpen = false;
             }
         });
         // The gantt scroll element unmounts while the Resource Board is
@@ -1506,6 +1512,7 @@ export class PlannerWorkspace extends Component {
             this.state.impact = detail.impact;
             this.state.options = detail.options;
             this.state.depOpen = false;
+            this.state.assigneeOpen = false;
             this.state.draftParentId = null;
             const t = detail.task;
             this.state.form = {
@@ -1526,7 +1533,8 @@ export class PlannerWorkspace extends Component {
                 // the Start/Finish window stays a separate, explicit input.
                 allocated_hours: t.allocated_hours,
                 progress: t.progress,
-                user_id: (t.user_ids && t.user_ids[0]) || false,
+                // Multi-assignee — same m2m semantics as the task form.
+                user_ids: [...(t.user_ids || [])],
                 depend_on_ids: [...(t.depend_on_ids || [])],
                 dependent_ids: [...(t.dependent_ids || [])],
                 addPredecessorId: "",
@@ -1543,6 +1551,36 @@ export class PlannerWorkspace extends Component {
     closeInspector() {
         this.state.inspectorOpen = false;
         this.state.draftParentId = null;
+        this.state.assigneeOpen = false;
+    }
+
+    // Inspector multi-assignee — mirrors the task form's Assignees m2m.
+    get assigneeLabel() {
+        const ids = this.state.form?.user_ids || [];
+        if (!ids.length) {
+            return "—";
+        }
+        const names = (this.state.options?.users || [])
+            .filter((u) => ids.includes(u.id))
+            .map((u) => u.name);
+        return names.join(", ") || "—";
+    }
+
+    toggleAssignee(uid) {
+        if (!this._guardEdit()) {
+            return;
+        }
+        const form = this.state.form;
+        if (!form) {
+            return;
+        }
+        const ids = form.user_ids || (form.user_ids = []);
+        const index = ids.indexOf(uid);
+        if (index >= 0) {
+            ids.splice(index, 1);
+        } else {
+            ids.push(uid);
+        }
     }
 
     // ---- Baseline vs Current ----------------------------------------------
@@ -1885,7 +1923,7 @@ export class PlannerWorkspace extends Component {
                     // sending the stale hour value would win over it.
                     ...(dayMode ? {} : { allocated_hours: form.allocated_hours }),
                     progress: form.progress || 0,
-                    user_ids: form.user_id ? [form.user_id] : [],
+                    user_ids: form.user_ids || [],
                     depend_on_ids: form.depend_on_ids,
                     dependent_ids: form.dependent_ids,
                 },

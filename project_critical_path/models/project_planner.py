@@ -231,6 +231,17 @@ class ProjectProjectPlanner(models.Model):
                         _serialize_planner_day(self, baseline_by_task[task.id].planned_date_end)
                         if baseline_by_task.get(task.id) else False
                     ),
+                    # Datetime precision — the ghost bar is hidden when the
+                    # current plan still matches the baseline exactly; a
+                    # same-day hour shift must still surface the ghost.
+                    "baseline_dt_start": (
+                        _serialize_planner_dt(self, baseline_by_task[task.id].planned_date_begin)
+                        if baseline_by_task.get(task.id) else False
+                    ),
+                    "baseline_dt_stop": (
+                        _serialize_planner_dt(self, baseline_by_task[task.id].planned_date_end)
+                        if baseline_by_task.get(task.id) else False
+                    ),
                     "resources": resources_by_task.get(
                         task.id, {"human": 0, "equipment": 0, "open": 0, "names": []},
                     ),

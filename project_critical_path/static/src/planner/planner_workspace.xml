@@ -320,7 +320,11 @@
                                      t-att-class="{selected: state.selectedId === row.task.id}"
                                      t-on-click="() => this.onRowClick(row.task)"
                                      t-on-dblclick="() => this.openTask(row.task)">
-                                    <div t-if="row.task.baseline_start &amp;&amp; row.task.baseline_stop"
+                                    <!-- Ghost baseline bar — only when the
+                                         current plan actually differs from
+                                         the snapshot (datetime precision,
+                                         so a same-day hour shift shows too). -->
+                                    <div t-if="row.task.baseline_start &amp;&amp; row.task.baseline_stop &amp;&amp; (row.task.baseline_dt_start !== row.task.dt_start || row.task.baseline_dt_stop !== row.task.dt_stop)"
                                          class="o_cp_planner_baseline_bar"
                                          t-att-style="baselineStyle(row.task)"
                                          t-att-title="baselineTooltip(row.task)"/>
@@ -476,17 +480,28 @@
                                     </t>
                                 </div>
                                 <div class="d-flex align-items-center gap-2">
-                                    <label class="o_cp_planner_inspector_label">Assignee</label>
-                                    <select class="form-select form-select-sm"
-                                            t-att-disabled="!state.canEdit"
-                                            t-on-change="(ev) => state.form.user_id = Number(ev.target.value) || false">
-                                        <option value="">—</option>
-                                        <t t-foreach="state.options.users" t-as="user" t-key="user.id">
-                                            <option t-att-value="user.id"
-                                                    t-att-selected="user.id === state.form?.user_id"
-                                                    t-esc="user.name"/>
-                                        </t>
-                                    </select>
+                                    <label class="o_cp_planner_inspector_label">Assignees</label>
+                                    <!-- Multi-assignee — checkbox dropdown,
+                                         same m2m semantics as the task form. -->
+                                    <div class="o_cp_planner_assignee position-relative flex-grow-1">
+                                        <button type="button"
+                                                class="form-control form-control-sm text-start d-flex align-items-center gap-1"
+                                                t-att-disabled="!state.canEdit"
+                                                t-on-click="() => state.assigneeOpen = !state.assigneeOpen">
+                                            <span class="text-truncate" t-esc="assigneeLabel"/>
+                                            <i t-if="state.canEdit" class="fa fa-caret-down ms-auto"/>
+                                        </button>
+                                        <div t-if="state.assigneeOpen &amp;&amp; state.canEdit"
+                                             class="o_cp_planner_colmenu_pop o_cp_planner_assignee_pop border rounded shadow-sm bg-white p-2">
+                                            <label t-foreach="state.options.users" t-as="user" t-key="user.id"
+                                                   class="d-flex align-items-center gap-2 small mb-1">
+                                                <input type="checkbox"
+                                                       t-att-checked="state.form?.user_ids.includes(user.id)"
+                                                       t-on-change="() => this.toggleAssignee(user.id)"/>
+                                                <t t-esc="user.name"/>
+                                            </label>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <!-- Finish Variance (BRD §10) — only for tasks
