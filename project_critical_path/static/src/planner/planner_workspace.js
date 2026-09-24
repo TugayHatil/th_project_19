@@ -612,11 +612,14 @@ export class PlannerWorkspace extends Component {
                 );
                 // Calendar-tz date at local noon — avoids midnight edge cases.
                 const cday = tzDayAt(cal.tz, d0 + DAY_MS / 2);
+                // Odoo dayofweek is 0=Mon..6=Sun; JS getUTCDay is
+                // 0=Sun..6=Sat — rebase to Odoo's convention.
+                const odooWd = (cday.wd + 6) % 7;
                 // Two-week calendars alternate attendances by week parity
                 // (ISO-week parity approximates Odoo's week_type rhythm).
                 const parity = cal.twoWeeks ? isoWeek(new Date(d0)) % 2 : null;
                 let ints = cal.attendances
-                    .filter((a) => a.weekday === cday.wd
+                    .filter((a) => a.weekday === odooWd
                         && (parity === null || a.weekType === "" || Number(a.weekType) === parity))
                     .map((a) => [
                         tzWallToMs(cal.tz, cday.y, cday.m, cday.d, a.from),
@@ -656,18 +659,18 @@ export class PlannerWorkspace extends Component {
                 }
                 if (!merged.length) {
                     segs.push({ t0: d0, t1: d1, kind: "off" });
-                    continue;
-                }
-                let cur = d0;
-                for (const [a, b] of merged) {
-                    if (a > cur) {
-                        segs.push({ t0: cur, t1: a, kind: "gap" });
+                } else {
+                    let cur = d0;
+                    for (const [a, b] of merged) {
+                        if (a > cur) {
+                            segs.push({ t0: cur, t1: a, kind: "gap" });
+                        }
+                        segs.push({ t0: a, t1: b, kind: "work" });
+                        cur = b;
                     }
-                    segs.push({ t0: a, t1: b, kind: "work" });
-                    cur = b;
-                }
-                if (cur < d1) {
-                    segs.push({ t0: cur, t1: d1, kind: "gap" });
+                    if (cur < d1) {
+                        segs.push({ t0: cur, t1: d1, kind: "gap" });
+                    }
                 }
                 d0 = d1;
             }
