@@ -80,9 +80,10 @@
                                     t-esc="scales[scale].label"/>
                         </t>
                     </div>
-                    <button type="button" class="btn btn-sm"
+                    <button type="button" class="btn btn-sm o_cp_planner_iconbtn"
                             t-att-class="state.historyOpen ? 'btn-primary' : 'btn-outline-secondary'"
-                            t-on-click="toggleHistory">Baseline History</button>
+                            title="Baseline History" aria-label="Baseline History"
+                            t-on-click="toggleHistory"><i class="fa fa-history"/></button>
                 <!-- Standard Filters & Group By (BRD) — Odoo-style
                      dropdowns. Filters build a project.task domain; Group
                      By only re-arranges rendered rows. Neither writes data. -->
@@ -184,10 +185,11 @@
                     </div>
                 </div>
                 <div class="o_cp_planner_colmenu position-relative">
-                    <button type="button" class="btn btn-sm"
-                            t-att-class="state.showStartCol || state.showFinishCol ? 'btn-primary' : 'btn-outline-secondary'"
+                    <button type="button" class="btn btn-sm o_cp_planner_iconbtn"
+                            t-att-class="state.colMenuOpen || state.showStartCol || state.showFinishCol ? 'btn-primary' : 'btn-outline-secondary'"
+                            title="Columns" aria-label="Columns"
                             t-on-click="() => state.colMenuOpen = !state.colMenuOpen">
-                        Columns <i class="fa fa-caret-down"/>
+                        <i class="fa fa-columns"/>
                     </button>
                     <div t-if="state.colMenuOpen" class="o_cp_planner_colmenu_pop border rounded shadow-sm bg-white p-2">
                         <label class="d-flex align-items-center gap-2 small mb-1">
@@ -202,10 +204,11 @@
                         </label>
                     </div>
                 </div>
-                    <button type="button" class="btn btn-sm"
+                    <button type="button" class="btn btn-sm o_cp_planner_iconbtn"
                             t-att-class="state.barInfoOpen ? 'btn-primary' : 'btn-outline-secondary'"
+                            title="Bar Info" aria-label="Bar Info"
                             t-on-click="() => state.barInfoOpen = !state.barInfoOpen">
-                        <i class="fa fa-tags me-1"/>Bar Info
+                        <i class="fa fa-list-alt"/>
                     </button>
                     <div class="input-group input-group-sm ms-auto o_cp_planner_search">
                         <span class="input-group-text"><i class="fa fa-search"/></span>

@@ -133,6 +133,15 @@ $o_cp_planner_bar_critical: #e8a33d;
     }
 }
 
+// Icon-only toolbar buttons (Baseline History / Columns / Bar Info) —
+// uniform ~32px squares matching the sm button height.
+.o_cp_planner_iconbtn {
+    width: 32px;
+    padding-left: 0;
+    padding-right: 0;
+    text-align: center;
+}
+
 // Lightweight visibility dropdown in the toolbar.
 .o_cp_planner_colmenu_pop {
     position: absolute;
