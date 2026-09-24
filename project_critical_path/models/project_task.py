@@ -13,16 +13,17 @@ from .project_planner import check_planner_manager
 # recomputes under a member's request) still work for every user.
 # Workflow fields (stage_id, state, description, tags) stay free —
 # closing a task is a task operation, not a planner edit.
-# WBS code/level/sort_key/work_package and ``progress`` are deliberately
-# NOT here: they are computed/rollup-driven fields whose assignments
-# re-enter write() during recomputes and would break normal task updates
-# for non-members. ``progress`` stays reachable through update_planner_task
-# only — which is gated — so Planner edits are covered regardless.
+# WBS code/level/sort_key/work_package, ``progress`` and ``date_done``
+# are deliberately NOT here: they are computed/rollup-driven fields whose
+# assignments re-enter write() during recomputes (e.g. the date_done
+# stamp/clear on every state transition) and would break normal task
+# updates for non-members. ``date_done`` is readonly anyway; ``progress``
+# stays reachable through the gated update_planner_task.
 PLANNER_GUARDED_FIELDS = frozenset({
     "name", "user_ids", "allocated_hours", "sequence",
     "date_assign", "date_deadline",
     "depend_on_ids", "dependent_ids",
-    "parent_id", "date_done",
+    "parent_id",
 })
 # Creating a task always carries ``name`` — on create only the planner
 # attributes are gated so a bare task can still be created by anyone
@@ -51,9 +52,15 @@ class ProjectTask(models.Model):
     delay_impact_chain = fields.Text(string="Impact Chain", readonly=True)
 
     # Finish Variance (BRD): the actual close timestamp, stamped when the
-    # task moves to the done state and cleared on reopen. Read-only so it
-    # always reflects the real transition, never a manual edit.
-    date_done = fields.Datetime(string="Actual Finish", readonly=True, copy=False)
+    # task moves to the done state and cleared on reopen. Computed+stored
+    # (not write-injected) so EVERY reopen path — stage change, is_closed
+    # inverse, direct state write, RPC — clears it; state is a stored
+    # computed field and its flush-time updates never re-enter write().
+    # An existing explicit value is preserved while the task stays done.
+    date_done = fields.Datetime(
+        string="Actual Finish", readonly=True, copy=False,
+        compute="_compute_date_done", store=True,
+    )
     # Stored so the Planner status filters (Completed Late/Early/On Time)
     # can search it directly as a project.task domain leaf.
     finish_variance_state = fields.Selection(
@@ -67,6 +74,16 @@ class ProjectTask(models.Model):
         store=True,
         readonly=True,
     )
+
+    @api.depends("state")
+    def _compute_date_done(self):
+        now = fields.Datetime.now()
+        for task in self:
+            if task.state == "1_done":
+                if not task.date_done:
+                    task.date_done = now
+            else:
+                task.date_done = False
 
     @api.depends("state", "date_done", "date_deadline")
     def _compute_finish_variance_state(self):
@@ -120,9 +137,6 @@ class ProjectTask(models.Model):
             for vals in vals_list
         ):
             check_planner_manager(self.env)
-        for vals in vals_list:
-            if vals.get("state") == "1_done" and not vals.get("date_done"):
-                vals["date_done"] = fields.Datetime.now()
         tasks = super().create(vals_list)
         tasks.mapped("project_id")._recalculate_critical_paths()
         tasks.mapped("parent_id")._sync_parent_window()
@@ -133,12 +147,6 @@ class ProjectTask(models.Model):
             check_planner_manager(self.env)
         affected_projects = self.mapped("project_id")
         old_parents = self.mapped("parent_id") if "parent_id" in vals else self.env["project.task"]
-        # Stamp the actual close on completion, clear it on reopen —
-        # unless the caller passes an explicit value (tests, migration).
-        if "state" in vals and "date_done" not in vals:
-            vals["date_done"] = (
-                fields.Datetime.now() if vals["state"] == "1_done" else False
-            )
         result = super().write(vals)
         if {"project_id", "parent_id", "allocated_hours", "depend_on_ids", "dependent_ids"}.intersection(vals):
             (affected_projects | self.mapped("project_id"))._recalculate_critical_paths()

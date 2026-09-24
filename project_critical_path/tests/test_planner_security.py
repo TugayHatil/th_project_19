@@ -121,7 +121,8 @@ class TestPlannerManagerSecurity(TransactionCase):
             {"depend_on_ids": [(6, 0, [])]},
             {"dependent_ids": [(6, 0, [])]},
             {"parent_id": False},
-            {"date_done": "2026-10-19 12:00:00"},
+            # date_done is readonly — no UI/RPC surface writes it; the
+            # done/reopen stamp is driven by the state compute.
         ):
             with self.assertRaises(AccessError):
                 task.write(vals)
@@ -145,6 +146,18 @@ class TestPlannerManagerSecurity(TransactionCase):
                 "project_id": self.project.id,
                 "date_assign": "2026-10-20 09:00:00",
             })
+
+    def test_reopen_clears_date_done(self):
+        """Finish Variance: reopening the task — through ANY path — clears
+        the tail. ``date_done`` is computed from ``state`` so a stage-only
+        reopen (no explicit state write) clears it too."""
+        self.task.write({"state": "1_done"})
+        self.assertTrue(self.task.date_done)
+        self.task.write({"state": "01_in_progress"})
+        self.assertFalse(self.task.date_done)
+        # Done again → fresh stamp; explicit historical value is preserved.
+        self.task.write({"state": "1_done"})
+        self.assertTrue(self.task.date_done)
 
     def test_viewer_cannot_unlink_planned_task(self):
         """Deleting a scheduled task deletes planner data — blocked.
