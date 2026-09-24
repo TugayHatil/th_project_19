@@ -132,9 +132,9 @@ class ProjectProjectPlanner(models.Model):
         # ships empty badges.
         resource_data = self._get_planner_resource_data(ordered)
         resources_by_task = resource_data["resources_by_task"]
-        # Finish Variance (BRD): effective close per task — a leaf's own
-        # date_done; a parent's the latest child close once every child
-        # is done. Visual only — scheduling and CPM never read this.
+        # Finish Variance (BRD): the task's own close stamp — exists only
+        # while the task itself is done. Visual only — scheduling and CPM
+        # never read this.
         done_by_task = {
             task.id: task._planner_effective_done() for task in ordered
         }

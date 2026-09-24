@@ -6,7 +6,8 @@ from odoo.tests.common import TransactionCase
 class TestFinishVariance(TransactionCase):
     """Finish Variance Tail (BRD): date_done stamping, the stored
     finish_variance_state filter field and the planner payload values the
-    tail renders from (own close for leaves, last child close for parents).
+    tail renders from — the tail exists only while the task itself is
+    in the done state.
 
     The feature is read-only on top of scheduling — these tests only check
     the serialized data and the stamped fields, never the scheduler.
@@ -114,9 +115,9 @@ class TestFinishVariance(TransactionCase):
         self.assertFalse(task.finish_variance_state)
 
     def test_parent_finish_variance(self):
-        """BRD §8: the parent's actual close is the LAST closed child —
-        child 2.1 10→12 Jan (late), child 2.2 15→14 Jan (early); the parent
-        planned 15 Jan closes effectively 14 Jan → −1 day (early)."""
+        """The tail is tied to the task's OWN done state — a parent whose
+        children are all closed shows no tail while the parent itself is
+        open; once the parent is closed the tail uses its own stamp."""
         project = self.env["project.project"].create({"name": "Parent rollup"})
         parent = self._make_task(
             project, "Phase",
@@ -135,21 +136,25 @@ class TestFinishVariance(TransactionCase):
         )
 
         self._close(child_a, "2027-01-12 18:00:00")
-        # Parent has no effective close while a child is still open.
+        self.assertFalse(parent._planner_effective_done())
+
+        self._close(child_b, "2027-01-14 18:00:00")
+        # Every child closed but the parent is still open — no tail.
         self.assertFalse(parent._planner_effective_done())
         row = next(
             r for r in project.get_planner_data()["tasks"] if r["id"] == parent.id
         )
         self.assertFalse(row["date_done"])
 
-        self._close(child_b, "2027-01-14 18:00:00")
+        # Closing the parent stamps its own close → tail appears.
+        self._close(parent, "2027-01-16 18:00:00")
         self.assertEqual(
-            parent._planner_effective_done().date().isoformat(), "2027-01-14"
+            parent._planner_effective_done().date().isoformat(), "2027-01-16"
         )
         row = next(
             r for r in project.get_planner_data()["tasks"] if r["id"] == parent.id
         )
-        self.assertEqual(row["date_done"], "2027-01-14")
+        self.assertEqual(row["date_done"], "2027-01-16")
 
     def test_day_scale_hour_precision(self):
         """The payload keeps hour precision in dt_done/dt_stop even though

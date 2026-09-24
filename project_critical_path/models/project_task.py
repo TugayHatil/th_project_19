@@ -107,15 +107,12 @@ class ProjectTask(models.Model):
     def _planner_effective_done(self):
         """Actual close used by the Finish Variance tail.
 
-        Leaf tasks report their own ``date_done``. A parent's close is the
-        latest close across its children — it counts as done only once
-        every child has one; if the parent itself was closed earlier that
-        stamp is used as the fallback.
+        The tail is tied to the task's OWN done state: ``date_done`` is a
+        computed stamp that exists only while ``state == "1_done"``, so an
+        open task — including a parent whose children are all closed —
+        reports no effective close.
         """
         self.ensure_one()
-        children_done = [child._planner_effective_done() for child in self.child_ids]
-        if children_done and all(children_done):
-            return max(children_done)
         return self.date_done
 
     def _planner_resource_fields(self):
