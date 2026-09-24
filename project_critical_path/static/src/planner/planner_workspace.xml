@@ -314,8 +314,9 @@
                                 </div>
                             </div>
                             <div class="o_cp_planner_gantt_rows">
-                                <!-- Folded working calendar — compressed
-                                     non-working bands behind the rows:
+                                <!-- Working calendar shading — Odoo
+                                     standard gantt style: non-working
+                                     bands behind the rows at full width.
                                      light = intra-day gap, dark = full
                                      off day. -->
                                 <div class="o_cp_planner_offlayer">

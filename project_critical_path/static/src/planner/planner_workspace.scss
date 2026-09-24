@@ -579,9 +579,10 @@ $o_cp_planner_bar_critical: #e8a33d;
     position: relative;
 }
 
-// Folded working-calendar background — compressed non-working bands sit
-// behind the rows/bars. Two tones per BRD: light for intra-day gaps
-// (nights, lunch), darker for full non-working days (weekends/leaves).
+// Working-calendar shading — non-working bands sit behind the rows/bars
+// at full width (Odoo standard gantt style). Two tones per BRD: light
+// for intra-day gaps (nights, lunch), darker for full non-working days
+// (weekends/leaves).
 .o_cp_planner_offlayer {
     position: absolute;
     inset: 0;

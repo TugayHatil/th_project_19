@@ -122,10 +122,13 @@ function getCalendarFormats() {
     return calendarFormats;
 }
 // ---- Working-calendar (folded timeline) helpers --------------------------
-// Non-working compression factors — the px/ms rate inside off-time is a
-// fraction of the working rate, so off regions stay visible but narrow.
-const GAP_RATE = 0.22; // intra-day off time (nights, lunch breaks)
-const OFF_RATE = 0.16; // full non-working days (weekends, leaves)
+// Odoo's standard task gantt renders non-working time shaded at FULL
+// width — no compression. The segment rates stay at 1.0 so the timeline
+// mapping is identical to the continuous layout; the segment kinds only
+// drive the gray bands. Compression factors kept as constants so a
+// future folded mode only has to lower them.
+const GAP_RATE = 1.0; // intra-day off time (nights, lunch breaks)
+const OFF_RATE = 1.0; // full non-working days (weekends, leaves)
 
 const _tzDtf = new Map();
 // UTC offset of `tz` at instant `ms` — resolved via Intl, no library.
@@ -675,16 +678,13 @@ export class PlannerWorkspace extends Component {
                 d0 = d1;
             }
         }
-        // Assign pixels — compressed rates keep a minimum sliver so off
-        // regions stay visible at every zoom level.
+        // Assign pixels — all segments run at the full rate (Odoo-standard
+        // shaded layout; factor constants allow a folded mode later).
         const rate = this.state.pxPerDay / DAY_MS;
-        const gapMin = Math.min(3, this.state.pxPerDay * 0.07);
-        const offMin = Math.min(4, this.state.pxPerDay * 0.5);
         let px = 0;
         for (const seg of segs) {
             const factor = seg.kind === "work" ? 1 : seg.kind === "gap" ? GAP_RATE : OFF_RATE;
-            const min = seg.kind === "gap" ? gapMin : seg.kind === "off" ? offMin : 0;
-            const w = Math.max((seg.t1 - seg.t0) * rate * factor, min);
+            const w = (seg.t1 - seg.t0) * rate * factor;
             seg.px0 = px;
             px += w;
             seg.px1 = px;
@@ -739,8 +739,8 @@ export class PlannerWorkspace extends Component {
         return seg.t0 + (px - seg.px0) / seg.rate;
     }
 
-    // Compressed non-working regions painted behind the rows — light for
-    // intra-day gaps, darker for full off days.
+    // Non-working regions painted behind the rows — light for intra-day
+    // gaps (nights/lunch), darker for full off days (weekends/leaves).
     get offRegions() {
         const out = [];
         for (const seg of this.timeMap.segs) {
