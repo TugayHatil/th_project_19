@@ -5,6 +5,15 @@
             <field name="model">purchase.order</field>
             <field name="inherit_id" ref="purchase.purchase_order_form"/>
             <field name="arch" type="xml">
+                <xpath expr="//div[@name='button_box']" position="inside">
+                    <button name="action_view_revisions" type="object" class="oe_stat_button"
+                            icon="fa-history" invisible="not revision_count">
+                        <field name="revision_count" widget="statinfo" string="Revisions"/>
+                    </button>
+                    <button name="action_view_current_revision" type="object" class="oe_stat_button"
+                            icon="fa-arrow-right" string="Current Revision"
+                            invisible="not current_revision_id"/>
+                </xpath>
                 <xpath expr="//field[@name='name']" position="attributes">
                     <attribute name="invisible">1</attribute>
                 </xpath>
@@ -12,6 +21,9 @@
                     <field name="display_name" string="Reference" readonly="1"/>
                     <field name="revision_number" readonly="1" invisible="1"/>
                     <field name="was_confirmed" invisible="1"/>
+                    <field name="current_revision_id" invisible="1"/>
+                    <field name="unrevisioned_name" invisible="1"/>
+                    <field name="active" invisible="1"/>
                 </xpath>
                 <xpath expr="//button[@name='button_draft']" position="attributes">
                     <attribute name="invisible">state != 'cancel' or was_confirmed</attribute>
@@ -19,7 +31,7 @@
                 <xpath expr="//button[@name='button_draft']" position="after">
                     <button name="button_draft" invisible="state != 'cancel' or not was_confirmed" string="Revise" type="object" data-hotkey="o"/>
                 </xpath>
-                
+
             </field>
         </record>
     </data>

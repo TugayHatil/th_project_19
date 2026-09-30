@@ -8,6 +8,7 @@ This module updates the revision number of the purchase orders which have been c
 
 ## Feature
   - ✅ Purchase order Revision Number on canceling confirmed purchase order
+  - ✅ Old revisions are archived as separate orders, browsable via smart buttons
 
 ## Configuration
 
