@@ -57,7 +57,7 @@ class PurchaseOrder(models.Model):
             'date_approve': self.date_approve,
             'partner_ref': self.partner_ref,
             'origin': self.origin,
-            'user_id': self.user_id,
+            'user_id': self.user_id.id,
             'company_id': self.company_id.id,
             'old_revision_ids': [(5, 0, 0)],
         })
