@@ -134,20 +134,22 @@ class ProjectTask(models.Model):
             for vals in vals_list
         ):
             check_planner_manager(self.env)
+        # Odoo stamps ``date_assign`` with "now" when assignees are present
+        # at create time — and does so after create() returns (flush-time
+        # subscription machinery), so it cannot be repaired afterwards.
+        # The stamp is meant as "assigned today"; a caller who supplies an
+        # explicit planned start wants that kept, so the assignee set is
+        # deferred to a follow-up write — plain writes never re-stamp.
+        deferred_assignees = [
+            vals.pop("user_ids") if vals.get("user_ids") and vals.get("date_assign") else None
+            for vals in vals_list
+        ]
         tasks = super().create(vals_list)
-        # Odoo stamps ``date_assign`` with "now" when assignees are set at
-        # create time, silently discarding a caller-provided planned start —
-        # the window RPC/imports sent is then lost. Restore it (the write
-        # re-enters the hooks below and also backfills allocated_hours).
-        for task, vals in zip(tasks, vals_list):
-            restore = {}
-            for field_name in ("date_assign", "date_deadline"):
-                if vals.get(field_name):
-                    wanted = fields.Datetime.to_datetime(vals[field_name])
-                    if (task[field_name] or False) != wanted:
-                        restore[field_name] = wanted
-            if restore:
-                task.with_context(cp_skip_recalc=True).write(restore)
+        for task, user_ids_command in zip(tasks, deferred_assignees):
+            if user_ids_command is not None:
+                task.with_context(
+                    cp_skip_recalc=True, cp_skip_auto_schedule=True,
+                ).write({"user_ids": user_ids_command})
         # Tasks created with a full window but no explicit duration derive
         # theirs from the span — same convention as planner drags.
         to_seed = self.env["project.task"]
