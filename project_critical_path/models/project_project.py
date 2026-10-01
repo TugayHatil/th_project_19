@@ -151,7 +151,19 @@ class ProjectProject(models.Model):
             end_ids = graph["end_ids"]
             schedule = project._calculate_task_schedule(graph)
             for task_id, values in schedule["task_values"].items():
-                task_by_id[task_id].write(values)
+                task = task_by_id[task_id]
+                # Skip unchanged rows — recalc runs on every schedule write,
+                # so avoid a redundant UPDATE per task when nothing moved.
+                changed = {}
+                for key, value in values.items():
+                    current = task[key]
+                    if isinstance(value, bool):
+                        if bool(current) != value:
+                            changed[key] = value
+                    elif abs((current or 0.0) - value) > 0.000001:
+                        changed[key] = value
+                if changed:
+                    task.write(changed)
 
             # duration_by_task is the longest duration ending at each task;
             # best_predecessors retains every predecessor whose edge bound
@@ -284,8 +296,17 @@ class ProjectProject(models.Model):
                 task_values[task.id] = values
 
             for task in tasks:
-                task.write(task_values[task.id])
                 values = task_values[task.id]
+                # Skip unchanged rows — same reason as the CPM write above:
+                # delay fields are refreshed on every schedule recalc, so
+                # only UPDATE tasks whose impact actually moved.
+                changed = {
+                    key: value
+                    for key, value in values.items()
+                    if task[key] != value
+                }
+                if changed:
+                    task.write(changed)
                 if task.id in baseline_by_task_id:
                     impact_values.append({
                         "project_id": project.id,

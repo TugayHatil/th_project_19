@@ -135,7 +135,11 @@ class ProjectTask(models.Model):
         ):
             check_planner_manager(self.env)
         tasks = super().create(vals_list)
-        tasks.mapped("project_id")._recalculate_critical_paths()
+        # Bulk imports can pass cp_skip_recalc and then call
+        # action_calculate_critical_paths once — otherwise every batch
+        # would rerun the full project CPM.
+        if not self.env.context.get("cp_skip_recalc"):
+            tasks.mapped("project_id")._recalculate_critical_paths()
         tasks.mapped("parent_id")._sync_parent_window()
         return tasks
 
@@ -145,7 +149,12 @@ class ProjectTask(models.Model):
         affected_projects = self.mapped("project_id")
         old_parents = self.mapped("parent_id") if "parent_id" in vals else self.env["project.task"]
         result = super().write(vals)
-        if {"project_id", "parent_id", "allocated_hours", "depend_on_ids", "dependent_ids"}.intersection(vals):
+        # allocated_hours is a stored compute over the date window, so a
+        # date change alters durations without naming the field — include
+        # the dates in the trigger set or CPM goes stale after drags.
+        if {"project_id", "parent_id", "allocated_hours", "depend_on_ids", "dependent_ids", "date_assign", "date_deadline"}.intersection(vals) and not self.env.context.get(
+            "cp_skip_recalc"
+        ) and not self.env.context.get("cp_skip_auto_schedule"):
             (affected_projects | self.mapped("project_id"))._recalculate_critical_paths()
         # BRD auto-shift: a date change can violate successor dependency
         # bounds — the cascade runs once per project and suppresses its
@@ -182,7 +191,12 @@ class ProjectTask(models.Model):
             if parent.date_deadline != stop:
                 vals["date_deadline"] = stop
             if vals:
-                parent.write(vals)
+                # The parent window is a rollup — it must not re-enter the
+                # auto-shift cascade or fire another full CPM per level;
+                # the triggering write already scheduled one recalc.
+                parent.with_context(
+                    cp_skip_auto_schedule=True, cp_skip_recalc=True,
+                ).write(vals)
 
     def unlink(self):
         # Deleting a planned task deletes planner data — only Planner
