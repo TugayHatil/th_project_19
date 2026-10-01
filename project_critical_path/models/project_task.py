@@ -208,15 +208,21 @@ class ProjectTask(models.Model):
 
         Leaf tasks only — WBS parents get their window rolled up from
         children but do no work of their own, so they must stay at 0 or
-        the CPM graph would double-count the same span. Writes carry the
-        skip flags: the triggering write already schedules the recalc and
-        the duration shift must not cascade dates again.
+        the CPM graph would double-count the same span. Seed-once only:
+        a non-zero allocated_hours is authoritative (inspector edits and
+        explicit RPC writes must survive later window changes), so this
+        never overwrites it. Writes carry the skip flags — the triggering
+        write already schedules the recalc.
         """
         for task in self:
-            if task.child_ids or not (task.date_assign and task.date_deadline):
+            if (
+                task.child_ids
+                or task.allocated_hours
+                or not (task.date_assign and task.date_deadline)
+            ):
                 continue
             hours = _task_window_hours(task)
-            if abs((task.allocated_hours or 0.0) - hours) > 0.000001:
+            if hours > 0.000001:
                 task.with_context(
                     cp_skip_recalc=True, cp_skip_auto_schedule=True,
                 ).write({"allocated_hours": hours})
