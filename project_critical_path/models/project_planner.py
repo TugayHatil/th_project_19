@@ -273,6 +273,7 @@ class ProjectProjectPlanner(models.Model):
                     "user_ids": task.user_ids.ids,
                     "user_names": task.user_ids.mapped("name"),
                     "stage_name": task.stage_id.name or "",
+                    "tag_names": task.tag_ids.mapped("name"),
                     **task._planner_resource_fields(),
                     "depend_on_ids": task.depend_on_ids.ids,
                     "dependencies": [

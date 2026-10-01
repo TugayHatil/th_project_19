@@ -31,6 +31,7 @@ const BAR_INFO_FIELDS = [
     { key: "date_start", label: _t("Start Date") },
     { key: "date_stop", label: _t("End Date") },
     { key: "name", label: _t("Task Name") },
+    { key: "tag_names", label: _t("Tags") },
 ];
 
 // Standard Filters & Group By (BRD): the status/time filters each map to a
@@ -2360,6 +2361,8 @@ export class PlannerWorkspace extends Component {
                 return task.date_start ? dayLabel(parseDay(task.date_start)) : "";
             case "date_stop":
                 return task.date_stop ? dayLabel(parseDay(task.date_stop)) : "";
+            case "tag_names":
+                return (task.tag_names || []).join(", ");
             default:
                 return "";
         }
