@@ -194,18 +194,22 @@ class ProjectProject(models.Model):
                 task_id for task_id in end_ids if duration_by_task[task_id] == maximum_duration
             ]
 
-            def build_paths(task_id):
-                if not best_predecessors[task_id]:
-                    return [[task_id]]
-                return [
-                    path + [task_id]
-                    for predecessor_id in best_predecessors[task_id]
-                    for path in build_paths(predecessor_id)
-                ]
-
-            critical_paths = [
-                path for end_id in critical_end_ids for path in build_paths(end_id)
-            ]
+            # Iterative DFS — a chain deeper than Python's recursion limit
+            # must not crash the recalc. Paths are built end→start and
+            # reversed; ties are still all retained.
+            critical_paths = []
+            for end_id in critical_end_ids:
+                stack = [[end_id]]
+                while stack:
+                    path = stack.pop()
+                    preds = best_predecessors.get(path[-1])
+                    if not preds:
+                        critical_paths.append(path[::-1])
+                    else:
+                        stack.extend(
+                            path + [predecessor_id]
+                            for predecessor_id in reversed(preds)
+                        )
             Path = self.env["project.critical.path"].sudo()
             Path.search([("project_id", "=", project.id)]).unlink()
             Path.create([

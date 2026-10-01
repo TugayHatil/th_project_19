@@ -714,3 +714,20 @@ def _planner_hours_per_day(record):
     if not calendar:
         calendar = record.env.company.resource_calendar_id
     return (calendar.hours_per_day if calendar else 0.0) or 8.0
+
+
+def _task_window_hours(record):
+    """Duration implied by a task's scheduled window.
+
+    Same convention ``update_planner_task`` applies to planner drags: a
+    same-day bar is its real hour span, a multi-day bar is day-span ×
+    calendar hours-per-day. Used to backfill ``allocated_hours`` on write
+    paths that never went through the planner (form edits, RPC, imports),
+    where Odoo 19's stored compute leaves the field at 0.
+    """
+    start, stop = record.date_assign, record.date_deadline
+    if not start or not stop or stop <= start:
+        return 0.0
+    if start.date() == stop.date():
+        return (stop - start).total_seconds() / 3600.0
+    return ((stop.date() - start.date()).days + 1) * _planner_hours_per_day(record)

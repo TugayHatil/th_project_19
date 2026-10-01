@@ -2,7 +2,7 @@
 
 from odoo import api, fields, models
 
-from .project_planner import check_planner_manager
+from .project_planner import _task_window_hours, check_planner_manager
 
 # Planner-managed data (BRD Planner Manager): only members of
 # group_planner_manager may touch these — whether via the Planner, the
@@ -135,6 +135,26 @@ class ProjectTask(models.Model):
         ):
             check_planner_manager(self.env)
         tasks = super().create(vals_list)
+        # Odoo stamps ``date_assign`` with "now" when assignees are set at
+        # create time, silently discarding a caller-provided planned start —
+        # the window RPC/imports sent is then lost. Restore it (the write
+        # re-enters the hooks below and also backfills allocated_hours).
+        for task, vals in zip(tasks, vals_list):
+            restore = {}
+            for field_name in ("date_assign", "date_deadline"):
+                if vals.get(field_name):
+                    wanted = fields.Datetime.to_datetime(vals[field_name])
+                    if (task[field_name] or False) != wanted:
+                        restore[field_name] = wanted
+            if restore:
+                task.with_context(cp_skip_recalc=True).write(restore)
+        # Tasks created with a full window but no explicit duration derive
+        # theirs from the span — same convention as planner drags.
+        to_seed = self.env["project.task"]
+        for task, vals in zip(tasks, vals_list):
+            if "allocated_hours" not in vals:
+                to_seed += task
+        to_seed._resync_allocated_hours()
         # Bulk imports can pass cp_skip_recalc and then call
         # action_calculate_critical_paths once — otherwise every batch
         # would rerun the full project CPM.
@@ -149,10 +169,20 @@ class ProjectTask(models.Model):
         affected_projects = self.mapped("project_id")
         old_parents = self.mapped("parent_id") if "parent_id" in vals else self.env["project.task"]
         result = super().write(vals)
+        # "The window defines the duration" — the planner derives
+        # allocated_hours from the date span on every drag, but writes
+        # that bypass it (form edits, RPC, imports, cascading shifts)
+        # leave the field at 0/stale while CPM uses it as the duration
+        # source. Resync before the recalc below so one pass sees the
+        # fresh durations. An explicit allocated_hours in the same write
+        # stays authoritative; parents roll a window up from children but
+        # carry no work, so they are skipped inside.
+        if {"date_assign", "date_deadline"}.intersection(vals) and "allocated_hours" not in vals:
+            self._resync_allocated_hours()
         # allocated_hours is a stored compute over the date window, so a
         # date change alters durations without naming the field — include
         # the dates in the trigger set or CPM goes stale after drags.
-        if {"project_id", "parent_id", "allocated_hours", "depend_on_ids", "dependent_ids", "date_assign", "date_deadline"}.intersection(vals) and not self.env.context.get(
+        if {"project_id", "parent_id", "allocated_hours", "planned_date_begin", "depend_on_ids", "dependent_ids", "date_assign", "date_deadline"}.intersection(vals) and not self.env.context.get(
             "cp_skip_recalc"
         ) and not self.env.context.get("cp_skip_auto_schedule"):
             (affected_projects | self.mapped("project_id"))._recalculate_critical_paths()
@@ -172,6 +202,24 @@ class ProjectTask(models.Model):
         if {"date_assign", "date_deadline", "parent_id"}.intersection(vals):
             (self.mapped("parent_id") | old_parents)._sync_parent_window()
         return result
+
+    def _resync_allocated_hours(self):
+        """Write the window-derived duration into ``allocated_hours``.
+
+        Leaf tasks only — WBS parents get their window rolled up from
+        children but do no work of their own, so they must stay at 0 or
+        the CPM graph would double-count the same span. Writes carry the
+        skip flags: the triggering write already schedules the recalc and
+        the duration shift must not cascade dates again.
+        """
+        for task in self:
+            if task.child_ids or not (task.date_assign and task.date_deadline):
+                continue
+            hours = _task_window_hours(task)
+            if abs((task.allocated_hours or 0.0) - hours) > 0.000001:
+                task.with_context(
+                    cp_skip_recalc=True, cp_skip_auto_schedule=True,
+                ).write({"allocated_hours": hours})
 
     def _sync_parent_window(self):
         """``self`` = parent tasks — recompute each one's date window as the
