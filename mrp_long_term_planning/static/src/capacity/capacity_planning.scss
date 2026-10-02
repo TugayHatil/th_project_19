@@ -56,11 +56,21 @@ $o_cap_col_wc_w: 220px;
             top: 0;
         }
 
+        // month group title: heavier visual weight than the metric headers
+        thead tr.o_cap_head_months th.o_cap_month_title {
+            font-weight: 700;
+            font-size: 0.85rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--o-gray-800, #343a40);
+        }
+
         thead tr.o_cap_head_sub th {
             top: $o_cap_head_h;
             min-width: 92px;
             color: var(--o-gray-600, #6c757d);
-            font-weight: 500;
+            font-weight: 400;
+            font-size: 0.75rem;
         }
 
         .o_cap_sticky {
@@ -100,9 +110,9 @@ $o_cap_col_wc_w: 220px;
             font-weight: 600;
         }
 
-        // month boundary between the 3 sub-columns
+        // pronounced vertical divider at each month boundary (BRD §3)
         .o_cap_month_start {
-            border-left: 2px solid var(--o-border-color, #dee2e6);
+            border-left: 2px solid var(--o-gray-500, #adb5bd);
         }
 
         // diff coloring (BRD §12): surplus / full / overload
@@ -126,12 +136,27 @@ $o_cap_col_wc_w: 220px;
             bottom: 0;
             z-index: 5;
             background-color: var(--o-view-background-color, #fff);
-            border-top: 2px solid var(--o-border-color, #dee2e6);
-            font-weight: 600;
+            border-top: 3px solid var(--o-gray-500, #adb5bd);
+            font-weight: 700;
 
             &.o_cap_sticky {
                 z-index: 25;
             }
+        }
+
+        // alternating month-group background (BRD §2): every second month
+        // carries a very light gray across its header and data cells.
+        // Placed last so it wins over the tfoot/header base backgrounds.
+        thead th.o_cap_alt,
+        tbody td.o_cap_alt,
+        tfoot td.o_cap_alt {
+            background-color: #f4f5f7;
+        }
+
+        // overload: only the Fark cell itself is tinted (BRD §6)
+        tbody td.o_cap_neg,
+        tfoot td.o_cap_neg {
+            background-color: rgba(220, 53, 69, 0.09);
         }
     }
 
