@@ -146,13 +146,21 @@ class MrpLtpCapacity(models.AbstractModel):
     @api.model
     def _capacity_map(self, workcenters, periods):
         """{(wc_id, abs_month): hours} — calendar hours x parallel capacity
-        x time efficiency."""
+        (default mrp.workcenter.capacity line) x time efficiency."""
         Line = self.env["mrp.ltp.line"]
         cap_map = {}
         for wc in workcenters:
             if not wc.resource_calendar_id:
                 continue
-            factor = (wc.capacity or 1.0) * (wc.time_efficiency or 100.0) / 100.0
+            # Odoo 19: no scalar `capacity` field on the workcenter — the
+            # generic (product-less) mrp.workcenter.capacity line is the
+            # parallel-capacity default; fall back to 1 when absent.
+            parallel = 1.0
+            for cap_line in wc.capacity_ids:
+                if not cap_line.product_id:
+                    parallel = cap_line.capacity or 1.0
+                    break
+            factor = parallel * (wc.time_efficiency or 100.0) / 100.0
             for year, month in periods:
                 start, end = self._month_bounds(year, month)
                 hours = self._working_hours(wc, start, end) * factor
