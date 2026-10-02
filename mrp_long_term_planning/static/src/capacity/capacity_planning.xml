@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="mrp_long_term_planning.CapacityPlanning">
+        <div class="o_cap d-flex flex-column h-100 overflow-hidden">
+
+            <!-- Toolbar -->
+            <div class="o_cap_toolbar border-bottom px-3 py-2">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <h4 class="mb-0">Capacity Planning</h4>
+                    <span class="o_cap_period text-muted"
+                          t-if="periodText"
+                          t-esc="periodText"/>
+                </div>
+                <div class="d-flex align-items-center gap-3 mt-2 flex-wrap">
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="form-label mb-0 text-nowrap">Work Center</label>
+                        <select class="form-select form-select-sm w-auto"
+                                t-on-change="onWorkcenterChange">
+                            <option value="">All</option>
+                            <t t-foreach="state.workcenters" t-as="wc" t-key="wc.id">
+                                <option t-att-value="wc.id"
+                                        t-att-selected="wc.id === state.workcenterId"
+                                        t-esc="wc.name"/>
+                            </t>
+                        </select>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="form-label mb-0 text-nowrap">Start</label>
+                        <input type="month" class="form-control form-control-sm"
+                               style="width: 140px"
+                               t-att-value="state.startPeriod"
+                               t-on-change="onStartPeriodChange"/>
+                    </div>
+                    <div class="form-check">
+                        <input id="o_cap_overload_only" type="checkbox"
+                               class="form-check-input"
+                               t-att-checked="state.overloadOnly"
+                               t-on-change="onOverloadOnlyChange"/>
+                        <label for="o_cap_overload_only" class="form-check-label text-nowrap">
+                            Overload Only
+                        </label>
+                    </div>
+                    <input type="text" class="form-control form-control-sm o_cap_search"
+                           placeholder="Search work center…"
+                           t-on-input="onSearchInput"/>
+                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                            t-on-click="loadGrid">
+                        <i class="fa fa-refresh me-1"/>Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- Grid -->
+            <div class="o_cap_grid flex-grow-1 overflow-auto position-relative">
+                <table class="o_cap_table">
+                    <thead>
+                        <tr class="o_cap_head_months">
+                            <th class="o_cap_sticky o_cap_col_wc" rowspan="2">Work Center</th>
+                            <t t-foreach="months" t-as="mo" t-key="mo.key">
+                                <th colspan="3" class="o_cap_month_title" t-esc="mo.label"/>
+                            </t>
+                        </tr>
+                        <tr class="o_cap_head_sub">
+                            <t t-foreach="months" t-as="mo" t-key="mo.key">
+                                <th class="o_cap_month_start">Capacity</th>
+                                <th>Workload</th>
+                                <th>Diff</th>
+                            </t>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="state.rows" t-as="row" t-key="row.workcenter_id">
+                            <tr>
+                                <td class="o_cap_sticky o_cap_col_wc o_cap_cell_text"
+                                    t-esc="row.name"/>
+                                <t t-foreach="row.cells" t-as="cell" t-key="cell.year * 100 + cell.month">
+                                    <td class="o_cap_td_num o_cap_month_start">
+                                        <div class="o_cap_days" t-esc="fmt(cell.cap_d) + ' days'"/>
+                                        <div class="o_cap_hours" t-esc="fmt(cell.cap_h) + ' hrs'"/>
+                                    </td>
+                                    <td class="o_cap_td_num">
+                                        <div class="o_cap_days" t-esc="fmt(cell.load_d) + ' days'"/>
+                                        <div class="o_cap_hours" t-esc="fmt(cell.load_h) + ' hrs'"/>
+                                    </td>
+                                    <td t-att-class="`o_cap_td_num ${diffClass(cell)}`">
+                                        <div class="o_cap_days" t-esc="fmt(cell.diff_d, true) + ' days'"/>
+                                        <div class="o_cap_hours" t-esc="fmt(cell.diff_h, true) + ' hrs'"/>
+                                    </td>
+                                </t>
+                            </tr>
+                        </t>
+                    </tbody>
+                    <tfoot t-if="state.rows.length">
+                        <tr class="o_cap_total">
+                            <td class="o_cap_sticky o_cap_col_wc">Total</td>
+                            <t t-foreach="totals" t-as="cell" t-key="cell_index">
+                                <td class="o_cap_td_num o_cap_month_start">
+                                    <div class="o_cap_days" t-esc="fmt(cell.cap_d) + ' days'"/>
+                                    <div class="o_cap_hours" t-esc="fmt(cell.cap_h) + ' hrs'"/>
+                                </td>
+                                <td class="o_cap_td_num">
+                                    <div class="o_cap_days" t-esc="fmt(cell.load_d) + ' days'"/>
+                                    <div class="o_cap_hours" t-esc="fmt(cell.load_h) + ' hrs'"/>
+                                </td>
+                                <td t-att-class="`o_cap_td_num ${diffClass(cell)}`">
+                                    <div class="o_cap_days" t-esc="fmt(cell.diff_d, true) + ' days'"/>
+                                    <div class="o_cap_hours" t-esc="fmt(cell.diff_h, true) + ' hrs'"/>
+                                </td>
+                            </t>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <div t-if="state.loading"
+                     class="o_cap_overlay d-flex align-items-center justify-content-center">
+                    <i class="fa fa-spinner fa-spin fa-2x text-muted"/>
+                </div>
+                <div t-if="!state.loading &amp;&amp; !state.rows.length"
+                     class="o_cap_empty text-muted text-center py-5">
+                    No work centers to show for the current filters.
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

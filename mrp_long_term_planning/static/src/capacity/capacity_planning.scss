@@ -1,0 +1,127 @@
+// Workcenter capacity grid: sticky workcenter column, two-level sticky
+// header, two-line day/hour cells, horizontal scroll (BRD §17).
+
+$o_cap_head_h: 30px;
+$o_cap_row_h: 44px;
+$o_cap_col_wc_w: 220px;
+
+.o_cap {
+    background-color: var(--o-view-background-color, #fff);
+
+    .o_cap_search {
+        width: 200px;
+    }
+
+    .o_cap_table {
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 0.8125rem;
+
+        th, td {
+            border-right: 1px solid var(--o-border-color, #dee2e6);
+            border-bottom: 1px solid var(--o-border-color, #dee2e6);
+            padding: 2px 10px;
+            height: $o_cap_row_h;
+            white-space: nowrap;
+        }
+
+        thead th {
+            position: sticky;
+            z-index: 10;
+            background-color: var(--o-view-background-color, #fff);
+            font-weight: 600;
+            text-align: center;
+            vertical-align: middle;
+            height: $o_cap_head_h;
+        }
+
+        thead tr.o_cap_head_months th {
+            top: 0;
+        }
+
+        thead tr.o_cap_head_sub th {
+            top: $o_cap_head_h;
+            min-width: 92px;
+            color: var(--o-gray-600, #6c757d);
+            font-weight: 500;
+        }
+
+        .o_cap_sticky {
+            position: sticky;
+            left: 0;
+            z-index: 5;
+            background-color: var(--o-view-background-color, #fff);
+            box-shadow: 4px 0 4px -2px rgba(0, 0, 0, 0.12);
+        }
+
+        thead .o_cap_sticky {
+            z-index: 20;
+        }
+
+        .o_cap_col_wc {
+            min-width: $o_cap_col_wc_w;
+            max-width: $o_cap_col_wc_w;
+        }
+
+        .o_cap_cell_text {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            vertical-align: middle;
+        }
+
+        .o_cap_td_num {
+            text-align: right;
+            vertical-align: middle;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .o_cap_days {
+            color: var(--o-gray-600, #6c757d);
+        }
+
+        .o_cap_hours {
+            font-weight: 600;
+        }
+
+        // month boundary between the 3 sub-columns
+        .o_cap_month_start {
+            border-left: 2px solid var(--o-border-color, #dee2e6);
+        }
+
+        // diff coloring (BRD §12): surplus / full / overload
+        .o_cap_pos .o_cap_days,
+        .o_cap_pos .o_cap_hours {
+            color: var(--bs-success, #198754);
+        }
+
+        .o_cap_neg .o_cap_days,
+        .o_cap_neg .o_cap_hours {
+            color: var(--bs-danger, #dc3545);
+        }
+
+        .o_cap_zero .o_cap_days,
+        .o_cap_zero .o_cap_hours {
+            color: var(--o-gray-600, #6c757d);
+        }
+
+        tfoot .o_cap_total td {
+            position: sticky;
+            bottom: 0;
+            z-index: 5;
+            background-color: var(--o-view-background-color, #fff);
+            border-top: 2px solid var(--o-border-color, #dee2e6);
+            font-weight: 600;
+
+            &.o_cap_sticky {
+                z-index: 25;
+            }
+        }
+    }
+
+    .o_cap_overlay {
+        position: absolute;
+        inset: 0;
+        z-index: 30;
+        background-color: rgba(255, 255, 255, 0.55);
+    }
+}

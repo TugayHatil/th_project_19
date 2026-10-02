@@ -3,7 +3,7 @@
 {
     "name": "Long-Term Production Planning",
     "summary": "12-month long-term production planning grid (OS/SM/GM/IM/PM/DS)",
-    "version": "19.0.2.2.0",
+    "version": "19.0.3.0.0",
     "category": "Manufacturing/Manufacturing",
     "author": "Projet Solutions",
     "license": "LGPL-3",
@@ -20,6 +20,9 @@
             "mrp_long_term_planning/static/src/planning/long_term_planning.js",
             "mrp_long_term_planning/static/src/planning/long_term_planning.xml",
             "mrp_long_term_planning/static/src/planning/long_term_planning.scss",
+            "mrp_long_term_planning/static/src/capacity/capacity_planning.js",
+            "mrp_long_term_planning/static/src/capacity/capacity_planning.xml",
+            "mrp_long_term_planning/static/src/capacity/capacity_planning.scss",
         ],
     },
     "installable": True,

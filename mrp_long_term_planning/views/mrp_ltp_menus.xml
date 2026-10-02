@@ -12,4 +12,17 @@
               action="action_mrp_ltp_screen"
               groups="stock.group_stock_user"
               sequence="60"/>
+
+    <record id="action_mrp_ltp_capacity" model="ir.actions.client">
+        <field name="name">Capacity Planning</field>
+        <field name="tag">mrp_long_term_planning.capacity</field>
+    </record>
+
+    <!-- Manufacturing -> Planning -> Capacity Planning -->
+    <menuitem id="menu_mrp_ltp_capacity"
+              name="Capacity Planning"
+              parent="mrp.mrp_planning_menu_root"
+              action="action_mrp_ltp_capacity"
+              groups="stock.group_stock_user"
+              sequence="61"/>
 </odoo>

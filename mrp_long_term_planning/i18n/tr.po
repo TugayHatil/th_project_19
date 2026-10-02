@@ -118,3 +118,69 @@ msgstr "Uzun Vadeli Üretim Planlama"
 #: model:ir.actions.client,name:mrp_long_term_planning.action_mrp_ltp_screen
 msgid "12-Month Production Planning"
 msgstr "12 Aylık Üretim Planlama"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.xml:0
+msgid "Work Center"
+msgstr "İş Merkezi"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.xml:0
+msgid "Capacity"
+msgstr "Kapasite"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.xml:0
+msgid "Workload"
+msgstr "İş Yükü"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.xml:0
+msgid "Diff"
+msgstr "Fark"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.xml:0
+msgid "Total"
+msgstr "TOPLAM"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.xml:0
+msgid "Start"
+msgstr "Başlangıç"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.xml:0
+msgid "Overload Only"
+msgstr "Sadece Kapasite Aşımı"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.xml:0
+msgid "Search work center…"
+msgstr "İş merkezi ara…"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.xml:0
+msgid "No work centers to show for the current filters."
+msgstr "Mevcut filtrelere uygun iş merkezi yok."
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.js:0
+msgid "Capacity data could not be loaded."
+msgstr "Kapasite verisi yüklenemedi."
+
+#. module: mrp_long_term_planning
+#: model:ir.actions.client,name:mrp_long_term_planning.action_mrp_ltp_capacity
+#: model_terms:ir.ui.menu,name:mrp_long_term_planning.menu_mrp_ltp_capacity
+msgid "Capacity Planning"
+msgstr "Kapasite Planlama"

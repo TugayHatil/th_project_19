@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import fields
+from odoo.fields import Command
 from odoo.tests.common import TransactionCase
 
 
@@ -99,3 +100,38 @@ class TestLongTermPlanning(TransactionCase):
         self.assertEqual(self.Line.search_count([
             ("product_id", "=", self.p_flagged.id),
         ]), 2)
+
+    def test_capacity_grid(self):
+        Cap = self.env["mrp.ltp.capacity"]
+        periods = self.Line._periods(*self.Line._current_period())
+        sy, sm = periods[0]
+        wc = self.env["mrp.workcenter"].create({"name": "LTP Line X"})
+        bom = self.env["mrp.bom"].create({
+            "product_tmpl_id": self.p_flagged.product_tmpl_id.id,
+            "product_qty": 1,
+            "operation_ids": [Command.create({
+                "name": "Cut", "workcenter_id": wc.id, "time_cycle": 60,
+            })],
+        })
+        mo = self.env["mrp.production"].create({
+            "product_id": self.p_flagged.id,
+            "bom_id": bom.id,
+            "product_qty": 2,
+            "product_uom_id": self.p_flagged.uom_id.id,
+            "date_start": f"{sy}-{sm:02d}-15 08:00:00",
+        })
+        mo.action_confirm()
+        data = Cap.get_capacity_grid(workcenter_id=wc.id)
+        self.assertEqual(len(data["periods"]), 12)
+        row = next(r for r in data["rows"] if r["workcenter_id"] == wc.id)
+        self.assertEqual(len(row["cells"]), 12)
+        cell = row["cells"][0]
+        # capacity comes from the workcenter calendar, not constants
+        self.assertGreater(cell["cap_h"], 0)
+        # 2 units x 60 min operation = 2h of workload in the first month
+        self.assertGreater(cell["load_h"], 0)
+        self.assertAlmostEqual(cell["diff_h"], cell["cap_h"] - cell["load_h"])
+        # overload flag and filter
+        self.assertFalse(row["overload"])
+        over = Cap.get_capacity_grid(overload_only=True)
+        self.assertTrue(all(r["overload"] for r in over["rows"]))
