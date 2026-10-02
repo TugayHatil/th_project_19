@@ -3,7 +3,8 @@ from datetime import datetime
 
 import pytz
 
-from odoo import api, fields, models
+from odoo import _, api, models
+from odoo.exceptions import UserError
 
 # Work orders / productions that still represent future workload.
 MO_OPEN_STATES = ("draft", "confirmed", "progress", "to_close")
@@ -70,43 +71,129 @@ class MrpLtpCapacity(models.AbstractModel):
         cap_map = self._capacity_map(workcenters, periods)
         plan_map = self._workload_map(workcenters, periods)
         req_map = self._required_load_map(periods, workcenters)
+        factor_map = self._factor_map(workcenters, periods)
 
-        rows = []
-        for wc in workcenters:
-            calendar = wc.resource_calendar_id
-            hours_per_day = (calendar.hours_per_day or 8.0) if calendar else 8.0
-            cells = []
-            overloaded = False
-            for year, month in periods:
-                key = (wc.id, Line._abs_month(year, month))
-                cap_h = cap_map.get(key, 0.0)
-                plan_h = plan_map.get(key, 0.0)
-                req_h = req_map.get(key, 0.0)
-                rem_h = cap_h - plan_h
-                tot_h = plan_h + req_h
-                diff_h = cap_h - tot_h
-                if diff_h < -1e-6:
-                    overloaded = True
-                cells.append({
-                    "year": year, "month": month,
-                    "cap_h": cap_h, "cap_d": cap_h / hours_per_day,
-                    "plan_h": plan_h, "plan_d": plan_h / hours_per_day,
-                    "rem_h": rem_h, "rem_d": rem_h / hours_per_day,
-                    "req_h": req_h, "req_d": req_h / hours_per_day,
-                    "tot_h": tot_h, "tot_d": tot_h / hours_per_day,
-                    "diff_h": diff_h, "diff_d": diff_h / hours_per_day,
-                })
-            rows.append({
-                "workcenter_id": wc.id,
-                "name": wc.name,
-                "overload": overloaded,
-                "cells": cells,
-            })
+        rows = [
+            self._build_row(wc, periods, cap_map, plan_map, req_map,
+                            factor_map)
+            for wc in workcenters
+        ]
         if overload_only:
             rows = [row for row in rows if row["overload"]]
         return {
             "periods": Line._period_payload(periods),
             "rows": rows,
+        }
+
+    def _build_row(self, wc, periods, cap_map, plan_map, req_map,
+                   factor_map):
+        """One grid row: standard calendar capacity scaled by the monthly
+        factor (BRD §5) — every downstream metric derives from the revised
+        capacity."""
+        Line = self.env["mrp.ltp.line"]
+        calendar = wc.resource_calendar_id
+        hours_per_day = (calendar.hours_per_day or 8.0) if calendar else 8.0
+        cells = []
+        overloaded = False
+        for year, month in periods:
+            key = (wc.id, Line._abs_month(year, month))
+            factor = factor_map.get(key, 1.0)
+            cap_h = cap_map.get(key, 0.0) * factor
+            plan_h = plan_map.get(key, 0.0)
+            req_h = req_map.get(key, 0.0)
+            rem_h = cap_h - plan_h
+            tot_h = plan_h + req_h
+            diff_h = cap_h - tot_h
+            if diff_h < -1e-6:
+                overloaded = True
+            cells.append({
+                "year": year, "month": month, "factor": factor,
+                "cap_h": cap_h, "cap_d": cap_h / hours_per_day,
+                "plan_h": plan_h, "plan_d": plan_h / hours_per_day,
+                "rem_h": rem_h, "rem_d": rem_h / hours_per_day,
+                "req_h": req_h, "req_d": req_h / hours_per_day,
+                "tot_h": tot_h, "tot_d": tot_h / hours_per_day,
+                "diff_h": diff_h, "diff_d": diff_h / hours_per_day,
+            })
+        return {
+            "workcenter_id": wc.id,
+            "name": wc.name,
+            "overload": overloaded,
+            "cells": cells,
+        }
+
+    @api.model
+    def set_capacity_factor(self, workcenter_id, year, month, factor,
+                            start_year=False, start_month=False):
+        """Upsert the monthly capacity factor and return the recomputed
+        row so the grid can refresh in place. factor == 1.0 removes the
+        override (back to standard capacity, BRD §14)."""
+        workcenter_id = int(workcenter_id)
+        year, month = int(year), int(month)
+        try:
+            factor = float(factor)
+        except (TypeError, ValueError):
+            factor = 0.0
+        if not factor > 0:
+            raise UserError(
+                _("The capacity factor must be a positive number."))
+
+        Factor = self.env["mrp.ltp.capacity.factor"]
+        line = Factor.search([
+            ("workcenter_id", "=", workcenter_id),
+            ("year", "=", year),
+            ("month", "=", month),
+            ("company_id", "=", self.env.company.id),
+        ], limit=1)
+        if abs(factor - 1.0) < 1e-9:
+            line.unlink()
+        elif line:
+            line.factor = factor
+        else:
+            Factor.create({
+                "workcenter_id": workcenter_id,
+                "year": year,
+                "month": month,
+                "factor": factor,
+            })
+
+        # recompute just this workcenter over the currently shown window
+        Line = self.env["mrp.ltp.line"]
+        if start_year and start_month:
+            sy, sm = int(start_year), int(start_month)
+        else:
+            sy, sm = Line._current_period()
+        periods = Line._periods(sy, sm)
+        wc = self.env["mrp.workcenter"].browse(workcenter_id)
+        row = self._build_row(
+            wc, periods,
+            self._capacity_map(wc, periods),
+            self._workload_map(wc, periods),
+            self._required_load_map(periods, wc),
+            self._factor_map(wc, periods))
+        return {"row": row}
+
+    # ------------------------------------------------------------------
+    # Monthly capacity factors (BRD §2/§15): default 1.0 per
+    # (workcenter, month); only overrides are stored.
+    # ------------------------------------------------------------------
+
+    @api.model
+    def _factor_map(self, workcenters, periods):
+        """{(wc_id, abs_month): factor} — 1.0 when no override exists."""
+        Line = self.env["mrp.ltp.line"]
+        period_min = periods[0][0] * 100 + periods[0][1]
+        period_max = periods[-1][0] * 100 + periods[-1][1]
+        recs = self.env["mrp.ltp.capacity.factor"].search_read([
+            ("workcenter_id", "in", workcenters.ids),
+            ("period", ">=", period_min),
+            ("period", "<=", period_max),
+            ("company_id", "=", self.env.company.id),
+        ], ["workcenter_id", "year", "month", "factor"])
+        return {
+            (rec["workcenter_id"][0],
+             Line._abs_month(rec["year"], rec["month"])): rec["factor"]
+            for rec in recs
         }
 
     # ------------------------------------------------------------------

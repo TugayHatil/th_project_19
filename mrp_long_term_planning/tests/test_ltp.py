@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import fields
+from odoo.exceptions import UserError
 from odoo.fields import Command
 from odoo.tests.common import TransactionCase
 
@@ -197,3 +198,39 @@ class TestLongTermPlanning(TransactionCase):
         req_map = Cap._required_qty_map(periods)
         key = (self.p_flagged.id, Line._abs_month(py, pm))
         self.assertAlmostEqual(req_map.get(key, 0.0), 90.0)
+
+    def test_capacity_factor(self):
+        # BRD §5/§14: revised capacity = standard x factor; only the
+        # selected workcenter+month changes; 1.0 removes the override
+        Cap = self.env["mrp.ltp.capacity"]
+        periods = self.Line._periods(*self.Line._current_period())
+        sy, sm = periods[0]
+        wc = self.env["mrp.workcenter"].create({"name": "LTP Line F"})
+        base = Cap.get_capacity_grid(workcenter_ids=[wc.id])
+        cell0 = base["rows"][0]["cells"][0]
+        std_cap = cell0["cap_h"]
+        self.assertEqual(cell0["factor"], 1.0)
+
+        res = Cap.set_capacity_factor(
+            wc.id, sy, sm, 1.2, start_year=sy, start_month=sm)
+        cell = res["row"]["cells"][0]
+        self.assertAlmostEqual(cell["cap_h"], std_cap * 1.2)
+        self.assertAlmostEqual(cell["rem_h"], cell["cap_h"] - cell["plan_h"])
+        self.assertAlmostEqual(cell["diff_h"], cell["cap_h"] - cell["tot_h"])
+        # the following month is untouched (BRD §6)
+        self.assertEqual(res["row"]["cells"][1]["factor"], 1.0)
+        self.assertAlmostEqual(res["row"]["cells"][1]["cap_h"],
+                               base["rows"][0]["cells"][1]["cap_h"])
+
+        # zero / negative / text are rejected (BRD §13)
+        for bad in (0, -2, "abc"):
+            with self.assertRaises(UserError):
+                Cap.set_capacity_factor(wc.id, sy, sm, bad)
+
+        # resetting to 1.00 removes the override (BRD §14)
+        res = Cap.set_capacity_factor(
+            wc.id, sy, sm, 1.0, start_year=sy, start_month=sm)
+        self.assertAlmostEqual(res["row"]["cells"][0]["cap_h"], std_cap)
+        self.assertFalse(self.env["mrp.ltp.capacity.factor"].search_count([
+            ("workcenter_id", "=", wc.id),
+        ]))

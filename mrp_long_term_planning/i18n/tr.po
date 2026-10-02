@@ -218,6 +218,40 @@ msgstr "Saat"
 #. module: mrp_long_term_planning
 #. odoo-javascript
 #: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.xml:0
+msgid "Factor"
+msgstr "Katsayı"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.xml:0
+msgid "Click to edit the capacity factor"
+msgstr "Kapasite katsayısını düzenlemek için tıklayın"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.js:0
+msgid "Enter a positive factor, e.g. 1,20."
+msgstr "Pozitif bir katsayı girin, örn. 1,20."
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.js:0
+msgid "Factor could not be saved."
+msgstr "Katsayı kaydedilemedi."
+
+#. module: mrp_long_term_planning
+#: code:addons/mrp_long_term_planning/models/mrp_ltp_capacity.py:0
+msgid "The capacity factor must be a positive number."
+msgstr "Kapasite katsayısı pozitif bir sayı olmalıdır."
+
+#. module: mrp_long_term_planning
+#: model:ir.model.fields,field_description:mrp_long_term_planning.field_mrp_ltp_capacity_factor__factor
+msgid "Capacity Factor"
+msgstr "Kapasite Katsayısı"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.xml:0
 msgid "Start"
 msgstr "Başlangıç"
 

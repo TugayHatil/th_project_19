@@ -2,3 +2,6 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_mrp_ltp_line_stock_user,mrp.ltp.line stock user,model_mrp_ltp_line,stock.group_stock_user,1,1,1,1
 access_mrp_ltp_line_mrp_manager,mrp.ltp.line mrp manager,model_mrp_ltp_line,mrp.group_mrp_manager,1,1,1,1
 access_mrp_ltp_line_readonly,mrp.ltp.line internal read,model_mrp_ltp_line,base.group_user,1,0,0,0
+access_mrp_ltp_cap_factor_stock_user,mrp.ltp.capacity.factor stock user,model_mrp_ltp_capacity_factor,stock.group_stock_user,1,1,1,1
+access_mrp_ltp_cap_factor_mrp_manager,mrp.ltp.capacity.factor mrp manager,model_mrp_ltp_capacity_factor,mrp.group_mrp_manager,1,1,1,1
+access_mrp_ltp_cap_factor_readonly,mrp.ltp.capacity.factor internal read,model_mrp_ltp_capacity_factor,base.group_user,1,0,0,0

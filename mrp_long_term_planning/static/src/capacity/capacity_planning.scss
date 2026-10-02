@@ -144,6 +144,37 @@ $o_cap_col_wc_w: 220px;
             }
         }
 
+        // monthly factor column: first column of each month group (BRD §3)
+        .o_cap_factor {
+            min-width: 66px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .o_cap_factor_val {
+            display: inline-block;
+            min-width: 52px;
+            padding: 1px 6px;
+            border: 1px dashed var(--o-gray-400, #ced4da);
+            border-radius: 4px;
+            cursor: pointer;
+            font-variant-numeric: tabular-nums;
+            color: var(--o-gray-600, #6c757d);
+        }
+
+        .o_cap_factor_mod {
+            color: var(--o-brand-primary, #714B67);
+            border-style: solid;
+            font-weight: 700;
+        }
+
+        .o_cap_factor_input {
+            width: 58px;
+            text-align: center;
+            font-size: 0.8rem;
+            padding: 1px 2px;
+        }
+
         // alternating month-group background (BRD §2): every second month
         // carries a very light gray across its header and data cells.
         // Placed last so it wins over the tfoot/header base backgrounds.

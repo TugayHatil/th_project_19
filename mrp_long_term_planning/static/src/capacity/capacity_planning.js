@@ -1,6 +1,6 @@
 /** @odoo-module **/
 
-import { Component, onMounted, useExternalListener, useState } from "@odoo/owl";
+import { Component, onMounted, onPatched, useExternalListener, useRef, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { _t } from "@web/core/l10n/translation";
 import { localization } from "@web/core/l10n/localization";
@@ -61,8 +61,19 @@ export class CapacityPlanning extends Component {
             // display units (BRD §2): days are derived from hours client-side
             showDays: true,
             showHours: true,
+            // inline capacity-factor editing: {wc, year, month} of the cell
+            // being edited plus the raw input text
+            editFactor: null,
+            editValue: "",
             colMenuOpen: false,
             wcMenuOpen: false,
+        });
+        this.factorInput = useRef("factorInput");
+        onPatched(() => {
+            if (this.factorInput.el) {
+                this.factorInput.el.focus();
+                this.factorInput.el.select();
+            }
         });
         this._searchTimer = null;
         this.COLUMNS = COLUMNS;
@@ -103,8 +114,9 @@ export class CapacityPlanning extends Component {
         return COLUMNS.filter((c) => this.state.visible[c.key]);
     }
 
+    // +1: the fixed "Factor" column opens every month group (BRD §3)
     get colCount() {
-        return Math.max(this.activeCols.length, 1);
+        return this.activeCols.length + 1;
     }
 
     get workcenterLabel() {
@@ -244,6 +256,83 @@ export class CapacityPlanning extends Component {
         await this.loadGrid();
     }
 
+    // -- inline factor editing (BRD §4-§6, §13-14) -------------------------
+
+    fmtFactor(value) {
+        return (value ?? 1).toFixed(2).replace(".", ",");
+    }
+
+    isEditingFactor(row, cell) {
+        const edit = this.state.editFactor;
+        return !!edit && edit.wc === row.workcenter_id
+            && edit.year === cell.year && edit.month === cell.month;
+    }
+
+    startFactorEdit(row, cell) {
+        this.state.editFactor = {
+            wc: row.workcenter_id, year: cell.year, month: cell.month,
+        };
+        this.state.editValue = this.fmtFactor(cell.factor);
+    }
+
+    cancelFactorEdit() {
+        this.state.editFactor = null;
+    }
+
+    onFactorInput(ev) {
+        this.state.editValue = ev.target.value;
+    }
+
+    onFactorKeydown(ev) {
+        if (ev.key === "Enter") {
+            ev.preventDefault();
+            this.commitFactor();
+        } else if (ev.key === "Escape") {
+            this.state.editFactor = null;
+        }
+    }
+
+    async commitFactor() {
+        const target = this.state.editFactor;
+        if (!target) {
+            return;
+        }
+        // Turkish decimal comma is the natural input — accept both
+        const factor = parseFloat(
+            (this.state.editValue || "").replace(",", "."));
+        if (!Number.isFinite(factor) || factor <= 0) {
+            this.notification.add(
+                _t("Enter a positive factor, e.g. 1,20."), { type: "warning" });
+            this.state.editFactor = null;
+            return;
+        }
+        let startYear = false, startMonth = false;
+        const first = this.state.periods[0];
+        if (first) {
+            [startYear, startMonth] = [first.year, first.month];
+        }
+        try {
+            const res = await this.orm.call(
+                "mrp.ltp.capacity", "set_capacity_factor", [], {
+                    workcenter_id: target.wc,
+                    year: target.year,
+                    month: target.month,
+                    factor,
+                    start_year: startYear,
+                    start_month: startMonth,
+                });
+            const row = this.state.rows.find(
+                (r) => r.workcenter_id === target.wc);
+            if (row && res.row) {
+                Object.assign(row, res.row);
+            }
+        } catch (error) {
+            this.notifyError(error, _t("Factor could not be saved."));
+        } finally {
+            this.state.editFactor = null;
+        }
+    }
+
     // -- rendering helpers ------------------------------------------------
 
     fmt(value, signed = false) {
@@ -261,10 +350,9 @@ export class CapacityPlanning extends Component {
     }
 
     cellClass(cell, col) {
+        // the month boundary line is carried by the Factor column, not the
+        // first metric column
         let cls = "o_cap_td_num";
-        if (col === this.activeCols[0]) {
-            cls += " o_cap_month_start";
-        }
         if (col.key === "diff" || col.key === "tot") {
             cls += ` ${this.diffClass(cell)}`;
         }
