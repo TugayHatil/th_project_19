@@ -250,10 +250,11 @@ class MrpLtpCapacity(models.AbstractModel):
     @api.model
     def _required_qty_map(self, periods):
         """{(product_id, abs_month): qty} — per product/month the quantity
-        still needing production. IM (orders - stock - incoming incl. open
-        MOs) is the unmet demand; PM is the planner's own plan which may
-        exceed IM when stock is being built ahead — the effective need is
-        max(IM, PM)."""
+        still needing production. IM = orders - stock - incoming supply
+        (incl. open MOs) is the unmet demand, i.e. what remains after the
+        existing MOs have been counted once; PM is the planner's own
+        intent and only adds when it exceeds IM (build-ahead stock) —
+        the effective need is max(IM, PM)."""
         Line = self.env["mrp.ltp.line"]
         products = self.env["product.product"].search([
             ("product_tmpl_id.x_long_term_production_planning", "=", True)])

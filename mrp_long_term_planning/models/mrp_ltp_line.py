@@ -5,10 +5,11 @@ from odoo import api, fields, models
 from odoo.osv import expression
 
 PERIOD_COUNT = 12
-# "draft" included: a draft MO's finished-product move is already planned
-# supply (BRD §8 "Planlanmış üretim") and must feed GM.
+# "draft" included: draft receipts/transfers are already planned supply
+# (BRD §8) and must feed GM.
 MOVE_OPEN_STATES = ("draft", "confirmed", "waiting", "assigned",
                     "partially_available")
+MO_OPEN_STATES = ("draft", "confirmed", "progress", "to_close")
 
 
 class MrpLtpLine(models.Model):
@@ -307,14 +308,54 @@ class MrpLtpLine(models.Model):
 
     @api.model
     def _incoming_qty_map(self, product_ids, periods, warehouse_id):
-        """GM: open incoming stock moves (planned production, open purchases,
-        other supply), bucketed by their scheduled period."""
+        """GM: expected supply per product/month.
+
+        Planned production comes straight from open mrp.production records,
+        bucketed by their expected finish date — this is more reliable than
+        the finished-product stock.move, whose state/schedule varies with
+        the MO state. Other supply (open purchases, inter-warehouse
+        receipts) comes from open incoming stock.move records; moves that
+        belong to an MO are excluded so nothing is counted twice.
+        """
         start, end = self._period_window(periods)
+        first_idx = self._abs_month(*periods[0])
+        last_idx = self._abs_month(*periods[-1])
+        gm_map = {}
+
+        # --- planned production ---------------------------------------
+        mo_domain = [
+            ("state", "in", list(MO_OPEN_STATES)),
+            ("product_id", "in", product_ids),
+        ]
+        if warehouse_id:
+            mo_domain.append((
+                "location_dest_id", "child_of",
+                self.env["stock.warehouse"].browse(
+                    int(warehouse_id)).view_location_id.id))
+        mo_fields = ["product_id", "product_qty", "date_finished",
+                     "date_start"]
+        if "qty_produced" in self.env["mrp.production"]._fields:
+            mo_fields.append("qty_produced")
+        for mo in self.env["mrp.production"].search_read(mo_domain, mo_fields):
+            remaining = mo["product_qty"] - (mo.get("qty_produced") or 0.0)
+            if remaining <= 0:
+                continue
+            date = mo["date_finished"] or mo["date_start"]
+            if not date:
+                continue
+            idx = self._period_month(date)
+            if first_idx <= idx <= last_idx:
+                key = (mo["product_id"][0], idx)
+                gm_map[key] = gm_map.get(key, 0.0) + remaining
+
+        # --- other incoming supply -------------------------------------
         domain = [
             ("product_id", "in", product_ids),
             ("state", "in", list(MOVE_OPEN_STATES)),
             ("date", ">=", start),
             ("date", "<", end),
+            # MO-produced moves are already covered by mrp.production above
+            ("production_id", "=", False),
         ]
         if warehouse_id:
             location_id = self.env["stock.warehouse"].browse(
@@ -328,7 +369,6 @@ class MrpLtpLine(models.Model):
                 ("location_dest_id.usage", "=", "internal"),
                 ("location_id.usage", "not in", ("internal", "view")),
             ]
-        gm_map = {}
         for move in self.env["stock.move"].search_read(
                 domain, ["product_id", "product_uom_qty", "quantity", "date"]):
             remaining = max(0.0, move["product_uom_qty"] - move["quantity"])
