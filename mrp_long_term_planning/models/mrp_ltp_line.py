@@ -5,7 +5,10 @@ from odoo import api, fields, models
 from odoo.osv import expression
 
 PERIOD_COUNT = 12
-MOVE_OPEN_STATES = ("confirmed", "waiting", "assigned", "partially_available")
+# "draft" included: a draft MO's finished-product move is already planned
+# supply (BRD §8 "Planlanmış üretim") and must feed GM.
+MOVE_OPEN_STATES = ("draft", "confirmed", "waiting", "assigned",
+                    "partially_available")
 
 
 class MrpLtpLine(models.Model):

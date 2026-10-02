@@ -56,6 +56,20 @@ class TestLongTermPlanning(TransactionCase):
         self.assertEqual(cells[0]["im"], 0)
         self.assertEqual(cells[0]["ds"], 100)
 
+    def test_incoming_draft_production_counts_as_gm(self):
+        # a draft (unconfirmed) MO is still planned supply → GM (BRD §8)
+        periods = self.Line._periods(*self.Line._current_period())
+        sy, sm = periods[0]
+        self.env["mrp.production"].create({
+            "product_id": self.p_flagged.id,
+            "product_qty": 10,
+            "product_uom_id": self.p_flagged.uom_id.id,
+            "date_start": f"{sy}-{sm:02d}-15 08:00:00",
+        })
+        gm_map = self.Line._incoming_qty_map([self.p_flagged.id], periods, False)
+        key = (self.p_flagged.id, self.Line._abs_month(sy, sm))
+        self.assertEqual(gm_map.get(key), 10)
+
     def test_grid_filters_flagged_products(self):
         data = self.Line.get_planning_grid(limit=200)
         ids = {row["product_id"] for row in data["rows"]}
