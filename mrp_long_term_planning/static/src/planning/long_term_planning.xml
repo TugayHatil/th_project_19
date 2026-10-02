@@ -7,17 +7,9 @@
             <div class="o_ltp_toolbar border-bottom px-3 py-2">
                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
                     <h4 class="mb-0">12-Month Production Planning</h4>
-                    <div class="d-flex align-items-center gap-2">
-                        <label class="form-label mb-0 text-nowrap">Plan Year</label>
-                        <select class="form-select form-select-sm w-auto"
-                                t-on-change="onYearChange">
-                            <t t-foreach="state.years" t-as="yr" t-key="yr">
-                                <option t-att-value="yr"
-                                        t-att-selected="yr === state.year"
-                                        t-esc="yr"/>
-                            </t>
-                        </select>
-                    </div>
+                    <span class="o_ltp_period text-muted"
+                          t-if="periodText"
+                          t-esc="periodText"/>
                 </div>
                 <div class="d-flex align-items-center gap-3 mt-2 flex-wrap">
                     <div class="d-flex align-items-center gap-2">
@@ -78,12 +70,12 @@
                             <th class="o_ltp_sticky o_ltp_col_product" rowspan="2">Product</th>
                             <th class="o_ltp_sticky o_ltp_col_code" rowspan="2">Code</th>
                             <th class="o_ltp_sticky o_ltp_col_uom" rowspan="2">UoM</th>
-                            <t t-foreach="months" t-as="mo" t-key="mo.index">
+                            <t t-foreach="months" t-as="mo" t-key="mo.key">
                                 <th colspan="6" class="o_ltp_month_title" t-esc="mo.label"/>
                             </t>
                         </tr>
                         <tr class="o_ltp_head_sub">
-                            <t t-foreach="months" t-as="mo" t-key="mo.index">
+                            <t t-foreach="months" t-as="mo" t-key="mo.key">
                                 <t t-foreach="subCols" t-as="col" t-key="col">
                                     <th t-att-class="col === 'os' ? 'o_ltp_month_start' : ''"
                                         t-esc="col.toUpperCase()"/>
@@ -100,7 +92,7 @@
                                     t-esc="row.code"/>
                                 <td class="o_ltp_sticky o_ltp_col_uom o_ltp_cell_text"
                                     t-esc="row.uom"/>
-                                <t t-foreach="row.cells" t-as="cell" t-key="cell.month">
+                                <t t-foreach="row.cells" t-as="cell" t-key="cell.year * 100 + cell.month">
                                     <td t-att-class="subCellClass(cell, 'os')" t-esc="fmtQty(cell.os)"/>
                                     <td t-att-class="subCellClass(cell, 'sm')" t-esc="fmtQty(cell.sm)"/>
                                     <td t-att-class="subCellClass(cell, 'gm')" t-esc="fmtQty(cell.gm)"/>

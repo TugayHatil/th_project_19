@@ -22,9 +22,9 @@ msgstr "12 Aylık Üretim Planlama"
 
 #. module: mrp_long_term_planning
 #. odoo-javascript
-#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.xml:0
-msgid "Plan Year"
-msgstr "Plan Yılı"
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.js:0
+msgid "Period"
+msgstr "Dönem"
 
 #. module: mrp_long_term_planning
 #. odoo-javascript

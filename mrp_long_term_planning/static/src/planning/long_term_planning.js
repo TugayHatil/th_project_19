@@ -39,8 +39,9 @@ export class LongTermPlanning extends Component {
         this.notification = useService("notification");
         this.state = useState({
             loading: false,
-            year: false,
-            years: [],
+            // rolling 12-month window, always supplied by the server —
+            // never hard-coded in the frontend (BRD revision §5/§7)
+            periods: [],
             categories: [],
             warehouses: [],
             categoryId: false,
@@ -65,11 +66,22 @@ export class LongTermPlanning extends Component {
 
     get months() {
         const fmt = monthFormatter();
-        const year = this.state.year || new Date().getFullYear();
-        return Array.from({ length: 12 }, (_, i) => ({
-            index: i + 1,
-            label: fmt.format(new Date(year, i, 1)),
+        return this.state.periods.map((p) => ({
+            key: `${p.year}-${p.month}`,
+            label: fmt.format(new Date(p.year, p.month - 1, 1)),
         }));
+    }
+
+    get periodLabel() {
+        const months = this.months;
+        if (!months.length) {
+            return "";
+        }
+        return `${months[0].label} – ${months[months.length - 1].label}`;
+    }
+
+    get periodText() {
+        return this.periodLabel ? `${_t("Period")}: ${this.periodLabel}` : "";
     }
 
     get subCols() {
@@ -88,8 +100,7 @@ export class LongTermPlanning extends Component {
     async loadFilters() {
         try {
             const data = await this.orm.call("mrp.ltp.line", "get_planning_filters", []);
-            this.state.years = data.years || [];
-            this.state.year = data.current_year;
+            this.state.periods = data.periods || [];
             this.state.categories = data.categories || [];
             this.state.warehouses = data.warehouses || [];
         } catch (error) {
@@ -98,13 +109,9 @@ export class LongTermPlanning extends Component {
     }
 
     async loadGrid() {
-        if (!this.state.year) {
-            return;
-        }
         this.state.loading = true;
         try {
             const data = await this.orm.call("mrp.ltp.line", "get_planning_grid", [], {
-                year: this.state.year,
                 warehouse_id: this.state.warehouseId || false,
                 category_id: this.state.categoryId || false,
                 query: this.state.query || "",
@@ -112,6 +119,9 @@ export class LongTermPlanning extends Component {
                 offset: this.state.offset,
                 limit: this.state.limit,
             });
+            // periods come back with every load so a month roll-over is
+            // picked up on refresh without reloading the filters
+            this.state.periods = data.periods || [];
             this.state.rows = data.rows;
             this.state.total = data.total;
             this.state.editingKey = null;
@@ -123,12 +133,6 @@ export class LongTermPlanning extends Component {
     }
 
     // -- toolbar ----------------------------------------------------------
-
-    async onYearChange(ev) {
-        this.state.year = parseInt(ev.target.value, 10);
-        this.state.offset = 0;
-        await this.loadGrid();
-    }
 
     async onCategoryChange(ev) {
         this.state.categoryId = ev.target.value ? parseInt(ev.target.value, 10) : false;
@@ -167,7 +171,7 @@ export class LongTermPlanning extends Component {
     // -- PM editing -------------------------------------------------------
 
     editKey(row, cell) {
-        return `${row.product_id}:${cell.month}`;
+        return `${row.product_id}:${cell.year}-${cell.month}`;
     }
 
     isEditing(row, cell) {
@@ -213,12 +217,14 @@ export class LongTermPlanning extends Component {
         try {
             const res = await this.orm.call("mrp.ltp.line", "set_planned_qty", [], {
                 product_id: row.product_id,
-                year: this.state.year,
+                year: cell.year,
                 month: cell.month,
                 warehouse_id: this.state.warehouseId || false,
                 planned_qty: qty,
             });
-            Object.assign(row, res.row);
+            if (res.row) {
+                Object.assign(row, res.row);
+            }
         } catch (error) {
             this.notifyError(error, _t("The planned quantity could not be saved."));
         }

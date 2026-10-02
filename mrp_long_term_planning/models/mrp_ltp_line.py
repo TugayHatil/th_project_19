@@ -4,7 +4,7 @@ from datetime import datetime
 from odoo import api, fields, models
 from odoo.osv import expression
 
-MONTHS = range(1, 13)
+PERIOD_COUNT = 12
 MOVE_OPEN_STATES = ("confirmed", "waiting", "assigned", "partially_available")
 
 
@@ -18,7 +18,7 @@ class MrpLtpLine(models.Model):
 
     _name = "mrp.ltp.line"
     _description = "Long-Term Production Planning Line"
-    _order = "product_id, year, month"
+    _order = "product_id, period"
 
     product_id = fields.Many2one(
         "product.product", string="Product", required=True, index=True,
@@ -32,6 +32,8 @@ class MrpLtpLine(models.Model):
     )
     year = fields.Integer(required=True, index=True)
     month = fields.Integer(required=True)
+    # YYYYMM — monotonic key used for window filtering and roll-over.
+    period = fields.Integer(compute="_compute_period", store=True, index=True)
     planned_qty = fields.Float(
         string="Planned Quantity", digits="Product Unit", default=0.0,
     )
@@ -43,24 +45,64 @@ class MrpLtpLine(models.Model):
          "Planned quantity cannot be negative."),
     ]
 
+    @api.depends("year", "month")
+    def _compute_period(self):
+        for line in self:
+            line.period = line.year * 100 + line.month
+
     def init(self):
         # A NULL warehouse_id represents the "all warehouses" plan; COALESCE
         # keeps the unique index strict for those rows too.
         self.env.cr.execute("""
             CREATE UNIQUE INDEX IF NOT EXISTS mrp_ltp_line_product_period_uniq
-            ON mrp_ltp_line (company_id, product_id, COALESCE(warehouse_id, 0), year, month)
+            ON mrp_ltp_line (company_id, product_id, COALESCE(warehouse_id, 0), period)
         """)
+
+    # ------------------------------------------------------------------
+    # Planning period — rolling 12-month window (BRD revision):
+    # the first column is always the current server month, never a fixed
+    # calendar year. All cell data is keyed by the real (year, month) pair.
+    # ------------------------------------------------------------------
+
+    @api.model
+    def _current_period(self):
+        """Current month (year, month) in the user's timezone."""
+        today = fields.Date.context_today(self)
+        return today.year, today.month
+
+    @staticmethod
+    def _periods(start_year, start_month, count=PERIOD_COUNT):
+        """[(year, month), ...] of `count` consecutive months."""
+        start_idx = start_year * 12 + start_month - 1
+        return [
+            ((start_idx + i) // 12, (start_idx + i) % 12 + 1)
+            for i in range(count)
+        ]
+
+    @staticmethod
+    def _abs_month(year, month):
+        """Monotonic month index — single key across year boundaries."""
+        return year * 12 + month - 1
+
+    def _period_window(self, periods):
+        """[start, end) date strings covering the whole period list."""
+        sy, sm = periods[0]
+        end_idx = self._abs_month(*periods[-1]) + 1
+        return f"{sy}-{sm:02d}-01", f"{end_idx // 12}-{end_idx % 12 + 1:02d}-01"
 
     # ------------------------------------------------------------------
     # RPC service layer — consumed by the OWL planning screen
     # ------------------------------------------------------------------
 
     @api.model
+    def _period_payload(self, periods):
+        return [{"year": y, "month": m} for y, m in periods]
+
+    @api.model
     def get_planning_filters(self):
-        today = fields.Date.context_today(self)
+        periods = self._periods(*self._current_period())
         return {
-            "current_year": today.year,
-            "years": list(range(today.year - 2, today.year + 6)),
+            "periods": self._period_payload(periods),
             "categories": self.env["product.category"].search_read(
                 [], ["complete_name"], order="complete_name"),
             "warehouses": self.env["stock.warehouse"].search_read(
@@ -69,7 +111,7 @@ class MrpLtpLine(models.Model):
         }
 
     @api.model
-    def get_planning_grid(self, year, warehouse_id=False, category_id=False,
+    def get_planning_grid(self, warehouse_id=False, category_id=False,
                           query="", needs_only=False, offset=0, limit=80):
         """Return one page of planning rows for the OWL grid.
 
@@ -77,8 +119,10 @@ class MrpLtpLine(models.Model):
         (BRD §18). With needs_only, the IM>0 flag is computed for every
         matching product before slicing the page.
         """
-        year = int(year)
         offset, limit = int(offset), int(limit)
+        periods = self._periods(*self._current_period())
+        payload = {"periods": self._period_payload(periods)}
+
         domain = [("product_tmpl_id.x_long_term_production_planning", "=", True)]
         if category_id:
             domain = expression.AND(
@@ -92,22 +136,25 @@ class MrpLtpLine(models.Model):
         Product = self.env["product.product"]
         if needs_only:
             products = Product.search(domain, order="name, id")
-            rows = self._compute_rows(products, year, warehouse_id or False)
+            rows = self._compute_rows(products, periods, warehouse_id or False)
             rows = [row for row in rows
                     if any(cell["im"] > 0 for cell in row["cells"])]
-            return {"total": len(rows), "rows": rows[offset:offset + limit]}
+            payload.update(total=len(rows), rows=rows[offset:offset + limit])
+            return payload
 
-        total = Product.search_count(domain)
         products = Product.search(
             domain, order="name, id", offset=offset, limit=limit)
-        return {"total": total, "rows": self._compute_rows(
-            products, year, warehouse_id or False)}
+        payload.update(
+            total=Product.search_count(domain),
+            rows=self._compute_rows(products, periods, warehouse_id or False),
+        )
+        return payload
 
     @api.model
     def set_planned_qty(self, product_id, year, month,
                         warehouse_id=False, planned_qty=0.0):
-        """Upsert the PM value and return the recomputed row so the grid can
-        refresh the DS chain of that product."""
+        """Upsert the PM value for the real (year, month) period and return
+        the recomputed row so the grid can refresh the DS chain."""
         product_id = int(product_id)
         year, month = int(year), int(month)
         qty = max(0.0, float(planned_qty or 0.0))
@@ -129,7 +176,8 @@ class MrpLtpLine(models.Model):
                 "planned_qty": qty,
             })
         product = self.env["product.product"].browse(product_id)
-        rows = self._compute_rows(product, year, warehouse_id or False)
+        periods = self._periods(*self._current_period())
+        rows = self._compute_rows(product, periods, warehouse_id or False)
         return {"row": rows[0] if rows else None}
 
     # ------------------------------------------------------------------
@@ -137,68 +185,63 @@ class MrpLtpLine(models.Model):
     # ------------------------------------------------------------------
 
     @api.model
-    def _compute_rows(self, products, year, warehouse_id):
+    def _compute_rows(self, products, periods, warehouse_id):
         products = products.exists()
         if not products:
             return []
         product_ids = products.ids
         stock_map = self._opening_stock_map(product_ids, warehouse_id)
-        os_map = self._order_qty_map(product_ids, year, warehouse_id)
-        gm_map = self._incoming_qty_map(product_ids, year, warehouse_id)
-        pm_map = self._planned_qty_map(product_ids, year, warehouse_id)
+        os_map = self._order_qty_map(product_ids, periods, warehouse_id)
+        gm_map = self._incoming_qty_map(product_ids, periods, warehouse_id)
+        pm_map = self._planned_qty_map(product_ids, periods, warehouse_id)
         rows = []
         for product in products:
-            pid = product.id
             rows.append({
-                "product_id": pid,
+                "product_id": product.id,
                 "name": product.name,
                 "code": product.default_code or "",
                 "uom": product.uom_id.name,
                 "cells": self._build_cells(
-                    stock_map.get(pid, 0.0),
-                    {m: os_map.get((pid, m), 0.0) for m in MONTHS},
-                    {m: gm_map.get((pid, m), 0.0) for m in MONTHS},
-                    {m: pm_map.get((pid, m), 0.0) for m in MONTHS},
-                ),
+                    periods, product.id, stock_map.get(product.id, 0.0),
+                    os_map, gm_map, pm_map),
             })
         return rows
 
-    @staticmethod
-    def _build_cells(opening_stock, order_qtys, incoming_qtys, planned_qtys):
-        """12-month rolling plan (BRD §9): the DS of month n is the opening
-        stock SM of month n+1.
+    def _build_cells(self, periods, product_id, opening_stock,
+                     order_qtys, incoming_qtys, planned_qtys):
+        """Rolling plan over the given (year, month) periods (BRD §9): the
+        DS of a month is the opening stock SM of the next one. All quantity
+        maps are keyed by (product_id, absolute-month-index).
 
             IM = max(0, OS - SM - GM)
             DS = SM + GM + PM - OS
         """
         cells = []
         sm = opening_stock
-        for month in MONTHS:
-            os_ = order_qtys.get(month, 0.0)
-            gm_ = incoming_qtys.get(month, 0.0)
-            pm_ = planned_qtys.get(month, 0.0)
+        for year, month in periods:
+            key = (product_id, self._abs_month(year, month))
+            os_ = order_qtys.get(key, 0.0)
+            gm_ = incoming_qtys.get(key, 0.0)
+            pm_ = planned_qtys.get(key, 0.0)
             im_ = max(0.0, os_ - sm - gm_)
             ds_ = sm + gm_ + pm_ - os_
             cells.append({
-                "month": month, "os": os_, "sm": sm, "gm": gm_,
+                "year": year, "month": month,
+                "os": os_, "sm": sm, "gm": gm_,
                 "im": im_, "pm": pm_, "ds": ds_,
             })
             sm = ds_
         return cells
 
-    @staticmethod
-    def _year_window(year):
-        return f"{year}-01-01", f"{year + 1}-01-01"
-
     @api.model
     def _period_month(self, value):
-        """Month index (1-12) of a date/datetime value; datetimes are
-        converted to the user timezone."""
+        """Month index of a date/datetime value as an absolute month key;
+        datetimes are converted to the user timezone."""
         if isinstance(value, datetime):
-            return fields.Datetime.context_timestamp(self, value).month
-        if isinstance(value, str):
+            value = fields.Datetime.context_timestamp(self, value)
+        elif isinstance(value, str):
             value = fields.Date.from_string(value[:10])
-        return value.month
+        return self._abs_month(value.year, value.month)
 
     # --- data sources (kept as separate services so the OS/GM origins can be
     # extended later, e.g. high-probability opportunities — BRD §8) ---------
@@ -219,11 +262,11 @@ class MrpLtpLine(models.Model):
         return stock_map
 
     @api.model
-    def _order_qty_map(self, product_ids, year, warehouse_id):
+    def _order_qty_map(self, product_ids, periods, warehouse_id):
         """OS: remaining (ordered - delivered) quantity of confirmed sale
-        orders, bucketed by the promised month (commitment_date, falling back
-        to the order date)."""
-        start, end = self._year_window(year)
+        orders, bucketed by the promised period (commitment_date, falling
+        back to the order date)."""
+        start, end = self._period_window(periods)
         domain = [("state", "in", ["sale", "done"])]
         if warehouse_id and "warehouse_id" in self.env["sale.order"]._fields:
             domain.append(("warehouse_id", "=", int(warehouse_id)))
@@ -236,29 +279,29 @@ class MrpLtpLine(models.Model):
             domain, ["commitment_date", "date_order"])
         if not orders:
             return {}
-        order_month = {
+        order_period = {
             order["id"]: self._period_month(
                 order["commitment_date"] or order["date_order"])
             for order in orders
         }
         os_map = {}
         lines = self.env["sale.order.line"].search_read([
-            ("order_id", "in", list(order_month)),
+            ("order_id", "in", list(order_period)),
             ("product_id", "in", product_ids),
         ], ["product_id", "product_uom_qty", "qty_delivered", "order_id"])
         for line in lines:
             remaining = max(0.0, line["product_uom_qty"] - line["qty_delivered"])
             if not remaining:
                 continue
-            key = (line["product_id"][0], order_month[line["order_id"][0]])
+            key = (line["product_id"][0], order_period[line["order_id"][0]])
             os_map[key] = os_map.get(key, 0.0) + remaining
         return os_map
 
     @api.model
-    def _incoming_qty_map(self, product_ids, year, warehouse_id):
+    def _incoming_qty_map(self, product_ids, periods, warehouse_id):
         """GM: open incoming stock moves (planned production, open purchases,
-        other supply), bucketed by their scheduled month."""
-        start, end = self._year_window(year)
+        other supply), bucketed by their scheduled period."""
+        start, end = self._period_window(periods)
         domain = [
             ("product_id", "in", product_ids),
             ("state", "in", list(MOVE_OPEN_STATES)),
@@ -283,21 +326,27 @@ class MrpLtpLine(models.Model):
             remaining = max(0.0, move["product_uom_qty"] - move["quantity"])
             if not remaining:
                 continue
-            month = self._period_month(move["date"])
-            key = (move["product_id"][0], month)
+            key = (move["product_id"][0], self._period_month(move["date"]))
             gm_map[key] = gm_map.get(key, 0.0) + remaining
         return gm_map
 
     @api.model
-    def _planned_qty_map(self, product_ids, year, warehouse_id):
-        """PM: stored planner input for the product/year/warehouse scope."""
+    def _planned_qty_map(self, product_ids, periods, warehouse_id):
+        """PM: stored planner input restricted to the visible window.
+        Rows outside the window are kept untouched (BRD §9/§13-14)."""
+        period_min = periods[0][0] * 100 + periods[0][1]
+        period_max = periods[-1][0] * 100 + periods[-1][1]
         domain = [
             ("product_id", "in", product_ids),
-            ("year", "=", int(year)),
+            ("period", ">=", period_min),
+            ("period", "<=", period_max),
             ("warehouse_id", "=", warehouse_id or False),
             ("company_id", "=", self.env.company.id),
         ]
         pm_map = {}
-        for line in self.search_read(domain, ["product_id", "month", "planned_qty"]):
-            pm_map[(line["product_id"][0], line["month"])] = line["planned_qty"]
+        for line in self.search_read(
+                domain, ["product_id", "year", "month", "planned_qty"]):
+            key = (line["product_id"][0],
+                   self._abs_month(line["year"], line["month"]))
+            pm_map[key] = line["planned_qty"]
         return pm_map
