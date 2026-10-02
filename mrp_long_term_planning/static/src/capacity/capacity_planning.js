@@ -14,10 +14,10 @@ const pad2 = (n) => String(n).padStart(2, "0");
 // Column catalogue (BRD §4) — global visibility, applied to every month.
 const COLUMNS = [
     { key: "cap", label: _t("Capacity") },
-    { key: "plan", label: _t("Planned Production") },
-    { key: "rem", label: _t("Remaining Capacity") },
-    { key: "req", label: _t("Required Production") },
-    { key: "tot", label: _t("Total Workload") },
+    { key: "plan", label: _t("Production") },
+    { key: "rem", label: _t("Remaining") },
+    { key: "req", label: _t("Required") },
+    { key: "tot", label: _t("Workload") },
     { key: "diff", label: _t("Diff") },
 ];
 const CELL_KEYS = ["cap_h", "cap_d", "plan_h", "plan_d", "rem_h", "rem_d",
@@ -256,7 +256,7 @@ export class CapacityPlanning extends Component {
 
     cellText(cell, col, unit) {
         const value = cell[`${col.key}_${unit}`] || 0;
-        const suffix = unit === "d" ? ` ${_t("days")}` : ` ${_t("hrs")}`;
+        const suffix = unit === "d" ? ` ${_t("d")}` : ` ${_t("h")}`;
         return this.fmt(value, col.key === "diff") + suffix;
     }
 

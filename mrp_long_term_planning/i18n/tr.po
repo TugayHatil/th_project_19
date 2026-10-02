@@ -134,26 +134,26 @@ msgstr "Kapasite"
 #. module: mrp_long_term_planning
 #. odoo-javascript
 #: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.js:0
-msgid "Planned Production"
-msgstr "Planlı Üretim"
+msgid "Production"
+msgstr "Üretim"
 
 #. module: mrp_long_term_planning
 #. odoo-javascript
 #: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.js:0
-msgid "Remaining Capacity"
-msgstr "Kalan Kapasite"
+msgid "Remaining"
+msgstr "Kalan"
 
 #. module: mrp_long_term_planning
 #. odoo-javascript
 #: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.js:0
-msgid "Required Production"
-msgstr "İhtiyaç Üretimi"
+msgid "Required"
+msgstr "İhtiyaç"
 
 #. module: mrp_long_term_planning
 #. odoo-javascript
 #: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.js:0
-msgid "Total Workload"
-msgstr "Toplam İş Yükü"
+msgid "Workload"
+msgstr "İş Yükü"
 
 #. module: mrp_long_term_planning
 #. odoo-javascript
@@ -170,14 +170,14 @@ msgstr "%s seçili"
 #. module: mrp_long_term_planning
 #. odoo-javascript
 #: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.js:0
-msgid "days"
-msgstr "gün"
+msgid "d"
+msgstr "g"
 
 #. module: mrp_long_term_planning
 #. odoo-javascript
 #: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.js:0
-msgid "hrs"
-msgstr "saat"
+msgid "h"
+msgstr "s"
 
 #. module: mrp_long_term_planning
 #. odoo-javascript
