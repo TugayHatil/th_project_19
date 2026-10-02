@@ -42,6 +42,7 @@ export class LongTermPlanning extends Component {
             // rolling 12-month window, always supplied by the server —
             // never hard-coded in the frontend (BRD revision §5/§7)
             periods: [],
+            qtyPrecision: 2,
             categories: [],
             warehouses: [],
             categoryId: false,
@@ -101,6 +102,9 @@ export class LongTermPlanning extends Component {
         try {
             const data = await this.orm.call("mrp.ltp.line", "get_planning_filters", []);
             this.state.periods = data.periods || [];
+            if (typeof data.qty_precision === "number") {
+                this.state.qtyPrecision = data.qty_precision;
+            }
             this.state.categories = data.categories || [];
             this.state.warehouses = data.warehouses || [];
         } catch (error) {
@@ -233,7 +237,9 @@ export class LongTermPlanning extends Component {
     // -- rendering helpers ------------------------------------------------
 
     fmtQty(value) {
-        return formatFloat(value || 0, { digits: [16, 2] });
+        // digits come from the "Long-Term Planning Quantity" entry in
+        // decimal.precision so the planner can tune them per database
+        return formatFloat(value || 0, { digits: [16, this.state.qtyPrecision] });
     }
 
     subCellClass(cell, key) {

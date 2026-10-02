@@ -3,7 +3,7 @@
 {
     "name": "Long-Term Production Planning",
     "summary": "12-month long-term production planning grid (OS/SM/GM/IM/PM/DS)",
-    "version": "19.0.2.1.0",
+    "version": "19.0.2.2.0",
     "category": "Manufacturing/Manufacturing",
     "author": "Projet Solutions",
     "license": "LGPL-3",
@@ -11,6 +11,7 @@
 
     "data": [
         "security/ir.model.access.csv",
+        "data/decimal_precision.xml",
         "views/product_template_views.xml",
         "views/mrp_ltp_menus.xml",
     ],

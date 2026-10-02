@@ -38,7 +38,8 @@ class MrpLtpLine(models.Model):
     # YYYYMM — monotonic key used for window filtering and roll-over.
     period = fields.Integer(compute="_compute_period", store=True, index=True)
     planned_qty = fields.Float(
-        string="Planned Quantity", digits="Product Unit", default=0.0,
+        string="Planned Quantity", digits="Long-Term Planning Quantity",
+        default=0.0,
     )
 
     _sql_constraints = [
@@ -106,6 +107,10 @@ class MrpLtpLine(models.Model):
         periods = self._periods(*self._current_period())
         return {
             "periods": self._period_payload(periods),
+            # grid quantity digits are user-configurable via
+            # Settings > Technical > Decimal Accuracy
+            "qty_precision": self.env["decimal.precision"].precision_get(
+                "Long-Term Planning Quantity"),
             "categories": self.env["product.category"].search_read(
                 [], ["complete_name"], order="complete_name"),
             "warehouses": self.env["stock.warehouse"].search_read(

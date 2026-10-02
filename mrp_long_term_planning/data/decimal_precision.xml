@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- noupdate: the planner's digits choice must survive module upgrades -->
+    <data noupdate="1">
+        <record id="decimal_ltp_quantity" model="decimal.precision">
+            <field name="name">Long-Term Planning Quantity</field>
+            <field name="digits">2</field>
+        </record>
+    </data>
+</odoo>
