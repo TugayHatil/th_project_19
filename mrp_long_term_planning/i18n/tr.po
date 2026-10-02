@@ -133,9 +133,57 @@ msgstr "Kapasite"
 
 #. module: mrp_long_term_planning
 #. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.js:0
+msgid "Planned Production"
+msgstr "Planlı Üretim"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.js:0
+msgid "Remaining Capacity"
+msgstr "Kalan Kapasite"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.js:0
+msgid "Required Production"
+msgstr "İhtiyaç Üretimi"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.js:0
+msgid "Total Workload"
+msgstr "Toplam İş Yükü"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
 #: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.xml:0
-msgid "Workload"
-msgstr "İş Yükü"
+msgid "Columns"
+msgstr "Kolonlar"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.js:0
+msgid "%s selected"
+msgstr "%s seçili"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.js:0
+msgid "days"
+msgstr "gün"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.js:0
+msgid "hrs"
+msgstr "saat"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.xml:0
+msgid "Work Center / Line"
+msgstr "İş Merkezi / Hat"
 
 #. module: mrp_long_term_planning
 #. odoo-javascript

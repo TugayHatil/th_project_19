@@ -121,17 +121,43 @@ class TestLongTermPlanning(TransactionCase):
             "date_start": f"{sy}-{sm:02d}-15 08:00:00",
         })
         mo.action_confirm()
-        data = Cap.get_capacity_grid(workcenter_id=wc.id)
+        data = Cap.get_capacity_grid(workcenter_ids=[wc.id])
         self.assertEqual(len(data["periods"]), 12)
         row = next(r for r in data["rows"] if r["workcenter_id"] == wc.id)
         self.assertEqual(len(row["cells"]), 12)
         cell = row["cells"][0]
         # capacity comes from the workcenter calendar, not constants
         self.assertGreater(cell["cap_h"], 0)
-        # 2 units x 60 min operation = 2h of workload in the first month
-        self.assertGreater(cell["load_h"], 0)
-        self.assertAlmostEqual(cell["diff_h"], cell["cap_h"] - cell["load_h"])
+        # 2 units x 60 min operation = 2h of planned load in the first month
+        self.assertGreater(cell["plan_h"], 0)
+        # diff = capacity - (planned + required) (BRD §12)
+        self.assertAlmostEqual(cell["rem_h"], cell["cap_h"] - cell["plan_h"])
+        self.assertAlmostEqual(cell["tot_h"], cell["plan_h"] + cell["req_h"])
+        self.assertAlmostEqual(cell["diff_h"], cell["cap_h"] - cell["tot_h"])
         # overload flag and filter
         self.assertFalse(row["overload"])
         over = Cap.get_capacity_grid(overload_only=True)
         self.assertTrue(all(r["overload"] for r in over["rows"]))
+
+    def test_required_production_via_bom(self):
+        # unmet demand (no stock, no MO) on a flagged product must turn into
+        # required-production hours on its BOM operation's workcenter
+        Line = self.Line
+        Cap = self.env["mrp.ltp.capacity"]
+        wc = self.env["mrp.workcenter"].create({"name": "LTP Line Y"})
+        bom = self.env["mrp.bom"].create({
+            "product_tmpl_id": self.p_flagged.product_tmpl_id.id,
+            "product_qty": 1,
+            "operation_ids": [Command.create({
+                "name": "Assemble", "workcenter_id": wc.id, "time_cycle": 30,
+            })],
+        })
+        periods = Line._periods(*Line._current_period())
+        py, pm = periods[0]
+        # planner input counts as required production even without an MO
+        Line.set_planned_qty(self.p_flagged.id, py, pm, False, 8)
+        req = Cap._required_load_map(
+            periods, self.env["mrp.workcenter"].browse(wc.id))
+        key = (wc.id, Line._abs_month(py, pm))
+        # 8 units x 30 min = 4 h on the operation's workcenter
+        self.assertAlmostEqual(req.get(key, 0.0), 4.0)

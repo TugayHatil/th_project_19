@@ -12,6 +12,23 @@ $o_cap_col_wc_w: 220px;
         width: 200px;
     }
 
+    .o_cap_dd {
+        position: relative;
+    }
+
+    .o_cap_dd_menu {
+        min-width: 210px;
+        max-height: 320px;
+        overflow-y: auto;
+        padding: 6px 0;
+    }
+
+    .o_cap_dd_btn {
+        max-width: 260px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
     .o_cap_table {
         border-collapse: separate;
         border-spacing: 0;
