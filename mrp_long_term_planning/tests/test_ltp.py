@@ -154,10 +154,46 @@ class TestLongTermPlanning(TransactionCase):
         })
         periods = Line._periods(*Line._current_period())
         py, pm = periods[0]
-        # planner input counts as required production even without an MO
-        Line.set_planned_qty(self.p_flagged.id, py, pm, False, 8)
+        # confirmed sales demand (no stock, no MO) → required production
+        partner = self.env["res.partner"].create({"name": "LTP Customer"})
+        so = self.env["sale.order"].create({
+            "partner_id": partner.id,
+            "commitment_date": f"{py}-{pm:02d}-15 12:00:00",
+            "order_line": [Command.create({
+                "product_id": self.p_flagged.id,
+                "product_uom_qty": 8,
+            })],
+        })
+        so.action_confirm()
         req = Cap._required_load_map(
             periods, self.env["mrp.workcenter"].browse(wc.id))
         key = (wc.id, Line._abs_month(py, pm))
         # 8 units x 30 min = 4 h on the operation's workcenter
         self.assertAlmostEqual(req.get(key, 0.0), 4.0)
+
+    def test_required_is_demand_minus_existing_production(self):
+        # 100 ordered, 10 covered by an open MO → required is 90, and the
+        # total workload equals demand (10 planned + 90 required = 100)
+        Line = self.Line
+        Cap = self.env["mrp.ltp.capacity"]
+        periods = Line._periods(*Line._current_period())
+        py, pm = periods[0]
+        partner = self.env["res.partner"].create({"name": "LTP Customer 2"})
+        so = self.env["sale.order"].create({
+            "partner_id": partner.id,
+            "commitment_date": f"{py}-{pm:02d}-15 12:00:00",
+            "order_line": [Command.create({
+                "product_id": self.p_flagged.id,
+                "product_uom_qty": 100,
+            })],
+        })
+        so.action_confirm()
+        self.env["mrp.production"].create({
+            "product_id": self.p_flagged.id,
+            "product_qty": 10,
+            "product_uom_id": self.p_flagged.uom_id.id,
+            "date_start": f"{py}-{pm:02d}-20 08:00:00",
+        })
+        req_map = Cap._required_qty_map(periods)
+        key = (self.p_flagged.id, Line._abs_month(py, pm))
+        self.assertAlmostEqual(req_map.get(key, 0.0), 90.0)

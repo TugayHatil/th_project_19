@@ -250,21 +250,22 @@ class MrpLtpCapacity(models.AbstractModel):
     @api.model
     def _required_qty_map(self, periods):
         """{(product_id, abs_month): qty} — per product/month the quantity
-        still needing production. IM = orders - stock - incoming supply
-        (incl. open MOs) is the unmet demand, i.e. what remains after the
-        existing MOs have been counted once; PM is the planner's own
-        intent and only adds when it exceeds IM (build-ahead stock) —
-        the effective need is max(IM, PM)."""
+        still needing production: IM = orders - stock - incoming supply
+        (incl. open MOs). This is exactly "what the existing production
+        does not yet cover" — an order of 100 with an MO of 10 yields 90.
+        PM is deliberately NOT added: it is planning intent shown on the
+        planning screen, not demand, and counting it would double-count
+        quantities already covered by MOs."""
         Line = self.env["mrp.ltp.line"]
         products = self.env["product.product"].search([
             ("product_tmpl_id.x_long_term_production_planning", "=", True)])
         req_map = {}
         for row in Line._compute_rows(products, periods, False):
             for cell in row["cells"]:
-                qty = max(cell["im"], cell["pm"])
-                if qty > 0:
+                if cell["im"] > 0:
                     req_map[(row["product_id"],
-                             Line._abs_month(cell["year"], cell["month"]))] = qty
+                             Line._abs_month(cell["year"], cell["month"]))] = (
+                        cell["im"])
         return req_map
 
     @api.model
