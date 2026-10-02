@@ -72,6 +72,25 @@
                         </div>
                     </div>
 
+                    <!-- display units (BRD §1-§2) -->
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="form-label mb-0 text-nowrap">Display:</label>
+                        <div class="form-check">
+                            <input id="o_cap_unit_d" type="checkbox"
+                                   class="form-check-input"
+                                   t-att-checked="state.showDays"
+                                   t-on-change="() => this.toggleUnit('showDays')"/>
+                            <label for="o_cap_unit_d" class="form-check-label text-nowrap">Days</label>
+                        </div>
+                        <div class="form-check">
+                            <input id="o_cap_unit_h" type="checkbox"
+                                   class="form-check-input"
+                                   t-att-checked="state.showHours"
+                                   t-on-change="() => this.toggleUnit('showHours')"/>
+                            <label for="o_cap_unit_h" class="form-check-label text-nowrap">Hours</label>
+                        </div>
+                    </div>
+
                     <div class="d-flex align-items-center gap-2">
                         <label class="form-label mb-0 text-nowrap">Start</label>
                         <input type="month" class="form-control form-control-sm"
@@ -119,8 +138,12 @@
                                 <t t-foreach="row.cells" t-as="cell" t-key="cell.year * 100 + cell.month">
                                     <t t-foreach="activeCols" t-as="col" t-key="col.key">
                                         <td t-att-class="cellClass(cell, col)">
-                                            <div class="o_cap_days" t-esc="cellText(cell, col, 'd')"/>
-                                            <div class="o_cap_hours" t-esc="cellText(cell, col, 'h')"/>
+                                            <div t-if="state.showDays"
+                                                 class="o_cap_days"
+                                                 t-esc="cellText(cell, col, 'd')"/>
+                                            <div t-if="state.showHours"
+                                                 class="o_cap_hours"
+                                                 t-esc="cellText(cell, col, 'h')"/>
                                         </td>
                                     </t>
                                 </t>
@@ -133,8 +156,12 @@
                             <t t-foreach="totals" t-as="cell" t-key="cell_index">
                                 <t t-foreach="activeCols" t-as="col" t-key="col.key">
                                     <td t-att-class="cellClass(cell, col)">
-                                        <div class="o_cap_days" t-esc="cellText(cell, col, 'd')"/>
-                                        <div class="o_cap_hours" t-esc="cellText(cell, col, 'h')"/>
+                                        <div t-if="state.showDays"
+                                             class="o_cap_days"
+                                             t-esc="cellText(cell, col, 'd')"/>
+                                        <div t-if="state.showHours"
+                                             class="o_cap_hours"
+                                             t-esc="cellText(cell, col, 'h')"/>
                                     </td>
                                 </t>
                             </t>

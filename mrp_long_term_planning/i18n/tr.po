@@ -200,6 +200,24 @@ msgstr "TOPLAM"
 #. module: mrp_long_term_planning
 #. odoo-javascript
 #: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.xml:0
+msgid "Display:"
+msgstr "Gösterim:"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.xml:0
+msgid "Days"
+msgstr "Gün"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.xml:0
+msgid "Hours"
+msgstr "Saat"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/capacity/capacity_planning.xml:0
 msgid "Start"
 msgstr "Başlangıç"
 

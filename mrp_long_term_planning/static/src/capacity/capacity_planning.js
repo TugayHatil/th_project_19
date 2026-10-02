@@ -58,6 +58,9 @@ export class CapacityPlanning extends Component {
             overloadOnly: false,
             rows: [],
             visible: Object.fromEntries(COLUMNS.map((c) => [c.key, true])),
+            // display units (BRD §2): days are derived from hours client-side
+            showDays: true,
+            showHours: true,
             colMenuOpen: false,
             wcMenuOpen: false,
         });
@@ -211,6 +214,15 @@ export class CapacityPlanning extends Component {
 
     async toggleColumn(key) {
         this.state.visible[key] = !this.state.visible[key];
+    }
+
+    // Unchecking both units would blank every cell — fall back to days+hours.
+    toggleUnit(key) {
+        this.state[key] = !this.state[key];
+        if (!this.state.showDays && !this.state.showHours) {
+            this.state.showDays = true;
+            this.state.showHours = true;
+        }
     }
 
     isWorkcenterSelected(id) {
