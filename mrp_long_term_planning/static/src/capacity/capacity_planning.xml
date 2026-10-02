@@ -126,7 +126,7 @@
                             <t t-foreach="months" t-as="mo" t-key="mo.key">
                                 <th t-att-class="'o_cap_month_start o_cap_factor_head' + (mo_index % 2 ? ' o_cap_alt' : '')">Factor</th>
                                 <t t-foreach="activeCols" t-as="col" t-key="col.key">
-                                    <th t-att-class="(col === activeCols[0] ? 'o_cap_month_start ' : '') + (mo_index % 2 ? 'o_cap_alt' : '')"
+                                    <th t-att-class="mo_index % 2 ? 'o_cap_alt' : ''"
                                         t-esc="col.label"/>
                                 </t>
                             </t>
@@ -149,7 +149,7 @@
                                                t-on-keydown="onFactorKeydown"
                                                t-on-blur="commitFactor"/>
                                         <span t-else=""
-                                              t-att-class="'o_cap_factor_val' + (Math.abs((cell.factor || 1) - 1) > 1e-6 ? ' o_cap_factor_mod' : '')"
+                                              t-att-class="factorValClass(cell)"
                                               title="Click to edit the capacity factor"
                                               t-on-click.stop="() => this.startFactorEdit(row, cell)"
                                               t-esc="fmtFactor(cell.factor)"/>

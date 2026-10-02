@@ -262,6 +262,13 @@ export class CapacityPlanning extends Component {
         return (value ?? 1).toFixed(2).replace(".", ",");
     }
 
+    // non-default factors are highlighted (kept out of the template:
+    // the OWL compiler mis-tokenizes the 1e-6 literal)
+    factorValClass(cell) {
+        const modified = Math.abs((cell.factor || 1) - 1) > 1e-6;
+        return "o_cap_factor_val" + (modified ? " o_cap_factor_mod" : "");
+    }
+
     isEditingFactor(row, cell) {
         const edit = this.state.editFactor;
         return !!edit && edit.wc === row.workcenter_id
