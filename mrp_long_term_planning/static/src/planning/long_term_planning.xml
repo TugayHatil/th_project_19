@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="mrp_long_term_planning.LongTermPlanning">
+        <div class="o_ltp d-flex flex-column h-100 overflow-hidden">
+
+            <!-- Toolbar -->
+            <div class="o_ltp_toolbar border-bottom px-3 py-2">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <h4 class="mb-0">12-Month Production Planning</h4>
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="form-label mb-0 text-nowrap">Plan Year</label>
+                        <select class="form-select form-select-sm w-auto"
+                                t-on-change="onYearChange">
+                            <t t-foreach="state.years" t-as="yr" t-key="yr">
+                                <option t-att-value="yr"
+                                        t-att-selected="yr === state.year"
+                                        t-esc="yr"/>
+                            </t>
+                        </select>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-3 mt-2 flex-wrap">
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="form-label mb-0 text-nowrap">Product Group</label>
+                        <select class="form-select form-select-sm w-auto"
+                                t-on-change="onCategoryChange">
+                            <option value="">All</option>
+                            <t t-foreach="state.categories" t-as="cat" t-key="cat.id">
+                                <option t-att-value="cat.id"
+                                        t-att-selected="cat.id === state.categoryId"
+                                        t-esc="cat.complete_name"/>
+                            </t>
+                        </select>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="form-label mb-0 text-nowrap">Warehouse</label>
+                        <select class="form-select form-select-sm w-auto"
+                                t-on-change="onWarehouseChange">
+                            <option value="">All</option>
+                            <t t-foreach="state.warehouses" t-as="wh" t-key="wh.id">
+                                <option t-att-value="wh.id"
+                                        t-att-selected="wh.id === state.warehouseId"
+                                        t-esc="`${wh.name} (${wh.code})`"/>
+                            </t>
+                        </select>
+                    </div>
+                    <input type="text" class="form-control form-control-sm o_ltp_search"
+                           placeholder="Search product or code…"
+                           t-on-input="onSearchInput"/>
+                    <div class="form-check">
+                        <input id="o_ltp_needs_only" type="checkbox"
+                               class="form-check-input"
+                               t-att-checked="state.needsOnly"
+                               t-on-change="onNeedsOnlyChange"/>
+                        <label for="o_ltp_needs_only" class="form-check-label text-nowrap">
+                            Needs Only
+                        </label>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                            t-on-click="loadGrid">
+                        <i class="fa fa-refresh me-1"/>Refresh
+                    </button>
+                    <div class="ms-auto">
+                        <Pager t-if="state.total"
+                               offset="state.offset"
+                               limit="state.limit"
+                               total="state.total"
+                               onUpdate.bind="onPagerUpdate"/>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grid -->
+            <div class="o_ltp_grid flex-grow-1 overflow-auto position-relative">
+                <table class="o_ltp_table">
+                    <thead>
+                        <tr class="o_ltp_head_months">
+                            <th class="o_ltp_sticky o_ltp_col_product" rowspan="2">Product</th>
+                            <th class="o_ltp_sticky o_ltp_col_code" rowspan="2">Code</th>
+                            <th class="o_ltp_sticky o_ltp_col_uom" rowspan="2">UoM</th>
+                            <t t-foreach="months" t-as="mo" t-key="mo.index">
+                                <th colspan="6" class="o_ltp_month_title" t-esc="mo.label"/>
+                            </t>
+                        </tr>
+                        <tr class="o_ltp_head_sub">
+                            <t t-foreach="months" t-as="mo" t-key="mo.index">
+                                <t t-foreach="subCols" t-as="col" t-key="col">
+                                    <th t-att-class="col === 'os' ? 'o_ltp_month_start' : ''"
+                                        t-esc="col.toUpperCase()"/>
+                                </t>
+                            </t>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="state.rows" t-as="row" t-key="row.product_id">
+                            <tr>
+                                <td class="o_ltp_sticky o_ltp_col_product o_ltp_cell_text"
+                                    t-esc="row.name"/>
+                                <td class="o_ltp_sticky o_ltp_col_code o_ltp_cell_text"
+                                    t-esc="row.code"/>
+                                <td class="o_ltp_sticky o_ltp_col_uom o_ltp_cell_text"
+                                    t-esc="row.uom"/>
+                                <t t-foreach="row.cells" t-as="cell" t-key="cell.month">
+                                    <td t-att-class="subCellClass(cell, 'os')" t-esc="fmtQty(cell.os)"/>
+                                    <td t-att-class="subCellClass(cell, 'sm')" t-esc="fmtQty(cell.sm)"/>
+                                    <td t-att-class="subCellClass(cell, 'gm')" t-esc="fmtQty(cell.gm)"/>
+                                    <td t-att-class="subCellClass(cell, 'im')" t-esc="fmtQty(cell.im)"/>
+                                    <td t-att-class="subCellClass(cell, 'pm')"
+                                        t-on-click="() => this.startEdit(row, cell)">
+                                        <input t-if="isEditing(row, cell)"
+                                               type="number" min="0" step="any"
+                                               class="o_ltp_pm_input"
+                                               t-att-value="state.editValue"
+                                               t-on-input="onEditInput"
+                                               t-on-keydown="(ev) => this.onEditKeydown(row, cell, ev)"
+                                               t-on-blur="() => this.commitEdit(row, cell)"
+                                               t-on-click.stop="() => {}"
+                                               autofocus="autofocus"/>
+                                        <span t-else="" t-esc="fmtQty(cell.pm)"/>
+                                    </td>
+                                    <td t-att-class="subCellClass(cell, 'ds')" t-esc="fmtQty(cell.ds)"/>
+                                </t>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+
+                <div t-if="state.loading"
+                     class="o_ltp_overlay d-flex align-items-center justify-content-center">
+                    <i class="fa fa-spinner fa-spin fa-2x text-muted"/>
+                </div>
+                <div t-if="!state.loading &amp;&amp; !state.rows.length"
+                     class="o_ltp_empty text-muted text-center py-5">
+                    No products to plan for the current filters.
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

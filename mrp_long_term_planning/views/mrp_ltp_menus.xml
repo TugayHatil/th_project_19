@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_mrp_ltp_screen" model="ir.actions.client">
+        <field name="name">12-Month Production Planning</field>
+        <field name="tag">mrp_long_term_planning.screen</field>
+    </record>
+
+    <!-- Manufacturing -> Planning -> Long-Term Production Planning -->
+    <menuitem id="menu_mrp_ltp"
+              name="Long-Term Production Planning"
+              parent="mrp.mrp_planning_menu_root"
+              action="action_mrp_ltp_screen"
+              groups="stock.group_stock_user"
+              sequence="60"/>
+</odoo>

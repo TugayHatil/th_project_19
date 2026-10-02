@@ -1,0 +1,140 @@
+// 12-month production planning grid (BRD §10): frozen product columns,
+// two-level sticky header, horizontal scroll for the 72 data columns.
+
+$o_ltp_head_h: 30px;
+$o_ltp_row_h: 32px;
+$o_ltp_col_product_w: 220px;
+$o_ltp_col_code_w: 110px;
+$o_ltp_col_uom_w: 80px;
+
+.o_ltp {
+    background-color: var(--o-view-background-color, #fff);
+
+    .o_ltp_search {
+        width: 220px;
+    }
+
+    .o_ltp_grid {
+        // both scrollbars live on this container
+    }
+
+    .o_ltp_table {
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 0.8125rem;
+
+        th, td {
+            border-right: 1px solid var(--o-border-color, #dee2e6);
+            border-bottom: 1px solid var(--o-border-color, #dee2e6);
+            padding: 0 8px;
+            height: $o_ltp_row_h;
+            white-space: nowrap;
+        }
+
+        thead th {
+            position: sticky;
+            z-index: 10;
+            background-color: var(--o-view-background-color, #fff);
+            font-weight: 600;
+            text-align: center;
+            vertical-align: middle;
+            height: $o_ltp_head_h;
+        }
+
+        thead tr.o_ltp_head_months th {
+            top: 0;
+        }
+
+        thead tr.o_ltp_head_sub th {
+            top: $o_ltp_head_h;
+            min-width: 58px;
+            color: var(--o-gray-600, #6c757d);
+            font-weight: 500;
+        }
+
+        // Frozen product columns (Product / Code / UoM)
+        .o_ltp_sticky {
+            position: sticky;
+            z-index: 5;
+            background-color: var(--o-view-background-color, #fff);
+        }
+
+        thead .o_ltp_sticky {
+            z-index: 20; // corner cells stay above both axes
+        }
+
+        .o_ltp_col_product {
+            left: 0;
+            min-width: $o_ltp_col_product_w;
+            max-width: $o_ltp_col_product_w;
+        }
+
+        .o_ltp_col_code {
+            left: $o_ltp_col_product_w;
+            min-width: $o_ltp_col_code_w;
+            max-width: $o_ltp_col_code_w;
+        }
+
+        .o_ltp_col_uom {
+            left: $o_ltp_col_product_w + $o_ltp_col_code_w;
+            min-width: $o_ltp_col_uom_w;
+            max-width: $o_ltp_col_uom_w;
+            // right edge of the frozen block
+            box-shadow: 4px 0 4px -2px rgba(0, 0, 0, 0.12);
+        }
+
+        .o_ltp_cell_text {
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .o_ltp_td_num {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        // month boundary between the 6 sub-columns
+        .o_ltp_month_start {
+            border-left: 2px solid var(--o-border-color, #dee2e6);
+        }
+
+        // PM is the only editable cell — clearly distinguished (BRD §11)
+        .o_ltp_pm {
+            cursor: text;
+            background-color: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.06);
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+
+            &:hover {
+                background-color: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.12);
+            }
+
+            .o_ltp_pm_input {
+                width: 100%;
+                height: $o_ltp_row_h - 6px;
+                padding: 0 4px;
+                border: 1px solid var(--o-input-border-color, #ccc);
+                border-radius: 3px;
+                text-align: right;
+                background-color: #fff;
+            }
+        }
+
+        .o_ltp_need {
+            color: var(--bs-warning, #e0a800);
+            font-weight: 600;
+        }
+
+        .o_ltp_neg {
+            color: var(--bs-danger, #dc3545);
+            font-weight: 600;
+        }
+    }
+
+    .o_ltp_overlay {
+        position: absolute;
+        inset: 0;
+        z-index: 30;
+        background-color: rgba(255, 255, 255, 0.55);
+    }
+}

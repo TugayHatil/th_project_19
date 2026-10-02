@@ -1,0 +1,120 @@
+# Translation of Odoo Server.
+# Turkish translations for mrp_long_term_planning.
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-02 00:00+0000\n"
+"PO-Revision-Date: 2026-10-02 00:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: tr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.xml:0
+msgid "12-Month Production Planning"
+msgstr "12 Aylık Üretim Planlama"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.xml:0
+msgid "Plan Year"
+msgstr "Plan Yılı"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.xml:0
+msgid "Product Group"
+msgstr "Ürün Grubu"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.xml:0
+msgid "Warehouse"
+msgstr "Depo"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.xml:0
+msgid "All"
+msgstr "Tümü"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.xml:0
+msgid "Search product or code…"
+msgstr "Ürün veya kod ara…"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.xml:0
+msgid "Needs Only"
+msgstr "Sadece İhtiyaç Olanlar"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.xml:0
+msgid "Refresh"
+msgstr "Yenile"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.xml:0
+msgid "Product"
+msgstr "Ürün"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.xml:0
+msgid "Code"
+msgstr "Kod"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.xml:0
+msgid "UoM"
+msgstr "Birim"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.xml:0
+msgid "No products to plan for the current filters."
+msgstr "Mevcut filtrelere uygun planlanacak ürün yok."
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.js:0
+msgid "Filters could not be loaded."
+msgstr "Filtreler yüklenemedi."
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.js:0
+msgid "Planning data could not be loaded."
+msgstr "Planlama verisi yüklenemedi."
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.js:0
+msgid "The planned quantity could not be saved."
+msgstr "Planlanan miktar kaydedilemedi."
+
+#. module: mrp_long_term_planning
+#: model:ir.model.fields,field_description:mrp_long_term_planning.field_product_template__x_long_term_production_planning
+msgid "Use in Long-Term Production Planning"
+msgstr "Uzun Vadeli Üretim Planlamasında Kullan"
+
+#. module: mrp_long_term_planning
+#: model:ir.ui.menu,name:mrp_long_term_planning.menu_mrp_ltp
+msgid "Long-Term Production Planning"
+msgstr "Uzun Vadeli Üretim Planlama"
+
+#. module: mrp_long_term_planning
+#: model:ir.actions.client,name:mrp_long_term_planning.action_mrp_ltp_screen
+msgid "12-Month Production Planning"
+msgstr "12 Aylık Üretim Planlama"
