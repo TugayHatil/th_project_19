@@ -398,3 +398,208 @@ class MrpLtpLine(models.Model):
                    self._abs_month(line["year"], line["month"]))
             pm_map[key] = line["planned_qty"]
         return pm_map
+
+    # ------------------------------------------------------------------
+    # Baseline / revision service layer (BRD "Sipariş Teyit, Baseline ve
+    # Revizyon Yönetimi")
+    # ------------------------------------------------------------------
+
+    @api.model
+    def _product_domain(self, category_id=False, query=""):
+        domain = [("product_tmpl_id.x_long_term_production_planning", "=", True)]
+        if category_id:
+            domain = expression.AND(
+                [domain, [("categ_id", "child_of", int(category_id))]])
+        if query and query.strip():
+            domain = expression.AND([domain, [
+                "|", ("name", "ilike", query.strip()),
+                ("default_code", "ilike", query.strip()),
+            ]])
+        return domain
+
+    @api.model
+    def _revision_payload(self, revision):
+        return {
+            "id": revision.id,
+            "name": revision.name,
+            "date": fields.Datetime.to_string(revision.confirm_date),
+            "user": revision.user_id.name,
+            "period_start": revision.period_start,
+        }
+
+    @api.model
+    def get_revision_list(self, warehouse_id=False):
+        """Revisions of the current warehouse scope for the dropdown (§13)."""
+        revisions = self.env["mrp.ltp.revision"].search_read(
+            [("warehouse_id", "=", warehouse_id or False),
+             ("company_id", "=", self.env.company.id)],
+            ["confirm_date", "user_id", "period_start"], order="id desc")
+        return [{
+            "id": r["id"],
+            "name": "#%s" % r["id"],
+            "date": r["confirm_date"],
+            "user": r["user_id"] and r["user_id"][1] or "",
+            "period_start": r["period_start"],
+        } for r in revisions]
+
+    @api.model
+    def _baseline_lines_map(self, revision):
+        """{(product_id, abs_month): {"os","pm","demand"}} from a revision."""
+        lines_map = {}
+        for line in revision.line_ids:
+            key = (line.product_id.id, self._abs_month(line.year, line.month))
+            lines_map[key] = {
+                "os": line.order_qty,
+                "pm": line.planned_qty,
+                "demand": line.demand_qty,
+            }
+        return lines_map
+
+    @api.model
+    def get_baseline(self, warehouse_id=False):
+        """Latest confirmed baseline for the current scope (§2.2/§8).
+
+        Returns the revision header plus a flat "pid:yyyymm" → values map
+        the grid merges into each live cell (Teyitli/Değişim columns).
+        """
+        revision = self.env["mrp.ltp.revision"].search([
+            ("warehouse_id", "=", warehouse_id or False),
+            ("company_id", "=", self.env.company.id),
+        ], order="id desc", limit=1)
+        if not revision:
+            return {"revision": False, "lines": {}}
+        lines = {
+            "%s:%s" % (line.product_id.id, line.year * 100 + line.month): {
+                "os": line.order_qty,
+                "pm": line.planned_qty,
+                "demand": line.demand_qty,
+            } for line in revision.line_ids
+        }
+        return {"revision": self._revision_payload(revision), "lines": lines}
+
+    @api.model
+    def confirm_plan(self, warehouse_id=False, category_id=False, query=""):
+        """Snapshot the whole visible plan into a new revision (§5/§6/§19).
+
+        Covers every product matching the structural filters — never just
+        the current page. Live values are frozen: order (OS), total demand
+        and the stored planner input (PM).
+        """
+        products = self.env["product.product"].search(
+            self._product_domain(category_id, query), order="name, id")
+        periods = self._periods(*self._current_period())
+        rows = self._compute_rows(products, periods, warehouse_id or False)
+        Revision = self.env["mrp.ltp.revision"].sudo()
+        revision = Revision.create({
+            "warehouse_id": warehouse_id or False,
+            "period_start": periods[0][0] * 100 + periods[0][1],
+        })
+        RevLine = self.env["mrp.ltp.revision.line"].sudo()
+        RevLine.create([{
+            "revision_id": revision.id,
+            "product_id": row["product_id"],
+            "year": cell["year"],
+            "month": cell["month"],
+            "order_qty": cell["os"],
+            "forecast_qty": 0.0,
+            "demand_qty": cell["os"],
+            "planned_qty": cell["pm"],
+        } for row in rows for cell in row["cells"]])
+        return {"revision": self._revision_payload(revision)}
+
+    @api.model
+    def get_revision_data(self, revision_id):
+        """Read-only view of one stored baseline (§14)."""
+        revision = self.env["mrp.ltp.revision"].search(
+            [("id", "=", int(revision_id)),
+             ("company_id", "=", self.env.company.id)])
+        start_year, start_month = divmod(revision.period_start, 100)
+        periods = self._periods(start_year, start_month)
+        lines_map = self._baseline_lines_map(revision)
+        products = revision.line_ids.product_id.sorted("name")
+        rows = []
+        for product in products:
+            cells = []
+            for year, month in periods:
+                snap = lines_map.get(
+                    (product.id, self._abs_month(year, month)))
+                cells.append({
+                    "year": year, "month": month,
+                    "os": snap["os"] if snap else 0.0,
+                    "demand": snap["demand"] if snap else 0.0,
+                    "pm": snap["pm"] if snap else 0.0,
+                })
+            rows.append({
+                "product_id": product.id,
+                "name": product.name,
+                "code": product.default_code or "",
+                "uom": product.uom_id.name,
+                "cells": cells,
+            })
+        return {
+            "revision": self._revision_payload(revision),
+            "periods": self._period_payload(periods),
+            "rows": rows,
+        }
+
+    @api.model
+    def _live_snapshot_map(self, periods, warehouse_id, category_id, query):
+        """Live order/plan map keyed like _baseline_lines_map."""
+        products = self.env["product.product"].search(
+            self._product_domain(category_id, query), order="name, id")
+        live = {}
+        for row in self._compute_rows(products, periods, warehouse_id):
+            for cell in row["cells"]:
+                key = (row["product_id"],
+                       self._abs_month(cell["year"], cell["month"]))
+                live[key] = {"os": cell["os"], "pm": cell["pm"]}
+        return live, products
+
+    @api.model
+    def get_compare_data(self, rev_a_id, rev_b_id=False, warehouse_id=False,
+                         category_id=False, query=""):
+        """Two-way comparison rows (§15/§16): side A always a stored
+        revision; side B a revision or the live plan (rev_b_id falsy).
+        Months are aligned on the current 12-month window."""
+        Revision = self.env["mrp.ltp.revision"]
+        rev_a = Revision.search(
+            [("id", "=", int(rev_a_id)),
+             ("company_id", "=", self.env.company.id)])
+        periods = self._periods(*self._current_period())
+        map_a = self._baseline_lines_map(rev_a)
+        label_a = {"id": rev_a.id, "name": rev_a.name}
+        if rev_b_id:
+            rev_b = Revision.search(
+                [("id", "=", int(rev_b_id)),
+                 ("company_id", "=", self.env.company.id)])
+            map_b = self._baseline_lines_map(rev_b)
+            products = (rev_a.line_ids | rev_b.line_ids).product_id.sorted("name")
+            label_b = {"id": rev_b.id, "name": rev_b.name}
+        else:
+            map_b, live_products = self._live_snapshot_map(
+                periods, warehouse_id or False, category_id, query)
+            products = (rev_a.line_ids.product_id | live_products).sorted("name")
+            label_b = {"id": 0, "name": "live"}
+        rows = []
+        for product in products:
+            cells = []
+            for year, month in periods:
+                key = (product.id, self._abs_month(year, month))
+                a_qty = map_a.get(key, {}).get("os", 0.0)
+                b_qty = map_b.get(key, {}).get("os", 0.0)
+                cells.append({
+                    "year": year, "month": month,
+                    "a": a_qty, "b": b_qty, "delta": b_qty - a_qty,
+                })
+            rows.append({
+                "product_id": product.id,
+                "name": product.name,
+                "code": product.default_code or "",
+                "uom": product.uom_id.name,
+                "cells": cells,
+            })
+        return {
+            "a": label_a, "b": label_b,
+            "periods": self._period_payload(periods),
+            "rows": rows,
+        }

@@ -234,3 +234,61 @@ class TestLongTermPlanning(TransactionCase):
         self.assertFalse(self.env["mrp.ltp.capacity.factor"].search_count([
             ("workcenter_id", "=", wc.id),
         ]))
+
+    def test_revision_confirm_baseline_and_compare(self):
+        # BRD §5-§19: confirm freezes a baseline; live order changes must
+        # not touch it; every confirm creates a NEW revision; history and
+        # comparison read the stored snapshots.
+        Line = self.Line
+        periods = Line._periods(*Line._current_period())
+        py, pm = periods[0]
+
+        res1 = Line.confirm_plan()
+        rev1 = res1["revision"]
+        self.assertTrue(rev1["name"])
+        base = Line.get_baseline()
+        self.assertEqual(base["revision"]["id"], rev1["id"])
+        key = "%s:%s" % (self.p_flagged.id, rev1["period_start"])
+        self.assertEqual(base["lines"][key]["os"], 0)
+
+        # a new order arrives AFTER the confirm → live moves, baseline stays
+        partner = self.env["res.partner"].create({"name": "LTP Rev Customer"})
+        so = self.env["sale.order"].create({
+            "partner_id": partner.id,
+            "commitment_date": f"{py}-{pm:02d}-15 12:00:00",
+            "order_line": [Command.create({
+                "product_id": self.p_flagged.id,
+                "product_uom_qty": 120,
+            })],
+        })
+        so.action_confirm()
+        base = Line.get_baseline()
+        self.assertEqual(base["lines"][key]["os"], 0)  # frozen baseline
+        grid = Line.get_planning_grid(limit=200)
+        row = next(r for r in grid["rows"]
+                   if r["product_id"] == self.p_flagged.id)
+        self.assertEqual(row["cells"][0]["os"], 120)   # live order
+
+        # second confirm → a NEW revision, old one preserved (§6/§10)
+        res2 = Line.confirm_plan()
+        rev2 = res2["revision"]
+        self.assertNotEqual(rev1["id"], rev2["id"])
+        base = Line.get_baseline()
+        self.assertEqual(base["revision"]["id"], rev2["id"])
+        self.assertEqual(base["lines"][key]["os"], 120)  # rebaselined (§19)
+        revs = Line.get_revision_list()
+        self.assertEqual([r["id"] for r in revs][:2], [rev2["id"], rev1["id"]])
+
+        # history view shows the stored snapshot (§14)
+        data = Line.get_revision_data(rev1["id"])
+        r1 = next(r for r in data["rows"]
+                  if r["product_id"] == self.p_flagged.id)
+        self.assertEqual(r1["cells"][0]["os"], 0)
+
+        # rev1 vs live comparison (§15): delta = live - baseline
+        cmp_ = Line.get_compare_data(rev1["id"], False)
+        crow = next(r for r in cmp_["rows"]
+                    if r["product_id"] == self.p_flagged.id)
+        self.assertEqual(crow["cells"][0]["a"], 0)
+        self.assertEqual(crow["cells"][0]["b"], 120)
+        self.assertEqual(crow["cells"][0]["delta"], 120)

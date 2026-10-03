@@ -10,12 +10,14 @@
                     <span class="o_ltp_period text-muted"
                           t-if="periodText"
                           t-esc="periodText"/>
+                    <span class="o_ltp_last_confirm text-muted" t-esc="lastConfirmText"/>
                 </div>
                 <div class="d-flex align-items-center gap-3 mt-2 flex-wrap">
                     <div class="d-flex align-items-center gap-2">
                         <label class="form-label mb-0 text-nowrap">Product Group</label>
                         <select class="form-select form-select-sm w-auto"
-                                t-on-change="onCategoryChange">
+                                t-on-change="onCategoryChange"
+                                t-att-disabled="!isLive">
                             <option value="">All</option>
                             <t t-foreach="state.categories" t-as="cat" t-key="cat.id">
                                 <option t-att-value="cat.id"
@@ -27,7 +29,8 @@
                     <div class="d-flex align-items-center gap-2">
                         <label class="form-label mb-0 text-nowrap">Warehouse</label>
                         <select class="form-select form-select-sm w-auto"
-                                t-on-change="onWarehouseChange">
+                                t-on-change="onWarehouseChange"
+                                t-att-disabled="!isLive">
                             <option value="">All</option>
                             <t t-foreach="state.warehouses" t-as="wh" t-key="wh.id">
                                 <option t-att-value="wh.id"
@@ -38,8 +41,9 @@
                     </div>
                     <input type="text" class="form-control form-control-sm o_ltp_search"
                            placeholder="Search product or code…"
+                           t-att-disabled="!isLive"
                            t-on-input="onSearchInput"/>
-                    <div class="form-check">
+                    <div class="form-check" t-if="isLive">
                         <input id="o_ltp_needs_only" type="checkbox"
                                class="form-check-input"
                                t-att-checked="state.needsOnly"
@@ -49,10 +53,11 @@
                         </label>
                     </div>
                     <button type="button" class="btn btn-sm btn-outline-secondary"
+                            t-if="isLive"
                             t-on-click="loadGrid">
                         <i class="fa fa-refresh me-1"/>Refresh
                     </button>
-                    <div class="ms-auto">
+                    <div class="ms-auto" t-if="isLive">
                         <Pager t-if="state.total"
                                offset="state.offset"
                                limit="state.limit"
@@ -60,61 +65,212 @@
                                onUpdate.bind="onPagerUpdate"/>
                     </div>
                 </div>
+
+                <!-- Revision bar (BRD §5/§13/§15/§16/§21) -->
+                <div class="d-flex align-items-center gap-3 mt-2 flex-wrap">
+                    <div class="d-flex align-items-center gap-2" t-if="!isCompare">
+                        <label class="form-label mb-0 text-nowrap">Revision</label>
+                        <select class="form-select form-select-sm w-auto"
+                                t-on-change="onRevisionChange">
+                            <option value=""
+                                    t-att-selected="!state.historyId">Current Plan</option>
+                            <t t-foreach="state.revisions" t-as="rev" t-key="rev.id">
+                                <option t-att-value="rev.id"
+                                        t-att-selected="rev.id === state.historyId"
+                                        t-esc="`${revLabel(rev)} · ${fmtDate(rev.date)}`"/>
+                            </t>
+                        </select>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-primary"
+                            t-if="isLive"
+                            t-on-click="onConfirmPlan">
+                        <i class="fa fa-check me-1"/>Confirm Plan
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-primary"
+                            t-if="isHistory"
+                            t-on-click="onCompareWithCurrent">
+                        <i class="fa fa-exchange me-1"/>Compare with Current
+                    </button>
+
+                    <!-- compare controls -->
+                    <t t-if="isCompare">
+                        <div class="d-flex align-items-center gap-2">
+                            <select class="form-select form-select-sm w-auto"
+                                    t-on-change="onCompareAChange">
+                                <t t-foreach="state.revisions" t-as="rev" t-key="rev.id">
+                                    <option t-att-value="rev.id"
+                                            t-att-selected="rev.id === state.compareA"
+                                            t-esc="`${revLabel(rev)} · ${fmtDate(rev.date)}`"/>
+                                </t>
+                            </select>
+                            <span class="text-muted">→</span>
+                            <select class="form-select form-select-sm w-auto"
+                                    t-on-change="onCompareBChange">
+                                <option value="live"
+                                        t-att-selected="state.compareB === 'live'">Current Plan</option>
+                                <t t-foreach="state.revisions" t-as="rev" t-key="rev.id">
+                                    <option t-att-value="rev.id"
+                                            t-att-selected="rev.id === state.compareB"
+                                            t-esc="`${revLabel(rev)} · ${fmtDate(rev.date)}`"/>
+                                </t>
+                            </select>
+                        </div>
+                        <div class="form-check">
+                            <input id="o_ltp_changed_only" type="checkbox"
+                                   class="form-check-input"
+                                   t-att-checked="state.changedOnly"
+                                   t-on-change="onChangedOnlyChange"/>
+                            <label for="o_ltp_changed_only" class="form-check-label text-nowrap">
+                                Show Only Changed
+                            </label>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                t-on-click="backToLive">
+                            <i class="fa fa-arrow-left me-1"/>Back to Current Plan
+                        </button>
+                    </t>
+                </div>
             </div>
 
             <!-- Grid -->
             <div class="o_ltp_grid flex-grow-1 overflow-auto position-relative">
                 <table class="o_ltp_table">
-                    <thead>
+
+                    <!-- ======== LIVE MODE ======== -->
+                    <thead t-if="isLive" class="o_ltp_head_live">
+                        <tr class="o_ltp_head_months">
+                            <th class="o_ltp_sticky o_ltp_col_product" rowspan="3">Product</th>
+                            <th class="o_ltp_sticky o_ltp_col_code" rowspan="3">Code</th>
+                            <th class="o_ltp_sticky o_ltp_col_uom" rowspan="3">UoM</th>
+                            <t t-foreach="months" t-as="mo" t-key="mo.key">
+                                <th colspan="8"
+                                    t-att-class="'o_ltp_month_title' + (mo_index % 2 ? ' o_ltp_alt' : '')"
+                                    t-esc="mo.label"/>
+                            </t>
+                        </tr>
+                        <tr class="o_ltp_head_group">
+                            <t t-foreach="months" t-as="mo" t-key="mo.key">
+                                <th colspan="3"
+                                    t-att-class="'o_ltp_group_order o_ltp_month_start' + (mo_index % 2 ? ' o_ltp_alt' : '')">Order</th>
+                                <t t-foreach="metricCols" t-as="col" t-key="col.key">
+                                    <th rowspan="2"
+                                        t-att-class="mo_index % 2 ? 'o_ltp_alt' : ''"
+                                        t-esc="col.label"/>
+                                </t>
+                            </t>
+                        </tr>
+                        <tr class="o_ltp_head_sub">
+                            <t t-foreach="months" t-as="mo" t-key="mo.key">
+                                <t t-foreach="orderGroupCols" t-as="col" t-key="col.key">
+                                    <th t-att-class="(col_index === 0 ? 'o_ltp_month_start ' : '') + (mo_index % 2 ? 'o_ltp_alt' : '')"
+                                        t-esc="col.label"/>
+                                </t>
+                            </t>
+                        </tr>
+                    </thead>
+
+                    <!-- ======== HISTORY / COMPARE MODES ======== -->
+                    <thead t-else="">
                         <tr class="o_ltp_head_months">
                             <th class="o_ltp_sticky o_ltp_col_product" rowspan="2">Product</th>
                             <th class="o_ltp_sticky o_ltp_col_code" rowspan="2">Code</th>
                             <th class="o_ltp_sticky o_ltp_col_uom" rowspan="2">UoM</th>
                             <t t-foreach="months" t-as="mo" t-key="mo.key">
-                                <th colspan="6"
+                                <th colspan="3"
                                     t-att-class="'o_ltp_month_title' + (mo_index % 2 ? ' o_ltp_alt' : '')"
                                     t-esc="mo.label"/>
                             </t>
                         </tr>
                         <tr class="o_ltp_head_sub">
                             <t t-foreach="months" t-as="mo" t-key="mo.key">
-                                <t t-foreach="subCols" t-as="col" t-key="col.key">
-                                    <th t-att-class="(col.key === 'os' ? 'o_ltp_month_start ' : '') + (mo_index % 2 ? 'o_ltp_alt' : '')"
+                                <t t-foreach="isCompare ? compareCols : historyCols"
+                                   t-as="col" t-key="col.key">
+                                    <th t-att-class="(col_index === 0 ? 'o_ltp_month_start ' : '') + (mo_index % 2 ? 'o_ltp_alt' : '')"
                                         t-esc="col.label"/>
                                 </t>
                             </t>
                         </tr>
                     </thead>
+
                     <tbody>
-                        <t t-foreach="state.rows" t-as="row" t-key="row.product_id">
-                            <tr>
-                                <td class="o_ltp_sticky o_ltp_col_product o_ltp_cell_text"
-                                    t-esc="row.name"/>
-                                <td class="o_ltp_sticky o_ltp_col_code o_ltp_cell_text"
-                                    t-esc="row.code"/>
-                                <td class="o_ltp_sticky o_ltp_col_uom o_ltp_cell_text"
-                                    t-esc="row.uom"/>
-                                <t t-foreach="row.cells" t-as="cell" t-key="cell.year * 100 + cell.month">
-                                    <td t-att-class="subCellClass(cell, 'os', cell_index)" t-esc="fmtQty(cell.os)"/>
-                                    <td t-att-class="subCellClass(cell, 'sm', cell_index)" t-esc="fmtQty(cell.sm)"/>
-                                    <td t-att-class="subCellClass(cell, 'gm', cell_index)" t-esc="fmtQty(cell.gm)"/>
-                                    <td t-att-class="subCellClass(cell, 'im', cell_index)" t-esc="fmtQty(cell.im)"/>
-                                    <td t-att-class="subCellClass(cell, 'pm', cell_index)"
-                                        t-on-click="() => this.startEdit(row, cell)">
-                                        <input t-if="isEditing(row, cell)"
-                                               type="number" min="0" step="any"
-                                               class="o_ltp_pm_input"
-                                               t-att-value="state.editValue"
-                                               t-on-input="onEditInput"
-                                               t-on-keydown="(ev) => this.onEditKeydown(row, cell, ev)"
-                                               t-on-blur="() => this.commitEdit(row, cell)"
-                                               t-on-click.stop="() => {}"
-                                               autofocus="autofocus"/>
-                                        <span t-else="" t-esc="fmtQty(cell.pm)"/>
-                                    </td>
-                                    <td t-att-class="subCellClass(cell, 'ds', cell_index)" t-esc="fmtQty(cell.ds)"/>
-                                </t>
-                            </tr>
+                        <!-- live rows: Teyitli | Sipariş | Değişim | Stok | Tedarik | İhtiyaç | Plan | Öngörülen -->
+                        <t t-if="isLive">
+                            <t t-foreach="state.rows" t-as="row" t-key="row.product_id">
+                                <tr>
+                                    <td class="o_ltp_sticky o_ltp_col_product o_ltp_cell_text"
+                                        t-esc="row.name"/>
+                                    <td class="o_ltp_sticky o_ltp_col_code o_ltp_cell_text"
+                                        t-esc="row.code"/>
+                                    <td class="o_ltp_sticky o_ltp_col_uom o_ltp_cell_text"
+                                        t-esc="row.uom"/>
+                                    <t t-foreach="row.cells" t-as="cell" t-key="cell.year * 100 + cell.month">
+                                        <td t-att-class="subCellClass(cell, 'teyitli', cell_index)"
+                                            t-esc="cell.teyitli === null ? '—' : fmtQty(cell.teyitli)"/>
+                                        <td t-att-class="subCellClass(cell, 'os', cell_index)" t-esc="fmtQty(cell.os)"/>
+                                        <td t-att-class="deltaClass(cell.delta, cell_index)"
+                                            t-esc="fmtDelta(cell.delta)"/>
+                                        <td t-att-class="subCellClass(cell, 'sm', cell_index)" t-esc="fmtQty(cell.sm)"/>
+                                        <td t-att-class="subCellClass(cell, 'gm', cell_index)" t-esc="fmtQty(cell.gm)"/>
+                                        <td t-att-class="subCellClass(cell, 'im', cell_index)" t-esc="fmtQty(cell.im)"/>
+                                        <td t-att-class="subCellClass(cell, 'pm', cell_index)"
+                                            t-on-click="() => this.startEdit(row, cell)">
+                                            <input t-if="isEditing(row, cell)"
+                                                   type="number" min="0" step="any"
+                                                   class="o_ltp_pm_input"
+                                                   t-att-value="state.editValue"
+                                                   t-on-input="onEditInput"
+                                                   t-on-keydown="(ev) => this.onEditKeydown(row, cell, ev)"
+                                                   t-on-blur="() => this.commitEdit(row, cell)"
+                                                   t-on-click.stop="() => {}"
+                                                   autofocus="autofocus"/>
+                                            <span t-else="" t-esc="fmtQty(cell.pm)"/>
+                                        </td>
+                                        <td t-att-class="subCellClass(cell, 'ds', cell_index)" t-esc="fmtQty(cell.ds)"/>
+                                    </t>
+                                </tr>
+                            </t>
+                        </t>
+
+                        <!-- history rows: Teyitli | Sipariş | Plan (§14) -->
+                        <t t-elif="isHistory">
+                            <t t-foreach="historyRows" t-as="row" t-key="row.product_id">
+                                <tr>
+                                    <td class="o_ltp_sticky o_ltp_col_product o_ltp_cell_text"
+                                        t-esc="row.name"/>
+                                    <td class="o_ltp_sticky o_ltp_col_code o_ltp_cell_text"
+                                        t-esc="row.code"/>
+                                    <td class="o_ltp_sticky o_ltp_col_uom o_ltp_cell_text"
+                                        t-esc="row.uom"/>
+                                    <t t-foreach="row.cells" t-as="cell" t-key="cell.year * 100 + cell.month">
+                                        <td t-att-class="subCellClass(cell, 'os', cell_index)" t-esc="fmtQty(cell.os)"/>
+                                        <td t-att-class="'o_ltp_td_num' + (cell_index % 2 ? ' o_ltp_alt' : '') + ((cell.os || 0) === 0 ? ' text-muted' : '')"
+                                            t-esc="fmtQty(cell.os)"/>
+                                        <td t-att-class="'o_ltp_td_num' + (cell_index % 2 ? ' o_ltp_alt' : '') + ((cell.pm || 0) === 0 ? ' text-muted' : '')"
+                                            t-esc="fmtQty(cell.pm)"/>
+                                    </t>
+                                </tr>
+                            </t>
+                        </t>
+
+                        <!-- compare rows: A | B | Değişim (§15/§16/§17) -->
+                        <t t-else="">
+                            <t t-foreach="compareRows" t-as="row" t-key="row.product_id">
+                                <tr>
+                                    <td class="o_ltp_sticky o_ltp_col_product o_ltp_cell_text"
+                                        t-esc="row.name"/>
+                                    <td class="o_ltp_sticky o_ltp_col_code o_ltp_cell_text"
+                                        t-esc="row.code"/>
+                                    <td class="o_ltp_sticky o_ltp_col_uom o_ltp_cell_text"
+                                        t-esc="row.uom"/>
+                                    <t t-foreach="row.cells" t-as="cell" t-key="cell.year * 100 + cell.month">
+                                        <td t-att-class="subCellClass(cell, 'a', cell_index)" t-esc="fmtQty(cell.a)"/>
+                                        <td t-att-class="'o_ltp_td_num' + (cell_index % 2 ? ' o_ltp_alt' : '') + ((cell.b || 0) === 0 ? ' text-muted' : '')"
+                                            t-esc="fmtQty(cell.b)"/>
+                                        <td t-att-class="deltaClass(cell.delta, cell_index)"
+                                            t-esc="fmtDelta(cell.delta)"/>
+                                    </t>
+                                </tr>
+                            </t>
                         </t>
                     </tbody>
                 </table>
@@ -123,7 +279,7 @@
                      class="o_ltp_overlay d-flex align-items-center justify-content-center">
                     <i class="fa fa-spinner fa-spin fa-2x text-muted"/>
                 </div>
-                <div t-if="!state.loading &amp;&amp; !state.rows.length"
+                <div t-if="!state.loading &amp;&amp; !visibleRows.length"
                      class="o_ltp_empty text-muted text-center py-5">
                     No products to plan for the current filters.
                 </div>

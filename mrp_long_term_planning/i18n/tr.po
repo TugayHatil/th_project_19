@@ -320,3 +320,115 @@ msgstr "Kapasite verisi yüklenemedi."
 #: model_terms:ir.ui.menu,name:mrp_long_term_planning.menu_mrp_ltp_capacity
 msgid "Capacity Planning"
 msgstr "Kapasite Planlama"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.js:0
+msgid "Confirmed"
+msgstr "Teyitli"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.js:0
+msgid "Change"
+msgstr "Değişim"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.js:0
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.xml:0
+msgid "Revision"
+msgstr "Revizyon"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.js:0
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.xml:0
+msgid "Current Plan"
+msgstr "Güncel Plan"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.xml:0
+msgid "Confirm Plan"
+msgstr "Planlamayı Teyit Et"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.xml:0
+msgid "Compare with Current"
+msgstr "Güncel ile Karşılaştır"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.xml:0
+msgid "Show Only Changed"
+msgstr "Sadece Değişenleri Göster"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.xml:0
+msgid "Back to Current Plan"
+msgstr "Güncel Plana Dön"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.js:0
+msgid "Last confirm"
+msgstr "Son Teyit"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.js:0
+msgid "Last confirm: —"
+msgstr "Son Teyit: —"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.js:0
+msgid "created."
+msgstr "oluşturuldu."
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.js:0
+msgid "Revisions could not be loaded."
+msgstr "Revizyonlar yüklenemedi."
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.js:0
+msgid "The plan could not be confirmed."
+msgstr "Plan teyit edilemedi."
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.js:0
+msgid "Revision could not be loaded."
+msgstr "Revizyon yüklenemedi."
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.js:0
+msgid "Comparison could not be loaded."
+msgstr "Karşılaştırma yüklenemedi."
+
+#. module: mrp_long_term_planning
+#: model:ir.model.fields,field_description:mrp_long_term_planning.field_mrp_ltp_revision_line__order_qty
+msgid "Confirmed Order Qty"
+msgstr "Teyitli Sipariş Miktarı"
+
+#. module: mrp_long_term_planning
+#: model:ir.model.fields,field_description:mrp_long_term_planning.field_mrp_ltp_revision_line__forecast_qty
+msgid "Confirmed Forecast Qty"
+msgstr "Teyitli Tahmin Miktarı"
+
+#. module: mrp_long_term_planning
+#: model:ir.model.fields,field_description:mrp_long_term_planning.field_mrp_ltp_revision_line__demand_qty
+msgid "Confirmed Total Demand"
+msgstr "Teyitli Toplam Talep"
+
+#. module: mrp_long_term_planning
+#: model:ir.model.fields,field_description:mrp_long_term_planning.field_mrp_ltp_revision_line__planned_qty
+msgid "Confirmed Planned Qty"
+msgstr "Teyitli Planlanan Miktar"

@@ -63,6 +63,18 @@ $o_ltp_col_uom_w: 80px;
             font-size: 0.75rem;
         }
 
+        // three-level header in live mode: months → SİPARİŞ group → sub-cols
+        thead tr.o_ltp_head_group th {
+            top: $o_ltp_head_h;
+            color: var(--o-gray-700, #495057);
+            font-weight: 600;
+            font-size: 0.75rem;
+        }
+
+        thead.o_ltp_head_live tr.o_ltp_head_sub th {
+            top: $o_ltp_head_h * 2;
+        }
+
         // Frozen product columns (Product / Code / UoM)
         .o_ltp_sticky {
             position: sticky;
@@ -146,6 +158,15 @@ $o_ltp_col_uom_w: 80px;
         .o_ltp_neg {
             color: var(--bs-danger, #dc3545);
             font-weight: 600;
+        }
+
+        // order-delta indicators (§12): subtle, just enough to spot change
+        .o_ltp_delta_pos {
+            color: var(--bs-success, #198754);
+        }
+
+        .o_ltp_delta_neg {
+            color: var(--bs-danger, #dc3545);
         }
     }
 
