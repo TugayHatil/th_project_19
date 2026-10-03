@@ -127,3 +127,27 @@ class ProjectProject(models.Model):
             )
             project.actual_delayed_task_count = delayed
             project.actual_critical_delayed_task_count = critical_delayed
+
+    # ---- Planner payload ---------------------------------------------------
+
+    def get_planner_data(self, baseline_id=None, domain=None):
+        """Inject the actual-tracking block into every task row.
+
+        Done as payload post-processing rather than through the
+        ``_planner_resource_fields`` hook on purpose: this addon depends
+        on ``project_critical_path`` only, so nothing orders it after
+        ``project_resource_planning`` — whose hook override does not call
+        ``super()`` and would silently swallow ours whenever it loads
+        last.
+        """
+        data = super().get_planner_data(baseline_id=baseline_id, domain=domain)
+        rows = {
+            row["id"]: row
+            for row in data.get("tasks") or []
+            if isinstance(row, dict) and row.get("id")
+        }
+        if rows:
+            tasks = self.env["project.task"].browse(list(rows))
+            for task in tasks.exists():
+                rows[task.id].update(task._planner_actual_fields())
+        return data

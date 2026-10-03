@@ -131,11 +131,11 @@ class ProjectTask(models.Model):
 
     # ---- Planner payload ---------------------------------------------------
 
-    def _planner_resource_fields(self):
-        """Per-task actual block for the Planner payload — the core merges
-        this dict into every serialized row."""
-        res = super()._planner_resource_fields()
-        res.update({
+    def _planner_actual_fields(self):
+        """Actual-tracking keys merged into planner task rows by
+        ``project.project.get_planner_data``."""
+        self.ensure_one()
+        return {
             "actual_start": _serialize_planner_day(self, self.date_actual_start),
             "dt_actual_start": _serialize_planner_dt(self, self.date_actual_start),
             "actual_end": _serialize_planner_day(self, self.actual_finish),
@@ -147,8 +147,7 @@ class ProjectTask(models.Model):
                 if self.schedule_variance_days is not False else False
             ),
             "schedule_variance_state": self.schedule_variance_state or False,
-        })
-        return res
+        }
 
     def get_planner_detail(self):
         """Actual block for the Quick Inspector — same keys as the row
