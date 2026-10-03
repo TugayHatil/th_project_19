@@ -61,11 +61,12 @@
         </field>
     </record>
 
-    <!-- Task list: risk badge + delay column (optional). -->
+    <!-- Task list: risk badge + delay column (optional). Inherits our
+         own Phase-1 extension so the actual_status anchor exists. -->
     <record id="project_task_list_inherit_material" model="ir.ui.view">
         <field name="name">project.task.list.inherit.material</field>
         <field name="model">project.task</field>
-        <field name="inherit_id" ref="project.view_task_tree2"/>
+        <field name="inherit_id" ref="project_execution_control.project_task_list_inherit_actual"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='actual_status']" position="after">
                 <field name="material_risk" widget="badge" optional="show"
@@ -99,7 +100,7 @@
     <record id="project_task_planner_search_inherit_material" model="ir.ui.view">
         <field name="name">project.task.planner.search.inherit.material</field>
         <field name="model">project.task</field>
-        <field name="inherit_id" ref="project_critical_path.project_task_planner_search"/>
+        <field name="inherit_id" ref="project_execution_control.project_task_planner_search_inherit_actual"/>
         <field name="arch" type="xml">
             <xpath expr="//filter[@name='filter_variance_on_time']" position="after">
                 <separator/>
@@ -139,7 +140,9 @@
         <field name="model">project.material.plan</field>
         <field name="inherit_id" ref="project_resource_planning.project_material_plan_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//group[@string='Stock Transfer']" position="after">
+            <!-- String selectors are banned in view inheritance — anchor
+                 on the notebook, which follows the Stock Transfer group. -->
+            <xpath expr="//notebook" position="before">
                 <group string="Availability">
                     <group>
                         <field name="available_quantity" readonly="1"/>
