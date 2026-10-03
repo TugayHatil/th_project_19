@@ -336,7 +336,7 @@ class ProjectTask(models.Model):
                 "product": line.product_id.display_name,
                 "planned_quantity": line.planned_quantity,
                 "uom": line.uom_id.name,
-                "required_date": _serialize_planner_dt(
+                "required_date": _serialize_planner_day(
                     line, line.required_date),
                 "available_quantity": line.available_quantity,
                 "shortage_quantity": line.shortage_quantity,
