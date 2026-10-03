@@ -71,13 +71,15 @@
                             <th class="o_ltp_sticky o_ltp_col_code" rowspan="2">Code</th>
                             <th class="o_ltp_sticky o_ltp_col_uom" rowspan="2">UoM</th>
                             <t t-foreach="months" t-as="mo" t-key="mo.key">
-                                <th colspan="6" class="o_ltp_month_title" t-esc="mo.label"/>
+                                <th colspan="6"
+                                    t-att-class="'o_ltp_month_title' + (mo_index % 2 ? ' o_ltp_alt' : '')"
+                                    t-esc="mo.label"/>
                             </t>
                         </tr>
                         <tr class="o_ltp_head_sub">
                             <t t-foreach="months" t-as="mo" t-key="mo.key">
                                 <t t-foreach="subCols" t-as="col" t-key="col.key">
-                                    <th t-att-class="col.key === 'os' ? 'o_ltp_month_start' : ''"
+                                    <th t-att-class="(col.key === 'os' ? 'o_ltp_month_start ' : '') + (mo_index % 2 ? 'o_ltp_alt' : '')"
                                         t-esc="col.label"/>
                                 </t>
                             </t>
@@ -93,11 +95,11 @@
                                 <td class="o_ltp_sticky o_ltp_col_uom o_ltp_cell_text"
                                     t-esc="row.uom"/>
                                 <t t-foreach="row.cells" t-as="cell" t-key="cell.year * 100 + cell.month">
-                                    <td t-att-class="subCellClass(cell, 'os')" t-esc="fmtQty(cell.os)"/>
-                                    <td t-att-class="subCellClass(cell, 'sm')" t-esc="fmtQty(cell.sm)"/>
-                                    <td t-att-class="subCellClass(cell, 'gm')" t-esc="fmtQty(cell.gm)"/>
-                                    <td t-att-class="subCellClass(cell, 'im')" t-esc="fmtQty(cell.im)"/>
-                                    <td t-att-class="subCellClass(cell, 'pm')"
+                                    <td t-att-class="subCellClass(cell, 'os', cell_index)" t-esc="fmtQty(cell.os)"/>
+                                    <td t-att-class="subCellClass(cell, 'sm', cell_index)" t-esc="fmtQty(cell.sm)"/>
+                                    <td t-att-class="subCellClass(cell, 'gm', cell_index)" t-esc="fmtQty(cell.gm)"/>
+                                    <td t-att-class="subCellClass(cell, 'im', cell_index)" t-esc="fmtQty(cell.im)"/>
+                                    <td t-att-class="subCellClass(cell, 'pm', cell_index)"
                                         t-on-click="() => this.startEdit(row, cell)">
                                         <input t-if="isEditing(row, cell)"
                                                type="number" min="0" step="any"
@@ -110,7 +112,7 @@
                                                autofocus="autofocus"/>
                                         <span t-else="" t-esc="fmtQty(cell.pm)"/>
                                     </td>
-                                    <td t-att-class="subCellClass(cell, 'ds')" t-esc="fmtQty(cell.ds)"/>
+                                    <td t-att-class="subCellClass(cell, 'ds', cell_index)" t-esc="fmtQty(cell.ds)"/>
                                 </t>
                             </tr>
                         </t>

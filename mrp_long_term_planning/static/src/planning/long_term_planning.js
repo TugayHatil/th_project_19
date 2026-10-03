@@ -251,10 +251,13 @@ export class LongTermPlanning extends Component {
         return formatFloat(value || 0, { digits: [16, this.state.qtyPrecision] });
     }
 
-    subCellClass(cell, key) {
+    subCellClass(cell, key, moIndex) {
         let cls = "o_ltp_td_num";
         if (key === "os") {
             cls += " o_ltp_month_start";
+        }
+        if (moIndex % 2) {
+            cls += " o_ltp_alt";
         }
         if (key === "pm") {
             cls += " o_ltp_pm";
