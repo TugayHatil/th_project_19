@@ -1,0 +1,35 @@
+// Actual bar (BRD §4.7) — thin strip at the top of the 32px planner row.
+// The plan bar occupies y11–21, the finish tail y21–24 and the baseline
+// ghost y25–30; the free band above the bar hosts the actual span.
+$o_pec_actual_height: 4px;
+$o_pec_actual_top: 3px;
+
+.o_pec_actual_bar {
+    position: absolute;
+    top: $o_pec_actual_top;
+    height: $o_pec_actual_height;
+    border-radius: 2px;
+    background: #4c6ef5; // neutral blue — actual data, judgement-free
+    cursor: default;
+    z-index: 1;
+
+    &.in_progress {
+        // Still running — dashed/hollow look signals "provisional, ends
+        // at now".
+        background: repeating-linear-gradient(
+            -45deg, #4c6ef5, #4c6ef5 4px, #a5b8f8 4px, #a5b8f8 8px
+        );
+    }
+
+    &.on_time {
+        background: #51cf66;
+    }
+
+    &.early {
+        background: #20c997;
+    }
+
+    &.late {
+        background: #fa5252;
+    }
+}

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <!-- Actual bar (BRD §4.7): a thin strip at the top of each planner row,
+         drawn only when actual data exists. Extends the core template in
+         place — the plan bar, baseline ghost and finish tail keep their
+         exact markup and behaviour. -->
+    <t t-name="project_execution_control.PlannerWorkspaceActual"
+       t-inherit="project_critical_path.PlannerWorkspace" t-inherit-mode="extension">
+        <xpath expr="//div[@class='o_cp_planner_bar']" position="after">
+            <div t-if="row.task.actual_start"
+                 class="o_pec_actual_bar"
+                 t-att-class="actualBarClass(row.task)"
+                 t-att-style="actualBarStyle(row.task)"
+                 t-att-title="actualBarTooltip(row.task)"/>
+        </xpath>
+    </t>
+</templates>

@@ -1,0 +1,870 @@
+<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><title>Teknik Dokumantasyon</title><style>
+body{font-family:'Segoe UI',Arial,sans-serif;font-size:11pt;line-height:1.5;max-width:190mm;margin:0 auto;padding:12mm;color:#1a1a1a}
+h1{font-size:19pt;border-bottom:2px solid #333;padding-bottom:4px}
+h2{font-size:15pt;margin-top:22px;border-bottom:1px solid #bbb;padding-bottom:3px}
+h3{font-size:12.5pt;margin-top:16px}
+h4{font-size:11pt}
+code{font-family:Consolas,'Courier New',monospace;font-size:9.5pt;background:#f2f2f2;padding:1px 4px;border-radius:3px}
+pre{background:#f5f5f5;border:1px solid #ddd;padding:10px;overflow-x:auto;font-size:9pt}
+pre code{background:none;padding:0}
+table{border-collapse:collapse;width:100%;font-size:9.5pt;margin:10px 0}
+th,td{border:1px solid #ccc;padding:5px 8px;text-align:left;vertical-align:top}
+th{background:#eaeaea}
+blockquote{border-left:3px solid #999;margin:10px 0;padding:2px 12px;color:#444}
+hr{border:none;border-top:1px solid #ccc}
+@page{size:A4;margin:10mm}
+</style></head><body><h1 id="teknik-dokumantasyon-project_critical_path-project_resource_planning">Teknik Dokümantasyon — <code>project_critical_path</code> + <code>project_resource_planning</code></h1>
+<blockquote>
+<p>Odoo 19 addon çifti. Bu doküman, modüllerin mimarisini, veri modelini,
+algoritmalarını, API yüzeyini ve frontend bileşenlerini AI analizi için
+kod seviyesinde özetler. Alan/metot adları koddaki haliyle bırakılmıştır.</p>
+</blockquote>
+<hr />
+<h2 id="1-genel-mimari">1. Genel Mimari</h2>
+<p>İki addon tek yönlü bağımlılıkla çalışır:</p>
+<pre><code>project_critical_path          (v19.0.9.0.0 — çekirdek, tek başına çalışır)
+        ▲
+        │ depends
+project_resource_planning      (v19.0.1.0.0 — opsiyonel katman)
+</code></pre>
+<ul>
+<li><strong>Çekirdek</strong> <code>project</code>, <code>hr_timesheet</code>, <code>web_gantt</code>'e bağlıdır. CPM
+  (Critical Path Method), WBS, baseline, delay impact ve Planner
+  Workspace'in tamamını içerir.</li>
+<li><strong>Kaynak katmanı</strong> çekirdeğe ek olarak <code>hr</code>, <code>maintenance</code>, <code>product</code>,
+  <code>stock</code>'a bağlıdır. Rol/requirement/assignment, Resource Board, Material
+  Plan ve stok entegrasyonunu ekler.</li>
+<li>Çekirdek, kaynak addon'unun <strong>yokluğunda da aynı payload şemasını</strong>
+  üretir: <code>_get_planner_resource_data</code>, <code>_planner_resource_fields</code>,
+  <code>_get_baseline_resource_vals</code>, <code>_get_task_resource_snapshot</code> gibi hook
+  metotlar çekirdekte boş/sıfır döner; kaynak addon bunları override eder.
+  UI tarafında <code>get_planner_projects().has_resource_planning</code> bayrağı
+  (registry'de <code>project.task.resource.requirement</code> modelinin varlığı)
+  resource arayüzünü açıp kapatır.</li>
+<li>Her iki addon da <code>application: False</code>, <code>license: LGPL-3</code>.</li>
+</ul>
+<p>BRD referansları: kod yorumlarındaki "BRD/BRD-XX" etiketleri iş gereksinim
+dokümanındaki madde numaralarına işaret eder.</p>
+<hr />
+<h2 id="2-project_critical_path-cekirdek-modul">2. <code>project_critical_path</code> — Çekirdek Modül</h2>
+<h3 id="21-veri-modeli">2.1 Veri Modeli</h3>
+<h4 id="yeni-modeller">Yeni modeller</h4>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Amaç</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>project.critical.path</code></td>
+<td>Hesaplanmış bir maksimum-süreli görev zinciri (sonuç satırı)</td>
+</tr>
+<tr>
+<td><code>project.critical.path.baseline</code></td>
+<td>Değiştirilemez plan anlık görüntüsü (revizyon)</td>
+</tr>
+<tr>
+<td><code>project.critical.path.baseline.line</code></td>
+<td>Baseline'a ait görev seviyesi donmuş değerler</td>
+</tr>
+<tr>
+<td><code>project.critical.path.change</code></td>
+<td>Görevin kritik yola giriş/çıkış kaydı</td>
+</tr>
+<tr>
+<td><code>project.task.delay.impact</code></td>
+<td>Güncel gecikme etki analizi satırları (en yeni baseline'a göre)</td>
+</tr>
+<tr>
+<td><code>project.task.dependency</code></td>
+<td>Bağımlılık kenarının nitelikleri (FS/SS/FF/SF + lag)</td>
+</tr>
+<tr>
+<td><code>project.baseline.title</code></td>
+<td>Baseline kaydında seçilebilen ön-tanımlı başlıklar (≤15 karakter, <code>active</code>)</td>
+</tr>
+</tbody>
+</table>
+<h4 id="projecttask-uzants-cpm-alanlar-hepsi-readonly"><code>project.task</code> uzantısı (CPM alanları — hepsi <code>readonly</code>)</h4>
+<table>
+<thead>
+<tr>
+<th>Alan</th>
+<th>Tip</th>
+<th>Açıklama</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>critical_early_start/finish</code></td>
+<td>Float</td>
+<td>CPM ileri geçiş sonucu (saat birimi)</td>
+</tr>
+<tr>
+<td><code>critical_late_start/finish</code></td>
+<td>Float</td>
+<td>CPM geri geçiş sonucu</td>
+</tr>
+<tr>
+<td><code>critical_slack</code></td>
+<td>Float</td>
+<td><code>late_start - early_start</code> (toplam bolluk)</td>
+</tr>
+<tr>
+<td><code>is_critical</code></td>
+<td>Boolean</td>
+<td><code>abs(slack) &lt; 1e-6</code></td>
+</tr>
+<tr>
+<td><code>delay_baseline_duration</code></td>
+<td>Float</td>
+<td>Baseline'daki süre</td>
+</tr>
+<tr>
+<td><code>delay_duration_variance</code></td>
+<td>Float</td>
+<td>Güncel − baseline süre</td>
+</tr>
+<tr>
+<td><code>delay_project_impact</code></td>
+<td>Float</td>
+<td>Proje bitişine etkisi (slack düşülerek)</td>
+</tr>
+<tr>
+<td><code>delay_impact_status</code></td>
+<td>Selection</td>
+<td><code>critical_impact / within_slack / duration_reduced / no_impact</code></td>
+</tr>
+<tr>
+<td><code>delay_impact_chain</code></td>
+<td>Text</td>
+<td>Okunabilir downstream zincir metni</td>
+</tr>
+<tr>
+<td><code>date_done</code></td>
+<td>Datetime (compute, store)</td>
+<td><code>state == '1_done'</code> iken damgalanır, reopen'da temizlenir</td>
+</tr>
+<tr>
+<td><code>finish_variance_state</code></td>
+<td>Selection (compute, store)</td>
+<td><code>late / early / on_time</code> — <strong>takvim günü</strong> kıyaslaması, saat bileşeni sayılmaz</td>
+</tr>
+</tbody>
+</table>
+<h4 id="projecttask-uzants-wbs-alanlar-computestore-copyfalse"><code>project.task</code> uzantısı (WBS alanları — compute+store, <code>copy=False</code>)</h4>
+<table>
+<thead>
+<tr>
+<th>Alan</th>
+<th>Açıklama</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>wbs_code</code></td>
+<td><code>1</code>, <code>1.1</code>, <code>1.2.3</code> … hiyerarşik kod</td>
+</tr>
+<tr>
+<td><code>wbs_level</code></td>
+<td>Derinlik (kök=1)</td>
+</tr>
+<tr>
+<td><code>wbs_sort_key</code></td>
+<td><code>0001.0003.0002</code> formatında sıfır-dolgulu sıralama anahtarı; <code>_order = "wbs_sort_key, sequence, id"</code></td>
+</tr>
+<tr>
+<td><code>is_work_package</code></td>
+<td><code>bool(child_ids)</code></td>
+</tr>
+<tr>
+<td><code>planned_hours_rollup</code></td>
+<td>Alt ağacın <code>allocated_hours</code> toplamı</td>
+</tr>
+<tr>
+<td><code>effective_hours_rollup</code></td>
+<td>Alt ağacın <code>effective_hours</code> toplamı</td>
+</tr>
+<tr>
+<td><code>progress_rollup</code></td>
+<td>Saat-ağırlıklı (<code>Σ progress·hours / Σ hours</code>); saat 0 ise düz ortalama</td>
+</tr>
+</tbody>
+</table>
+<h4 id="projectproject-uzants"><code>project.project</code> uzantısı</h4>
+<p><code>critical_path_count</code>, <code>critical_path_duration</code>, <code>critical_path_ids</code>,
+<code>critical_path_baseline_ids/count</code>, <code>delay_impact_baseline_id</code>,
+<code>delay_baseline_duration</code>, <code>delay_current_duration</code>, <code>delay_total</code>,
+<code>delay_impact_line_ids</code>, ve <code>planning_precision</code> (<code>hour|day</code> —
+görüntü/girdi hassasiyeti; saklama ve motor hep datetime).</p>
+<h4 id="projecttaskdependency-kenar-nitelikleri"><code>project.task.dependency</code> (kenar nitelikleri)</h4>
+<ul>
+<li><code>task_id</code>, <code>depends_on_id</code>, <code>project_id</code> (related, store)</li>
+<li><code>relationship_type</code>: <code>fs|ss|ff|sf</code> (varsayılan <code>fs</code>)</li>
+<li><code>lag</code> + <code>lag_unit</code> (<code>hours|days</code>) → <code>lag_hours</code> (compute, store; gün ×
+  takvim <code>hours_per_day</code>). Pozitif lag = bekleme, negatif = lead.</li>
+<li><code>UNIQUE(task_id, depends_on_id)</code> constraint'i.</li>
+<li><strong>Yapısal gerçek kaynak <code>depend_on_ids</code> M2M'sidir.</strong> Bu model sadece
+  kenar niteliği taşır; <code>_ensure_dependency_records()</code> her hesaplamada
+  M2M ile reconcile eder (eksikleri sudo ile yaratır, artıkları siler).</li>
+</ul>
+<h4 id="projectcriticalpathbaseline-immutability"><code>project.critical.path.baseline</code> (immutability)</h4>
+<ul>
+<li><code>write()</code>/<code>unlink()</code> korumalı alanlarda <code>UserError</code> fırlatır — snapshot
+  gerçekten değişmezdir.</li>
+<li>Alanlar: <code>revision_number</code>, <code>name</code> (<code>v1.N [- etiket]</code>), <code>project_duration</code>,
+  <code>critical_path_duration</code>, <code>critical_path_signature</code> (sıralı task_path
+  listesi), <code>critical_path_snapshot</code> (JSON: task_ids + isimler),
+  <code>previous_baseline_id</code>, <code>history_*</code> alanları (önceki baseline'la
+  karşılaştırma), <code>planned_resource_hours/cost</code> + <code>currency_id</code>.</li>
+<li>Compute alanları <code>current_*</code>/<code>critical_path_changed</code> güncel planla canlı
+  karşılaştırma yapar.</li>
+</ul>
+<h3 id="22-cpm-algoritmas-project_projectpy">2.2 CPM Algoritması (<code>project_project.py</code>)</h3>
+<p><code>_recalculate_critical_paths()</code>:</p>
+<ol>
+<li><code>_get_task_dependency_graph()</code> — projenin tüm görevleri
+   (<code>active_test=False</code>). Her görev kendi <code>allocated_hours</code>'u ile
+   <strong>schedulable düğüm</strong>; WBS hiyerarşisi grafiği etkilemez (sadece
+   sunum). Self-link'ler düşülür. Kenarlar tip+lag taşır.
+   Kahn topolojik sıralama; kalan düğüm varsa <strong>cycle → UserError</strong>.</li>
+<li><code>_calculate_task_schedule()</code> — ileri geçiş:</li>
+<li><code>EF(task) = max(duration, max over preds of edge_early_bound)</code></li>
+<li>Kenar bound'ları: FS → <code>pred_ef + lag + dur</code>; SS → <code>pred_es + lag + dur</code>;
+     FF → <code>pred_ef + lag</code>; SF → <code>pred_es + lag</code></li>
+<li><code>project_duration = max(EF)</code> yaprak düğümlerde</li>
+<li>Geri geçiş aynı kenar tipleriyle <code>LF</code> üst sınırlarını verir</li>
+<li>Görev değerleri: ES/EF/LS/LF/slack/is_critical — <strong>değişmeyen satır
+     UPDATE edilmez</strong> (write hacmini düşürür, <code>1e-6</code> tolerans)</li>
+<li>Kritik yol çıkarımı: <code>duration_by_task = early_finish</code>; her düğüm için
+   bound'u EF'e eşit olan predecessor'lar <code>best_predecessors</code> —
+   <strong>tüm beraberlikler korunur</strong>. Kritik uçlardan iterative DFS ile
+   (recursion limit'i aşmak için stack) tüm yollar bulunur,
+   <code>project.critical.path</code> satırları eskileri silinip yeniden yazılır
+   (<code>CP-01</code>, <code>CP-02</code>…).</li>
+<li>Ardından <code>_recalculate_delay_impacts()</code>,
+   <code>_recalculate_critical_path_changes()</code> (tüm baseline'lar),
+   <code>_recalculate_history_comparisons()</code> çağrılır.</li>
+</ol>
+<p>Tetik noktaları: <code>project.task.create/write/unlink</code> içinde
+<code>{project_id, parent_id, allocated_hours, planned_date_begin,
+depend_on_ids, dependent_ids, date_assign, date_deadline}</code> kesişimi.
+<code>cp_skip_recalc</code> ve <code>cp_skip_auto_schedule</code> context flag'leri iç
+yazışları/re-entrance'ı keser.</p>
+<h3 id="23-otomatik-cizelgeleme-_schedule_dependents">2.3 Otomatik Çizelgeleme (<code>_schedule_dependents</code>)</h3>
+<p>BRD Dependency-Based Auto Scheduling. <code>date_assign</code>/<code>date_deadline</code>
+değişince:</p>
+<ol>
+<li>Değişen görev + tüm downstream'i BFS ile <code>check</code> setine al.</li>
+<li>Topolojik sırada, <strong>datetime hassasiyetinde</strong> bound kontrolü:
+   FS→<code>succ.start ≥ pred.stop+lag</code>, SS→<code>≥ pred.start+lag</code>,
+   FF→<code>succ.stop ≥ pred.stop+lag</code>, SF→<code>≥ pred.start+lag</code>.</li>
+<li>İhlal eden görev, span'ini koruyarak en sıkı bound'a ileri kayar
+   (geri kaydırma yok). Shift'ler <code>cp_skip_auto_schedule</code> ile yazılır —
+   tek geçişte cascade.</li>
+<li><strong>WBS parent'lar muaf</strong>: pencereleri <code>_sync_parent_window</code> ile
+   çocuklardan roll-up edilir; kendi dependency bound'ları için
+   kaydırılmaz ama successor'lar parent'ın güncel penceresine bakar.</li>
+<li>Sonunda tek <code>_recalculate_critical_paths()</code>.</li>
+</ol>
+<p><code>_sync_parent_window()</code>: parent.start = <code>min(children.date_assign)</code>,
+parent.stop = <code>max(children.date_deadline)</code> — köke kadar kabarcıklanır,
+skip flag'lerle.</p>
+<h3 id="24-allocated_hours-senkronizasyonu">2.4 <code>allocated_hours</code> Senkronizasyonu</h3>
+<p>Odoo 19'da <code>allocated_hours</code> planner dışı yazışlarda 0/stale kalabilir.
+<code>_resync_allocated_hours()</code>: tarih penceresi olan, <code>allocated_hours == 0</code>
+olan <strong>yaprak</strong> görevlere pencereden süre türetir — aynı gün → gerçek saat
+farkı; çok günlü → <code>(gün farkı+1) × takvim hours_per_day</code> (varsayılan 8).
+Sıfır-olmayan değer authoritative'dir, asla ezilmez (inspector'dan gelen
+kesirli süreler korunur). Migration <code>19.0.9.0.0</code> bu backfill'i eski
+kayıtlar için bir kez çalıştırır.</p>
+<p><code>update_planner_task()</code> tarafında: <code>dt_start/dt_stop</code> çifti geldiğinde
+aynı konvansiyonla <code>allocated_hours</code> türetilir; <code>duration_days</code>
+(inclusive) × hours_per_day; açık <code>allocated_hours</code> her zaman kazanır.
+Süre-only edit'lerde <code>date_deadline</code> delta saat kadar uzar → write hook
+successor cascade'ini tetikler.</p>
+<h3 id="25-delay-impact-_recalculate_delay_impacts">2.5 Delay Impact (<code>_recalculate_delay_impacts</code>)</h3>
+<p>En yeni baseline'ın <code>line_ids</code>'ı ile güncel görevleri karşılaştırır:</p>
+<ul>
+<li><code>variance = allocated_hours − snapshot.allocated_hours</code></li>
+<li><code>variance &gt; 0</code> → <code>impact = min(max(0, variance − max(0, snapshot.slack)),
+  max(0, total_delay))</code>, status <code>critical_impact</code> veya <code>within_slack</code></li>
+<li><code>variance &lt; 0</code> → negatif impact, <code>duration_reduced</code></li>
+<li><code>total_delay = critical_path_duration − baseline.project_duration</code></li>
+<li><code>_get_delay_impact_chain()</code> — başlangıcı kayan downstream'lerden en
+  geç bitireni izleyerek <code>"Task A (+3h) → Task B start +2h → Project
+  finish +3h"</code> metni üretir.</li>
+<li>Sonuçlar <code>project.task.delay.impact</code> satırlarına ve görev alanlarına
+  yazılır; baseline yoksa her şey sıfırlanır.</li>
+</ul>
+<h3 id="26-baseline-aks">2.6 Baseline Akışı</h3>
+<p><code>action_create_critical_path_baseline(baseline_label=None)</code>:</p>
+<ol>
+<li><code>check_planner_manager</code> → <code>_recalculate_critical_paths()</code></li>
+<li><code>revision_number = prev + 1</code>, <code>name = "v1.N" [- label]</code>
+   (label <code>project.baseline.title</code>'dan seçilir, UI'da zorunlu)</li>
+<li>Header'a süre, imza, JSON snapshot + <code>_get_baseline_resource_vals()</code>
+   (hook: çekirdekte 0, resource addon'da gerçek saat/maliyet)</li>
+<li><code>_create_snapshot_lines()</code> — her görev için donmuş satır (süre,
+   tarihler, ES/EF/LS/LF, slack, is_critical, kaynak saat/maliyet)</li>
+<li><code>_recalculate_delay_impacts()</code> → <code>_recalculate_critical_path_changes()</code>
+   → <code>_recalculate_history_comparisons()</code> (ardışık baseline çiftleri
+   arasında süre/maliyet varyansı + CP giriş/çıkış listeleri ve özet metin)</li>
+</ol>
+<h3 id="27-guvenlik-planner-manager">2.7 Güvenlik — Planner Manager</h3>
+<ul>
+<li><code>res.groups.privilege</code> "Planner" altında <code>group_planner_manager</code>
+  (internal user'a implied; admin+root üye).</li>
+<li><code>check_planner_manager(env)</code>: <code>env.su</code> değilse ve grup üyeliği yoksa
+  <code>AccessError</code>. <strong>Tüm planner mutasyon yolları</strong> bu kapıdan geçer:</li>
+<li><code>project.task.write/create/unlink</code> — <code>PLANNER_GUARDED_FIELDS =
+    {name, user_ids, allocated_hours, sequence, date_assign,
+    date_deadline, depend_on_ids, dependent_ids, parent_id}</code>
+    (create'te <code>name</code> hariç). Workflow alanları (<code>stage_id</code>, <code>state</code>,
+    <code>description</code>, <code>tag_ids</code>) serbest — görev kapamak planner edit'i
+    değildir. Compute/rollup alanları (<code>wbs_*</code>, <code>progress</code>, <code>date_done</code>)
+    bilinçli olarak guard dışı.</li>
+<li><code>project.task.dependency</code> tüm CRUD'u (reconcile sudo ile olduğu için
+    okuma akışları etkilenmez).</li>
+<li><code>project.write</code> — <code>planning_precision</code> ve <code>resource_calendar_id</code>.</li>
+<li>Baseline oluşturma, planner RPC metotları (<code>update_planner_task</code>,
+    <code>update_planner_dependency</code>, <code>planner_wbs_*</code>, <code>planner_add_subtask</code>,
+    kaynak addon'daki <code>planner_*</code> metotları).</li>
+<li><code>planner_wbs_indent/outdent</code> iç <code>sudo()</code> yazışı kullanır — kapı
+    metodun başında çalıştığı için tek koruma noktasıdır.</li>
+<li>ir.model.access.csv: tüm yeni modellere <code>base.group_user</code> tam CRUD;
+  gerçek yetki uygulama seviyesinde kapıyla verilir.</li>
+</ul>
+<h3 id="28-wbs-islemleri-planner-api">2.8 WBS İşlemleri (Planner API)</h3>
+<ul>
+<li><code>_calculate_wbs_codes_map</code> — kökten recursive; kardeşler
+  <code>(sequence, id)</code> ile sıralı; <code>wbs_sort_key</code> zero-pad.</li>
+<li><code>_recalculate_wbs</code> — kod/seviye/sort_key/work_package/rollup'ları tek
+  geçişte günceller, sadece değişenleri yazar. Tetikleyiciler:
+  create/write(<code>parent_id|sequence|project_id|allocated_hours|progress</code>)/unlink.</li>
+<li><code>planner_add_subtask(name)</code> — "+" butonu: child yaratır, inline rename.</li>
+<li><code>planner_wbs_indent()</code> — bir üstteki kardeşin son çocuğu olur; ilk
+  kardeş indent edemez.</li>
+<li><code>planner_wbs_outdent()</code> — eski parent'ın hemen altına yerleşir.</li>
+<li><code>planner_wbs_move_before(before_id)</code> — aynı parent içi sıralama;
+  <strong>drag&amp;drop asla reparent etmez</strong> (başka daldaki hedef reddedilir).</li>
+<li><code>_planner_wbs_normalize</code> — kardeş sequence'ları 10,20,30… olarak yazar.</li>
+</ul>
+<h3 id="29-planner-server-apisi-projectproject-projecttask">2.9 Planner Server API'si (<code>project.project</code> / <code>project.task</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Metot</th>
+<th>Model</th>
+<th>Dönüş</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>action_open_planner_workspace()</code></td>
+<td>project</td>
+<td><code>ir.actions.client</code> → <code>project_critical_path.planner_workspace</code></td>
+</tr>
+<tr>
+<td><code>get_planner_projects()</code></td>
+<td>project</td>
+<td>Seçilebilir projeler + <code>search_view_id</code> + <code>has_resource_planning</code></td>
+</tr>
+<tr>
+<td><code>get_planner_data(baseline_id, domain)</code></td>
+<td>project</td>
+<td>WBS sıralı düz görev listesi + meta (users/roles/stages/parents) + proje (precision, hours_per_day, calendar) + <code>is_planner_manager</code>. <code>domain</code> filtreleri uygular ve <strong>eşleşenlerin WBS atalarını da korur</strong>. <code>baseline_id</code> ghost katmanını değiştirir.</td>
+</tr>
+<tr>
+<td><code>get_planner_baseline_history()</code></td>
+<td>project</td>
+<td>Sadece saklı alanlardan okunur (ucuz)</td>
+</tr>
+<tr>
+<td><code>get_planner_baseline_summary(baseline_id)</code></td>
+<td>project</td>
+<td>Baseline ↔ önceki satır karşılaştırması (delta saat/maliyet, CP giriş/çıkış, yeni/silinen görev)</td>
+</tr>
+<tr>
+<td><code>get_planner_detail()</code></td>
+<td>task</td>
+<td>Quick Inspector verisi + seçenekler</td>
+</tr>
+<tr>
+<td><code>update_planner_task(values)</code></td>
+<td>task</td>
+<td>Inspector/timeline yazışı — yukarıda §2.4</td>
+</tr>
+<tr>
+<td><code>update_planner_dependency(depends_on_id, relationship_type, lag, lag_unit)</code></td>
+<td>task</td>
+<td>Kenar niteliği yazışı → <code>_schedule_dependents</code> + CPM recalc</td>
+</tr>
+<tr>
+<td><code>planner_add_subtask / planner_wbs_indent / outdent / move_before</code></td>
+<td>task</td>
+<td>WBS işlemleri</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Tarih serileştirme:</strong> <code>_serialize_planner_day</code> → <code>YYYY-MM-DD</code>,
+<code>_serialize_planner_dt</code> → <code>YYYY-MM-DD HH:MM</code> (user tz).
+<code>_local_day_to_utc</code>/<code>_local_dt_to_utc</code> ters yön (fallback saat 09:00/18:00;
+mevcut kayıtta saat korunur).</p>
+<p><strong>Takvim payload'ı</strong> (<code>_planner_calendar_data</code>): projenin
+<code>resource_calendar_id</code>'si — öğle arası ve tarih-sınırlı satırlar hariç
+attendance'lar + global/kaynak-sız leave'ler. Takvim yoksa <code>False</code> →
+frontend sürekli (compress'lenmemiş) zaman ekseni kullanır.</p>
+<p><strong>Odoo uyumluluk notları:</strong>
+- <code>create()</code> içinde <code>user_ids</code> + açık <code>date_assign</code> birlikte gelirse
+  assignees sonraki write'a ertelenir — Odoo'nun "assigned today"
+  damgalaması explicit planlanan başlangıcı ezmesin diye.
+- <code>update_planner_task</code>'te <code>user_ids</code> önce yazılır; Odoo assignee
+  boşaldığında <code>date_assign</code>'ı sildiği için start korunup geri yazılır.</p>
+<h3 id="210-frontend-planner_workspacejs-3000-satr-owl-component">2.10 Frontend — <code>planner_workspace.js</code> (~3000 satır, OWL Component)</h3>
+<p><code>project_critical_path.planner_workspace</code> client action'ı →
+<code>PlannerWorkspace</code> component. Başlıca alt sistemler:</p>
+<ul>
+<li><strong>Sürekli timeline</strong>: <code>rangeStart/End</code> buffer'lı eksen; kenara
+  yaklaşınca <code>extendRange</code> iki yönde büyür, sol genişlemede scroll
+  telafisi. <code>computeRange</code>, <code>snapAnchor</code>, <code>origin</code>.</li>
+<li><strong>Folded timeline</strong>: <code>_buildTimeMap</code> çalışma takviminden piksel↔ms
+  haritası; <code>timeToX</code>/<code>xToTime</code> çalışma-dışı zamanı sıkıştırır (gri).</li>
+<li><strong>Ölçekler</strong>: day/week/month; day ölçeğinde <code>planning_precision ==
+  "hour"</code> ise saat-hassasiyetli drag (<code>dt_start/dt_stop</code>), day precision
+  gün-kuantumlu snap.</li>
+<li><strong>Bar drag/resize</strong>: <code>onBarPointerDown</code> (move/left/right), 4px click
+  eşiği, kenarda auto-scroll (<code>tickDragAutoScroll</code>, extraDx telafisi),
+  <code>persistTaskDates</code> → <code>update_planner_task</code> → <code>reloadPlannerData</code>
+  (seçim/collapse/inspector korunur).</li>
+<li><strong>Dependency okları</strong>: <code>dependencyEdges</code> — görev çiftlerinden SVG path;
+  FS/SS/FF/SF geometrisi ve <code>FS+2d</code> lag etiketi; ok tıklaması edge
+  editör popover'ı açar (<code>openDepEditor/saveDepEdit</code> →
+  <code>update_planner_dependency</code>).</li>
+<li><strong>Baseline katmanları</strong>: ghost bar (<code>baselineStyle</code>), varyans kuyruğu
+  (<code>varianceGeometry/Style</code>), Baseline History paneli (liste, detay,
+  compare overlay, görev-atlama), Baseline Save (title seçimi).</li>
+<li><strong>Finish Variance Tail</strong>: <code>finishTail</code> — done görevin planlanan
+  bitişini geçen/altında kalan gerçek kapanışı gösteren kuyruk + <code>+Ng/−Ng</code>
+  etiketi; gün-bazlı hesap.</li>
+<li><strong>Quick Inspector</strong>: <code>loadInspector/saveInspector</code> — ad, tarihler,
+  süre (gün ve saat modları), progress, stage, assignees (tag-picker),
+  predecessors/successors, baseline karşılaştırması, delay impact.</li>
+<li><strong>WBS paneli</strong>: satır listesi + collapse, indent/outdent butonları,
+  "+" quick-create, inline rename, <strong>yalnızca sıralama</strong> yapan drag
+  (<code>_wbsDragMove/_wbsDragEnd</code>), gantt ile senkron scroll.</li>
+<li><strong>Filtre/Group By</strong>: <code>filterDomain</code> — status filtreleri (critical,
+  delayed, completed, completed-late/early/on-time → stored
+  <code>finish_variance_state</code>), metin/tarih alanları, Odoo search-view
+  domain'i; server-side <code>get_planner_data(domain=...)</code>. Group by:
+  project/stage/assignees/wbs_level (+resource'ken role/resource type).</li>
+<li><strong>Bar info</strong>: <code>BAR_INFO_MAX</code> kadar seçilebilir alan (<code>barInfoText</code>),
+  slack chip toggle, per-project persist.</li>
+<li><strong>Zoom</strong>: per-scale density zoom, <code>fit</code>, <code>fitTimeline</code>, <code>goToday</code>,
+  date-picker navigation.</li>
+</ul>
+<h3 id="211-frontend-native-gantt-patchi-gantt_dependenciesjs">2.11 Frontend — Native Gantt patch'i (<code>gantt_dependencies.js</code>)</h3>
+<p><code>web_gantt</code>'in <code>GanttModel</code>, <code>GanttRenderer</code>, <code>GanttRendererControls</code> ve
+<code>GanttConnector</code>'ı patch'lenir:</p>
+<ul>
+<li><code>GanttModel</code>: <code>dependency_field="depend_on_ids"</code> /
+  <code>dependency_inverted_field="dependent_ids"</code> view'a <code>_get_view</code> ile
+  enjekte edilir; <code>gantt_dependency_metadata</code> Json alanı kenar başına
+  <code>{type, lag}</code> görsel metadata taşır (scheduling'i <strong>etkilemez</strong>).</li>
+<li><code>gantt_dependency_geometry.js</code>: <code>dependencyGeometry(source, target,
+  type, rtl)</code> — 4 tip için ok path'i; <code>visualDependency</code> metadata'yı
+  görsel tipe çevirir.</li>
+<li><code>DependencyDialog</code> + <code>DependencyMenu</code>: bağlantı tıklanınca tip/lag
+  düzenleme → <code>set_gantt_dependency</code> / <code>remove_gantt_dependency</code>
+  (row-level <code>SELECT ... FOR UPDATE</code> kilidi, access check, self-link ve
+  cycle validasyonu; <code>write()</code> içinde orphan metadata temizliği ve
+  <code>_has_cycle("depend_on_ids")</code> kontrolü).</li>
+<li>Kanban: <code>is_critical</code> kartlara <code>o_critical_path_kanban</code> class + uyarı
+  rozeti (<code>critical_path_kanban.scss</code>).</li>
+</ul>
+<h3 id="212-viewlar-cekirdek">2.12 View'lar (çekirdek)</h3>
+<ul>
+<li><code>project.project</code> form: header'a <em>Planner</em> (primary), <em>Calculate
+  Critical Paths</em> ve <em>Create Baseline</em> (project manager grubu); Settings
+  sayfasına <em>Planning</em> grubu (<code>planning_precision</code>,
+  <code>resource_calendar_id</code>); notebook'a <strong>Work Breakdown Structure</strong>,
+  <strong>Critical Paths</strong>, <strong>Plan Baselines</strong>, <strong>Delay Impact</strong> sayfaları.</li>
+<li><code>project.task</code> form: WBS badge satırı + <strong>Critical Path Schedule</strong>
+  sayfası (early/late/slack/critical + delay impact).</li>
+<li>Task list: <code>default_order="wbs_sort_key"</code>, WBS/rollup/critical kolonlar;
+  search: WBS filtreleri + group-by'lar.</li>
+<li><code>project_task_planner_search</code>: planner search bar için dedicated
+  search view (critical/delayed/this-week/completed filtreleri).</li>
+<li><code>project.baseline.title</code> list/form + <code>Project ▸ Configuration ▸
+  Baseline Titles</code> menüsü; <code>Planner</code> menüsü <code>project.menu_main_pm</code> altında.</li>
+<li>Modül ayrıştırma temizliği: eski <code>project_material_*</code>/<code>resource_*</code>
+  XML kayıtları <code>&lt;delete&gt;</code> ile kaldırılır (upgrade'de orphan kalmaması için).</li>
+</ul>
+<h3 id="213-testler-migration-cekirdek">2.13 Testler &amp; Migration (çekirdek)</h3>
+<ul>
+<li><code>tests/</code>: <code>test_critical_path</code> (CPM), <code>test_planning_precision</code>,
+  <code>test_gantt_dependencies</code>, <code>test_finish_variance(_day)</code>,
+  <code>test_planner_workspace</code>, <code>test_planner_filters</code>,
+  <code>test_planner_security</code>, <code>test_planner_calendar</code>,
+  <code>test_planner_certification</code>, <code>test_planner_wbs_actions</code>,
+  <code>test_planner_tour</code>, <code>test_project_wbs</code>, <code>test_critical_path_kanban</code>,</li>
+<li><code>gantt_geometry.test.mjs</code> (JS) + <code>planner_workspace_tour.js</code> (web tour).</li>
+<li><code>migrations/19.0.1.44.0</code>: kaldırılan <code>project.material.requirement</code>
+  modelinin SQL view/tablosunu drop eder.</li>
+<li><code>migrations/19.0.9.0.0</code>: tarihli yaprak görevlere <code>allocated_hours</code>
+  backfill + proje başına tek CPM recalc.</li>
+</ul>
+<hr />
+<h2 id="3-project_resource_planning-kaynak-katman">3. <code>project_resource_planning</code> — Kaynak Katmanı</h2>
+<h3 id="31-veri-modeli">3.1 Veri Modeli</h3>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Amaç</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>project.resource.role</code></td>
+<td>Kaynak rolü: <code>name</code>, <code>category</code> (<code>human|equipment</code>), <code>priority</code> (1–5 Level, <code>hr.employee.priority</code> ile aynı Selection), <code>active</code></td>
+</tr>
+<tr>
+<td><code>project.task.resource.requirement</code></td>
+<td>Görev başına rol ihtiyacı</td>
+</tr>
+<tr>
+<td><code>project.task.resource.assignment</code></td>
+<td>İhtiyaca bağlı gerçek kaynak rezervasyonu</td>
+</tr>
+<tr>
+<td><code>project.resource.rate.template</code></td>
+<td>Para birimi + saatlik planlama ücreti (opsiyonel <code>role_id</code>)</td>
+</tr>
+<tr>
+<td><code>project.resource.plan.summary</code></td>
+<td>Proje × rol toplamları (rebuild edilen özet)</td>
+</tr>
+<tr>
+<td><code>project.resource.planner</code> (+<code>.line</code>)</td>
+<td>Transient "Team Planner" — uygunluk listesi</td>
+</tr>
+<tr>
+<td><code>project.material.plan</code></td>
+<td>Taslak→Onaylı malzeme satırı → stock.picking</td>
+</tr>
+</tbody>
+</table>
+<h4 id="projecttaskresourcerequirement"><code>project.task.resource.requirement</code></h4>
+<ul>
+<li><code>task_id</code> (required, cascade), <code>project_id</code> (related, store),
+  <code>role_id</code> (required), <code>level</code> (related → <code>role_id.priority</code>, store),
+  <code>quantity</code> (default 1), <code>date_start/date_end</code>, <code>planned_hours</code>,
+  <code>description</code>.</li>
+<li>Atama özeti (compute): <code>assigned_quantity</code> (distinct kaynak sayısı),
+  <code>assigned_hours</code>, <code>assignment_status</code> → <code>waiting</code> (atama yok) /
+  <code>partial</code> / <code>assigned</code> (miktar <strong>ve</strong> saat ihtiyacı karşılandı).</li>
+<li>Maliyet: <code>hourly_rate</code> (<strong>snapshot</strong> — template sonradan değişse eski
+  planı bozmaz), <code>currency_id</code> (compute: proje <code>resource_currency_id</code> →
+  ilk template currency → şirket), <code>planned_cost = qty × planned_hours ×
+  hourly_rate</code> (Monetary, store).</li>
+<li><code>_resolve_hourly_rate()</code>: önce role'e bağlı template, yoksa role'süz
+  genel template; hiçbiri yoksa <code>None</code> → maliyet hesaplanmaz.</li>
+<li><code>create()</code>: <code>date_start/end</code> görevin <code>date_assign/date_deadline</code>'ından
+  default'lanır; explicit <code>hourly_rate</code> yoksa resolve edilir. <code>role_id</code>
+  onchange'i ve <code>task_id/role_id</code> değişen write'lar rate'i yeniden
+  resolve eder (explicit rate ezilmez). Tüm create/write/unlink
+  <code>project._recalculate_resource_plan()</code> tetikler.</li>
+<li>Aksiyonlar: <code>action_open_resource_assignments</code> (liste),
+  <code>action_open_resource_planner</code> (transient planner form),
+  <code>action_open_resource_timeline</code> (kategoriye göre employee/equipment
+  gantt view + requirement penceresi domain'i).</li>
+</ul>
+<h4 id="projecttaskresourceassignment"><code>project.task.resource.assignment</code></h4>
+<ul>
+<li><code>requirement_id</code> (required, cascade); <code>task_id</code>/<code>project_id</code> related
+  store; <code>resource_category</code>, <code>requirement_role_id</code> related.</li>
+<li><code>employee_id</code> <strong>xor</strong> <code>equipment_id</code>; <code>date_start/date_end</code> required.</li>
+<li><code>planned_hours</code> (compute, store): kaynağın (yoksa şirketin)
+  <code>resource_calendar_id.get_work_hours_count(start, end,
+  compute_leaves=True)</code>; takvim yoksa düz saat farkı.</li>
+<li><code>_check_assignment</code> constraint'leri:</li>
+<li>human ihtiyaç → tam 1 employee (equipment yasak) <strong>ve</strong> employee
+    <code>resource_role_ids</code> içinde rolü taşımalı</li>
+<li>equipment ihtiyaç → tam 1 equipment (employee yasak)</li>
+<li><code>date_end &gt; date_start</code>; atama penceresi requirement penceresi içinde</li>
+<li>aynı requirement içinde aynı kaynağa overlap yok</li>
+<li>eşzamanlı distinct kaynak sayısı ≤ <code>requirement.quantity</code></li>
+<li><code>Σ assignment.planned_hours ≤ requirement.planned_hours</code></li>
+</ul>
+<h4 id="projectresourceplanner-transientmodel"><code>project.resource.planner</code> (TransientModel)</h4>
+<p><code>create_for_requirement(requirement)</code> → <code>_build_lines()</code>:</p>
+<ul>
+<li>human → <code>resource_role_ids ∋ role</code> olan aktif employee'lar;
+  equipment → tüm aktif ekipman.</li>
+<li>Requirement penceresiyle çakışan tüm assignment'lar (proje sınırı
+  yok — kapasite kaynak bazlıdır).</li>
+<li>Satır başına <code>available_hours</code> (kaynak/şirket takvimi) ve <code>booked_hours</code>
+  (pencereyle kesişim), <code>availability_status</code>: <code>fully_available</code> /
+  <code>partially_available</code> / <code>unavailable</code> (booked ≥ available).</li>
+<li><code>_order = "priority desc, availability_order, resource_name"</code>.</li>
+<li><code>action_assign_resource</code> → assignment form (default'larla),
+  <code>action_open_resource_timeline</code> → kaynağa filtreli gantt.</li>
+</ul>
+<h4 id="projectmaterialplan"><code>project.material.plan</code></h4>
+<ul>
+<li>Zorunlu: <code>project_id</code>, <code>task_id</code> (aynı proje, domain+constrain),
+  <code>product_id</code> (<code>is_storable</code>, <code>ondelete=restrict</code>), <code>planned_quantity &gt; 0</code>,
+  <code>required_date</code> (default: görev <code>date_deadline</code>ı, yoksa today).</li>
+<li><code>source/destination_location_id</code> (internal, compute default =
+  proje <code>material_*_location_id</code>, satırda editable).</li>
+<li>Maliyet: <code>unit_cost</code> = <code>product_id.standard_price</code> (related),
+  <code>planned_cost = qty × unit_cost</code>.</li>
+<li>İlişkiler: <code>move_ids</code> (o2m <code>stock.move.material_plan_line_id</code>),
+  <code>picking_ids</code>/<code>picking_id</code>/<code>picking_count</code> (compute),
+  <code>parent_task_id</code> + <code>wbs_code</code> (related, store).</li>
+<li><strong>Lifecycle</strong>: <code>draft</code> → <code>action_approve()</code> → <code>approved</code>.
+  Onay: satırlar <code>(project, source, destination)</code> ile gruplanır; grup
+  başına <strong>tek standart <code>stock.picking</code></strong> (internal picking type — önce
+  source'u kapsayan warehouse'un, yoksa şirketin internal'ı), satır
+  başına <strong>bir <code>stock.move</code></strong> (<code>material_plan_line_id</code> link, <code>origin =
+  "Material Plan / &lt;proje&gt;"</code>, <code>scheduled_date</code> = min(required_date)).
+  <code>picking.action_confirm()</code> + <code>action_assign()</code> — rezervasyon,
+  shortage, replenishment tamamen standart Odoo.</li>
+<li>Approved satırlar <strong>immutable</strong>: <code>write</code> → UserError, <code>unlink</code> →
+  UserError (context <code>material_plan_force_unlink</code> admin/test kaçışı).</li>
+<li><code>action_open_transfers</code>: 1 picking → form, N → liste.</li>
+</ul>
+<h4 id="diger-uzantlar">Diğer uzantılar</h4>
+<ul>
+<li><code>stock.move.material_plan_line_id</code> (m2o, set null).</li>
+<li><code>stock.picking.material_plan_line_ids</code> (compute m2m) +
+  <code>action_open_material_plan_lines</code> stat button.</li>
+<li><code>hr.employee</code>: <code>resource_role_ids</code> (m2m role) + <code>priority</code> (0–5).</li>
+<li><code>project.project</code>: <code>resource_rate_template_ids</code> (m2m, active domain),
+  <code>resource_currency_id</code> (template'ten senkron, readonly),
+  <code>resource_cost_currency_id</code> (compute),
+  <code>planned_resource_cost</code> = <code>Σ requirement.planned_cost</code>,
+  <code>material_source/destination_location_id</code>,
+  <code>material_picking_ids/count</code> (move linkinden resolve),
+  <code>resource_requirement_ids</code>, <code>resource_assignment_ids</code>,
+  <code>resource_plan_summary_ids</code>; <code>_recalculate_resource_plan()</code>
+  requirement'ları role bazında toplayıp summary'yi yeniden kurar.</li>
+<li><code>project.task</code>: <code>resource_requirement_ids</code>, <code>planned_resource_cost</code>.</li>
+<li><code>project.critical.path.baseline._get_task_resource_snapshot</code> → görev
+  requirement toplamları (saat/maliyet/currency) baseline satırına donar.</li>
+<li><code>project.project._get_baseline_resource_vals</code> → baseline header'a
+  <code>planned_resource_hours/cost + currency_id</code>.</li>
+</ul>
+<h3 id="32-planner-server-apisi-kaynak">3.2 Planner Server API'si (kaynak)</h3>
+<table>
+<thead>
+<tr>
+<th>Metot</th>
+<th>Açıklama</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>project.planner_get_resource_board(window_start, window_end)</code></td>
+<td>Tüm uygun kaynaklar + penceredeki booking'ler; <code>occupancy = booked/available×100</code> (kaynak/şirket takvimi); personel priority desc, sonra ekipman</td>
+</tr>
+<tr>
+<td><code>task.get_planner_resources()</code></td>
+<td>Requirement'lar + atamalar + aktif roller + rate preview (currency, role→rate haritası) + görev tarihleri</td>
+</tr>
+<tr>
+<td><code>task.planner_save_requirement(values)</code></td>
+<td>Create/update (guard'lı); tarih default'ları görevden</td>
+</tr>
+<tr>
+<td><code>task.planner_delete_requirement(id)</code></td>
+<td>Sil (guard'lı, aidiyet kontrolü)</td>
+</tr>
+<tr>
+<td><code>task.planner_get_assignment_options(req_id, window_start, window_end)</code></td>
+<td>Transient planner'ı kullanıp aday listesi + aday başına pencere booking'leri (<code>mine</code>, <code>overlaps</code> flag'leri); default pencere = requirement ±2 gün</td>
+</tr>
+<tr>
+<td><code>task.planner_assign_resource(req_id, employee_id, equipment_id, date_start, date_end)</code></td>
+<td>Atama yaratır (guard'lı; tarihler requirement/görev default'larından, model constraint'leri geçerli)</td>
+</tr>
+<tr>
+<td><code>task.planner_estimate_assignment_hours(...)</code></td>
+<td>Aynı takvim hesabıyla önizleme saati</td>
+</tr>
+<tr>
+<td><code>task.planner_unassign_resource(id)</code> / <code>planner_update_assignment(id, start, end)</code></td>
+<td>Silme ve timeline move/resize</td>
+</tr>
+</tbody>
+</table>
+<h3 id="33-frontend-planner_workspace_resourcejs-1265-satr">3.3 Frontend — <code>planner_workspace_resource.js</code> (~1265 satır)</h3>
+<p><code>PlannerWorkspace.prototype</code> patch'i — ayrı dosya, çekirdeğe dokunmaz:</p>
+<ul>
+<li><strong>Resource Workspace modalı</strong> (<code>openResourceWorkspace/loadResources</code>):
+  görevin requirement listesi + durum rozetleri + requirement
+  formu (<code>openRequirementForm/saveRequirement/deleteRequirement</code>) —
+  rol, miktar, saat, tarihler, açıklama; <code>resFormRate/resFormCost</code>
+  template'ten canlı maliyet önizlemesi.</li>
+<li><strong>Candidate timeline</strong> (<code>resTl*</code>): requirement seçilince
+  <code>planner_get_assignment_options</code>; aday başına booking bar'ları,
+  availability dot'ları, yıldız/avatar, pencere navigasyonu
+  (gün/hafta ölçek, today, date-pick).</li>
+<li><strong>Pending assignment</strong> (<code>resTlPending*</code>): timeline'da sürükleyerek
+  aralık seçimi → tahmini saat (<code>planner_estimate_assignment_hours</code>) →
+  "Assign" commit'i (<code>planner_assign_resource</code>); conflict/outside görsel
+  durumu.</li>
+<li><strong>Mevcut atama aksiyonları</strong>: bar seçimi → taşı/resize
+  (<code>planner_update_assignment</code>) ve silme onayı (<code>planner_unassign_resource</code>).</li>
+<li><strong>Resource Board</strong> (<code>board*</code>): çekirdek workspace'in ikinci modu —
+  <code>planner_get_resource_board</code>; personel/ekipman grupları (collapsible),
+  occupancy, booking bar'ları + tooltip'ler, navigasyon; view-only.</li>
+<li><code>openMaterialPlan</code> → projenin material plan aksiyonu.</li>
+<li><strong>Material Transfer Badge</strong> (<code>fields/material_transfer_badge.js</code>):
+  <code>picking_count</code> integer widget'ı — 0 → boş, 1 → picking form, &gt;1 →
+  liste; <code>action_open_transfers</code>'a delege.</li>
+</ul>
+<h3 id="34-viewlar-kaynak">3.4 View'lar (kaynak)</h3>
+<ul>
+<li>Proje form: header'a <em>Material Plan</em> + <em>Transfers</em> (count&gt;0);
+  notebook'a <strong>Resource Plan</strong> (rate template'lar, currency, planlanan
+  maliyet, summary, requirement listesi, atama listesi) ve <strong>Material
+  Plan</strong> (default lokasyonlar + transfer sayacı) sayfaları.</li>
+<li>Görev form: <strong>Resource Requirements</strong> sayfası — editable requirement
+  listesi, rol/level(priority widget)/miktar/tarih/saat/rate/maliyet/
+  atama durumu + <em>Plan Resources</em> / <em>Assign Resources</em> butonları.</li>
+<li>Assignment list/form + employee/equipment <strong>gantt view'ları</strong>
+  (<code>default_group_by</code> employee/equipment, <code>color="task_id"</code>).</li>
+<li><code>hr.employee</code> form: <em>Resource Planning</em> grubu (roller, priority).</li>
+<li><code>project.resource.planner</code> form: transient Team Planner (satır başına
+  <em>Assign</em> / <em>Timeline</em>).</li>
+<li><code>project.resource.role</code> + <code>project.resource.rate.template</code> list/form +
+  <code>Project ▸ Configuration</code> menüleri.</li>
+<li><code>project.material.plan</code> list (<code>editable="bottom"</code>, draft/approved
+  dekorasyonları), form (header <em>Approve</em> + statusbar), search
+  (ürün/görev/proje/lokasyon/state filtreleri + group-by'lar), liste
+  Action menüsünde <strong>Approve</strong> server action'ı.</li>
+<li><code>stock.picking</code> form: <em>Material Plan</em> stat button + ilişkili satırlar.</li>
+</ul>
+<h3 id="35-testler-kaynak">3.5 Testler (kaynak)</h3>
+<ul>
+<li><code>test_resource_planning.py</code> (~456 satır): requirement/assignment
+  akışı, constraint'ler, planner board, saat hesapları.</li>
+<li><code>test_material_plan.py</code> (~389 satır): onay → picking/move oluşumu,
+  immutability, lokasyon default'ları.</li>
+</ul>
+<hr />
+<h2 id="4-cross-cutting-konular">4. Cross-Cutting Konular</h2>
+<h3 id="41-context-flagleri">4.1 Context Flag'leri</h3>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Etki</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cp_skip_recalc</code></td>
+<td><code>project.task</code> write'ında CPM recalc'ı atlar</td>
+</tr>
+<tr>
+<td><code>cp_skip_auto_schedule</code></td>
+<td><code>_schedule_dependents</code> cascade'ini atlar (kendi shift write'ları bunu taşır)</td>
+</tr>
+<tr>
+<td><code>material_plan_force_unlink</code></td>
+<td>Approved material plan satırını silebilme (UI'da yok, admin/test)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="42-tasarm-kararlar-koddan-ckarlan">4.2 Tasarım Kararları (koddan çıkarılan)</h3>
+<ul>
+<li><strong><code>depend_on_ids</code> tek gerçek kaynak</strong>: Odoo native alanı; <code>project.task.dependency</code> sadece kenar niteliği ve lazy reconcile edilir.</li>
+<li><strong><code>allocated_hours</code> = sürenin tek kaynağı</strong>: CPM, delay impact ve baseline hep bunu okur; pencere→saat senkronu seed-once kuralıyla yapılır.</li>
+<li><strong>Değişmeyen satırlar UPDATE edilmez</strong>: CPM ve delay-impact yazışları toleranslı diff yapar — her drag'de tam tablo rewrite önlenir.</li>
+<li><strong>Baseline gerçekten immutable</strong>: model seviyesinde write/unlink bloklu; history karşılaştırmaları donmuş snapshot'lardan türetilir, hesaplanmaz.</li>
+<li><strong>WBS ≠ schedule</strong>: parent'lar grafikte düğüm değildir; pencereleri çocuklardan roll-up'tır ve cascade'den muaftır.</li>
+<li><strong>Stok yeniden icat edilmez</strong>: Material Plan onayı standart picking/move üretir; sonrası Odoo.</li>
+<li><strong>Tek yönlü bağımlılık</strong>: çekirdek asla kaynak addon'unu bilmez — sadece boş hook'lar ve <code>has_resource_planning</code> bayrağı.</li>
+<li><strong><code>sudo()</code> kullanımı</strong>: <code>_ensure_dependency_records</code> (reconcile), CPM
+  path create/delete; <code>planner_wbs_*</code> iç yazışları (kapı metot başında).</li>
+</ul>
+<h3 id="43-gozlemlenen-potansiyel-sorunlar">4.3 Gözlemlenen Potansiyel Sorunlar</h3>
+<ol>
+<li><strong><code>_local_day_to_utc</code> import eksikliği</strong> —
+   <code>project_resource_planning/models/project_planner.py</code> içinde
+   <code>planner_save_requirement</code> <code>_local_day_to_utc</code> çağırır ama import
+   bloğu yalnızca <code>_local_dt_to_utc</code>'yi içerir. JS <code>saveRequirement</code>
+   <code>date_start</code>/<code>date_end</code> her zaman gönderir; <strong>kullanıcı requirement
+   formunda özel tarih girerse <code>NameError</code> oluşur</strong>. Boş bırakılırsa
+   (<code>false</code>) erken dönüş nedeniyle crash olmaz — gizli bug.</li>
+<li><strong><code>_compute_wbs_code_and_level</code> performansı</strong>: depends
+   <code>child_ids</code> geniş — her compute'da projenin tüm görevleri search
+   edilir; büyük projelerde write yükü artabilir (rollup ile birlikte
+   <code>_recalculate_wbs</code> de tekrar eder — çift hesap olasılığı).</li>
+<li><strong><code>action_open_planner_workspace</code> / planner API erişimi</strong>: okuma
+   yolları (<code>get_planner_data</code> vb.) group kontrolü yapmaz — tüm internal
+   kullanıcılar planner verisini okuyabilir (tasarım: read-only planner);
+   yazışlar kapılıdır.</li>
+<li><strong><code>get_planner_data</code> ölçeklenebilirliği</strong>: tüm görevler tek payload'da
+   serileştirilir; binlerce görevli projelerde boyut/yazışma maliyeti.</li>
+<li><strong>Cycle kontrolü iki yerde</strong>: <code>_get_task_dependency_graph</code> (UserError)
+   ve gantt <code>write()</code> (<code>_has_cycle</code> → ValidationError); planner
+   <code>depend_on_ids</code> yazışında cycle durumunda hangi hatanın yüzeye
+   çıktığı yola bağlı.</li>
+<li><strong><code>MaterialTransferBadge</code> template adı</strong> <code>project_critical_path.*</code>
+   namespace'inde ama asset <code>project_resource_planning</code>'de — fonksiyonel
+   sorun yok, isimlendirme tutarsızlığı.</li>
+</ol>
+<hr />
+<h2 id="5-dosya-haritas">5. Dosya Haritası</h2>
+<pre><code>project_critical_path/
+├── models/
+│   ├── project_project.py          CPM, delay impact, dependency graph, auto-schedule
+│   ├── project_planner.py          Planner RPC'leri (project + task), tz dönüşümleri, güvenlik kapısı
+│   ├── project_wbs.py              WBS kod/rollup + planner WBS aksiyonları
+│   ├── project_task.py             Görev alanları, guarded write, date_done, parent window
+│   ├── project_task_dependency.py  Kenar nitelikleri (FS/SS/FF/SF + lag)
+│   ├── project_task_gantt.py       Native gantt dependency metadata + RPC
+│   ├── project_critical_path.py            Sonuç modeli
+│   ├── project_critical_path_baseline.py   Baseline + baseline.line (immutable)
+│   ├── project_critical_path_change.py     CP giriş/çıkış kaydı
+│   ├── project_task_delay_impact.py        Etki analizi satırı
+│   └── project_baseline_title.py           Baseline başlık sözlüğü
+├── static/src/
+│   ├── planner/planner_workspace.{js,xml,scss}   OWL Planner Workspace
+│   ├── gantt_dependencies.{js,xml,scss}          Native gantt patch + dialog
+│   ├── gantt_dependency_geometry.js              Ok geometrisi (saf fonksiyon)
+│   └── scss/critical_path_kanban.scss
+├── views/  project form/task/kanban/planner/baseline-title XML'leri
+├── security/ group_planner_manager + erişim csv
+├── tests/  14 python test + 1 mjs + tour
+├── migrations/ 2 post-migrate script
+└── demo/project_wbs_demo.xml
+
+project_resource_planning/
+├── models/
+│   ├── project_resource.py         Role + Requirement + PlanSummary
+│   ├── project_resource_assignment.py  Atama + takvim saati + constraint'ler
+│   ├── project_resource_rate.py    Rate template
+│   ├── project_resource_planner.py Transient Team Planner (+line)
+│   ├── project_material_plan.py    Draft→Approved → stock.picking
+│   ├── project_planner.py          Resource Board + planner resource RPC'leri
+│   ├── project_project.py          Proje alanları + summary rebuild + baseline hook
+│   ├── project_task.py             Görev alanları + planner payload hook
+│   ├── project_critical_path_baseline.py  Task-level maliyet snapshot hook
+│   ├── hr_employee.py              resource_role_ids + priority
+│   └── stock_move.py / stock_picking.py   İzlenebilirlik linkleri
+├── static/src/
+│   ├── planner/planner_workspace_resource.{js,scss}  Resource Workspace + Board patch
+│   └── fields/material_transfer_badge.{js,xml,scss}
+├── views/  resource/role/rate/material/assignment/employee/gantt XML'leri
+└── security/ erişim csv
+</code></pre>
+<hr />
+<p><em>Hazırlanma tarihi: 2026-10-03 · Kapsam: çekirdek v19.0.9.0.0 + kaynak
+v19.0.1.0.0 · Kaynak: doğrudan kod analizi</em></p></body></html>

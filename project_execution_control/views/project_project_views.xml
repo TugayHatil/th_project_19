@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Project Control page (BRD §24): Phase 1 hosts the Schedule block;
+         later phases add Material / Resource / Cost / Change blocks here. -->
+    <record id="project_project_form_inherit_control" model="ir.ui.view">
+        <field name="name">project.project.form.inherit.control</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page name="project_control" string="Project Control">
+                    <group string="Schedule">
+                        <group>
+                            <field name="actual_task_count" readonly="1"/>
+                            <field name="actual_done_task_count" readonly="1"/>
+                            <field name="actual_in_progress_task_count" readonly="1"/>
+                            <field name="actual_not_started_task_count" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="actual_completion" widget="progressbar" readonly="1"/>
+                            <field name="critical_path_duration" widget="float_time" readonly="1"/>
+                            <field name="actual_span_hours" widget="float_time" readonly="1"/>
+                            <field name="actual_finish_variance_days" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Delays">
+                        <group>
+                            <field name="actual_delayed_task_count" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="actual_critical_delayed_task_count" readonly="1"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
