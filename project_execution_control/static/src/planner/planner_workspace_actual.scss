@@ -33,3 +33,25 @@ $o_pec_actual_top: 3px;
         background: #fa5252;
     }
 }
+
+// Material-risk dot — Phase 2 (BRD §6.4). A small badge to the right of
+// the task name; colours mirror the badge vocabulary used elsewhere.
+.o_pec_material_dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-left: 6px;
+    border-radius: 50%;
+    vertical-align: middle;
+
+    &.partial {
+        background: #fd7e14;
+    }
+    &.delayed {
+        background: #fa5252;
+    }
+    &.critical {
+        background: #fa5252;
+        box-shadow: 0 0 0 2px rgba(#fa5252, 0.35);
+    }
+}

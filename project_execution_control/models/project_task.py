@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from collections import defaultdict
+
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
@@ -81,6 +83,53 @@ class ProjectTask(models.Model):
         compute="_compute_actual_values", store=True, readonly=True, index=True,
     )
 
+    # ---- Material risk (BRD §6/§7) ------------------------------------------
+    # Reverse link to the requirement lines that live in
+    # project_resource_planning — one row per (project, task, product).
+    material_plan_line_ids = fields.One2many(
+        "project.material.plan", "task_id", string="Material Plan Lines",
+        readonly=True,
+    )
+    material_risk = fields.Selection(
+        [
+            ("no_risk", "No Material Risk"),
+            ("partial", "Partial Availability"),
+            ("delayed", "Material Delay"),
+            ("critical", "Critical Material Delay"),
+        ],
+        string="Material Risk", compute="_compute_material_values",
+        search="_search_material_risk",
+    )
+    material_delay_days = fields.Float(
+        string="Material Delay (Days)", compute="_compute_material_values",
+        digits=(16, 1),
+    )
+    # What the task itself is expected to slip by — today the same number
+    # as the worst line delay; kept as a separate KPI because later phases
+    # may cap it against work already performed.
+    material_expected_delay_days = fields.Float(
+        string="Expected Task Delay (Days)", compute="_compute_material_values",
+        digits=(16, 1),
+    )
+    material_downstream_count = fields.Integer(
+        string="Downstream Tasks Affected", compute="_compute_material_values",
+    )
+    material_downstream_impact_days = fields.Float(
+        string="Worst Downstream Impact (Days)",
+        compute="_compute_material_values", digits=(16, 1),
+    )
+    material_project_impact_days = fields.Float(
+        string="Project Finish Impact (Days)",
+        compute="_compute_material_values", digits=(16, 1),
+    )
+    material_shortage_quantity = fields.Float(
+        string="Material Shortage", compute="_compute_material_values",
+        digits="Product Unit of Measure",
+    )
+    material_risk_detail = fields.Char(
+        string="Material Risk Detail", compute="_compute_material_values",
+    )
+
     @api.depends("date_actual_end", "date_done")
     def _compute_actual_finish(self):
         for task in self:
@@ -129,6 +178,102 @@ class ProjectTask(models.Model):
                     "Actual End cannot be earlier than Actual Start."
                 ))
 
+    # ---- Material risk computation -----------------------------------------
+
+    @api.depends(
+        "project_id",
+        "material_plan_line_ids.material_state",
+        "material_plan_line_ids.material_delay_days",
+        "material_plan_line_ids.shortage_quantity",
+    )
+    def _compute_material_values(self):
+        """Batch per project: line aggregation is cheap; the propagation
+        runs one perturbed forward pass per delayed task over the shared
+        dependency graph — the CPM itself is never duplicated."""
+        by_project = defaultdict(lambda: self.env["project.task"])
+        for task in self:
+            if task.project_id:
+                by_project[task.project_id.id] |= task
+            else:
+                task.material_risk = "no_risk"
+                task.material_delay_days = 0.0
+                task.material_expected_delay_days = 0.0
+                task.material_downstream_count = 0
+                task.material_downstream_impact_days = 0.0
+                task.material_project_impact_days = 0.0
+                task.material_shortage_quantity = 0.0
+                task.material_risk_detail = False
+        projects = self.env["project.project"].browse(list(by_project))
+        for project in projects:
+            tasks = by_project[project.id]
+            delayed_tasks = tasks.filtered(
+                lambda t: max(
+                    t.material_plan_line_ids.mapped("material_delay_days"),
+                    default=0.0,
+                ) > 0.000001
+            )
+            impacts = {}
+            if delayed_tasks:
+                graph = project._get_task_dependency_graph()
+                schedule = project._calculate_task_schedule(graph)
+                hpd = _planner_hours_per_day(project)
+                for task in delayed_tasks:
+                    delay = max(
+                        task.material_plan_line_ids.mapped("material_delay_days"))
+                    deltas, project_delta = project._propagate_start_delay(
+                        graph, schedule, task.id, delay * hpd,
+                    )
+                    impacts[task.id] = (
+                        len(deltas),
+                        (max(deltas.values()) / hpd) if deltas else 0.0,
+                        max(0.0, project_delta) / hpd,
+                    )
+            for task in tasks:
+                lines = task.material_plan_line_ids
+                states = set(lines.mapped("material_state"))
+                delay = max(lines.mapped("material_delay_days"), default=0.0)
+                shortage = sum(lines.mapped("shortage_quantity"))
+                downstream, downstream_days, project_days = impacts.get(
+                    task.id, (0, 0.0, 0.0))
+                if not lines:
+                    risk = "no_risk"
+                elif project_days > 0.000001:
+                    risk = "critical"
+                elif states & {"delayed", "unknown"}:
+                    risk = "delayed"
+                elif "partial" in states:
+                    risk = "partial"
+                else:
+                    risk = "no_risk"
+                task.material_risk = risk
+                task.material_delay_days = delay
+                task.material_expected_delay_days = delay
+                task.material_downstream_count = downstream
+                task.material_downstream_impact_days = downstream_days
+                task.material_project_impact_days = project_days
+                task.material_shortage_quantity = shortage
+                risky = lines.filtered(
+                    lambda l: l.material_state in ("delayed", "partial", "unknown"))
+                task.material_risk_detail = "; ".join(
+                    "%s: %s" % (
+                        l.product_id.display_name,
+                        dict(l._fields["material_state"].selection).get(
+                            l.material_state, l.material_state),
+                    ) for l in risky
+                ) or False
+
+    def _search_material_risk(self, operator, value):
+        """Domain support on the non-stored risk field — computed per
+        project once, then mapped to ids. Tasks without material lines
+        live on the ``no_risk`` side of every comparison."""
+        wanted = {value} if isinstance(value, str) else set(value or [])
+        all_tasks = self.with_context(active_test=False).search([])
+        all_tasks.mapped("material_risk")  # one batched compute
+        matching = all_tasks.filtered(lambda t: t.material_risk in wanted)
+        if operator in ("!=", "not in"):
+            matching = all_tasks - matching
+        return [("id", "in", matching.ids)]
+
     # ---- Planner payload ---------------------------------------------------
 
     def _planner_actual_fields(self):
@@ -149,6 +294,22 @@ class ProjectTask(models.Model):
             "schedule_variance_state": self.schedule_variance_state or False,
         }
 
+    def _planner_material_fields(self):
+        """Material-risk keys merged into planner task rows by
+        ``project.project.get_planner_data`` (same post-processing point
+        as the actual block — never lost to sibling overrides)."""
+        self.ensure_one()
+        return {
+            "material_risk": self.material_risk or "no_risk",
+            "material_delay_days": self.material_delay_days or 0.0,
+            "material_project_impact_days": (
+                self.material_project_impact_days or 0.0),
+            "material_downstream_count": self.material_downstream_count or 0,
+            "material_shortage_quantity": (
+                self.material_shortage_quantity or 0.0),
+            "material_risk_detail": self.material_risk_detail or False,
+        }
+
     def get_planner_detail(self):
         """Actual block for the Quick Inspector — same keys as the row
         payload so the inspector can show plan-vs-actual side by side."""
@@ -166,4 +327,23 @@ class ProjectTask(models.Model):
             ),
             "variance_state": self.schedule_variance_state or False,
         }
+        # Material block (Phase 2): the inspector gets the same numbers
+        # as the row payload plus the per-line read-out.
+        res["material"] = dict(
+            self._planner_material_fields(),
+            lines=[{
+                "id": line.id,
+                "product": line.product_id.display_name,
+                "planned_quantity": line.planned_quantity,
+                "uom": line.uom_id.name,
+                "required_date": _serialize_planner_dt(
+                    line, line.required_date),
+                "available_quantity": line.available_quantity,
+                "shortage_quantity": line.shortage_quantity,
+                "expected_availability": _serialize_planner_dt(
+                    line, line.expected_availability_date),
+                "material_delay_days": line.material_delay_days,
+                "material_state": line.material_state,
+            } for line in self.material_plan_line_ids],
+        )
         return res

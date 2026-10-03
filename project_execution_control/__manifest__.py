@@ -7,14 +7,16 @@
     "category": "Project",
     "author": "Projet Solutions",
     "license": "LGPL-3",
-    # Phase 1 — Actual Tracking. Sits at the end of the one-directional
-    # dependency chain; neither core addon is modified. Later phases
-    # (material delay, skills, cost, change requests) extend this list.
-    "depends": ["project_critical_path"],
+    # Sits at the end of the one-directional dependency chain; neither
+    # core addon is modified. Phase 2 (Material Delay & Impact) needs
+    # project.material.plan / stock.move data — resource planning is a
+    # genuine requirement, not a convenience dependency.
+    "depends": ["project_critical_path", "project_resource_planning"],
 
     "data": [
         "views/project_task_views.xml",
         "views/project_project_views.xml",
+        "views/project_material_views.xml",
     ],
     "assets": {
         "web.assets_backend": [

@@ -13,5 +13,15 @@
                  t-att-style="actualBarStyle(row.task)"
                  t-att-title="actualBarTooltip(row.task)"/>
         </xpath>
+        <!-- Material-risk dot (BRD §6.4): sits right of the task name,
+             colours follow the same traffic-light vocabulary as the
+             status badges. Absent entirely when the task has no material
+             requirement or no risk. -->
+        <xpath expr="//span[@class='o_cp_planner_task_name text-truncate']"
+               position="after">
+            <span t-if="row.task.material_risk and row.task.material_risk !== 'no_risk'"
+                  t-att-class="'o_pec_material_dot ' + row.task.material_risk"
+                  t-att-title="materialRiskTooltip(row.task)"/>
+        </xpath>
     </t>
 </templates>
