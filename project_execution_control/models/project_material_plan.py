@@ -69,8 +69,16 @@ class ProjectMaterialPlan(models.Model):
                 line.material_delay_days = 0.0
                 line.material_state = "unknown"
                 continue
+            # Odoo reports reserved quantity and forecast availability as
+            # two regimes: an assigned move's forecast already contains
+            # its reservation (10/10), while a partially assigned move
+            # reports only what is still expected (0 beyond the reserved
+            # 4). Taking the per-move maximum covers both without ever
+            # double-counting physical stock.
             expected_qty = done_qty + sum(
-                open_moves.mapped("forecast_availability"))
+                max(mv.quantity or 0.0, mv.forecast_availability or 0.0)
+                for mv in open_moves
+            )
             # Expected full-availability date = the worst open move's
             # forecast date (its scheduled date when no forecast exists).
             expected_dates = [
