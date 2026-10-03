@@ -9,7 +9,16 @@ import { useAutofocus, useService } from "@web/core/utils/hooks";
 import { formatFloat } from "@web/core/utils/numbers";
 import { Pager } from "@web/core/pager/pager";
 
-const SUB_COLS = ["os", "sm", "gm", "im", "pm", "ds"];
+// Sub-column labels per month: Sipariş / Stok / Tedarik / İhtiyaç /
+// Plan / Öngörülen (single readable words instead of the OS..DS codes)
+const SUB_COLS = [
+    { key: "os", label: _t("Order") },
+    { key: "sm", label: _t("Stock") },
+    { key: "gm", label: _t("Supply") },
+    { key: "im", label: _t("Need") },
+    { key: "pm", label: _t("Plan") },
+    { key: "ds", label: _t("Projected") },
+];
 const PAGE_LIMIT = 80;
 const SEARCH_DELAY = 350;
 

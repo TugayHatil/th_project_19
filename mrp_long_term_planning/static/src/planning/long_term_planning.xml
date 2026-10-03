@@ -76,9 +76,9 @@
                         </tr>
                         <tr class="o_ltp_head_sub">
                             <t t-foreach="months" t-as="mo" t-key="mo.key">
-                                <t t-foreach="subCols" t-as="col" t-key="col">
-                                    <th t-att-class="col === 'os' ? 'o_ltp_month_start' : ''"
-                                        t-esc="col.toUpperCase()"/>
+                                <t t-foreach="subCols" t-as="col" t-key="col.key">
+                                    <th t-att-class="col.key === 'os' ? 'o_ltp_month_start' : ''"
+                                        t-esc="col.label"/>
                                 </t>
                             </t>
                         </tr>

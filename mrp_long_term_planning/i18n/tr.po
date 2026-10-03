@@ -70,6 +70,42 @@ msgstr "Ürün"
 
 #. module: mrp_long_term_planning
 #. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.js:0
+msgid "Order"
+msgstr "Sipariş"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.js:0
+msgid "Stock"
+msgstr "Stok"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.js:0
+msgid "Supply"
+msgstr "Tedarik"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.js:0
+msgid "Need"
+msgstr "İhtiyaç"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.js:0
+msgid "Plan"
+msgstr "Plan"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.js:0
+msgid "Projected"
+msgstr "Öngörülen"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
 #: code:addons/mrp_long_term_planning/static/src/planning/long_term_planning.xml:0
 msgid "Code"
 msgstr "Kod"
