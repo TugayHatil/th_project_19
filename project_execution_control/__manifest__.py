@@ -11,12 +11,18 @@
     # core addon is modified. Phase 2 (Material Delay & Impact) needs
     # project.material.plan / stock.move data — resource planning is a
     # genuine requirement, not a convenience dependency.
-    "depends": ["project_critical_path", "project_resource_planning"],
+    # Phase 3 (Skill Matching) adds hr_skills — the real skill catalogue
+    # lives there (hr.skill / hr.skill.level / hr.employee.skill).
+    "depends": [
+        "project_critical_path", "project_resource_planning", "hr_skills",
+    ],
 
     "data": [
+        "security/ir.model.access.csv",
         "views/project_task_views.xml",
         "views/project_project_views.xml",
         "views/project_material_views.xml",
+        "views/project_skill_views.xml",
     ],
     "assets": {
         "web.assets_backend": [

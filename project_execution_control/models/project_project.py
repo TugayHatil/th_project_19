@@ -75,6 +75,21 @@ class ProjectProject(models.Model):
         compute="_compute_material_summary", digits=(16, 1),
     )
 
+    # ---- Skill-match KPIs (BRD §7/§24) --------------------------------------
+    skill_required_task_count = fields.Integer(
+        string="Tasks With Skill Requirements",
+        compute="_compute_skill_summary",
+    )
+    skill_matched_task_count = fields.Integer(
+        string="Skill Matched Tasks", compute="_compute_skill_summary",
+    )
+    skill_partial_task_count = fields.Integer(
+        string="Partial Skill Match Tasks", compute="_compute_skill_summary",
+    )
+    skill_unmatched_task_count = fields.Integer(
+        string="Skill Unmatched Tasks", compute="_compute_skill_summary",
+    )
+
     def _compute_actual_summary(self):
         tasks = self.env["project.task"].with_context(active_test=False).search(
             [("project_id", "in", self.ids)]
@@ -246,6 +261,20 @@ class ProjectProject(models.Model):
                 if planned_finish else False
             )
 
+    def _compute_skill_summary(self):
+        for project in self:
+            tasks = project.task_ids.with_context(active_test=False)
+            tasks.mapped("skill_match_state")  # one batched compute
+            required = tasks.filtered(
+                lambda t: t.skill_match_state != "not_required")
+            project.skill_required_task_count = len(required)
+            project.skill_matched_task_count = len(
+                required.filtered(lambda t: t.skill_match_state == "matched"))
+            project.skill_partial_task_count = len(
+                required.filtered(lambda t: t.skill_match_state == "partial"))
+            project.skill_unmatched_task_count = len(
+                required.filtered(lambda t: t.skill_match_state == "unmatched"))
+
     # ---- Planner payload ---------------------------------------------------
 
     def get_planner_data(self, baseline_id=None, domain=None):
@@ -269,7 +298,9 @@ class ProjectProject(models.Model):
             # One batched material compute — a per-row read would rebuild
             # the dependency graph for every task in the payload.
             tasks.mapped("material_risk")
+            tasks.mapped("skill_match_state")
             for task in tasks:
                 rows[task.id].update(task._planner_actual_fields())
                 rows[task.id].update(task._planner_material_fields())
+                rows[task.id].update(task._planner_skill_fields())
         return data
