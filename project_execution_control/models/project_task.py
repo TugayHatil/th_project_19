@@ -130,35 +130,6 @@ class ProjectTask(models.Model):
         string="Material Risk Detail", compute="_compute_material_values",
     )
 
-    # ---- Skill matching (BRD §7) --------------------------------------------
-    # Requirement rows reference hr_skills' own catalogue; the match is a
-    # read-only analysis — it never assigns anyone (BRD §21).
-    skill_requirement_ids = fields.One2many(
-        "project.task.skill.requirement", "task_id",
-        string="Skill Requirements",
-    )
-    skill_match_state = fields.Selection(
-        [
-            ("not_required", "No Skill Requirement"),
-            ("matched", "Skill Matched"),
-            ("partial", "Partial Skill Match"),
-            ("unmatched", "Skill Unmatched"),
-        ],
-        string="Skill Match", compute="_compute_skill_match",
-        search="_search_skill_match_state",
-    )
-    skill_required_count = fields.Integer(
-        string="Required Skills", compute="_compute_skill_match")
-    skill_matched_count = fields.Integer(
-        string="Matched Skills", compute="_compute_skill_match")
-    skill_missing_count = fields.Integer(
-        string="Missing Skills", compute="_compute_skill_match")
-    skill_match_percentage = fields.Float(
-        string="Skill Match (%)", compute="_compute_skill_match",
-        digits=(16, 0))
-    skill_match_detail = fields.Char(
-        string="Skill Match Detail", compute="_compute_skill_match")
-
     @api.depends("date_actual_end", "date_done")
     def _compute_actual_finish(self):
         for task in self:
@@ -303,91 +274,6 @@ class ProjectTask(models.Model):
             matching = all_tasks - matching
         return [("id", "in", matching.ids)]
 
-    # ---- Skill matching ----------------------------------------------------
-
-    def _skill_candidate_employees(self):
-        """People this task may draw skills from — union of the resource
-        plan's assigned employees and the employees behind the standard
-        assignees (``user_ids`` → ``hr.employee.user_id``)."""
-        self.ensure_one()
-        employees = self.env["hr.employee"]
-        employees |= self.resource_requirement_ids.assignment_ids.employee_id
-        if self.user_ids:
-            employees |= self.env["hr.employee"].search(
-                [("user_id", "in", self.user_ids.ids)])
-        return employees
-
-    @api.depends(
-        "skill_requirement_ids.coverage_state",
-        "skill_requirement_ids.is_optional",
-        "skill_requirement_ids.skill_id",
-    )
-    def _compute_skill_match(self):
-        """Aggregate the per-requirement coverage into one task state.
-
-        * no requirements → ``not_required``
-        * every *mandatory* requirement matched → ``matched``
-        * every mandatory requirement missing → ``unmatched``
-        * anything in between → ``partial``
-
-        Optional requirements feed the percentage but can never flip a
-        task to unmatched. A task with requirements but no assignable
-        employee reads ``unmatched`` — never ``matched`` on empty data.
-        """
-        for task in self:
-            reqs = task.skill_requirement_ids
-            if not reqs:
-                task.skill_match_state = "not_required"
-                task.skill_required_count = 0
-                task.skill_matched_count = 0
-                task.skill_missing_count = 0
-                task.skill_match_percentage = 0.0
-                task.skill_match_detail = False
-                continue
-            mandatory = reqs.filtered(lambda r: not r.is_optional)
-            states = reqs.mapped("coverage_state")
-            mandatory_states = mandatory.mapped("coverage_state")
-            matched = len([s for s in mandatory_states if s == "matched"])
-            missing = len([s for s in mandatory_states if s == "missing"])
-            below = len([s for s in mandatory_states if s == "partial"])
-            if mandatory and not missing and not below:
-                state = "matched"
-            elif mandatory and missing == len(mandatory_states):
-                state = "unmatched"
-            elif not mandatory and all(s == "matched" for s in states):
-                state = "matched"
-            elif not mandatory and all(s == "missing" for s in states):
-                state = "partial"  # optional-only gaps are a warning, not a block
-            else:
-                state = "partial"
-            task.skill_match_state = state
-            task.skill_required_count = len(mandatory)
-            task.skill_matched_count = matched
-            task.skill_missing_count = missing + below
-            task.skill_match_percentage = (
-                matched / len(mandatory) * 100.0 if mandatory else 0.0)
-            uncovered = reqs.filtered(
-                lambda r: r.coverage_state in ("missing", "partial"))
-            task.skill_match_detail = "; ".join(
-                "%s%s (%s)" % (
-                    r.skill_id.display_name,
-                    " [optional]" if r.is_optional else "",
-                    dict(r._fields["coverage_state"].selection).get(
-                        r.coverage_state),
-                ) for r in uncovered
-            ) or False
-
-    def _search_skill_match_state(self, operator, value):
-        """Domain support on the non-stored match state — same pattern
-        as ``material_risk``."""
-        wanted = {value} if isinstance(value, str) else set(value or [])
-        all_tasks = self.with_context(active_test=False).search([])
-        all_tasks.mapped("skill_match_state")  # one batched compute
-        matching = all_tasks.filtered(lambda t: t.skill_match_state in wanted)
-        if operator in ("!=", "not in"):
-            matching = all_tasks - matching
-        return [("id", "in", matching.ids)]
-
     # ---- Planner payload ---------------------------------------------------
 
     def _planner_actual_fields(self):
@@ -422,19 +308,6 @@ class ProjectTask(models.Model):
             "material_shortage_quantity": (
                 self.material_shortage_quantity or 0.0),
             "material_risk_detail": self.material_risk_detail or False,
-        }
-
-    def _planner_skill_fields(self):
-        """Skill-match keys merged into planner task rows next to the
-        material block (same post-processing point)."""
-        self.ensure_one()
-        return {
-            "skill_match_state": self.skill_match_state or "not_required",
-            "skill_required_count": self.skill_required_count or 0,
-            "skill_matched_count": self.skill_matched_count or 0,
-            "skill_missing_count": self.skill_missing_count or 0,
-            "skill_match_percentage": self.skill_match_percentage or 0.0,
-            "skill_match_detail": self.skill_match_detail or False,
         }
 
     def get_planner_detail(self):
@@ -472,25 +345,5 @@ class ProjectTask(models.Model):
                 "material_delay_days": line.material_delay_days,
                 "material_state": line.material_state,
             } for line in self.material_plan_line_ids],
-        )
-        # Skills block (Phase 3): coverage analysis only — never an
-        # assignment suggestion engine.
-        res["skills"] = dict(
-            self._planner_skill_fields(),
-            requirements=[{
-                "id": req.id,
-                "skill": req.skill_id.display_name,
-                "required_level": (
-                    req.required_level_id.display_name
-                    if req.required_level_id else False),
-                "required_progress": req.required_progress or 0.0,
-                "is_optional": req.is_optional,
-                "coverage_state": req.coverage_state,
-                "best_progress": req.best_progress or 0.0,
-                "covered_by": req.covered_by or False,
-            } for req in self.skill_requirement_ids],
-            candidates=[
-                e.display_name
-                for e in self._skill_candidate_employees()],
         )
         return res

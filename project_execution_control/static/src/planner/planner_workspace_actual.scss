@@ -55,26 +55,3 @@ $o_pec_actual_top: 3px;
         box-shadow: 0 0 0 2px rgba(#fa5252, 0.35);
     }
 }
-
-// Skill-match dot — Phase 3 (BRD §7). Hollow ring instead of a filled
-// dot so the two micro-badges stay distinguishable at a glance.
-.o_pec_skill_dot {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    margin-left: 4px;
-    border-radius: 50%;
-    vertical-align: middle;
-    box-sizing: border-box;
-    border: 2px solid transparent;
-
-    &.matched {
-        border-color: #51cf66;
-    }
-    &.partial {
-        border-color: #fd7e14;
-    }
-    &.unmatched {
-        border-color: #fa5252;
-    }
-}

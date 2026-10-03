@@ -25,11 +25,6 @@ const MATERIAL_RISK_LABEL = {
     delayed: _t("Material Delay"),
     critical: _t("Critical Material Delay"),
 };
-const SKILL_MATCH_LABEL = {
-    matched: _t("Skill Matched"),
-    partial: _t("Partial Skill Match"),
-    unmatched: _t("Skill Unmatched"),
-};
 
 patch(PlannerWorkspace.prototype, {
 
@@ -100,25 +95,6 @@ patch(PlannerWorkspace.prototype, {
         }
         if (task.material_risk_detail) {
             lines.push(task.material_risk_detail);
-        }
-        return lines.filter(Boolean).join("\n");
-    },
-
-    // Skill-match dot tooltip (Phase 3): coverage numbers, not a
-    // reassignment suggestion.
-    skillMatchTooltip(task) {
-        const state = task.skill_match_state;
-        const lines = [
-            `${_t("Skill Match")}: ${SKILL_MATCH_LABEL[state] || state || ""}`,
-        ];
-        if (task.skill_required_count) {
-            lines.push(`${_t("Coverage")}: ${task.skill_matched_count}/${task.skill_required_count} (${task.skill_match_percentage}%)`);
-        }
-        if (task.skill_missing_count) {
-            lines.push(`${_t("Missing")}: ${task.skill_missing_count}`);
-        }
-        if (task.skill_match_detail) {
-            lines.push(task.skill_match_detail);
         }
         return lines.filter(Boolean).join("\n");
     },

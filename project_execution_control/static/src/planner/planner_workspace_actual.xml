@@ -22,11 +22,6 @@
             <span t-if="row.task.material_risk and row.task.material_risk !== 'no_risk'"
                   t-att-class="'o_pec_material_dot ' + row.task.material_risk"
                   t-att-title="materialRiskTooltip(row.task)"/>
-            <!-- Skill-match dot (Phase 3, BRD §7): same micro-badge
-                 family. Absent when the task needs no skills. -->
-            <span t-if="row.task.skill_match_state and row.task.skill_match_state !== 'not_required'"
-                  t-att-class="'o_pec_skill_dot ' + row.task.skill_match_state"
-                  t-att-title="skillMatchTooltip(row.task)"/>
         </xpath>
     </t>
 </templates>
