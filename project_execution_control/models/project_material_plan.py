@@ -90,7 +90,9 @@ class ProjectMaterialPlan(models.Model):
             elif delay_days > 0:
                 state = "delayed"
             elif expected_qty < line.planned_quantity - 0.000001:
-                state = "partial" if expected_qty > 0.000001 else "unknown"
+                # Confirmed zero availability is a delay, not "no data":
+                # the requirement provably cannot be met in time.
+                state = "partial" if expected_qty > 0.000001 else "delayed"
             elif open_moves and not expected:
                 # Stock is open but Odoo has no date it can promise —
                 # never read as available (BRD §28).
