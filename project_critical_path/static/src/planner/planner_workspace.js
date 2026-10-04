@@ -1530,8 +1530,10 @@ export class PlannerWorkspace extends Component {
         const spanPx = Math.max(this.timeToX(stopMs) - this.timeToX(startMs), 1);
         const base = this._zoomBase[this.state.scale] || this.state.pxPerDay;
         const target = this.state.pxPerDay * Math.max(el.clientWidth - 80, 200) / spanPx;
+        // Floor (not round) — always picks the level that guarantees the
+        // span fits; round can land one step short and clip the project.
         const level = Math.min(Math.max(
-            Math.round(Math.log(target / base) / Math.log(ZOOM_FACTOR)),
+            Math.floor(Math.log(target / base) / Math.log(ZOOM_FACTOR)),
             ZOOM_MIN,
         ), ZOOM_MAX);
         this.state.zoom[this.state.scale] = level;
