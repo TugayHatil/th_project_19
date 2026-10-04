@@ -447,6 +447,16 @@ $o_cp_planner_bar_critical: #e8a33d;
     }
 }
 
+// Project manager avatar in the toolbar — next to the project name.
+.o_cp_planner_pm_avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1px solid #d1d5db;
+    object-fit: cover;
+    vertical-align: middle;
+}
+
 // Overdue marker: a filled red exclamation circle after the slack chip —
 // big enough to catch the eye at a glance (the bare fa-exclamation stroke
 // was nearly invisible). Done tasks never show it.

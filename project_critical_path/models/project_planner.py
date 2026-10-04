@@ -221,6 +221,10 @@ class ProjectProjectPlanner(models.Model):
             "project": {
                 "id": self.id,
                 "name": self.display_name,
+                # Project manager — the toolbar shows their avatar next to
+                # the project name.
+                "user_id": self.user_id.id or False,
+                "user_name": self.user_id.name or "",
                 # Per-project planning precision + the calendar's
                 # hours-per-day so the frontend can show day-based
                 # durations/lag/slack without recomputing them.

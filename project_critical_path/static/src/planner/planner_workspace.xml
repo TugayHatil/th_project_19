@@ -38,6 +38,10 @@
                 <t t-else="">
                     <span class="text-muted" t-esc="state.projectName"/>
                 </t>
+                <img t-if="state.projectManagerId" class="o_cp_planner_pm_avatar ms-1"
+                     t-att-src="'/web/image/res.users/' + state.projectManagerId + '/avatar_128'"
+                     t-att-title="state.projectManagerName"
+                     t-att-alt="state.projectManagerName"/>
                 <t t-if="!state.boardMode">
                     <div class="btn-group btn-group-sm ms-3">
                         <button type="button" class="btn btn-outline-secondary"

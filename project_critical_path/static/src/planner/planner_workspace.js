@@ -155,6 +155,10 @@ export class PlannerWorkspace extends Component {
             projects: [],
             projectId: params.project_id || context.project_id || false,
             projectName: "",
+            // Project manager — avatar shown next to the project name in
+            // the toolbar.
+            projectManagerId: false,
+            projectManagerName: "",
             // Project-level planning precision (BRD) — "hour" keeps the
             // existing date+time behaviour; "day" hides time pickers and
             // quantizes drags/resizes to whole days.
@@ -167,8 +171,8 @@ export class PlannerWorkspace extends Component {
             tasks: [],
             collapsedIds: new Set(),
             selectedId: null,
-            scale: "week",
-            pxPerDay: SCALES.week.pxPerDay,
+            scale: "month",
+            pxPerDay: SCALES.month.pxPerDay,
             // Per-scale zoom levels (BRD Zoom Controls) — density only,
             // the time unit never changes. Level 0 = the fitted density.
             zoom: { day: 0, week: 0, month: 0 },
@@ -335,6 +339,10 @@ export class PlannerWorkspace extends Component {
                 this._pendingFit = false;
                 this.fit();
             }
+            if (this._pendingFitTimeline) {
+                this._pendingFitTimeline = false;
+                this.fitTimeline();
+            }
             if (this._leftExtendPx) {
                 const el = this.ganttScrollRef.el;
                 if (el) {
@@ -382,6 +390,9 @@ export class PlannerWorkspace extends Component {
                 // Open fitted to the viewport so the whole timeline is
                 // visible without pressing Fit every time.
                 this.fit();
+                // The whole dated task span is fitted into the viewport on
+                // open — the Fit button just re-applies the same framing.
+                this.fitTimeline();
             } else {
                 this.state.loading = false;
             }
@@ -412,6 +423,8 @@ export class PlannerWorkspace extends Component {
                 "project.project", "get_planner_data", [projectId], kwargs,
             );
             this.state.projectName = data.project.name;
+            this.state.projectManagerId = data.project.user_id || false;
+            this.state.projectManagerName = data.project.user_name || "";
             // BRD Planning Precision — project-level hour/day planning
             // granularity. Display + input precision only; the scheduling
             // engine keeps working on stored datetimes.
@@ -1489,6 +1502,10 @@ export class PlannerWorkspace extends Component {
     // start near the left edge. The scale's time unit never changes.
     fitTimeline() {
         const el = this.ganttScrollRef.el;
+        if (!el) {
+            this._pendingFitTimeline = true;
+            return;
+        }
         let startMs = Infinity;
         let stopMs = -Infinity;
         for (const task of this.state.tasks) {
@@ -1505,7 +1522,7 @@ export class PlannerWorkspace extends Component {
                 stopMs = e;
             }
         }
-        if (!el || !isFinite(startMs) || !isFinite(stopMs)) {
+        if (!isFinite(startMs) || !isFinite(stopMs)) {
             return;
         }
         // All segment rates scale linearly with pxPerDay, so the required
@@ -2912,7 +2929,7 @@ export class PlannerWorkspace extends Component {
         if (!str) {
             return "–";
         }
-        return getCalendarFormats().compactDate.format(parseDay(str));
+        return getCalendarFormats().dayMonth.format(parseDay(str));
     }
 
     gripStyle(task, side) {
@@ -3028,6 +3045,7 @@ export class PlannerWorkspace extends Component {
             await this.loadProject(this.state.projectId);
             // A different project means a different range — refit it.
             this.fit();
+            this.fitTimeline();
             if (this.state.boardMode) {
                 this.state.boardSelKey = null;
                 await this.loadBoard();
