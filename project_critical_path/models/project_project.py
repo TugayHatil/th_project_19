@@ -38,10 +38,17 @@ class ProjectProject(models.Model):
     # hour-granularity drags. ``day`` hides the time pickers and quantizes
     # drags/resizes to whole calendar days. Display + input precision only;
     # the datetime storage and the scheduling engine stay untouched.
+    # Planner feature visibility — unchecked keeps the WBS / Critical
+    # Paths / Plan Baselines / Delay Impact tabs and the Calculate
+    # Critical Paths button hidden on the project form.
+    show_planning_features = fields.Boolean(
+        string="Show Planning Tabs",
+        default=False,
+    )
     planning_precision = fields.Selection(
         [("hour", "Hour"), ("day", "Day")],
         string="Planning Precision",
-        default="hour",
+        default="day",
         required=True,
     )
 

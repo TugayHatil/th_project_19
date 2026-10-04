@@ -58,24 +58,30 @@
                         string="Calculate Critical Paths"
                         type="object"
                         class="btn-secondary"
+                        invisible="not show_planning_features"
                         groups="project.group_project_manager"/>
+                <!-- Create Baseline is fully hidden — baseline creation is
+                     managed from the Planner workspace. -->
                 <button name="action_create_critical_path_baseline"
                         string="Create Baseline"
                         type="object"
                         class="btn-secondary"
+                        invisible="1"
                         groups="project.group_project_manager"/>
             </xpath>
             <!-- BRD Planning Precision: lives inside the standard Settings
                  page's spare group — no new tab. -->
             <xpath expr="//page[@name='settings']//group[@name='extra_settings']" position="inside">
                 <group string="Planning">
+                    <field name="show_planning_features"/>
                     <field name="planning_precision" widget="radio"
                            options="{'horizontal': true}"/>
                     <field name="resource_calendar_id"/>
                 </group>
             </xpath>
             <xpath expr="//notebook" position="inside">
-                <page name="wbs_structure" string="Work Breakdown Structure">
+                <page name="wbs_structure" string="Work Breakdown Structure"
+                      invisible="not show_planning_features">
                     <field name="task_ids" nolabel="1" context="{'default_project_id': id}">
                         <list string="Work Breakdown Structure" default_order="wbs_sort_key asc">
                             <field name="wbs_code" string="WBS"/>
@@ -96,7 +102,8 @@
                         </list>
                     </field>
                 </page>
-                <page name="critical_paths" string="Critical Paths">
+                <page name="critical_paths" string="Critical Paths"
+                      invisible="not show_planning_features">
 
                     <group>
                         <group>
@@ -114,7 +121,8 @@
                         </list>
                     </field>
                 </page>
-                <page name="critical_path_baselines" string="Plan Baselines">
+                <page name="critical_path_baselines" string="Plan Baselines"
+                      invisible="not show_planning_features">
                     <group>
                         <group>
                             <field name="critical_path_baseline_count"/>
@@ -141,7 +149,8 @@
                         </list>
                     </field>
                 </page>
-                <page name="task_delay_impact" string="Delay Impact">
+                <page name="task_delay_impact" string="Delay Impact"
+                      invisible="not show_planning_features">
                     <group string="Project Impact Summary">
                         <group>
                             <field name="delay_impact_baseline_id"/>

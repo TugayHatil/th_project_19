@@ -1116,6 +1116,11 @@ msgid "Planning Precision"
 msgstr "Planungsgenauigkeit"
 
 #. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_project__show_planning_features
+msgid "Show Planning Tabs"
+msgstr "Planungsregisterkarten anzeigen"
+
+#. module: project_critical_path
 msgid "Planning"
 msgstr "Planung"
 
