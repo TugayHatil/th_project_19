@@ -59,6 +59,8 @@ msgstr "Bitiş Tarihi"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline_line__task_name
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_change__task_name
 msgid "Task Name"
 msgstr "Görev Adı"
 
@@ -129,6 +131,10 @@ msgstr "Sütunlar"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task_dependency__task_id
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline_line__task_id
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_change__task_id
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task_delay_impact__task_id
 msgid "Task"
 msgstr "Görev"
 
@@ -176,6 +182,7 @@ msgstr "Güncel Plan"
 #. module: project_critical_path
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path__duration
 msgid "Duration"
 msgstr "Süre"
 
@@ -192,6 +199,10 @@ msgstr "Atanan"
 #. module: project_critical_path
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline_line__baseline_id
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_change__baseline_id
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task_delay_impact__baseline_id
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_critical_path_baseline_form
 msgid "Baseline"
 msgstr "Referans"
 
@@ -208,6 +219,7 @@ msgstr "Sapma"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_project__delay_total
 msgid "Total Delay"
 msgstr "Toplam Gecikme"
 
@@ -298,11 +310,13 @@ msgstr "İlk"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__project_duration
 msgid "Project Duration"
 msgstr "Proje Süresi"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__previous_baseline_id
 msgid "Previous Baseline"
 msgstr "Önceki Referans"
 
@@ -313,6 +327,7 @@ msgstr "Değişen Görev"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__critical_path_change_line_ids
 msgid "Critical Path Changes"
 msgstr "Kritik Yol Değişikliği"
 
@@ -344,12 +359,14 @@ msgstr "Bu referansta görev değişikliği yok."
 #. module: project_critical_path
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
 #: model:ir.model.fields.selection,name:project_critical_path.selection__project_critical_path_change__change_type__added
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__history_added_task_names
 msgid "Entered Critical Path"
 msgstr "Kritik Yola Girdi"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
 #: model:ir.model.fields.selection,name:project_critical_path.selection__project_critical_path_change__change_type__removed
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__history_removed_task_names
 msgid "Left Critical Path"
 msgstr "Kritik Yoldan Çıktı"
 
@@ -792,6 +809,7 @@ msgstr "Kritik"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_task_planner_search
 msgid "This Week"
 msgstr "Bu Hafta"
 
@@ -852,6 +870,7 @@ msgstr "İş Kırılım Yapısı"
 
 #. module: project_critical_path
 #: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_task_list_inherit_critical_path
 msgid "Level"
 msgstr "Seviye"
 
@@ -863,6 +882,8 @@ msgstr "Görev Başlığı"
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_wbs.py:0
 #: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task__is_work_package
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_task_list_inherit_critical_path
 msgid "Work Package"
 msgstr "İş Paketi"
 
@@ -873,22 +894,27 @@ msgstr "İlerleme (%)"
 
 #. module: project_critical_path
 #: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_task_list_inherit_critical_path
 msgid "Planned Roll-up"
 msgstr "Planlanan Toplam"
 
 #. module: project_critical_path
 #: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_task_list_inherit_critical_path
 msgid "Actual Roll-up"
 msgstr "Gerçekleşen Toplam"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_wbs.py:0
 #: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task__progress_rollup
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_task_list_inherit_critical_path
 msgid "Progress Roll-up (%)"
 msgstr "İlerleme Toplamı (%)"
 
 #. module: project_critical_path
 #: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_project__critical_path_ids
 msgid "Critical Paths"
 msgstr "Kritik Yollar"
 
@@ -940,21 +966,25 @@ msgstr "Gerçekleşen Kaynak Atamaları"
 
 #. module: project_critical_path
 #: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_task_form_inherit_critical_path
 msgid "Critical Path Schedule"
 msgstr "Kritik Yol Çizelgesi"
 
 #. module: project_critical_path
 #: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_task_form_inherit_critical_path
 msgid "Early Dates"
 msgstr "Erken Tarihler"
 
 #. module: project_critical_path
 #: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_task_form_inherit_critical_path
 msgid "Late Dates"
 msgstr "Geç Tarihler"
 
 #. module: project_critical_path
 #: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_task_form_inherit_critical_path
 msgid "Delay Impact Analysis"
 msgstr "Gecikme Etkisi Analizi"
 
@@ -1003,118 +1033,156 @@ msgstr "Ekip Planlayıcı"
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_wbs.py:0
 #: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task__wbs_code
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_task_search_inherit_wbs
 msgid "WBS Code"
 msgstr "WBS Kodu"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_wbs.py:0
 #: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task__wbs_level
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_task_planner_search
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_task_search_inherit_wbs
 msgid "WBS Level"
 msgstr "WBS Seviyesi"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_wbs.py:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task__wbs_sort_key
 msgid "WBS Sort Key"
 msgstr "WBS Sıralama Anahtarı"
 
 #. module: project_critical_path
 #: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_task_search_inherit_wbs
 msgid "Work Packages"
 msgstr "İş Paketleri"
 
 #. module: project_critical_path
 #: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_task_search_inherit_wbs
 msgid "Root Tasks (WBS L1)"
 msgstr "Kök Görevler (WBS S1)"
 
 #. module: project_critical_path
 #: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_task_search_inherit_wbs
 msgid "Parent Work Package"
 msgstr "Üst İş Paketi"
 
 #. module: project_critical_path
 #: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_critical_path_baseline_form
 msgid "Current Plan Comparison"
 msgstr "Güncel Plan Karşılaştırması"
 
 #. module: project_critical_path
 #: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_critical_path_baseline_form
 msgid "Previous Baseline Comparison"
 msgstr "Önceki Referans Karşılaştırması"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__history_change_summary
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_critical_path_baseline_form
 msgid "Previous Baseline Change Summary"
 msgstr "Önceki Referans Değişiklik Özeti"
 
 #. module: project_critical_path
 #: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_critical_path_baseline_form
 msgid "Critical Path Comparison"
 msgstr "Kritik Yol Karşılaştırması"
 
 #. module: project_critical_path
 #: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_critical_path_baseline_form
 msgid "Critical Path Change Analysis"
 msgstr "Kritik Yol Değişiklik Analizi"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_task.py:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task__critical_early_start
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline_line__early_start
 msgid "Early Start"
 msgstr "Erken Başlangıç"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_task.py:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task__critical_early_finish
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline_line__early_finish
 msgid "Early Finish"
 msgstr "Erken Bitiş"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_task.py:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task__critical_late_start
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline_line__late_start
 msgid "Late Start"
 msgstr "Geç Başlangıç"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_task.py:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task__critical_late_finish
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline_line__late_finish
 msgid "Late Finish"
 msgstr "Geç Bitiş"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_task.py:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task__critical_slack
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline_line__slack
 msgid "Slack"
 msgstr "Gecikme Payı"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_task.py:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task__is_critical
 msgid "Critical Task"
 msgstr "Kritik Görev"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_project.py:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_project__critical_path_count
 msgid "Critical Path Count"
 msgstr "Kritik Yol Sayısı"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_project.py:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_project__critical_path_duration
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__critical_path_duration
 msgid "Critical Path Duration"
 msgstr "Kritik Yol Süresi"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_project.py:0
 #: code:addons/project_critical_path/models/project_task.py:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_project__delay_baseline_duration
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task__delay_baseline_duration
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task_delay_impact__baseline_duration
 msgid "Baseline Duration"
 msgstr "Referans Süresi"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_project.py:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_project__delay_current_duration
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task_delay_impact__current_duration
 msgid "Current Duration"
 msgstr "Güncel Süre"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_task.py:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task__delay_duration_variance
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task_delay_impact__duration_variance
 msgid "Duration Variance"
 msgstr "Süre Sapması"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_task.py:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task__delay_project_impact
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task_delay_impact__project_impact
 msgid "Project Impact"
 msgstr "Proje Etkisi"
 
@@ -1127,36 +1195,44 @@ msgstr "Etki Durumu"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_task.py:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task__delay_impact_chain
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task_delay_impact__impact_chain
 msgid "Impact Chain"
 msgstr "Etki Zinciri"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_wbs.py:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task__planned_hours_rollup
 msgid "Planned Hours Roll-up"
 msgstr "Planlanan Saat Toplamı"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_wbs.py:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task__effective_hours_rollup
 msgid "Actual Hours Roll-up"
 msgstr "Gerçekleşen Saat Toplamı"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__line_ids
 msgid "Task Snapshots"
 msgstr "Görev Anlık Görüntüleri"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__history_project_duration_variance
 msgid "Project Duration Variance"
 msgstr "Proje Süresi Sapması"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__history_critical_path_duration_variance
 msgid "Critical Path Duration Variance"
 msgstr "Kritik Yol Süresi Sapması"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/models/project_critical_path_baseline.py:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__history_critical_path_changed
 msgid "Previous Baseline CP Changed"
 msgstr "Önceki Referans KY Değişti"
 
@@ -1463,6 +1539,7 @@ msgstr "Referans görev anlık görüntüleri silinemez."
 #: model:ir.actions.act_window,name:project_critical_path.action_project_planner
 #: model_terms:ir.ui.view,arch_db:project_critical_path.planner_workspace
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_planner_workspace
 msgid "Planner"
 msgstr "Planlayıcı"
 
@@ -1470,6 +1547,7 @@ msgstr "Planlayıcı"
 #: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_critical_path
 #: model_terms:ir.ui.view,arch_db:project_critical_path.planner_workspace
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_task_list_inherit_critical_path
 msgid "WBS"
 msgstr "WBS"
 
@@ -1634,14 +1712,19 @@ msgstr "Saatlik Tarife"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__planned_cost
 msgid "Planned Cost"
 msgstr "Planlanan Maliyet"
 
 #. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__planned_resource_cost
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_critical_path_baseline_form
 msgid "Planned Resource Cost"
 msgstr "Planlanan Kaynak Maliyeti"
 
 #. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__currency_id
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline_line__currency_id
 msgid "Currency"
 msgstr "Para Birimi"
 
@@ -1673,6 +1756,8 @@ msgid "Cost Variance"
 msgstr "Maliyet Farkı"
 
 #. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__planned_resource_hours
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__planned_hours
 msgid "Planned Resource Hours"
 msgstr "Planlanan Kaynak Saati"
 
@@ -1682,6 +1767,7 @@ msgid "Planned cost: %(old)s → %(new)s (%(delta)s)"
 msgstr "Planlanan maliyet: %(old)s → %(new)s (%(delta)s)"
 
 #. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_critical_path_baseline_list
 msgid "Cost Change"
 msgstr "Maliyet Değişimi"
 
@@ -1695,28 +1781,38 @@ msgid "Back to Project"
 msgstr "Projeye Dön"
 
 #. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path__project_id
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__project_id
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task_delay_impact__project_id
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task_dependency__project_id
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_task_planner_search
 msgid "Project"
 msgstr "Proje"
 
 #. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_task_planner_search
 msgid "Critical Tasks"
 msgstr "Kritik Görevler"
 
 #. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_task_planner_search
 msgid "Delayed Tasks"
 msgstr "Geciken Görevler"
 
 #. module: project_critical_path
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_task_planner_search
 msgid "Completed Tasks"
 msgstr "Tamamlanan Görevler"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_task_planner_search
 msgid "Assignees"
 msgstr "Atananlar"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_task_planner_search
 msgid "Stage"
 msgstr "Aşama"
 
@@ -1762,6 +1858,7 @@ msgid "Task Dependency"
 msgstr "Görev Bağımlılığı"
 
 #. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task_dependency__depends_on_id
 msgid "Depends On"
 msgstr "Bağlı Olduğu"
 
@@ -1777,6 +1874,7 @@ msgstr "İlişki"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task_dependency__lag
 msgid "Lag"
 msgstr "Lag"
 
@@ -1786,6 +1884,7 @@ msgid "Lag Unit"
 msgstr "Lag Birimi"
 
 #. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task_dependency__lag_hours
 msgid "Lag (Hours)"
 msgstr "Lag (Saat)"
 
@@ -2237,6 +2336,7 @@ msgstr "Gün"
 #. module: project_critical_path
 #: model:res.groups.privilege,name:project_critical_path.res_groups_privilege_planner
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+#: model_terms:ir.ui.view,arch_db:project_critical_path.project_project_form_inherit_planner_workspace
 msgid "Planner"
 msgstr "Planlayıcı"
 
@@ -2255,7 +2355,6 @@ msgstr "Planner verilerini yalnızca Planner Yöneticileri değiştirebilir."
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
 msgid "You do not have permission to edit tasks in this project."
 msgstr "Bu projedeki görevleri düzenleme yetkiniz yok."
-
 
 #. module: project_critical_path
 #: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path__task_ids
@@ -2382,3 +2481,184 @@ msgstr "Görev adı"
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
 msgid "Add assignee…"
 msgstr "Atanan kişi ekle…"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_baseline_title__name
+msgid "Name"
+msgstr "Ad"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_baseline_title__active
+msgid "Active"
+msgstr "Aktif"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path__sequence
+msgid "Sequence"
+msgstr "Sıra"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path__name
+msgid "Name"
+msgstr "Ad"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__name
+msgid "Name"
+msgstr "Ad"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__revision_number
+msgid "Revision Number"
+msgstr "Revizyon No"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__created_on
+msgid "Created On"
+msgstr "Oluşturulma"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__created_by_id
+msgid "Created By"
+msgstr "Oluşturan"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__critical_path_signature
+msgid "Critical Path Signature"
+msgstr "Kritik Yol İmzası"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__critical_path_snapshot
+msgid "Critical Path Snapshot"
+msgstr "Kritik Yol Anlık Görüntüsü"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__critical_path_change_summary
+msgid "Critical Path Change Summary"
+msgstr "Kritik Yol Değişim Özeti"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__current_project_duration
+msgid "Current Project Duration"
+msgstr "Güncel Proje Süresi"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__current_critical_path_duration
+msgid "Current Critical Path Duration"
+msgstr "Güncel Kritik Yol Süresi"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__project_duration_delta
+msgid "Project Duration Delta"
+msgstr "Proje Süresi Farkı"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__critical_path_duration_delta
+msgid "Critical Path Duration Delta"
+msgstr "Kritik Yol Süresi Farkı"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__current_critical_path_signature
+msgid "Current Critical Path Signature"
+msgstr "Güncel Kritik Yol İmzası"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline__critical_path_changed
+msgid "Critical Path Changed"
+msgstr "Kritik Yol Değişti"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline_line__parent_task_name
+msgid "Parent Task Name"
+msgstr "Üst Görev Adı"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline_line__allocated_hours
+msgid "Allocated Hours"
+msgstr "Ayrılan Saat"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline_line__planned_date_begin
+msgid "Planned Date Begin"
+msgstr "Planlanan Başlangıç"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline_line__planned_date_end
+msgid "Planned Date End"
+msgstr "Planlanan Bitiş"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline_line__dependency_task_names
+msgid "Dependency Task Names"
+msgstr "Bağımlılık Görev Adları"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline_line__is_critical
+msgid "Is Critical"
+msgstr "Kritik mi"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline_line__current_allocated_hours
+msgid "Current Allocated Hours"
+msgstr "Güncel Ayrılan Saat"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline_line__allocated_hours_delta
+msgid "Allocated Hours Delta"
+msgstr "Ayrılan Saat Farkı"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline_line__current_early_start
+msgid "Current Early Start"
+msgstr "Güncel Erken Başlangıç"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline_line__current_early_finish
+msgid "Current Early Finish"
+msgstr "Güncel Erken Bitiş"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline_line__current_late_start
+msgid "Current Late Start"
+msgstr "Güncel Geç Başlangıç"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline_line__current_late_finish
+msgid "Current Late Finish"
+msgstr "Güncel Geç Bitiş"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline_line__current_slack
+msgid "Current Slack"
+msgstr "Güncel Gecikme Payı"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_baseline_line__current_is_critical
+msgid "Current Is Critical"
+msgstr "Güncel Kritik mi"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_change__sequence
+msgid "Sequence"
+msgstr "Sıra"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_change__baseline_is_critical
+msgid "Baseline Is Critical"
+msgstr "Referans Kritik mi"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_change__current_is_critical
+msgid "Current Is Critical"
+msgstr "Güncel Kritik mi"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_critical_path_change__change_type
+msgid "Change Type"
+msgstr "Değişim Tipi"
+
+#. module: project_critical_path
+#: model:ir.model.fields,field_description:project_critical_path.field_project_task_delay_impact__sequence
+msgid "Sequence"
+msgstr "Sıra"
+
