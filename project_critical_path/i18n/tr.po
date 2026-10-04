@@ -2998,3 +2998,50 @@ msgstr "Değişim Tipi"
 msgid "Sequence"
 msgstr "Sıra"
 
+#. module: project_critical_path
+#. odoo-javascript
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Start ≥"
+msgstr "Başlangıç ≥"
+
+#. module: project_critical_path
+#. odoo-javascript
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "Finish ≤"
+msgstr "Bitiş ≤"
+
+#. module: project_critical_path
+#. odoo-javascript
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "/h →"
+msgstr "/sa →"
+
+#. module: project_critical_path
+#. odoo-javascript
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "/h"
+msgstr "/sa"
+
+#. module: project_critical_path
+#. odoo-javascript
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "FS — Finish-to-Start"
+msgstr "FS — Bitiş-Başlangıç"
+
+#. module: project_critical_path
+#. odoo-javascript
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "SS — Start-to-Start"
+msgstr "SS — Başlangıç-Başlangıç"
+
+#. module: project_critical_path
+#. odoo-javascript
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "FF — Finish-to-Finish"
+msgstr "FF — Bitiş-Bitiş"
+
+#. module: project_critical_path
+#. odoo-javascript
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.xml:0
+msgid "SF — Start-to-Finish"
+msgstr "SF — Başlangıç-Bitiş"
