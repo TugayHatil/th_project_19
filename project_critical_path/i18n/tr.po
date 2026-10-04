@@ -787,6 +787,11 @@ msgstr "Bu Hafta"
 
 #. module: project_critical_path
 #: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
+msgid "Next Week"
+msgstr "Gelecek Hafta"
+
+#. module: project_critical_path
+#: code:addons/project_critical_path/static/src/planner/planner_workspace.js:0
 msgid "Completed"
 msgstr "Tamamlanan"
 

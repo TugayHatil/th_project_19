@@ -43,6 +43,7 @@ const PLANNER_STATUS_FILTERS = [
     { key: "overdue", label: _t("Overdue") },
     { key: "today", label: _t("Today") },
     { key: "week", label: _t("This Week") },
+    { key: "nextweek", label: _t("Next Week") },
     { key: "done", label: _t("Completed") },
     { key: "notdone", label: _t("Not Completed") },
     // Finish Variance (BRD): server-side domain on the stored
@@ -63,6 +64,7 @@ const GROUP_BY_OPTIONS = [
 const RESOURCE_GROUP_KEYS = new Set(["role", "restype"]);
 const EMPTY_FILTERS = () => ({
     critical: false, overdue: false, today: false, week: false,
+    nextweek: false,
     done: false, notdone: false,
     doneLate: false, doneEarly: false, doneOnTime: false,
     userId: false, roleId: false,
@@ -673,7 +675,7 @@ export class PlannerWorkspace extends Component {
     get activeFilterCount() {
         const f = this.state.filters;
         return [
-            f.critical, f.overdue, f.today, f.week, f.done, f.notdone,
+            f.critical, f.overdue, f.today, f.week, f.nextweek, f.done, f.notdone,
             f.doneLate, f.doneEarly, f.doneOnTime,
             f.userId, f.roleId, f.resType, f.stageId, f.parentId,
             f.dateStart, f.dateStop,
@@ -705,6 +707,15 @@ export class PlannerWorkspace extends Component {
         }
         if (f.week) {
             const weekStart = startOfWeek(today);
+            const weekEnd = addDays(weekStart, 6);
+            dom.push(
+                ["date_assign", "<=", `${isoDay(weekEnd)} 23:59:59`],
+                ["date_deadline", ">=", isoDay(weekStart)],
+            );
+        }
+        // Next Week — same overlap window shifted one ISO week forward.
+        if (f.nextweek) {
+            const weekStart = addDays(startOfWeek(today), 7);
             const weekEnd = addDays(weekStart, 6);
             dom.push(
                 ["date_assign", "<=", `${isoDay(weekEnd)} 23:59:59`],
