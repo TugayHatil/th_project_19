@@ -9,27 +9,12 @@
             <xpath expr="//notebook" position="inside">
                 <page name="manufacturers" string="Üreticiler">
                     <field name="manufacturer_ids">
-                        <list>
+                        <list editable="bottom">
                             <field name="manufacturer_code"/>
                             <field name="manufacturer_id" options="{'no_create': True, 'no_quick_create': True, 'no_open': True}"/>
                             <field name="note" optional="hide"/>
                             <field name="state" widget="badge"/>
                         </list>
-                        <form>
-                            <header>
-                                <field name="state"
-                                       widget="statusbar"
-                                       statusbar_visible="not_for_new_design,recommended_for_new_design,released_to_production,prototype"/>
-                            </header>
-                            <sheet>
-                                <group>
-                                    <field name="product_id" invisible="1"/>
-                                    <field name="manufacturer_code"/>
-                                    <field name="manufacturer_id" options="{'no_create': True, 'no_quick_create': True, 'no_open': True}"/>
-                                    <field name="note"/>
-                                </group>
-                            </sheet>
-                        </form>
                     </field>
                 </page>
             </xpath>
