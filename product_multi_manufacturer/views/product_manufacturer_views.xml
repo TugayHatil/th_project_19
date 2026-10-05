@@ -55,13 +55,13 @@
                         domain="[('state', '=', 'released_to_production')]"/>
                 <filter name="state_prototype" string="Prototype"
                         domain="[('state', '=', 'prototype')]"/>
-                <group expand="0" string="Group By">
+                <group>
                     <filter name="group_manufacturer" string="Üretici"
-                            context="{'group_by': 'manufacturer_id'}"/>
+                            domain="[]" context="{'group_by': 'manufacturer_id'}"/>
                     <filter name="group_product" string="Ürün"
-                            context="{'group_by': 'product_id'}"/>
+                            domain="[]" context="{'group_by': 'product_id'}"/>
                     <filter name="group_state" string="Durumu"
-                            context="{'group_by': 'state'}"/>
+                            domain="[]" context="{'group_by': 'state'}"/>
                 </group>
             </search>
         </field>
