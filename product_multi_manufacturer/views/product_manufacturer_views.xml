@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="product_manufacturer_view_list" model="ir.ui.view">
+        <field name="name">product.manufacturer.list</field>
+        <field name="model">product.manufacturer</field>
+        <field name="arch" type="xml">
+            <list string="Üretici Kodları">
+                <field name="manufacturer_code"/>
+                <field name="manufacturer_id"/>
+                <field name="product_id"/>
+                <field name="note" optional="hide"/>
+                <field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="product_manufacturer_view_form" model="ir.ui.view">
+        <field name="name">product.manufacturer.form</field>
+        <field name="model">product.manufacturer</field>
+        <field name="arch" type="xml">
+            <form string="Üretici Kodu">
+                <header>
+                    <field name="state"
+                           widget="statusbar"
+                           statusbar_visible="not_for_new_design,recommended_for_new_design,released_to_production,prototype"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="manufacturer_code"/>
+                        <field name="manufacturer_id"/>
+                        <field name="product_id"/>
+                        <field name="note"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="product_manufacturer_view_search" model="ir.ui.view">
+        <field name="name">product.manufacturer.search</field>
+        <field name="model">product.manufacturer</field>
+        <field name="arch" type="xml">
+            <search string="Üretici Kodları">
+                <field name="manufacturer_code"/>
+                <field name="manufacturer_id"/>
+                <field name="product_id"/>
+                <field name="state"/>
+                <separator/>
+                <filter name="state_not_for_new_design" string="Not For New Design"
+                        domain="[('state', '=', 'not_for_new_design')]"/>
+                <filter name="state_recommended_for_new_design" string="Recommended For New Design"
+                        domain="[('state', '=', 'recommended_for_new_design')]"/>
+                <filter name="state_released_to_production" string="Relased To Production"
+                        domain="[('state', '=', 'released_to_production')]"/>
+                <filter name="state_prototype" string="Prototype"
+                        domain="[('state', '=', 'prototype')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_manufacturer" string="Üretici"
+                            context="{'group_by': 'manufacturer_id'}"/>
+                    <filter name="group_product" string="Ürün"
+                            context="{'group_by': 'product_id'}"/>
+                    <filter name="group_state" string="Durumu"
+                            context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_product_manufacturer" model="ir.actions.act_window">
+        <field name="name">Üretici Kodları</field>
+        <field name="res_model">product.manufacturer</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Yeni bir üretici kodu oluşturun
+            </p><p>
+                Ürünleriniz için üretici ve üretici kodu kayıtlarını buradan yönetebilirsiniz.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_product_manufacturer"
+              name="Üretici Kodları"
+              parent="stock.menu_stock_inventory_control"
+              action="action_product_manufacturer"
+              sequence="103"/>
+
+</odoo>

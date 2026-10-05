@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="product_product_form_view_manufacturers" model="ir.ui.view">
+        <field name="name">product.product.form.manufacturers</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_normal_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page name="manufacturers" string="Üreticiler">
+                    <field name="manufacturer_ids">
+                        <list>
+                            <field name="manufacturer_code"/>
+                            <field name="manufacturer_id"/>
+                            <field name="note" optional="hide"/>
+                            <field name="state" widget="badge"/>
+                        </list>
+                        <form>
+                            <header>
+                                <field name="state"
+                                       widget="statusbar"
+                                       statusbar_visible="not_for_new_design,recommended_for_new_design,released_to_production,prototype"/>
+                            </header>
+                            <sheet>
+                                <group>
+                                    <field name="product_id" invisible="1"/>
+                                    <field name="manufacturer_code"/>
+                                    <field name="manufacturer_id"/>
+                                    <field name="note"/>
+                                </group>
+                            </sheet>
+                        </form>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
