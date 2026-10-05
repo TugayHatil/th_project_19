@@ -25,3 +25,5 @@ class ProductTemplate(models.Model):
             variant = template.product_variant_id
             if variant:
                 variant.manufacturer_ids = template.manufacturer_ids
+        # recompute on next read so the freshly written rows show up
+        self.invalidate_recordset(['manufacturer_ids'])
