@@ -35,7 +35,6 @@ class ProductManufacturer(models.Model):
             ('prototype', 'Prototype'),
         ],
         string='Durumu',
-        default='prototype',
         required=True,
     )
 
