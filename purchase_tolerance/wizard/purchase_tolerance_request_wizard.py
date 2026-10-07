@@ -54,10 +54,13 @@ class PurchaseToleranceRequestWizard(models.TransientModel):
             if existing:
                 requests |= existing
                 continue
+            moves = line.picking_id.move_ids.filtered(
+                lambda m: m.purchase_line_id == line.order_line_id)
             request = Request.create({
                 'order_id': line.order_id.id,
                 'order_line_id': line.order_line_id.id,
                 'picking_id': line.picking_id.id,
+                'move_ids': [Command.set(moves.ids)],
                 'ordered_qty': line.ordered_qty,
                 'received_qty': line.received_qty,
                 'incoming_qty': line.incoming_qty,
@@ -108,5 +111,15 @@ class PurchaseToleranceRequestWizardLine(models.TransientModel):
     incoming_qty = fields.Float(string='Gelen Miktar', digits='Product Unit', readonly=True)
     current_tolerance = fields.Float(string='Mevcut Tolerans (%)', digits='Discount', readonly=True)
     max_accepted_qty = fields.Float(string='Maks. Kabul', digits='Product Unit', readonly=True)
+    excess_qty = fields.Float(
+        string='Tolerans Dışı Miktar', digits='Product Unit',
+        compute='_compute_excess_qty')
     requested_tolerance = fields.Float(
         string='Talep Edilen Tolerans (%)', digits='Discount', required=True)
+
+    @api.depends('received_qty', 'incoming_qty', 'max_accepted_qty')
+    def _compute_excess_qty(self):
+        for line in self:
+            line.excess_qty = max(
+                line.received_qty + line.incoming_qty
+                - line.max_accepted_qty, 0.0)

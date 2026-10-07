@@ -10,14 +10,18 @@
                   decoration-danger="state == 'rejected'">
                 <field name="name"/>
                 <field name="order_id"/>
+                <field name="picking_id" optional="show"/>
                 <field name="product_id"/>
                 <field name="ordered_qty"/>
                 <field name="received_qty"/>
                 <field name="incoming_qty"/>
+                <field name="excess_qty"/>
                 <field name="current_tolerance"/>
                 <field name="requested_tolerance"/>
                 <field name="user_id"/>
                 <field name="request_date"/>
+                <field name="responsible_id" optional="hide"/>
+                <field name="approver_id" optional="show"/>
                 <field name="state" widget="badge"
                        decoration-warning="state == 'pending'"
                        decoration-success="state == 'approved'"
@@ -56,12 +60,14 @@
                             <field name="product_id"/>
                             <field name="uom_id"/>
                             <field name="picking_id"/>
+                            <field name="move_ids" widget="many2many_tags"/>
                             <field name="company_id"
                                    groups="base.group_multi_company"/>
                         </group>
                         <group string="Talep Bilgileri">
                             <field name="user_id"/>
                             <field name="request_date"/>
+                            <field name="responsible_id"/>
                             <field name="approver_id"
                                    invisible="state not in ('approved', 'rejected')"/>
                             <field name="approve_date"
@@ -73,6 +79,7 @@
                             <field name="ordered_qty"/>
                             <field name="received_qty"/>
                             <field name="incoming_qty"/>
+                            <field name="excess_qty"/>
                         </group>
                         <group>
                             <field name="current_tolerance"/>

@@ -1,11 +1,35 @@
 # -*- coding: utf-8 -*-
-from odoo import _, models
+from odoo import _, fields, models
 from odoo.exceptions import UserError
 from odoo.tools.float_utils import float_compare, float_round
 
 
 class StockPicking(models.Model):
     _inherit = 'stock.picking'
+
+    tolerance_request_ids = fields.One2many(
+        'purchase.tolerance.request', 'picking_id',
+        string='Tolerans Talepleri')
+    tolerance_request_count = fields.Integer(
+        string='Tolerans Talebi Sayısı',
+        compute='_compute_tolerance_request_count', compute_sudo=True)
+
+    def _compute_tolerance_request_count(self):
+        data = self.env['purchase.tolerance.request'].sudo()._read_group(
+            [('picking_id', 'in', self.ids)],
+            groupby=['picking_id'], aggregates=['__count'])
+        counts = {picking.id: count for picking, count in data}
+        for picking in self:
+            picking.tolerance_request_count = counts.get(picking.id, 0)
+
+    def action_view_tolerance_requests(self):
+        self.ensure_one()
+        action = self.env['ir.actions.actions']._for_xml_id(
+            'purchase_tolerance.action_purchase_tolerance_request')
+        action['domain'] = [('picking_id', '=', self.id)]
+        action['context'] = dict(
+            self.env.context, default_picking_id=self.id)
+        return action
 
     def _get_purchase_tolerance_exceeded_lines(self):
         """Doğrulama sonrasında satınalma toleransını aşacak PO satırlarını döner.

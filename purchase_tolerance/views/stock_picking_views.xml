@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_picking_form_inherit_tolerance" model="ir.ui.view">
+        <field name="name">stock.picking.form.inherit.purchase.tolerance</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_tolerance_requests" type="object"
+                        class="oe_stat_button" icon="fa-balance-scale"
+                        invisible="tolerance_request_count == 0">
+                    <field name="tolerance_request_count" widget="statinfo"
+                           string="Tolerans Talepleri"/>
+                </button>
+            </xpath>
+            <xpath expr="//page[@name='operations']//field[@name='move_ids']/list/field[@name='quantity']" position="after">
+                <field name="tolerance_state" string="Tolerans" optional="show"
+                       widget="badge" readonly="1"
+                       decoration-warning="tolerance_state == 'pending'"
+                       decoration-success="tolerance_state == 'approved'"
+                       decoration-danger="tolerance_state == 'rejected'"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

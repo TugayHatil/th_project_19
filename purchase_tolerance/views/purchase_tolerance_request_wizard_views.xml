@@ -26,6 +26,7 @@
                         <field name="incoming_qty" readonly="1"/>
                         <field name="current_tolerance" readonly="1"/>
                         <field name="max_accepted_qty" readonly="1"/>
+                        <field name="excess_qty" readonly="1"/>
                         <field name="requested_tolerance"/>
                     </list>
                 </field>
