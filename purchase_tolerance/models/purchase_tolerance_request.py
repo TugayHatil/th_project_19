@@ -159,7 +159,8 @@ class PurchaseToleranceRequest(models.Model):
                 name=request.name, tol=request.requested_tolerance))
             if request.picking_id:
                 request.picking_id.sudo().message_post(
-                    body=request._get_decision_message('onaylandı'))
+                    body=request._get_decision_message('onaylandı'),
+                    message_type='comment')
         return True
 
     def action_reject(self):
@@ -180,7 +181,8 @@ class PurchaseToleranceRequest(models.Model):
                 name=request.name, reason=request.reject_reason))
             if request.picking_id:
                 request.picking_id.sudo().message_post(
-                    body=request._get_decision_message('reddedildi'))
+                    body=request._get_decision_message('reddedildi'),
+                    message_type='comment')
         return True
 
     def action_cancel(self):

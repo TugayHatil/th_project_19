@@ -101,5 +101,6 @@ class PurchaseOrderLine(models.Model):
                 line.order_id.message_post(body=_(
                     'Satınalma Toleransı: %(old)s%% → %(new)s%% (%(product)s)',
                     old=old_value, new=new_value,
-                    product=line.product_id.display_name))
+                    product=line.product_id.display_name),
+                    message_type='comment')
         return res

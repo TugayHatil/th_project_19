@@ -75,7 +75,7 @@ class PurchaseToleranceRequestWizard(models.TransientModel):
                 request.picking_id.sudo().message_post(body=_(
                     '%(name)s numaralı tolerans aşımı talebi oluşturuldu; '
                     'satınalma sorumlusunun onayı bekleniyor.',
-                    name=request._get_html_link()))
+                    name=request._get_html_link()), message_type='comment')
             requests |= request
 
         action = {
