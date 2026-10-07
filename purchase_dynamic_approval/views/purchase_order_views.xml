@@ -61,21 +61,20 @@
                             <field name="approve_date"/>
                         </group>
                     </group>
-                    <group string="Onay Geçmişi">
-                        <field name="approval_history_ids" nolabel="1"
-                               options="{'no_create': True}">
-                            <list>
-                                <field name="date"/>
-                                <field name="action" widget="badge"/>
-                                <field name="tier_id"/>
-                                <field name="approval_group_id"/>
-                                <field name="user_id"/>
-                                <field name="amount_total"/>
-                                <field name="currency_id" column_invisible="1"/>
-                                <field name="note" optional="show"/>
-                            </list>
-                        </field>
-                    </group>
+                    <separator string="Onay Geçmişi"/>
+                    <field name="approval_history_ids" nolabel="1"
+                           options="{'no_create': True}">
+                        <list>
+                            <field name="date"/>
+                            <field name="action" widget="badge"/>
+                            <field name="tier_id"/>
+                            <field name="approval_group_id"/>
+                            <field name="user_id"/>
+                            <field name="amount_total"/>
+                            <field name="currency_id" column_invisible="1"/>
+                            <field name="note" optional="show"/>
+                        </list>
+                    </field>
                 </page>
             </xpath>
         </field>
