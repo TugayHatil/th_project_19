@@ -107,7 +107,7 @@ class PurchaseToleranceRequest(models.Model):
                 'approver_id': self.env.user.id,
                 'approve_date': fields.Datetime.now(),
             })
-            request.activity_ids.action_done(feedback=_('Talep onaylandı.'))
+            request.activity_ids.action_feedback(feedback=_('Talep onaylandı.'))
             request.order_id.message_post(body=_(
                 '%(name)s numaralı tolerans aşımı talebi onaylandı. '
                 'PO satırı toleransı %(tol)s%% olarak güncellendi.',
@@ -122,7 +122,7 @@ class PurchaseToleranceRequest(models.Model):
                 'approver_id': self.env.user.id,
                 'approve_date': fields.Datetime.now(),
             })
-            request.activity_ids.action_done(feedback=_('Talep reddedildi.'))
+            request.activity_ids.action_feedback(feedback=_('Talep reddedildi.'))
             request.order_id.message_post(body=_(
                 '%(name)s numaralı tolerans aşımı talebi reddedildi.',
                 name=request.name))
@@ -136,5 +136,5 @@ class PurchaseToleranceRequest(models.Model):
                     'Yalnızca talebi oluşturan kullanıcı veya Satınalma '
                     'Yöneticisi talebi iptal edebilir.'))
             request.state = 'cancel'
-            request.activity_ids.action_done(feedback=_('Talep iptal edildi.'))
+            request.activity_ids.action_feedback(feedback=_('Talep iptal edildi.'))
         return True
