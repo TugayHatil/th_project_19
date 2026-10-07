@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Onay barem yapılandırmasını yöneten rol -->
+    <record id="group_approval_tier_manager" model="res.groups">
+        <field name="name">Onay Barem Yöneticisi</field>
+        <field name="comment">Tutar bazlı satınalma onay baremlerini oluşturma, düzenleme ve silme yetkisi.</field>
+        <field name="implied_ids" eval="[(4, ref('purchase.group_purchase_manager'))]"/>
+    </record>
+
+    <!-- Örnek onaylayıcı gruplar (baremlerle ilişkilendirilir, düzenlenebilir) -->
+    <record id="group_approval_specialist" model="res.groups">
+        <field name="name">Satınalma Uzmanları</field>
+        <field name="comment">Örnek onaylayıcı grup: orta tutarlı baremler için.</field>
+    </record>
+    <record id="group_approval_head" model="res.groups">
+        <field name="name">Satınalma Müdürleri</field>
+        <field name="comment">Örnek onaylayıcı grup: yüksek tutarlı baremler için.</field>
+    </record>
+    <record id="group_approval_general_manager" model="res.groups">
+        <field name="name">Genel Müdürler</field>
+        <field name="comment">Örnek onaylayıcı grup: en yüksek tutarlı baremler için.</field>
+    </record>
+
+    <!-- Çoklu şirket kuralları -->
+    <record id="approval_tier_comp_rule" model="ir.rule">
+        <field name="name">Onay Baremı multi-company</field>
+        <field name="model_id" ref="model_purchase_approval_tier"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="approval_history_comp_rule" model="ir.rule">
+        <field name="name">Onay Geçmişi multi-company</field>
+        <field name="model_id" ref="model_purchase_order_approval_history"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>

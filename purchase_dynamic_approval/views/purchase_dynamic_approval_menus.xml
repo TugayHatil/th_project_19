@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_purchase_approval_tier"
+              name="Onay Baremleri"
+              parent="purchase.menu_purchase_config"
+              action="purchase_dynamic_approval.action_purchase_approval_tier"
+              sequence="25"
+              groups="purchase_dynamic_approval.group_approval_tier_manager"/>
+</odoo>

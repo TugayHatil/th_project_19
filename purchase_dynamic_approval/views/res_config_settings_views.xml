@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_dynamic_approval" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.dynamic.approval</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="purchase.res_config_settings_view_form_purchase"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@name='purchase_setting_container']" position="inside">
+                <setting id="purchase_dynamic_approval_setting"
+                         title="Tutar Bazlı Onay Baremleri"
+                         help="Satınalma siparişinin toplam tutarına göre hangi kullanıcı grubunun onaylayacağını belirleyen baremleri yönetin.">
+                    <button name="%(purchase_dynamic_approval.action_purchase_approval_tier)d"
+                            type="action" string="Onay Baremlerini Yönet"
+                            class="btn-link" icon="fa-arrow-right"/>
+                </setting>
+            </xpath>
+        </field>
+    </record>
+</odoo>

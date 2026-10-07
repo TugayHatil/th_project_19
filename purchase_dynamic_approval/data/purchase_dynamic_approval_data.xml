@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="mail_activity_type_purchase_order_approval" model="mail.activity.type">
+        <field name="name">Satınalma Siparişi Onayı</field>
+        <field name="icon">fa-clipboard-check</field>
+        <field name="res_model">purchase.order</field>
+        <field name="decoration_type">warning</field>
+        <field name="summary">Satınalma siparişi onayı bekliyor</field>
+    </record>
+
+    <!-- Örnek onay baremi yapısı; Onay Barem Yöneticisi tarafından
+         serbestçe değiştirilebilir veya silinebilir. -->
+    <record id="approval_tier_user" model="purchase.approval.tier">
+        <field name="sequence">10</field>
+        <field name="amount_min">0</field>
+        <field name="amount_max">1000</field>
+        <field name="approval_group_id" ref="purchase.group_purchase_user"/>
+    </record>
+    <record id="approval_tier_specialist" model="purchase.approval.tier">
+        <field name="sequence">20</field>
+        <field name="amount_min">1000</field>
+        <field name="amount_max">10000</field>
+        <field name="approval_group_id" ref="group_approval_specialist"/>
+    </record>
+    <record id="approval_tier_head" model="purchase.approval.tier">
+        <field name="sequence">30</field>
+        <field name="amount_min">10000</field>
+        <field name="amount_max">100000</field>
+        <field name="approval_group_id" ref="group_approval_head"/>
+    </record>
+    <record id="approval_tier_general_manager" model="purchase.approval.tier">
+        <field name="sequence">40</field>
+        <field name="amount_min">100000</field>
+        <field name="unlimited" eval="True"/>
+        <field name="approval_group_id" ref="group_approval_general_manager"/>
+    </record>
+</odoo>
