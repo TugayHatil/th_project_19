@@ -130,6 +130,7 @@ class PurchaseToleranceRequest(models.Model):
             _('Girilen miktar: %(qty)s %(uom)s',
               qty=self.received_qty + self.incoming_qty,
               uom=self.uom_id.name or ''),
+            _('Tolerans: %(tol)s%%', tol=self.current_tolerance),
         ]
         if decision == 'onaylandı':
             lines.append(_('Onaylayan: %s', self.approver_id.name or ''))

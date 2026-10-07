@@ -34,16 +34,9 @@ class PurchaseOrderLine(models.Model):
         for line in self:
             line.can_edit_purchase_tolerance = is_manager
 
-    def _get_global_purchase_tolerance(self):
-        param = self.env['ir.config_parameter'].sudo().get_param(
-            'purchase_tolerance.default_purchase_tolerance')
-        return float(param or 0.0)
-
     def _get_product_purchase_tolerance(self, product):
         product_tmpl = product.product_tmpl_id
-        if product_tmpl and not product_tmpl.use_default_purchase_tolerance:
-            return product_tmpl.purchase_tolerance
-        return self._get_global_purchase_tolerance()
+        return product_tmpl.purchase_tolerance if product_tmpl else 0.0
 
     def _get_default_purchase_tolerance(self):
         self.ensure_one()

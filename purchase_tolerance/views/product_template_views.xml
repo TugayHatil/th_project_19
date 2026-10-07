@@ -8,9 +8,7 @@
             <xpath expr="//group[@name='purchase']" position="inside">
                 <group col="1">
                     <group string="Satınalma Toleransı">
-                        <field name="use_default_purchase_tolerance"/>
-                        <field name="purchase_tolerance"
-                               invisible="use_default_purchase_tolerance"/>
+                        <field name="purchase_tolerance"/>
                     </group>
                 </group>
             </xpath>
