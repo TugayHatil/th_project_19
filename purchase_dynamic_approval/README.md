@@ -26,7 +26,8 @@ onayını gerektiren dinamik, parametrik onay mekanizması.
 - **Tutar değişikliği**: Onay bekleyen PO'da tutar değişirse barem
   yeniden hesaplanır; farklı bareme geçilirse onay süreci yeni grup
   için yeniden başlatılır, barem kalmazsa sipariş otomatik onaylanır.
-- **Red nedeni zorunludur.**
+- **Red nedeni zorunludur** ve serbest metin yerine Yapılandırma >
+  Red Nedenleri altında yönetilen hazır seçeneklerden seçilir.
 
 ## Rol: Onay Barem Yöneticisi
 

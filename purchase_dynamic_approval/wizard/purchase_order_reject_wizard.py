@@ -10,13 +10,15 @@ class PurchaseOrderRejectWizard(models.TransientModel):
     order_id = fields.Many2one(
         'purchase.order', string='Satınalma Siparişi', required=True,
         readonly=True)
-    reject_reason = fields.Text(string='Red Nedeni', required=True)
+    reject_reason_id = fields.Many2one(
+        'purchase.order.reject.reason', string='Red Nedeni',
+        required=True, domain="[('active', '=', True)]")
 
     def action_reject(self):
         self.ensure_one()
-        if not self.reject_reason:
+        if not self.reject_reason_id:
             raise UserError(_(
-                'Siparişi reddetmek için red nedeni girmeniz '
+                'Siparişi reddetmek için red nedeni seçmeniz '
                 'gerekmektedir.'))
-        self.order_id._do_reject(self.reject_reason)
+        self.order_id._do_reject(self.reject_reason_id.name)
         return {'type': 'ir.actions.act_window_close'}

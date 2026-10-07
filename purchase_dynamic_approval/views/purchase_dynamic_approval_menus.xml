@@ -6,4 +6,10 @@
               action="purchase_dynamic_approval.action_purchase_approval_tier"
               sequence="25"
               groups="purchase_dynamic_approval.group_approval_tier_manager"/>
+    <menuitem id="menu_purchase_order_reject_reason"
+              name="Red Nedenleri"
+              parent="purchase.menu_purchase_config"
+              action="purchase_dynamic_approval.action_purchase_order_reject_reason"
+              sequence="26"
+              groups="purchase_dynamic_approval.group_approval_tier_manager"/>
 </odoo>

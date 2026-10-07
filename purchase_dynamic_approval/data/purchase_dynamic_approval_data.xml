@@ -8,6 +8,25 @@
         <field name="summary">Satınalma siparişi onayı bekliyor</field>
     </record>
 
+    <!-- Örnek red nedenleri; Onay Barem Yöneticisi tarafından
+         serbestçe değiştirilebilir veya silinebilir. -->
+    <record id="reject_reason_budget" model="purchase.order.reject.reason">
+        <field name="sequence">10</field>
+        <field name="name">Bütçe kontrolü gerekli</field>
+    </record>
+    <record id="reject_reason_price" model="purchase.order.reject.reason">
+        <field name="sequence">20</field>
+        <field name="name">Fiyat uygun değil</field>
+    </record>
+    <record id="reject_reason_vendor" model="purchase.order.reject.reason">
+        <field name="sequence">30</field>
+        <field name="name">Tedarikçi değişimi gerekli</field>
+    </record>
+    <record id="reject_reason_revise" model="purchase.order.reject.reason">
+        <field name="sequence">40</field>
+        <field name="name">Sipariş revize edilecek</field>
+    </record>
+
     <!-- Örnek onay baremi yapısı; Onay Barem Yöneticisi tarafından
          serbestçe değiştirilebilir veya silinebilir. -->
     <record id="approval_tier_user" model="purchase.approval.tier">

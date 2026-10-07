@@ -7,9 +7,8 @@
             <form string="Siparişi Reddet">
                 <group>
                     <field name="order_id"/>
-                    <field name="reject_reason"
-                           placeholder="Red nedenini yazınız..."
-                           nolabel="1"/>
+                    <field name="reject_reason_id"
+                           options="{'no_create': True, 'no_open': True}"/>
                 </group>
                 <footer>
                     <button name="action_reject" type="object"
