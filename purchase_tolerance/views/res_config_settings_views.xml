@@ -9,7 +9,7 @@
                 <setting id="purchase_tolerance_setting"
                          title="Satınalma Toleransı"
                          help="Tedarikçinin sipariş edilen miktardan fazla teslimat yapabileceği varsayılan yüzde tolerans. Ürün veya sipariş satırında özel tolerans tanımlanabilir.">
-                    <field name="default_purchase_tolerance"/>
+                    <field name="purchase_tolerance"/>
                 </setting>
             </xpath>
         </field>
