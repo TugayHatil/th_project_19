@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_purchase_tolerance_request"
+              name="Tolerans Talepleri"
+              parent="purchase.menu_procurement_management"
+              action="action_purchase_tolerance_request"
+              sequence="20"/>
+</odoo>

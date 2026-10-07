@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_purchase_tolerance_request_user,purchase.tolerance.request user,model_purchase_tolerance_request,base.group_user,1,1,1,0
+access_purchase_tolerance_request_manager,purchase.tolerance.request manager,model_purchase_tolerance_request,purchase.group_purchase_manager,1,1,1,1
+access_purchase_tolerance_request_wizard,purchase.tolerance.request.wizard user,model_purchase_tolerance_request_wizard,base.group_user,1,1,1,1
+access_purchase_tolerance_request_wizard_line,purchase.tolerance.request.wizard.line user,model_purchase_tolerance_request_wizard_line,base.group_user,1,1,1,1

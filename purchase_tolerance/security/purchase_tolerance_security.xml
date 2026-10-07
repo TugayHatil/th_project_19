@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Satınalma ekibi dışındaki kullanıcılar yalnızca kendi taleplerini görebilir -->
+    <record id="rule_purchase_tolerance_request_own" model="ir.rule">
+        <field name="name">Tolerans Talebi: yalnızca kendi talepleri</field>
+        <field name="model_id" ref="model_purchase_tolerance_request"/>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+        <field name="domain_force">[('user_id', '=', user.id)]</field>
+    </record>
+    <!-- Satınalma kullanıcısı ve yöneticisi tüm talepleri görebilir -->
+    <record id="rule_purchase_tolerance_request_purchase" model="ir.rule">
+        <field name="name">Tolerans Talebi: satınalma ekibi tüm talepler</field>
+        <field name="model_id" ref="model_purchase_tolerance_request"/>
+        <field name="groups" eval="[(4, ref('purchase.group_purchase_user'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+</odoo>

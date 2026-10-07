@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="purchase_tolerance_request_wizard_form" model="ir.ui.view">
+        <field name="name">purchase.tolerance.request.wizard.form</field>
+        <field name="model">purchase.tolerance.request.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Satınalma Toleransı Aşıldı">
+                <div class="alert alert-warning" role="alert">
+                    Satınalma toleransı aşılmıştır. Aşağıdaki satırlar için
+                    mal kabul, mevcut tolerans ile tamamlanamaz. Satınalma
+                    sorumlusundan tolerans aşımı onayı talep edebilir veya
+                    vazgeçip miktarı düzeltebilirsiniz.
+                </div>
+                <group>
+                    <field name="picking_ids" widget="many2many_tags" readonly="1"/>
+                </group>
+                <field name="line_ids" nolabel="1">
+                    <list editable="bottom">
+                        <field name="order_line_id" column_invisible="True"/>
+                        <field name="uom_id" column_invisible="True"/>
+                        <field name="picking_id" readonly="1"/>
+                        <field name="order_id" readonly="1"/>
+                        <field name="product_id" readonly="1"/>
+                        <field name="ordered_qty" readonly="1"/>
+                        <field name="received_qty" readonly="1"/>
+                        <field name="incoming_qty" readonly="1"/>
+                        <field name="current_tolerance" readonly="1"/>
+                        <field name="max_accepted_qty" readonly="1"/>
+                        <field name="requested_tolerance"/>
+                    </list>
+                </field>
+                <footer>
+                    <button name="action_create_requests" type="object"
+                            string="Talep Oluştur" class="btn-primary"/>
+                    <button string="Vazgeç" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

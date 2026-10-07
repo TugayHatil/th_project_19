@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="purchase_order_form_inherit_tolerance" model="ir.ui.view">
+        <field name="name">purchase.order.form.inherit.tolerance</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_tolerance_requests" type="object"
+                        class="oe_stat_button" icon="fa-balance-scale"
+                        invisible="not tolerance_request_count">
+                    <field name="tolerance_request_count" widget="statinfo"
+                           string="Tolerans Talepleri"/>
+                </button>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/list/field[@name='product_uom_id']" position="after">
+                <field name="can_edit_purchase_tolerance" column_invisible="True"/>
+                <field name="purchase_tolerance" optional="show"
+                       readonly="not can_edit_purchase_tolerance or display_type"
+                       column_invisible="parent.state == 'cancel'"/>
+                <field name="max_accepted_qty" optional="hide"
+                       column_invisible="parent.state == 'cancel'"/>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/form//field[@name='qty_invoiced']" position="after">
+                <field name="can_edit_purchase_tolerance" invisible="1"/>
+                <field name="purchase_tolerance"
+                       readonly="not can_edit_purchase_tolerance"/>
+                <field name="max_accepted_qty" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

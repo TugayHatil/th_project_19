@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="purchase_tolerance_request_list" model="ir.ui.view">
+        <field name="name">purchase.tolerance.request.list</field>
+        <field name="model">purchase.tolerance.request</field>
+        <field name="arch" type="xml">
+            <list string="Tolerans Talepleri"
+                  decoration-warning="state == 'pending'"
+                  decoration-success="state == 'approved'"
+                  decoration-danger="state == 'rejected'">
+                <field name="name"/>
+                <field name="order_id"/>
+                <field name="product_id"/>
+                <field name="ordered_qty"/>
+                <field name="received_qty"/>
+                <field name="incoming_qty"/>
+                <field name="current_tolerance"/>
+                <field name="requested_tolerance"/>
+                <field name="user_id"/>
+                <field name="request_date"/>
+                <field name="state" widget="badge"
+                       decoration-warning="state == 'pending'"
+                       decoration-success="state == 'approved'"
+                       decoration-danger="state == 'rejected'"
+                       decoration-muted="state == 'cancel'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="purchase_tolerance_request_form" model="ir.ui.view">
+        <field name="name">purchase.tolerance.request.form</field>
+        <field name="model">purchase.tolerance.request</field>
+        <field name="arch" type="xml">
+            <form string="Tolerans Talebi">
+                <header>
+                    <button name="action_approve" type="object" string="Onayla"
+                            class="oe_highlight" data-hotkey="v"
+                            groups="purchase.group_purchase_manager"
+                            invisible="state != 'pending'"/>
+                    <button name="action_reject" type="object" string="Reddet"
+                            groups="purchase.group_purchase_manager"
+                            invisible="state != 'pending'"/>
+                    <button name="action_cancel" type="object" string="İptal"
+                            invisible="state != 'pending'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="pending,approved"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Belge Bilgileri">
+                            <field name="order_id"/>
+                            <field name="order_line_id"/>
+                            <field name="product_id"/>
+                            <field name="uom_id"/>
+                            <field name="picking_id"/>
+                            <field name="company_id"
+                                   groups="base.group_multi_company"/>
+                        </group>
+                        <group string="Talep Bilgileri">
+                            <field name="user_id"/>
+                            <field name="request_date"/>
+                            <field name="approver_id"
+                                   invisible="state not in ('approved', 'rejected')"/>
+                            <field name="approve_date"
+                                   invisible="state not in ('approved', 'rejected')"/>
+                        </group>
+                    </group>
+                    <group string="Miktar ve Tolerans">
+                        <group>
+                            <field name="ordered_qty"/>
+                            <field name="received_qty"/>
+                            <field name="incoming_qty"/>
+                        </group>
+                        <group>
+                            <field name="current_tolerance"/>
+                            <field name="max_accepted_qty"/>
+                            <field name="requested_tolerance"/>
+                        </group>
+                    </group>
+                    <group string="Red Nedeni"
+                           invisible="state == 'approved'">
+                        <field name="reject_reason" nolabel="1"
+                               readonly="state != 'pending'"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="purchase_tolerance_request_search" model="ir.ui.view">
+        <field name="name">purchase.tolerance.request.search</field>
+        <field name="model">purchase.tolerance.request</field>
+        <field name="arch" type="xml">
+            <search string="Tolerans Talepleri">
+                <field name="name"/>
+                <field name="order_id"/>
+                <field name="product_id"/>
+                <field name="user_id"/>
+                <filter name="pending" string="Bekliyor"
+                        domain="[('state', '=', 'pending')]"/>
+                <filter name="approved" string="Onaylandı"
+                        domain="[('state', '=', 'approved')]"/>
+                <filter name="rejected" string="Reddedildi"
+                        domain="[('state', '=', 'rejected')]"/>
+                <filter name="cancel" string="İptal"
+                        domain="[('state', '=', 'cancel')]"/>
+                <separator/>
+                <filter name="group_order" string="Satınalma Siparişi"
+                        context="{'group_by': 'order_id'}"/>
+                <filter name="group_state" string="Durum"
+                        context="{'group_by': 'state'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_purchase_tolerance_request" model="ir.actions.act_window">
+        <field name="name">Tolerans Talepleri</field>
+        <field name="res_model">purchase.tolerance.request</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="purchase_tolerance_request_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Henüz tolerans talebi yok.
+            </p>
+            <p>
+                Mal kabul sırasında satınalma toleransı aşıldığında oluşturulan
+                talepler burada listelenir.
+            </p>
+        </field>
+    </record>
+</odoo>

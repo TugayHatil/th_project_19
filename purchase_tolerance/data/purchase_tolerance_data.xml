@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="seq_purchase_tolerance_request" model="ir.sequence">
+        <field name="name">Purchase Tolerance Request</field>
+        <field name="code">purchase.tolerance.request</field>
+        <field name="prefix">TOL/%(year)s/</field>
+        <field name="padding">4</field>
+        <field name="company_id" eval="False"/>
+    </record>
+
+    <record id="mail_activity_type_tolerance_request" model="mail.activity.type">
+        <field name="name">Tolerans Aşımı Talebini İncele</field>
+        <field name="icon">fa-balance-scale</field>
+        <field name="res_model">purchase.tolerance.request</field>
+        <field name="decoration_type">warning</field>
+    </record>
+</odoo>
