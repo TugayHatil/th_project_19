@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
-from odoo.tools.misc import format_date
 
 
 class PurchaseToleranceRequest(models.Model):
@@ -136,9 +135,9 @@ class PurchaseToleranceRequest(models.Model):
             lines.append(_('Onaylayan: %s', self.approver_id.name or ''))
         else:
             lines.append(_('Reddeden: %s', self.approver_id.name or ''))
-        lines.append(_('Karar tarihi: %s', format_date(
-            self.env, self.approve_date or fields.Datetime.now(),
-            date_format='dd.MM.yyyy HH:mm')))
+        decision_dt = self.approve_date or fields.Datetime.now()
+        lines.append(_('Karar tarihi: %s',
+                       decision_dt.strftime('%d.%m.%Y %H:%M')))
         if decision == 'reddedildi' and self.reject_reason:
             lines.append(_('Açıklama: %s', self.reject_reason))
         return '<br/>'.join(lines)
