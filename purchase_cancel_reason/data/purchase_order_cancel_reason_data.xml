@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Başlangıç iptal nedenleri; Satınalma Yöneticisi tarafından
+         serbestçe değiştirilebilir, eklenebilir veya pasifleştirilebilir. -->
+    <record id="cancel_reason_no_need" model="purchase.order.cancel.reason">
+        <field name="sequence">10</field>
+        <field name="name">İhtiyaç ortadan kalktı</field>
+    </record>
+    <record id="cancel_reason_price" model="purchase.order.cancel.reason">
+        <field name="sequence">20</field>
+        <field name="name">Fiyat uygun bulunmadı</field>
+    </record>
+    <record id="cancel_reason_vendor" model="purchase.order.cancel.reason">
+        <field name="sequence">30</field>
+        <field name="name">Tedarikçi kaynaklı</field>
+    </record>
+    <record id="cancel_reason_wrong" model="purchase.order.cancel.reason">
+        <field name="sequence">40</field>
+        <field name="name">Yanlış sipariş oluşturuldu</field>
+    </record>
+    <record id="cancel_reason_duplicate" model="purchase.order.cancel.reason">
+        <field name="sequence">50</field>
+        <field name="name">Mükerrer sipariş</field>
+    </record>
+    <record id="cancel_reason_alternative" model="purchase.order.cancel.reason">
+        <field name="sequence">60</field>
+        <field name="name">Alternatif tedarikçiden satın alındı</field>
+    </record>
+    <record id="cancel_reason_requester" model="purchase.order.cancel.reason">
+        <field name="sequence">70</field>
+        <field name="name">Talep sahibi iptal etti</field>
+    </record>
+    <record id="cancel_reason_other" model="purchase.order.cancel.reason">
+        <field name="sequence">80</field>
+        <field name="name">Diğer</field>
+        <field name="is_other" eval="True"/>
+    </record>
+</odoo>

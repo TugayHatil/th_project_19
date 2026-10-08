@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_purchase_order_cancel_reason"
+              name="İptal Nedenleri"
+              parent="purchase.menu_purchase_config"
+              action="purchase_cancel_reason.action_purchase_order_cancel_reason"
+              sequence="30"
+              groups="purchase.group_purchase_manager"/>
+    <menuitem id="menu_purchase_cancel_analysis"
+              name="İptal Analizi"
+              parent="purchase.purchase_report_main"
+              action="purchase_cancel_reason.action_purchase_cancel_analysis"
+              sequence="10"
+              groups="purchase.group_purchase_manager"/>
+</odoo>

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="purchase_order_form_inherit_cancel_reason" model="ir.ui.view">
+        <field name="name">purchase.order.form.inherit.cancel.reason</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <!-- Standart buton yalnız draft'ta kalsın (nedensiz doğrudan
+                 iptal); button_cancel üzerine xpath yapan diğer
+                 modüllerin çalışması etkilenmez -->
+            <xpath expr="//button[@name='button_cancel']" position="attributes">
+                <attribute name="invisible">state != 'draft' or locked</attribute>
+            </xpath>
+            <!-- Neden gereken üç durumda ortak girişe giden İptal Et -->
+            <xpath expr="//button[@name='button_cancel']" position="after">
+                <button name="action_cancel_orders" type="object"
+                        string="İptal Et" data-hotkey="x"
+                        invisible="state not in ('sent', 'to approve', 'purchase') or locked"/>
+            </xpath>
+            <!-- Mevcut "Diğer Bilgiler" sayfasına koşullu İptal Bilgileri grubu -->
+            <xpath expr="//page[@name='purchase_delivery_invoice']" position="inside">
+                <group name="cancel_info" string="İptal Bilgileri"
+                       invisible="state != 'cancel' or not cancel_reason_id">
+                    <group>
+                        <field name="cancel_reason_id"
+                               options="{'no_open': True}"/>
+                        <field name="cancel_state"/>
+                        <field name="cancel_description"/>
+                    </group>
+                    <group>
+                        <field name="cancel_user_id"
+                               widget="many2one_avatar_user"/>
+                        <field name="cancel_date"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Liste görünümlerindeki toplu Cancel butonu da ortak girişe gider -->
+    <record id="purchase_order_tree_inherit_cancel_reason" model="ir.ui.view">
+        <field name="name">purchase.order.tree.inherit.cancel.reason</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_view_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/button[@name='button_cancel']" position="attributes">
+                <attribute name="name">action_cancel_orders</attribute>
+            </xpath>
+        </field>
+    </record>
+    <record id="purchase_order_kpis_tree_inherit_cancel_reason" model="ir.ui.view">
+        <field name="name">purchase.order.kpis.tree.inherit.cancel.reason</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_kpis_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/button[@name='button_cancel']" position="attributes">
+                <attribute name="name">action_cancel_orders</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>

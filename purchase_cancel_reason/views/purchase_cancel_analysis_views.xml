@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="purchase_order_cancel_analysis_search" model="ir.ui.view">
+        <field name="name">purchase.order.cancel.analysis.search</field>
+        <field name="model">purchase.order</field>
+        <field name="arch" type="xml">
+            <search string="İptal Analizi">
+                <field name="name" string="Satınalma Siparişi"/>
+                <field name="partner_id"/>
+                <field name="cancel_reason_id"/>
+                <field name="cancel_state"/>
+                <field name="cancel_user_id"/>
+                <field name="cancel_date"/>
+                <separator/>
+                <filter name="filter_other_reason" string="Diğer"
+                        domain="[('cancel_reason_is_other', '=', True)]"/>
+                <separator/>
+                <filter name="filter_cancel_date" string="İptal Tarihi"
+                        date="cancel_date"/>
+                <separator/>
+                <filter name="group_cancel_reason" string="İptal Nedeni"
+                        context="{'group_by': 'cancel_reason_id'}"/>
+                <filter name="group_cancel_state" string="İptal Edildiği Aşama"
+                        context="{'group_by': 'cancel_state'}"/>
+                <filter name="group_cancel_user" string="İptal Eden"
+                        context="{'group_by': 'cancel_user_id'}"/>
+                <filter name="group_cancel_date" string="İptal Tarihi"
+                        context="{'group_by': 'cancel_date'}"/>
+                <filter name="group_partner" string="Tedarikçi"
+                        context="{'group_by': 'partner_id'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="purchase_order_cancel_analysis_list" model="ir.ui.view">
+        <field name="name">purchase.order.cancel.analysis.list</field>
+        <field name="model">purchase.order</field>
+        <field name="arch" type="xml">
+            <list string="İptal Edilen Siparişler">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="cancel_reason_id" optional="show"/>
+                <field name="cancel_state" widget="badge" optional="show"
+                       decoration-info="cancel_state == 'sent'"
+                       decoration-warning="cancel_state == 'to approve'"
+                       decoration-danger="cancel_state == 'purchase'"/>
+                <field name="cancel_user_id" widget="many2one_avatar_user"
+                       optional="show"/>
+                <field name="cancel_date" optional="show"/>
+                <field name="cancel_description" optional="hide"/>
+                <field name="amount_total" widget="monetary"
+                       sum="Toplam Tutar" optional="show"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="state" column_invisible="1"/>
+                <field name="company_id" optional="hide"
+                       groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="purchase_order_cancel_analysis_pivot" model="ir.ui.view">
+        <field name="name">purchase.order.cancel.analysis.pivot</field>
+        <field name="model">purchase.order</field>
+        <field name="arch" type="xml">
+            <pivot string="İptal Analizi" sample="1">
+                <field name="cancel_reason_id" type="row"/>
+                <field name="cancel_date" interval="month" type="col"/>
+                <field name="amount_total" type="measure"
+                       string="İptal Edilen Sipariş Tutarı"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="purchase_order_cancel_analysis_graph" model="ir.ui.view">
+        <field name="name">purchase.order.cancel.analysis.graph</field>
+        <field name="model">purchase.order</field>
+        <field name="arch" type="xml">
+            <graph string="İptal Analizi" type="bar" sample="1">
+                <field name="cancel_reason_id"/>
+                <field name="amount_total" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="action_purchase_cancel_analysis" model="ir.actions.act_window">
+        <field name="name">İptal Analizi</field>
+        <field name="res_model">purchase.order</field>
+        <field name="view_mode">pivot,graph,list,form</field>
+        <field name="search_view_id"
+               ref="purchase_order_cancel_analysis_search"/>
+        <field name="domain">[('state', '=', 'cancel'),
+                              ('cancel_reason_id', '!=', False)]</field>
+        <field name="context">{}</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'pivot',
+                    'view_id': ref('purchase_order_cancel_analysis_pivot')}),
+            (0, 0, {'view_mode': 'graph',
+                    'view_id': ref('purchase_order_cancel_analysis_graph')}),
+            (0, 0, {'view_mode': 'list',
+                    'view_id': ref('purchase_order_cancel_analysis_list')}),
+        ]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Henüz nedenli iptal edilmiş satınalma siparişi yok.
+            </p>
+            <p>
+                İptal nedenine göre iptal edilen sipariş adedini ve
+                toplam tutarını aşama, kullanıcı ve tarih kırılımlarında
+                analiz edebilirsiniz.
+            </p>
+        </field>
+    </record>
+</odoo>
