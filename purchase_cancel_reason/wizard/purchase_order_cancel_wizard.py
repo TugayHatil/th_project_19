@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from markupsafe import escape
+from markupsafe import Markup
 
 from odoo import _, fields, models
 from odoo.exceptions import UserError
@@ -62,18 +62,18 @@ class PurchaseOrderCancelWizard(models.TransientModel):
                 'cancel_user_id': self.env.user.id,
                 'cancel_date': cancel_date,
             })
-            order.message_post(body=_(
+            # Markup % dict: argümanlar otomatik escape edilir
+            order.message_post(body=Markup(_(
                 'Satınalma siparişi iptal edildi.<br/>'
                 '<strong>İptal Nedeni:</strong> %(reason)s<br/>'
                 '<strong>İptal Edildiği Aşama:</strong> %(state)s<br/>'
                 '<strong>İptal Eden:</strong> %(user)s<br/>'
                 '<strong>İptal Tarihi:</strong> %(date)s<br/>'
-                '<strong>Açıklama:</strong> %(description)s',
-                reason=escape(str(self.cancel_reason_id.display_name)),
-                state=escape(str(state_labels.get(
-                    order.cancel_state, order.cancel_state or ''))),
-                user=escape(str(self.env.user.display_name)),
-                date=format_datetime(
+                '<strong>Açıklama:</strong> %(description)s')) % {
+                'reason': self.cancel_reason_id.display_name,
+                'state': state_labels.get(order.cancel_state, ''),
+                'user': self.env.user.display_name,
+                'date': format_datetime(
                     self.env, cancel_date, dt_format='short'),
-                description=escape(description) if description else '-'))
+                'description': description or '-'})
         return {'type': 'ir.actions.act_window_close'}

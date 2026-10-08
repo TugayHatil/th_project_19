@@ -53,7 +53,7 @@ class PurchaseOrder(models.Model):
             'view_mode': 'form',
             'target': 'new',
             'context': {
-                'default_order_ids': Command.set(self.ids),
+                'default_order_ids': [Command.set(self.ids)],
             },
         }
 
