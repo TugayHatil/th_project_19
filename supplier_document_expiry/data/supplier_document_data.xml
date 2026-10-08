@@ -55,6 +55,11 @@
                     .o_list_view .o_attachment.o_attachment_many2many .o_image { width: 18px !important; height: 18px !important; background-size: contain !important; background-position: center !important; }
                     .o_list_view .o_attachment.o_attachment_many2many .caption,
                     .o_list_view .o_attachment.o_attachment_many2many .o_attachment_uploaded { display: none !important; }
+                    .o_list_view td .o_field_many2many_binary .oe_fileupload { display: flex; align-items: center; flex-wrap: wrap; }
+                    .o_list_view td .o_field_many2many_binary .o_attachments { display: contents; }
+                    .o_list_view td .o_field_many2many_binary .oe_add { display: inline-block; margin-top: 0 !important; }
+                    .o_list_view td .o_field_many2many_binary .o_attach { font-size: 0 !important; padding: 0 2px !important; border: 0 !important; background: transparent !important; box-shadow: none !important; line-height: 1 !important; }
+                    .o_list_view td .o_field_many2many_binary .o_attach .fa { font-size: 14px !important; }
                 </style>
             </xpath>
         </field>
