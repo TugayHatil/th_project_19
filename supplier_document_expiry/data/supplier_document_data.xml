@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="mail_activity_type_document_expiry" model="mail.activity.type">
+        <field name="name">Tedarikçi Belge Uyarısı</field>
+        <field name="icon">fa-file-text</field>
+        <field name="res_model">supplier.document</field>
+        <field name="decoration_type">warning</field>
+        <field name="summary">Tedarikçi belgesi geçerlilik uyarısı</field>
+    </record>
+
+    <!-- Örnek belge türleri; Belge Türleri menüsünden serbestçe
+         değiştirilebilir veya silinebilir. -->
+    <record id="document_type_license" model="supplier.document.type">
+        <field name="sequence">10</field>
+        <field name="name">Lisans</field>
+        <field name="warning_days_yellow">30</field>
+        <field name="warning_days_orange">7</field>
+    </record>
+    <record id="document_type_contract" model="supplier.document.type">
+        <field name="sequence">20</field>
+        <field name="name">Sözleşme</field>
+        <field name="warning_days_yellow">20</field>
+        <field name="warning_days_orange">5</field>
+    </record>
+    <record id="document_type_certificate" model="supplier.document.type">
+        <field name="sequence">30</field>
+        <field name="name">Sertifika</field>
+        <field name="warning_days_yellow">60</field>
+        <field name="warning_days_orange">15</field>
+    </record>
+
+    <!-- Günlük geçerlilik/durum kontrolü ve uyarı üretimi -->
+    <record id="ir_cron_supplier_document_expiry" model="ir.cron">
+        <field name="name">Tedarikçi Belgeleri: Geçerlilik Kontrolü</field>
+        <field name="model_id" ref="model_supplier_document"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_check_expiry()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

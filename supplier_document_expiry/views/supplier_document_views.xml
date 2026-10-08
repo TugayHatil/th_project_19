@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Merkezi liste: tüm tedarikçi belgeleri -->
+    <record id="supplier_document_list" model="ir.ui.view">
+        <field name="name">supplier.document.list</field>
+        <field name="model">supplier.document</field>
+        <field name="arch" type="xml">
+            <list string="Tedarikçi Belgeleri" sample="1"
+                  decoration-danger="status == 'red'"
+                  decoration-warning="status == 'orange'">
+                <field name="partner_id"/>
+                <field name="name"/>
+                <field name="document_type_id"/>
+                <field name="responsible_user_id" widget="many2one_avatar_user"/>
+                <field name="validity_date"/>
+                <field name="remaining_days" optional="hide"/>
+                <field name="status"/>
+                <field name="attachment_ids" widget="many2many_binary" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="supplier_document_form" model="ir.ui.view">
+        <field name="name">supplier.document.form</field>
+        <field name="model">supplier.document</field>
+        <field name="arch" type="xml">
+            <form string="Tedarikçi Belgesi">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="partner_id"/>
+                            <field name="name"/>
+                            <field name="document_type_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group>
+                            <field name="responsible_user_id" widget="many2one_avatar_user"/>
+                            <field name="validity_date"/>
+                            <field name="remaining_days"/>
+                            <field name="status"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <group string="Belgeler">
+                        <field name="attachment_ids" nolabel="1" widget="many2many_binary"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="supplier_document_search" model="ir.ui.view">
+        <field name="name">supplier.document.search</field>
+        <field name="model">supplier.document</field>
+        <field name="arch" type="xml">
+            <search string="Tedarikçi Belgeleri">
+                <field name="partner_id"/>
+                <field name="name"/>
+                <field name="document_type_id"/>
+                <field name="responsible_user_id"/>
+                <field name="status"/>
+                <field name="validity_date"/>
+                <filter name="status_green" string="🟢 Geçerli Belgeler"
+                        domain="[('status', '=', 'green')]"/>
+                <filter name="status_yellow" string="🟡 Sarı Belgeler"
+                        domain="[('status', '=', 'yellow')]"/>
+                <filter name="status_orange" string="🟠 Turuncu Belgeler"
+                        domain="[('status', '=', 'orange')]"/>
+                <filter name="status_red" string="🔴 Süresi Dolmuş Belgeler"
+                        domain="[('status', '=', 'red')]"/>
+                <separator/>
+                <filter name="expiring_7d" string="Önümüzdeki 7 Gün İçinde Dolacaklar"
+                        domain="[('validity_date', '&gt;=', context_today().strftime('%Y-%m-%d')),
+                                 ('validity_date', '&lt;=', (context_today() + relativedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                <filter name="expiring_30d" string="Önümüzdeki 30 Gün İçinde Dolacaklar"
+                        domain="[('validity_date', '&gt;=', context_today().strftime('%Y-%m-%d')),
+                                 ('validity_date', '&lt;=', (context_today() + relativedelta(days=30)).strftime('%Y-%m-%d'))]"/>
+                <filter name="expiring_month" string="Bu Ay Süresi Dolacaklar"
+                        domain="[('validity_date', '&gt;=', (context_today() + relativedelta(day=1)).strftime('%Y-%m-%d')),
+                                 ('validity_date', '&lt;=', (context_today() + relativedelta(day=31)).strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <filter name="inactive" string="Arşivlenmiş"
+                        domain="[('active', '=', False)]"/>
+                <group expand="0" string="Grupla">
+                    <filter name="group_partner" string="Tedarikçi"
+                            context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_type" string="Belge Türü"
+                            context="{'group_by': 'document_type_id'}"/>
+                    <filter name="group_responsible" string="Sorumlu"
+                            context="{'group_by': 'responsible_user_id'}"/>
+                    <filter name="group_status" string="Durum"
+                            context="{'group_by': 'status'}"/>
+                    <filter name="group_validity_month" string="Geçerlilik Ayı"
+                            context="{'group_by': 'validity_date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_supplier_document" model="ir.actions.act_window">
+        <field name="name">Tedarikçi Belgeleri</field>
+        <field name="res_model">supplier.document</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="supplier_document_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Henüz tedarikçi belgesi kaydedilmedi.
+            </p>
+            <p>
+                Tüm tedarikçilerin belgeleri burada listelenir; durum
+                rengi geçerlilik tarihine göre otomatik hesaplanır.
+            </p>
+        </field>
+    </record>
+</odoo>

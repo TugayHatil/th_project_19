@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Satın Alma > Siparişler > Tedarikçi Belgeleri (merkezi liste) -->
+    <menuitem id="menu_supplier_document"
+              name="Tedarikçi Belgeleri"
+              parent="purchase.menu_procurement_management"
+              action="supplier_document_expiry.action_supplier_document"
+              sequence="20"
+              groups="supplier_document_expiry.group_supplier_document_read"/>
+
+    <!-- Satın Alma > Yapılandırma > Belge Türleri (yalnızca yönetici) -->
+    <menuitem id="menu_supplier_document_type"
+              name="Belge Türleri"
+              parent="purchase.menu_purchase_config"
+              action="supplier_document_expiry.action_supplier_document_type"
+              sequence="25"
+              groups="supplier_document_expiry.group_supplier_document_manager"/>
+</odoo>

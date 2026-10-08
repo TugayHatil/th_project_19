@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="module_category_supplier_documents" model="ir.module.category">
+        <field name="name">Tedarikçi Belgeleri</field>
+        <field name="description">Tedarikçi belge yönetimi yetkileri</field>
+        <field name="sequence">35</field>
+    </record>
+
+    <!-- Okuma: belgeleri görüntüler; ekleyemez/değiştiremez/silemez,
+         belge dosyalarını indiremez. -->
+    <record id="group_supplier_document_read" model="res.groups">
+        <field name="name">Okuma</field>
+        <field name="category_id" ref="module_category_supplier_documents"/>
+        <field name="implied_ids" eval="[(4, ref('purchase.group_purchase_user'))]"/>
+        <field name="comment">Tedarikçi belgelerini görüntüleyebilir ancak belge ve belge türü yönetemez; belge dosyalarını indiremez.</field>
+    </record>
+
+    <!-- Kullanıcı: belge kayıtlarını ve dosyalarını yönetir;
+         belge türü oluşturamaz/değiştiremez. -->
+    <record id="group_supplier_document_user" model="res.groups">
+        <field name="name">Kullanıcı</field>
+        <field name="category_id" ref="module_category_supplier_documents"/>
+        <field name="implied_ids" eval="[(4, ref('group_supplier_document_read'))]"/>
+        <field name="comment">Tedarikçi belge kayıtlarını ve belge dosyalarını yönetebilir; belge türlerini yönetemez.</field>
+    </record>
+
+    <!-- Yönetici: tüm kullanıcı yetkileri + belge türü yönetimi. -->
+    <record id="group_supplier_document_manager" model="res.groups">
+        <field name="name">Yönetici</field>
+        <field name="category_id" ref="module_category_supplier_documents"/>
+        <field name="implied_ids" eval="[(4, ref('group_supplier_document_user')), (4, ref('purchase.group_purchase_manager'))]"/>
+        <field name="comment">Tedarikçi belgelerinin yanı sıra belge türlerini ve uyarı günü eşiklerini yönetebilir.</field>
+    </record>
+
+    <!-- Çoklu şirket kuralları -->
+    <record id="supplier_document_comp_rule" model="ir.rule">
+        <field name="name">Tedarikçi Belgesi multi-company</field>
+        <field name="model_id" ref="model_supplier_document"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>

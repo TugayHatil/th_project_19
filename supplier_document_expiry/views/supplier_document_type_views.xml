@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="supplier_document_type_list" model="ir.ui.view">
+        <field name="name">supplier.document.type.list</field>
+        <field name="model">supplier.document.type</field>
+        <field name="arch" type="xml">
+            <list string="Belge Türleri" editable="bottom"
+                  decoration-muted="not active">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="warning_days_yellow"/>
+                <field name="warning_days_orange"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="supplier_document_type_form" model="ir.ui.view">
+        <field name="name">supplier.document.type.form</field>
+        <field name="model">supplier.document.type</field>
+        <field name="arch" type="xml">
+            <form string="Belge Türü">
+                <sheet>
+                    <group>
+                        <field name="sequence"/>
+                        <field name="name"/>
+                        <field name="warning_days_yellow"/>
+                        <field name="warning_days_orange"/>
+                        <field name="active"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_supplier_document_type" model="ir.actions.act_window">
+        <field name="name">Belge Türleri</field>
+        <field name="res_model">supplier.document.type</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Henüz belge türü tanımlanmadı.
+            </p>
+            <p>
+                Tedarikçi belgelerinde kullanılacak türleri ve her tür
+                için sarı/turuncu uyarı eşik günlerini burada
+                tanımlayın. Pasifleştirilen türler yeni belgelerde
+                seçilemez ancak geçmiş kayıtlardaki bilgi korunur.
+            </p>
+        </field>
+    </record>
+</odoo>
