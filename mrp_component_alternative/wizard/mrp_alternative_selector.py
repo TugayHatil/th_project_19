@@ -93,6 +93,7 @@ class MrpAlternativeSelector(models.TransientModel):
             "priority": 0,
             "available_qty": main_coverage,
             "can_cover": main_ok,
+            "is_suggested": False,
             "is_original": True,
             "is_current": move.product_id == main,
         }]
