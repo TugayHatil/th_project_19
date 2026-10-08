@@ -6,11 +6,19 @@
         <field name="sequence">35</field>
     </record>
 
+    <!-- Odoo 19: grup kategorileri res.groups.privilege üzerinden -->
+    <record id="privilege_supplier_documents" model="res.groups.privilege">
+        <field name="name">Tedarikçi Belgeleri</field>
+        <field name="category_id" ref="module_category_supplier_documents"/>
+        <field name="description">Tedarikçi belgeleri üzerindeki yetki seviyesi</field>
+        <field name="sequence">35</field>
+    </record>
+
     <!-- Okuma: belgeleri görüntüler; ekleyemez/değiştiremez/silemez,
          belge dosyalarını indiremez. -->
     <record id="group_supplier_document_read" model="res.groups">
         <field name="name">Okuma</field>
-        <field name="category_id" ref="module_category_supplier_documents"/>
+        <field name="privilege_id" ref="privilege_supplier_documents"/>
         <field name="implied_ids" eval="[(4, ref('purchase.group_purchase_user'))]"/>
         <field name="comment">Tedarikçi belgelerini görüntüleyebilir ancak belge ve belge türü yönetemez; belge dosyalarını indiremez.</field>
     </record>
@@ -19,7 +27,7 @@
          belge türü oluşturamaz/değiştiremez. -->
     <record id="group_supplier_document_user" model="res.groups">
         <field name="name">Kullanıcı</field>
-        <field name="category_id" ref="module_category_supplier_documents"/>
+        <field name="privilege_id" ref="privilege_supplier_documents"/>
         <field name="implied_ids" eval="[(4, ref('group_supplier_document_read'))]"/>
         <field name="comment">Tedarikçi belge kayıtlarını ve belge dosyalarını yönetebilir; belge türlerini yönetemez.</field>
     </record>
@@ -27,7 +35,7 @@
     <!-- Yönetici: tüm kullanıcı yetkileri + belge türü yönetimi. -->
     <record id="group_supplier_document_manager" model="res.groups">
         <field name="name">Yönetici</field>
-        <field name="category_id" ref="module_category_supplier_documents"/>
+        <field name="privilege_id" ref="privilege_supplier_documents"/>
         <field name="implied_ids" eval="[(4, ref('group_supplier_document_user')), (4, ref('purchase.group_purchase_manager'))]"/>
         <field name="comment">Tedarikçi belgelerinin yanı sıra belge türlerini ve uyarı günü eşiklerini yönetebilir.</field>
     </record>
