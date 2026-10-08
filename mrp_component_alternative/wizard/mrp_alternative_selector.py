@@ -1,0 +1,311 @@
+# -*- coding: utf-8 -*-
+from collections import defaultdict
+
+from odoo import api, fields, models, _
+from odoo.exceptions import UserError
+from odoo.fields import Command
+from odoo.tools import float_compare
+
+
+class MrpAlternativeSelector(models.TransientModel):
+    _name = "mrp.alternative.selector"
+    _description = "Alternative Component Selector"
+
+    mode = fields.Selection(
+        [("production", "Manufacturing Order"),
+         ("orderpoint", "Replenishment")], readonly=True)
+    production_id = fields.Many2one("mrp.production", readonly=True)
+    orderpoint_id = fields.Many2one("stock.warehouse.orderpoint", readonly=True)
+    product_id = fields.Many2one("product.product", readonly=True)
+    location_id = fields.Many2one("stock.location", readonly=True)
+    demand_qty = fields.Float(readonly=True, digits="Product Unit")
+    warning_message = fields.Text(readonly=True)
+    user_can_apply = fields.Boolean(
+        compute="_compute_user_can_apply", compute_sudo=True)
+    line_ids = fields.One2many(
+        "mrp.alternative.selector.line", "selector_id", string="Options")
+
+    def _compute_user_can_apply(self):
+        allowed = self.env.user.has_group(
+            "mrp_component_alternative.group_alternative_selector")
+        for wizard in self:
+            wizard.user_can_apply = allowed
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+    def _available_qty(self, product, location):
+        return self.env["stock.quant"]._get_available_quantity(
+            product, location)
+
+    def _open_action(self, name):
+        view = self.env.ref(
+            "mrp_component_alternative.mrp_alternative_selector_form")
+        return {
+            "name": name,
+            "type": "ir.actions.act_window",
+            "res_model": self._name,
+            "res_id": self.id,
+            "view_mode": "form",
+            "view_id": view.id,
+            "target": "new",
+        }
+
+    # ------------------------------------------------------------------
+    # Manufacturing order mode
+    # ------------------------------------------------------------------
+    @api.model
+    def _open_for_production(self, production, move=None):
+        moves = (move or production.move_raw_ids).filtered(
+            lambda m: m.has_bom_alternatives
+            and m.state not in ("done", "cancel"))
+        wizard = self.create({
+            "mode": "production",
+            "production_id": production.id,
+            "location_id": production.location_src_id.id,
+        })
+        line_vals = []
+        for index, mv in enumerate(moves, start=1):
+            line_vals += wizard._prepare_move_lines(mv, index * 1000)
+        wizard.line_ids = [Command.create(vals) for vals in line_vals]
+        wizard._refresh_warning()
+        return wizard._open_action(
+            _("Alternative Components - %s", production.name))
+
+    def _prepare_move_lines(self, move, seq_base):
+        main = move._alt_main_component()
+        location = move.location_id
+        own_reserved = move._alt_own_reserved_qty()
+        demand_main_uom = move.product_uom._compute_quantity(
+            move.product_uom_qty, main.uom_id)
+        main_coverage = move._alt_coverage(main, location, own_reserved)
+        main_ok = float_compare(
+            main_coverage, demand_main_uom,
+            precision_rounding=main.uom_id.rounding) >= 0
+
+        lines = [{
+            "move_id": move.id,
+            "product_id": main.id,
+            "demand_qty": demand_main_uom,
+            "uom_id": main.uom_id.id,
+            "alternative_product_id": main.id,
+            "sequence": seq_base,
+            "priority": 0,
+            "available_qty": main_coverage,
+            "can_cover": main_ok,
+            "is_original": True,
+            "is_current": move.product_id == main,
+        }]
+        alternatives = move.bom_line_id.alternative_ids.filtered(
+            "active").sorted("sequence")
+        suggested = False
+        for index, alternative in enumerate(alternatives, start=1):
+            product = alternative.alternative_product_id
+            coverage = move._alt_coverage(product, location, own_reserved)
+            # demand_main_uom is expressed in the main component's uom;
+            # convert it to this product's uom (the uom category match is
+            # enforced by a constraint on the alternative definition)
+            demand = main.uom_id._compute_quantity(
+                demand_main_uom, product.uom_id)
+            can_cover = float_compare(
+                coverage, demand,
+                precision_rounding=product.uom_id.rounding) >= 0
+            is_suggested = (not main_ok and not suggested
+                            and can_cover and not move.is_alternative_component)
+            suggested = suggested or is_suggested
+            lines.append({
+                "move_id": move.id,
+                "product_id": main.id,
+                "alternative_id": alternative.id,
+                "alternative_product_id": product.id,
+                "sequence": seq_base + index,
+                "priority": alternative.sequence,
+                "demand_qty": demand,
+                "uom_id": product.uom_id.id,
+                "available_qty": coverage,
+                "can_cover": can_cover,
+                "is_suggested": is_suggested,
+                "is_current": move.product_id == product,
+            })
+        # Preselect the relevant row for this move
+        if move.is_alternative_component:
+            for line in lines:
+                line["selected"] = line["is_current"]
+        elif not main_ok:
+            suggested_lines = [l for l in lines if l["is_suggested"]]
+            if suggested_lines:
+                suggested_lines[0]["selected"] = True
+        else:
+            lines[0]["selected"] = True
+        return lines
+
+    # ------------------------------------------------------------------
+    # Replenishment (orderpoint) mode - information only
+    # ------------------------------------------------------------------
+    @api.model
+    def _open_for_orderpoint(self, orderpoint):
+        product = orderpoint.product_id
+        location = orderpoint.location_id
+        demand = orderpoint.qty_to_order
+        wizard = self.create({
+            "mode": "orderpoint",
+            "orderpoint_id": orderpoint.id,
+            "product_id": product.id,
+            "location_id": location.id,
+            "demand_qty": demand,
+        })
+        alternatives = self.env["mrp.bom.line.alternative"].search([
+            ("product_id", "=", product.id),
+            ("active", "=", True),
+            ("company_id", "in", [False, orderpoint.company_id.id]),
+        ]).sorted("sequence")
+        by_product = {}
+        for alternative in alternatives:
+            by_product.setdefault(alternative.alternative_product_id, alternative)
+
+        main_coverage = wizard._available_qty(product, location)
+        main_ok = float_compare(
+            main_coverage, demand,
+            precision_rounding=product.uom_id.rounding) >= 0
+        line_vals = [{
+            "product_id": product.id,
+            "alternative_product_id": product.id,
+            "demand_qty": demand,
+            "uom_id": product.uom_id.id,
+            "available_qty": main_coverage,
+            "can_cover": main_ok,
+            "is_original": True,
+            "sequence": 0,
+        }]
+        suggested = False
+        for index, (alt_product, alternative) in enumerate(
+                by_product.items(), start=1):
+            coverage = wizard._available_qty(alt_product, location)
+            demand_alt_uom = product.uom_id._compute_quantity(
+                demand, alt_product.uom_id)
+            can_cover = float_compare(
+                coverage, demand_alt_uom,
+                precision_rounding=alt_product.uom_id.rounding) >= 0
+            is_suggested = not main_ok and not suggested and can_cover
+            suggested = suggested or is_suggested
+            line_vals.append({
+                "product_id": product.id,
+                "alternative_id": alternative.id,
+                "alternative_product_id": alt_product.id,
+                "sequence": index,
+                "priority": alternative.sequence,
+                "demand_qty": demand_alt_uom,
+                "uom_id": alt_product.uom_id.id,
+                "available_qty": coverage,
+                "can_cover": can_cover,
+                "is_suggested": is_suggested,
+            })
+        wizard.line_ids = [Command.create(vals) for vals in line_vals]
+        wizard._refresh_warning()
+        return wizard._open_action(
+            _("Alternative Components - %s", product.display_name))
+
+    # ------------------------------------------------------------------
+    # Warning message
+    # ------------------------------------------------------------------
+    def _refresh_warning(self):
+        self.ensure_one()
+        messages = []
+        if self.mode == "production":
+            for move in self.line_ids.move_id:
+                lines = self.line_ids.filtered(lambda l: l.move_id == move)
+                if not lines.filtered("can_cover"):
+                    messages.append(_(
+                        "%s: neither the main component nor any alternative "
+                        "can fully cover the demand. Plan a purchase or "
+                        "production for this component.",
+                        move._alt_main_component().display_name))
+                elif not lines.filtered(lambda l: l.is_original and l.can_cover):
+                    suggested = lines.filtered("is_suggested")
+                    messages.append(_(
+                        "%s: main component stock is insufficient.%s",
+                        move._alt_main_component().display_name,
+                        _(" Suggested alternative: %s.",
+                          suggested.alternative_product_id.display_name)
+                        if suggested else ""))
+        elif self.mode == "orderpoint":
+            if not self.line_ids.filtered("can_cover"):
+                messages.append(_(
+                    "Neither the main component nor any alternative can "
+                    "fully cover the demand."))
+            elif not self.line_ids.filtered(
+                    lambda l: l.is_original and l.can_cover):
+                messages.append(_(
+                    "Main component stock is insufficient; an alternative "
+                    "can be used on the manufacturing order."))
+        self.warning_message = "\n".join(messages)
+
+    # ------------------------------------------------------------------
+    # Apply the selection
+    # ------------------------------------------------------------------
+    def action_apply(self):
+        self.ensure_one()
+        if not self.env.user.has_group(
+                "mrp_component_alternative.group_alternative_selector"):
+            raise UserError(_(
+                "You are not allowed to select alternative components."))
+        per_move = defaultdict(lambda: self.env[
+            "mrp.alternative.selector.line"])
+        for line in self.line_ids.filtered("move_id"):
+            per_move[line.move_id] |= line
+        for move, lines in per_move.items():
+            selected = lines.filtered("selected")
+            if len(selected) > 1:
+                raise UserError(_(
+                    "Only one option can be selected for component %s.",
+                    move._alt_main_component().display_name))
+            if not selected:
+                continue
+            target = selected.alternative_product_id
+            if target == move.product_id:
+                continue
+            demand = move.product_uom._compute_quantity(
+                move.product_uom_qty, target.uom_id)
+            own_reserved = move._alt_own_reserved_qty()
+            coverage = move._alt_coverage(
+                target, move.location_id, own_reserved)
+            if float_compare(
+                    coverage, demand,
+                    precision_rounding=target.uom_id.rounding) < 0:
+                raise UserError(_(
+                    "Stock for %(product)s changed: %(avail)s %(uom)s "
+                    "available but %(demand)s needed for %(main)s. Please "
+                    "re-evaluate the alternatives.",
+                    product=target.display_name, avail=coverage,
+                    uom=target.uom_id.name, demand=demand,
+                    main=move._alt_main_component().display_name))
+            move._apply_alternative_product(target)
+        return {"type": "ir.actions.act_window_close"}
+
+
+class MrpAlternativeSelectorLine(models.TransientModel):
+    _name = "mrp.alternative.selector.line"
+    _description = "Alternative Component Selector Line"
+    _order = "sequence, id"
+
+    selector_id = fields.Many2one(
+        "mrp.alternative.selector", required=True, ondelete="cascade")
+    sequence = fields.Integer(readonly=True)
+    move_id = fields.Many2one("stock.move", readonly=True)
+    product_id = fields.Many2one(
+        "product.product", string="Main Component", readonly=True)
+    alternative_id = fields.Many2one(
+        "mrp.bom.line.alternative", readonly=True)
+    alternative_product_id = fields.Many2one(
+        "product.product", string="Option", readonly=True)
+    priority = fields.Integer(readonly=True)
+    demand_qty = fields.Float(
+        string="Demand", readonly=True, digits="Product Unit")
+    available_qty = fields.Float(
+        string="Available", readonly=True, digits="Product Unit")
+    uom_id = fields.Many2one("uom.uom", readonly=True)
+    can_cover = fields.Boolean(string="Covers Demand", readonly=True)
+    is_suggested = fields.Boolean(string="Suggested", readonly=True)
+    is_current = fields.Boolean(string="In Use", readonly=True)
+    is_original = fields.Boolean(string="Original", readonly=True)
+    selected = fields.Boolean(string="Select")

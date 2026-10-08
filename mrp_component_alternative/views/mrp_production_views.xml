@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="mrp_production_form_view_inherit_alternative" model="ir.ui.view">
+        <field name="name">mrp.production.form.alternative</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/button[@name='action_confirm']" position="after">
+                <button name="action_open_alternative_selector" type="object"
+                        string="Alternatives" icon="fa-random"
+                        title="Review alternative components"
+                        invisible="alternative_component_count == 0 or state in ('done', 'cancel')"/>
+            </xpath>
+            <xpath expr="//sheet" position="inside">
+                <field name="alternative_component_count" invisible="True"/>
+                <field name="alternative_shortage_count" invisible="True"/>
+            </xpath>
+            <xpath expr="//field[@name='move_raw_ids']/list" position="inside">
+                <field name="has_bom_alternatives" column_invisible="True"/>
+                <field name="original_product_id" string="Original Component"
+                       readonly="1" optional="hide"/>
+                <field name="is_alternative_component" string="Alt."
+                       readonly="1" optional="show"/>
+                <button name="action_open_alternative_selector" type="object"
+                        icon="fa-random" title="Alternative Components"
+                        invisible="not has_bom_alternatives or state in ('done', 'cancel')"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Popup form used to manage the alternatives of a component line -->
+    <record id="mrp_bom_line_alternative_form" model="ir.ui.view">
+        <field name="name">mrp.bom.line.alternative.form</field>
+        <field name="model">mrp.bom.line</field>
+        <field name="arch" type="xml">
+            <form string="Alternative Components">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="product_id" readonly="1"/>
+                            <field name="bom_id" readonly="1"
+                                   options="{'no_open': True}"/>
+                        </group>
+                        <group>
+                            <field name="product_qty" readonly="1"/>
+                            <field name="product_uom_id" readonly="1"
+                                   groups="uom.group_uom"
+                                   options="{'no_open': True, 'no_create': True}"/>
+                        </group>
+                    </group>
+                    <field name="alternative_ids">
+                        <list editable="bottom" string="Alternatives">
+                            <field name="alternative_product_id"
+                                   domain="[('type', '=', 'consu')]"
+                                   options="{'no_create_edit': True}"/>
+                            <field name="sequence" string="Priority"/>
+                            <field name="active" widget="boolean_toggle"/>
+                        </list>
+                    </field>
+                    <footer>
+                        <button string="Close" special="cancel"
+                                class="btn-secondary"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="mrp_bom_form_view_inherit_alternative" model="ir.ui.view">
+        <field name="name">mrp.bom.form.alternative</field>
+        <field name="model">mrp.bom</field>
+        <field name="inherit_id" ref="mrp.mrp_bom_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='bom_line_ids']/list/field[@name='product_id']"
+                   position="after">
+                <field name="alternative_count" string="Alt."
+                       optional="hide" readonly="1"/>
+                <button name="action_manage_alternatives" type="object"
+                        icon="fa-random" title="Alternative Components"/>
+            </xpath>
+            <page name="components" position="after">
+                <page name="alternatives" string="Component Alternatives">
+                    <field name="bom_alternative_ids" readonly="1">
+                        <list>
+                            <field name="product_id" string="Main Component"/>
+                            <field name="alternative_product_id"/>
+                            <field name="sequence" string="Priority"/>
+                            <field name="active" widget="boolean_toggle"/>
+                        </list>
+                    </field>
+                </page>
+            </page>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="mrp_alternative_selector_form" model="ir.ui.view">
+        <field name="name">mrp.alternative.selector.form</field>
+        <field name="model">mrp.alternative.selector</field>
+        <field name="arch" type="xml">
+            <form string="Alternative Components">
+                <sheet>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="not warning_message">
+                        <field name="warning_message" nolabel="1" readonly="1"/>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="mode" invisible="True"/>
+                            <field name="user_can_apply" invisible="True"/>
+                            <field name="production_id" readonly="1"
+                                   invisible="not production_id"
+                                   options="{'no_open': True}"/>
+                            <field name="orderpoint_id" readonly="1"
+                                   invisible="not orderpoint_id"
+                                   options="{'no_open': True}"/>
+                            <field name="product_id" readonly="1"
+                                   invisible="not product_id"
+                                   options="{'no_open': True}"/>
+                        </group>
+                        <group>
+                            <field name="location_id" readonly="1"
+                                   options="{'no_open': True}"/>
+                            <field name="demand_qty" readonly="1"
+                                   invisible="mode != 'orderpoint'"/>
+                        </group>
+                    </group>
+                    <field name="line_ids" nolabel="1">
+                        <list editable="bottom" create="0" delete="0"
+                              decoration-success="is_suggested"
+                              decoration-bf="is_current">
+                            <field name="sequence" column_invisible="True"/>
+                            <field name="move_id" column_invisible="True"/>
+                            <field name="product_id" string="Main Component"
+                                   readonly="1" options="{'no_open': True}"/>
+                            <field name="alternative_product_id" string="Option"
+                                   readonly="1" options="{'no_open': True}"/>
+                            <field name="priority" string="Priority"
+                                   readonly="1" width="60"/>
+                            <field name="demand_qty" string="Demand"
+                                   readonly="1"/>
+                            <field name="available_qty" string="Available"
+                                   readonly="1"/>
+                            <field name="uom_id" readonly="1"
+                                   groups="uom.group_uom"
+                                   options="{'no_open': True}"/>
+                            <field name="can_cover" string="Covers Demand"
+                                   readonly="1"/>
+                            <field name="is_suggested" string="Suggested"
+                                   readonly="1"/>
+                            <field name="is_current" string="In Use"
+                                   readonly="1"/>
+                            <field name="is_original" column_invisible="True"/>
+                            <field name="selected" string="Select"
+                                   invisible="parent.mode != 'production'"/>
+                        </list>
+                    </field>
+                    <footer>
+                        <button name="action_apply" type="object"
+                                class="btn-primary"
+                                string="Confirm and Apply"
+                                confirm="The selected alternatives will be applied to the manufacturing order. Continue?"
+                                invisible="mode != 'production' or not user_can_apply"/>
+                        <button string="Cancel" special="cancel"
+                                invisible="mode != 'production'"/>
+                        <button string="Close" special="cancel"
+                                invisible="mode != 'orderpoint'"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

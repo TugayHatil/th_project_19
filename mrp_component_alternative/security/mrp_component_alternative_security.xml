@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Users allowed to pick/confirm an alternative component on a
+         manufacturing order. Manufacturing managers get it automatically;
+         it can be granted/revoked per user. -->
+    <record id="group_alternative_selector" model="res.groups">
+        <field name="name">Alternative Component Selection</field>
+        <field name="category_id" ref="base.module_category_manufacturing_manufacturing"/>
+        <field name="implied_ids" eval="[(4, ref('mrp.group_mrp_user'))]"/>
+    </record>
+
+    <record id="mrp.group_mrp_manager" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('mrp_component_alternative.group_alternative_selector'))]"/>
+    </record>
+</odoo>
