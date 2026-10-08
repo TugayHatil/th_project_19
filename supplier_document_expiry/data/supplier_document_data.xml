@@ -29,6 +29,21 @@
         <field name="warning_days_orange">15</field>
     </record>
 
+    <!-- Partner formundaki gömülü listede satırın "Aç" butonu; belge
+         formunu dialog içinde açarak eklerin indirilmesini sağlar. -->
+    <record id="action_supplier_document_open" model="ir.actions.server">
+        <field name="name">Belgeyi Aç</field>
+        <field name="model_id" ref="model_supplier_document"/>
+        <field name="state">code</field>
+        <field name="code">action = {
+    'type': 'ir.actions.act_window',
+    'res_model': 'supplier.document',
+    'res_id': records[:1].id,
+    'view_mode': 'form',
+    'target': 'new',
+}</field>
+    </record>
+
     <!-- Günlük geçerlilik/durum kontrolü ve uyarı üretimi -->
     <record id="ir_cron_supplier_document_expiry" model="ir.cron">
         <field name="name">Tedarikçi Belgeleri: Geçerlilik Kontrolü</field>
