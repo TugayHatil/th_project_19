@@ -37,9 +37,9 @@ class MrpBomLineAlternative(models.Model):
                 raise ValidationError(_(
                     "The alternative product cannot be the same as the "
                     "main component (%s).", alternative.product_id.display_name))
-            main_uom_categ = alternative.product_id.uom_id.category_id
-            alt_uom_categ = alternative.alternative_product_id.uom_id.category_id
-            if alt_uom_categ != main_uom_categ:
+            main_uom = alternative.product_id.uom_id
+            alt_uom = alternative.alternative_product_id.uom_id
+            if not main_uom._has_common_reference(alt_uom):
                 raise ValidationError(_(
                     "The alternative product %(alt)s uses a different unit of "
                     "measure category than the main component %(main)s.",

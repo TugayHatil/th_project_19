@@ -90,7 +90,7 @@ class StockMove(models.Model):
         if new_product == self.product_id:
             return
         origin = self._alt_main_component()
-        if new_product.uom_id.category_id != origin.uom_id.category_id:
+        if not origin.uom_id._has_common_reference(new_product.uom_id):
             raise UserError(_(
                 "%(alt)s cannot replace %(main)s: incompatible units of "
                 "measure.", alt=new_product.display_name,
