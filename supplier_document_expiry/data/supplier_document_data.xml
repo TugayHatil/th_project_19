@@ -49,12 +49,13 @@
         <field name="arch" type="xml">
             <xpath expr="//script[@id='web.layout.odooscript']" position="after">
                 <style type="text/css">
-                    .o_list_view td .o_attachment.o_attachment_many2many { display: inline-block; width: auto !important; min-width: 0 !important; margin: 0 8px 2px 0; }
-                    .o_list_view .o_attachment.o_attachment_many2many .o_attachment_wrap { display: flex; align-items: center; gap: 4px; }
+                    .o_list_view td .o_attachment.o_attachment_many2many { display: inline-block; width: auto !important; min-width: 0 !important; margin: 0 5px 0 0; padding: 0 !important; }
+                    .o_list_view .o_attachment.o_attachment_many2many .o_attachment_wrap { display: flex; align-items: center; gap: 3px; padding: 0 !important; }
                     .o_list_view .o_attachment.o_attachment_many2many .o_image_box { float: none !important; }
-                    .o_list_view .o_attachment.o_attachment_many2many .o_image { width: 20px !important; height: 20px !important; background-size: contain !important; background-position: center !important; }
-                    .o_list_view .o_attachment.o_attachment_many2many .caption { display: inline-block; font-size: 12px; line-height: 1.2; white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
-                    .o_list_view .o_attachment.o_attachment_many2many .caption.small { display: none; }
+                    .o_list_view .o_attachment.o_attachment_many2many .o_image { width: 14px !important; height: 14px !important; background-size: contain !important; background-position: center !important; }
+                    .o_list_view .o_attachment.o_attachment_many2many .caption { display: inline-block; font-size: 11px; line-height: 1.1; white-space: nowrap; max-width: 130px; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+                    .o_list_view .o_attachment.o_attachment_many2many .caption.small,
+                    .o_list_view .o_attachment.o_attachment_many2many .o_attachment_uploaded { display: none; }
                 </style>
             </xpath>
         </field>
