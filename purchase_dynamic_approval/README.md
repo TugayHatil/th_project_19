@@ -28,6 +28,11 @@ onayını gerektiren dinamik, parametrik onay mekanizması.
   için yeniden başlatılır, barem kalmazsa sipariş otomatik onaylanır.
 - **Red nedeni zorunludur** ve serbest metin yerine Yapılandırma >
   Red Nedenleri altında yönetilen hazır seçeneklerden seçilir.
+- **Vekil Onaycı**: Her bareme opsiyonel tek bir vekil kullanıcı
+  atanabilir. Vekil, onay grubu üyesi olamaz (seçimde gizlenir +
+  backend validation); tanımlandığı barem için grup üyeliği gerekmeksizin
+  onay/red yetkisine sahiptir. Barem değişiminde eski vekil yetkisi
+  sona erer; vekil işlemleri history'de "(Vekil Onaycı)" olarak işaretlenir.
 
 ## Rol: Onay Barem Yöneticisi
 

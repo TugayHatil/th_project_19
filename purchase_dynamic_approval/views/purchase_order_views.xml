@@ -54,6 +54,7 @@
                             <field name="approval_required"/>
                             <field name="approval_tier_id"/>
                             <field name="approval_group_id"/>
+                            <field name="approval_delegate_id"/>
                             <field name="submitted_amount"/>
                         </group>
                         <group string="Karar Bilgileri">

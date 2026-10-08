@@ -25,6 +25,10 @@ class PurchaseOrder(models.Model):
         'res.groups', string='Beklenen Onay Grubu',
         related='approval_tier_id.approval_group_id', store=True,
         readonly=True)
+    approval_delegate_id = fields.Many2one(
+        'res.users', string='Vekil Onaycı',
+        related='approval_tier_id.delegate_user_id', store=True,
+        readonly=True)
     submitted_amount = fields.Monetary(
         string='Onaya Gönderilen Tutar', readonly=True, copy=False,
         currency_field='currency_id')
@@ -44,13 +48,15 @@ class PurchaseOrder(models.Model):
     # ------------------------------------------------------------
 
     def _compute_can_approve(self):
-        user_groups = self.env.user.all_group_ids
+        user = self.env.user
         for order in self:
+            tier = order.approval_tier_id
             order.can_approve = bool(
                 order.state == 'to approve'
                 and order.approval_required
-                and order.approval_group_id
-                and order.approval_group_id in user_groups)
+                and (order.approval_group_id
+                     and order.approval_group_id in user.all_group_ids
+                     or tier and tier.delegate_user_id == user))
 
     def _find_approval_tier(self):
         """Sipariş toplamının (şirket para birimine çevrilmiş) dahil
@@ -66,6 +72,9 @@ class PurchaseOrder(models.Model):
         History = self.env['purchase.order.approval.history'].sudo()
         for order in self:
             tier = tier or order.approval_tier_id
+            if (action in ('approve', 'reject') and tier
+                    and tier.delegate_user_id == self.env.user):
+                note = (note + ' ' if note else '') + '(Vekil Onaycı)'
             History.create({
                 'order_id': order.id,
                 'date': fields.Datetime.now(),
@@ -80,7 +89,9 @@ class PurchaseOrder(models.Model):
 
     def _schedule_approval_activities(self):
         self.ensure_one()
-        approvers = self.approval_group_id.all_user_ids.filtered('active')
+        approvers = (
+            self.approval_group_id.all_user_ids
+            | self.approval_tier_id.delegate_user_id).filtered('active')
         for user in approvers:
             self.activity_schedule(
                 APPROVAL_ACTIVITY_TYPE,
@@ -109,15 +120,20 @@ class PurchaseOrder(models.Model):
         if self.state != 'to approve' or not self.approval_required:
             raise UserError(_('Bu sipariş onay beklemiyor.'))
         group = self.approval_group_id
-        if not group or not group.all_user_ids.filtered('active'):
+        delegate = self.approval_tier_id.delegate_user_id
+        if not delegate and (
+                not group or not group.all_user_ids.filtered('active')):
             raise UserError(_(
                 'Bu satınalma siparişi için tanımlanan onay grubunda '
                 'uygun bir onaylayıcı bulunmamaktadır.'))
-        if group not in self.env.user.all_group_ids:
+        if (self.env.user != delegate
+                and (not group
+                     or group not in self.env.user.all_group_ids)):
             raise UserError(_(
                 'Bu sipariş üzerinde yalnızca "%s" grubuna üye '
-                'kullanıcılar onay/red işlemi yapabilir.',
-                group.display_name))
+                'kullanıcılar veya baremde tanımlı vekil onaycı '
+                'onay/red işlemi yapabilir.',
+                group.display_name if group else ''))
 
     # ------------------------------------------------------------
     # Standart onay akışına entegrasyon
@@ -148,7 +164,8 @@ class PurchaseOrder(models.Model):
         if self.approval_state == 'waiting' \
                 and self.approval_tier_id == tier:
             return
-        if not tier.approval_group_id.all_user_ids.filtered('active'):
+        if (not tier.approval_group_id.all_user_ids.filtered('active')
+                and not tier.delegate_user_id):
             raise UserError(_(
                 'Bu satınalma siparişi için tanımlanan onay grubunda '
                 'uygun bir onaylayıcı bulunmamaktadır.'))
@@ -319,7 +336,8 @@ class PurchaseOrder(models.Model):
                     'approve_date': False,
                 })
                 order._log_approval_history('submit', tier=new_tier)
-                if new_tier.approval_group_id.all_user_ids.filtered('active'):
+                if (new_tier.approval_group_id.all_user_ids.filtered('active')
+                        or new_tier.delegate_user_id):
                     order._schedule_approval_activities()
                 else:
                     order.message_post(body=_(

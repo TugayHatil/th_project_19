@@ -26,6 +26,11 @@ class PurchaseApprovalTier(models.Model):
         'res.groups', string='Onaylayıcı Grup', required=True, index=True,
         help="Bu tutar aralığına giren satınalma siparişlerini "
              "onaylama yetkisine sahip kullanıcı grubu.")
+    delegate_user_id = fields.Many2one(
+        'res.users', string='Vekil Onaycı',
+        help="Onay grubu üyesi olmadan bu barem için onay/red yetkisi "
+             "verilen alternatif kullanıcı. Onay grubu üyesi bir "
+             "kullanıcı vekil olarak atanamaz.")
     active = fields.Boolean(string='Aktif', default=True)
     company_id = fields.Many2one(
         'res.company', string='Şirket', required=True, index=True,
@@ -47,6 +52,22 @@ class PurchaseApprovalTier(models.Model):
     def _upper_bound(self):
         self.ensure_one()
         return float('inf') if self.unlimited else self.amount_max
+
+    @api.constrains('approval_group_id', 'delegate_user_id')
+    def _check_delegate_user(self):
+        for tier in self:
+            user = tier.delegate_user_id
+            if not user:
+                continue
+            if user.share:
+                raise ValidationError(_(
+                    'Vekil Onaycı yalnızca dahili (internal) bir '
+                    'kullanıcı olabilir.'))
+            if user in tier.approval_group_id.all_user_ids:
+                raise ValidationError(_(
+                    'Vekil Onaycı olarak seçilen kullanıcı, ilgili onay '
+                    'grubunun üyesidir. Onay grubu üyesi bir kullanıcı '
+                    'vekil olarak atanamaz.'))
 
     @api.onchange('unlimited')
     def _onchange_unlimited(self):

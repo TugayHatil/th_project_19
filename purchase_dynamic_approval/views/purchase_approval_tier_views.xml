@@ -11,6 +11,8 @@
                 <field name="unlimited"/>
                 <field name="amount_max" readonly="unlimited"/>
                 <field name="approval_group_id"/>
+                <field name="delegate_user_id"
+                       domain="[('share', '=', False), ('all_group_ids', 'not in', approval_group_id)]"/>
                 <field name="company_id" groups="base.group_multi_company"/>
                 <field name="active" widget="boolean_toggle"/>
             </list>
@@ -35,6 +37,8 @@
                         </group>
                         <group string="Onay Yetkisi">
                             <field name="approval_group_id"/>
+                            <field name="delegate_user_id"
+                                   domain="[('share', '=', False), ('all_group_ids', 'not in', approval_group_id)]"/>
                             <field name="company_id"
                                    groups="base.group_multi_company"/>
                             <field name="currency_id" invisible="1"/>
