@@ -83,7 +83,7 @@
                 <separator/>
                 <filter name="inactive" string="Arşivlenmiş"
                         domain="[('active', '=', False)]"/>
-                <group expand="0" string="Grupla">
+                <group>
                     <filter name="group_partner" string="Tedarikçi"
                             context="{'group_by': 'partner_id'}"/>
                     <filter name="group_type" string="Belge Türü"
