@@ -28,7 +28,7 @@
                             <field name="validity_date"/>
                             <field name="remaining_days" optional="hide"/>
                             <field name="status" readonly="1"/>
-                            <field name="attachment_ids" widget="many2many_binary"/>
+                            <field name="attachment_ids" widget="many2many_tags"/>
                             <field name="partner_id" column_invisible="1"/>
                         </list>
                     </field>
