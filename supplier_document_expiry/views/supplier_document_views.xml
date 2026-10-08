@@ -72,14 +72,14 @@
                         domain="[('status', '=', 'red')]"/>
                 <separator/>
                 <filter name="expiring_7d" string="Önümüzdeki 7 Gün İçinde Dolacaklar"
-                        domain="[('validity_date', '&gt;=', context_today().strftime('%Y-%m-%d')),
-                                 ('validity_date', '&lt;=', (context_today() + relativedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                        domain="[('validity_date', '&gt;=', 'today'),
+                                 ('validity_date', '&lt;=', 'today +7d')]"/>
                 <filter name="expiring_30d" string="Önümüzdeki 30 Gün İçinde Dolacaklar"
-                        domain="[('validity_date', '&gt;=', context_today().strftime('%Y-%m-%d')),
-                                 ('validity_date', '&lt;=', (context_today() + relativedelta(days=30)).strftime('%Y-%m-%d'))]"/>
+                        domain="[('validity_date', '&gt;=', 'today'),
+                                 ('validity_date', '&lt;=', 'today +30d')]"/>
                 <filter name="expiring_month" string="Bu Ay Süresi Dolacaklar"
-                        domain="[('validity_date', '&gt;=', (context_today() + relativedelta(day=1)).strftime('%Y-%m-%d')),
-                                 ('validity_date', '&lt;=', (context_today() + relativedelta(day=31)).strftime('%Y-%m-%d'))]"/>
+                        domain="[('validity_date', '&gt;=', 'today =1d'),
+                                 ('validity_date', '&lt;', 'today +1m =1d')]"/>
                 <separator/>
                 <filter name="inactive" string="Arşivlenmiş"
                         domain="[('active', '=', False)]"/>
