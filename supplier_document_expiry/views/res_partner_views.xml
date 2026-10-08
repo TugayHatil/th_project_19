@@ -28,10 +28,9 @@
                             <field name="validity_date"/>
                             <field name="remaining_days" optional="hide"/>
                             <field name="status" readonly="1"/>
-                            <field name="attachment_ids" widget="many2many_tags"/>
                             <button type="action"
-                                    name="%(supplier_document_expiry.action_supplier_document_open)d"
-                                    icon="fa-external-link" title="Belgeyi Aç"/>
+                                    name="%(supplier_document_expiry.action_supplier_document_attachments)d"
+                                    icon="fa-paperclip" title="Belgeler"/>
                             <field name="partner_id" column_invisible="1"/>
                         </list>
                     </field>
