@@ -14,25 +14,25 @@
                     <field name="supplier_document_count" widget="statinfo" string="Belgeler"/>
                 </button>
             </xpath>
-            <xpath expr="//page[@name='sales_purchases']" position="inside">
-                <separator string="Tedarikçi Belgeleri"
-                           groups="supplier_document_expiry.group_supplier_document_read"/>
-                <field name="supplier_document_ids" nolabel="1"
-                       groups="supplier_document_expiry.group_supplier_document_read"
-                       context="{'default_partner_id': id}">
-                    <list editable="bottom" string="Tedarikçi Belgeleri"
-                          decoration-danger="status == 'red'"
-                          decoration-warning="status == 'orange'">
-                        <field name="name"/>
-                        <field name="document_type_id"/>
-                        <field name="responsible_user_id" widget="many2one_avatar_user"/>
-                        <field name="validity_date"/>
-                        <field name="remaining_days" optional="hide"/>
-                        <field name="status" readonly="1"/>
-                        <field name="attachment_ids" widget="many2many_binary"/>
-                        <field name="partner_id" column_invisible="1"/>
-                    </list>
-                </field>
+            <xpath expr="//page[@name='sales_purchases']" position="after">
+                <page name="supplier_documents" string="Tedarikçi Belgeleri"
+                      groups="supplier_document_expiry.group_supplier_document_read">
+                    <field name="supplier_document_ids" nolabel="1"
+                           context="{'default_partner_id': id}">
+                        <list editable="bottom" string="Tedarikçi Belgeleri"
+                              decoration-danger="status == 'red'"
+                              decoration-warning="status == 'orange'">
+                            <field name="name"/>
+                            <field name="document_type_id"/>
+                            <field name="responsible_user_id" widget="many2one_avatar_user"/>
+                            <field name="validity_date"/>
+                            <field name="remaining_days" optional="hide"/>
+                            <field name="status" readonly="1"/>
+                            <field name="attachment_ids" widget="many2many_binary"/>
+                            <field name="partner_id" column_invisible="1"/>
+                        </list>
+                    </field>
+                </page>
             </xpath>
         </field>
     </record>
