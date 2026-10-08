@@ -28,9 +28,7 @@
                             <field name="validity_date"/>
                             <field name="remaining_days" optional="hide"/>
                             <field name="status" readonly="1"/>
-                            <button type="action"
-                                    name="%(supplier_document_expiry.action_supplier_document_attachments)d"
-                                    icon="fa-paperclip" title="Belgeler"/>
+                            <field name="attachment_ids" widget="many2many_binary"/>
                             <field name="partner_id" column_invisible="1"/>
                         </list>
                     </field>
