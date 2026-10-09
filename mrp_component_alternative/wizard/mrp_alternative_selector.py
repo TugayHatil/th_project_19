@@ -341,7 +341,25 @@ class MrpAlternativeSelectorLine(models.TransientModel):
     is_suggested = fields.Boolean(string="Suggested", readonly=True)
     is_current = fields.Boolean(string="In Use", readonly=True)
     is_original = fields.Boolean(string="Original", readonly=True)
+    status_label = fields.Char(
+        string="Status", compute="_compute_status_label", readonly=True)
     selected = fields.Boolean(string="Select")
+
+    @api.depends("can_cover", "is_suggested", "is_current", "is_original")
+    def _compute_status_label(self):
+        for line in self:
+            parts = []
+            if line.is_original:
+                parts.append(_("Main Component"))
+            if line.is_current:
+                parts.append(_("In Use"))
+            if line.is_suggested:
+                parts.append(_("Suggested"))
+            elif line.can_cover and not line.is_original:
+                parts.append(_("Covers Demand"))
+            if not line.can_cover:
+                parts.append(_("Insufficient Stock"))
+            line.status_label = " \u00b7 ".join(parts)
 
 
 class MrpAlternativeSelectorMove(models.TransientModel):
