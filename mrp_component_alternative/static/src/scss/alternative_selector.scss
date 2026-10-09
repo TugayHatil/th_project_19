@@ -1,9 +1,10 @@
 // Alternative selector popup
 // ---------------------------
-// Wider dialog so long product names remain readable.
+// Wider dialog so long product names remain readable, but capped so
+// the table does not look sparse on large screens.
 .modal-dialog:has(.o_mrp_alternative_selector) {
-    max-width: 95vw;
-    width: 95vw;
+    width: 92vw;
+    max-width: 1300px;
 }
 
 .o_mrp_alternative_selector .o_list_renderer {
