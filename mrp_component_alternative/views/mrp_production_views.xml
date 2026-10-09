@@ -7,8 +7,8 @@
         <field name="arch" type="xml">
             <xpath expr="//header/button[@name='action_confirm']" position="after">
                 <button name="action_open_alternative_selector" type="object"
-                        string="Alternatives" icon="fa-random"
-                        title="Review alternative components"
+                        string="Alternatif Seç" icon="fa-random"
+                        title="Alternatif malzemeleri değerlendir"
                         invisible="alternative_component_count == 0 or state in ('done', 'cancel')"/>
             </xpath>
             <xpath expr="//sheet" position="inside">
@@ -22,7 +22,7 @@
                 <field name="is_alternative_component" string="Alt."
                        readonly="1" optional="show"/>
                 <button name="action_open_alternative_selector" type="object"
-                        icon="fa-random" title="Alternative Components"
+                        icon="fa-random" title="Alternatif Malzemeler"
                         invisible="not has_bom_alternatives or state in ('done', 'cancel')"/>
             </xpath>
         </field>

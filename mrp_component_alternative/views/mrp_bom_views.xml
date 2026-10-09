@@ -48,10 +48,10 @@
                 <field name="alternative_count" string="Alt."
                        optional="hide" readonly="1"/>
                 <button name="action_manage_alternatives" type="object"
-                        icon="fa-random" title="Alternative Components"/>
+                        icon="fa-random" title="Alternatif Malzemeler"/>
             </xpath>
             <page name="components" position="after">
-                <page name="alternatives" string="Component Alternatives">
+                <page name="alternatives" string="Alternatif Malzemeler">
                     <field name="bom_alternative_ids" readonly="1">
                         <list>
                             <field name="product_id" string="Main Component"/>

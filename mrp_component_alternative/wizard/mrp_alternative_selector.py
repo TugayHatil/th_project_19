@@ -24,6 +24,10 @@ class MrpAlternativeSelector(models.TransientModel):
         compute="_compute_user_can_apply", compute_sudo=True)
     line_ids = fields.One2many(
         "mrp.alternative.selector.line", "selector_id", string="Options")
+    move_line_ids = fields.One2many(
+        "mrp.alternative.selector.move", "selector_id",
+        string="Related Manufacturing Orders")
+    has_move_lines = fields.Boolean(readonly=True)
 
     def _compute_user_can_apply(self):
         allowed = self.env.user.has_group(
@@ -164,6 +168,32 @@ class MrpAlternativeSelector(models.TransientModel):
         for alternative in alternatives:
             by_product.setdefault(alternative.alternative_product_id, alternative)
 
+        # Relate the replenishment need to open manufacturing orders
+        # consuming this component at the orderpoint location.
+        # A substituted move is still linked through original_product_id,
+        # so the option actually in use can be marked reliably.
+        open_moves = self.env["stock.move"].search([
+            ("raw_material_production_id", "!=", False),
+            ("location_id", "child_of", location.id),
+            ("company_id", "=", orderpoint.company_id.id),
+            ("state", "not in", ("done", "cancel")),
+            "|", ("product_id", "=", product.id),
+            ("original_product_id", "=", product.id),
+        ]).filtered(
+            lambda m: m._alt_main_component() == product)
+        in_use_products = open_moves.product_id
+        wizard.move_line_ids = [Command.create({
+            "move_id": move.id,
+            "production_id": move.raw_material_production_id.id,
+            "move_product_id": move.product_id.id,
+            "demand_qty": move.product_uom._compute_quantity(
+                move.product_uom_qty, move.product_id.uom_id),
+            "reserved_qty": move._alt_own_reserved_qty(),
+            "is_alternative": move.is_alternative_component,
+            "state": move.state,
+        }) for move in open_moves]
+        wizard.has_move_lines = bool(open_moves)
+
         main_coverage = wizard._available_qty(product, location)
         main_ok = float_compare(
             main_coverage, demand,
@@ -176,6 +206,7 @@ class MrpAlternativeSelector(models.TransientModel):
             "available_qty": main_coverage,
             "can_cover": main_ok,
             "is_original": True,
+            "is_current": product in in_use_products,
             "sequence": 0,
         }]
         suggested = False
@@ -200,6 +231,7 @@ class MrpAlternativeSelector(models.TransientModel):
                 "available_qty": coverage,
                 "can_cover": can_cover,
                 "is_suggested": is_suggested,
+                "is_current": alt_product in in_use_products,
             })
         wizard.line_ids = [Command.create(vals) for vals in line_vals]
         wizard._refresh_warning()
@@ -310,3 +342,29 @@ class MrpAlternativeSelectorLine(models.TransientModel):
     is_current = fields.Boolean(string="In Use", readonly=True)
     is_original = fields.Boolean(string="Original", readonly=True)
     selected = fields.Boolean(string="Select")
+
+
+class MrpAlternativeSelectorMove(models.TransientModel):
+    """Open manufacturing-order demand related to a replenishment line.
+
+    Lets the user see which MOs consume the component at this location
+    and which product is actually in use on each of them.
+    """
+    _name = "mrp.alternative.selector.move"
+    _description = "Related Manufacturing Order Demand"
+    _order = "production_id, id"
+
+    selector_id = fields.Many2one(
+        "mrp.alternative.selector", required=True, ondelete="cascade")
+    move_id = fields.Many2one("stock.move", readonly=True)
+    production_id = fields.Many2one(
+        "mrp.production", string="Manufacturing Order", readonly=True)
+    move_product_id = fields.Many2one(
+        "product.product", string="Product In Use", readonly=True)
+    demand_qty = fields.Float(
+        string="Demand", readonly=True, digits="Product Unit")
+    reserved_qty = fields.Float(
+        string="Reserved", readonly=True, digits="Product Unit")
+    is_alternative = fields.Boolean(string="Alternative Used", readonly=True)
+    state = fields.Selection(
+        related="move_id.state", string="State", readonly=True)

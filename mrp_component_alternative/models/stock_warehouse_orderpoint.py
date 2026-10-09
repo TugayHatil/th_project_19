@@ -12,7 +12,8 @@ class StockWarehouseOrderpoint(models.Model):
     def _compute_has_bom_alternatives(self):
         grouped = self.env["mrp.bom.line.alternative"]._read_group(
             [("product_id", "in", self.product_id.ids),
-             ("active", "=", True)],
+             ("active", "=", True),
+             ("bom_id.active", "=", True)],
             ["product_id", "company_id"], ["__count"])
         alt_companies = {}
         for product, company, _count in grouped:

@@ -230,3 +230,27 @@ class TestComponentAlternative(TransactionCase):
         self.assertEqual(len(wizard.line_ids), 3)
         suggested = wizard.line_ids.filtered("is_suggested")
         self.assertEqual(suggested.alternative_product_id, self.alt_high)
+
+    def test_orderpoint_wizard_shows_mo_in_use(self):
+        """After an alternative is applied on an MO, the replenishment
+        popup links the need to that MO and marks the product in use."""
+        self._set_stock(self.alt_high, 10.0)
+        mo = self._make_mo()
+        self._open_wizard(mo).action_apply()
+        orderpoint = self.env["stock.warehouse.orderpoint"].create({
+            "product_id": self.main.id,
+            "location_id": self.stock.id,
+            "qty_to_order": 2.0,
+        })
+        action = orderpoint.action_view_alternatives()
+        wizard = self.env["mrp.alternative.selector"].browse(
+            action["res_id"])
+        self.assertTrue(wizard.has_move_lines)
+        move_line = wizard.move_line_ids.filtered(
+            lambda l: l.production_id == mo)
+        self.assertEqual(len(move_line), 1)
+        self.assertEqual(move_line.move_product_id, self.alt_high)
+        self.assertTrue(move_line.is_alternative)
+        self.assertEqual(move_line.demand_qty, 2.0)
+        in_use = wizard.line_ids.filtered("is_current")
+        self.assertEqual(in_use.alternative_product_id, self.alt_high)

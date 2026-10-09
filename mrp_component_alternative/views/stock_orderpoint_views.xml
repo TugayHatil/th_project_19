@@ -8,7 +8,8 @@
             <xpath expr="//field[@name='qty_forecast']" position="after">
                 <field name="has_bom_alternatives" column_invisible="True"/>
                 <button name="action_view_alternatives" type="object"
-                        icon="fa-random" title="Alternative Components"
+                        icon="fa-random"
+                        title="Alternatif Malzemeleri Görüntüle"
                         invisible="not id or not has_bom_alternatives"/>
             </xpath>
         </field>
