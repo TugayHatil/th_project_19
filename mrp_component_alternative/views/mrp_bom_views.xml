@@ -52,6 +52,9 @@
             </xpath>
             <page name="components" position="after">
                 <page name="alternatives" string="Alternatif Malzemeler">
+                    <group>
+                        <field name="alternative_mode"/>
+                    </group>
                     <field name="bom_alternative_ids" readonly="1">
                         <list>
                             <field name="product_id" string="Main Component"/>

@@ -77,6 +77,34 @@ class MrpProduction(models.Model):
                 "trigger": "auto",
             })
 
+    def _auto_apply_alternatives(self, moves):
+        """Apply the first priority alternative that fully covers the
+        demand, without user interaction (BOM alternative_mode = 'auto').
+        """
+        for move in moves:
+            main = move._alt_main_component()
+            own_reserved = move._alt_own_reserved_qty()
+            demand_main_uom = move.product_uom._compute_quantity(
+                move.product_uom_qty, main.uom_id)
+            target = self.env["product.product"]
+            for alternative in move.bom_line_id.alternative_ids.filtered(
+                    "active").sorted("sequence"):
+                product = alternative.alternative_product_id
+                demand = main.uom_id._compute_quantity(
+                    demand_main_uom, product.uom_id)
+                if move._alt_can_fully_cover(
+                        product, move.location_id, demand, own_reserved):
+                    target = product
+                    break
+            if target:
+                move._apply_alternative_product(target)
+            else:
+                self.message_post(body=_(
+                    "%s: main component stock is insufficient and no "
+                    "alternative can fully cover the demand; the component "
+                    "was left unchanged.",
+                    main.display_name))
+
     def action_confirm(self):
         result = super().action_confirm()
         if len(self) == 1 and not self.env.context.get(
@@ -84,7 +112,12 @@ class MrpProduction(models.Model):
             needy_moves = self._moves_needing_alternative()
             if needy_moves:
                 self._ensure_alternative_orderpoints(needy_moves)
-                if (self.state in ("confirmed", "progress", "to_close")
+                mode = self.bom_id.alternative_mode or "popup"
+                if mode == "auto":
+                    self._auto_apply_alternatives(needy_moves)
+                elif (mode == "popup"
+                        and self.state in ("confirmed", "progress",
+                                           "to_close")
                         and self.env.user.has_group(
                             "mrp_component_alternative"
                             ".group_alternative_selector")):

@@ -254,3 +254,45 @@ class TestComponentAlternative(TransactionCase):
         self.assertEqual(move_line.demand_qty, 2.0)
         in_use = wizard.line_ids.filtered("is_current")
         self.assertEqual(in_use.alternative_product_id, self.alt_high)
+
+    # ------------------------------------------------------------------
+    # BOM alternative_mode parameter
+    # ------------------------------------------------------------------
+    def test_mode_auto_applies_without_popup(self):
+        """alternative_mode='auto': on confirm, the covering alternative
+        is applied directly, no wizard action is returned."""
+        self.bom.alternative_mode = "auto"
+        self._set_stock(self.alt_low, 1.0)
+        self._set_stock(self.alt_high, 10.0)
+        mo = self._make_mo()  # action_confirm() runs inside
+        move = mo.move_raw_ids
+        # C Jant (priority 20) covers, B (priority 10) does not → C applied
+        self.assertEqual(move.product_id, self.alt_high)
+        self.assertTrue(move.is_alternative_component)
+        self.assertEqual(move.original_product_id, self.main)
+
+    def test_mode_auto_keeps_main_when_nothing_covers(self):
+        """alternative_mode='auto': no covering alternative → move keeps
+        the main component."""
+        self.bom.alternative_mode = "auto"
+        self._set_stock(self.alt_low, 1.0)
+        mo = self._make_mo()
+        move = mo.move_raw_ids
+        self.assertEqual(move.product_id, self.main)
+        self.assertFalse(move.is_alternative_component)
+
+    def test_mode_manual_does_not_open_popup(self):
+        """alternative_mode='manual': confirm returns the standard result,
+        no wizard; the user selects via the button."""
+        self.bom.alternative_mode = "manual"
+        self._set_stock(self.alt_high, 10.0)
+        mo = self.env["mrp.production"].create({
+            "product_id": self.finished.id,
+            "bom_id": self.bom.id,
+            "product_qty": 1.0,
+            "location_src_id": self.stock.id,
+        })
+        result = mo.action_confirm()
+        # must not be a wizard action
+        self.assertNotIsInstance(result, dict)
+        self.assertEqual(mo.move_raw_ids.product_id, self.main)
