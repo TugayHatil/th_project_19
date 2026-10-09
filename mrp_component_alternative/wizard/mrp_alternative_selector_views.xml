@@ -39,6 +39,7 @@
                               decoration-success="is_suggested"
                               decoration-info="is_current and not is_original and not is_suggested"
                               decoration-warning="is_original and not can_cover"
+                              decoration-muted="not is_original and not can_cover"
                               decoration-bf="is_original">
                             <field name="sequence" column_invisible="True"/>
                             <field name="move_id" column_invisible="True"/>
