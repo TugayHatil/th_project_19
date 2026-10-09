@@ -37,6 +37,11 @@ chatter'ına yazılır.""",
         'views/mrp_production_views.xml',
         'views/stock_orderpoint_views.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'mrp_component_alternative/static/src/scss/alternative_selector.scss',
+        ],
+    },
     'license': 'LGPL-3',
     'installable': True,
     'auto_install': False,

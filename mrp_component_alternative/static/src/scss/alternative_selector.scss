@@ -1,0 +1,12 @@
+// Alternative selector popup: options that cannot cover the demand
+// are rendered as visibly inactive rows (greyed out + faded), kept
+// for information only.
+.o_mrp_alternative_selector .o_list_renderer {
+    tbody tr.o_data_row.text-muted {
+        background-color: #f1f3f5;
+
+        td {
+            opacity: 0.55;
+        }
+    }
+}

@@ -4,7 +4,7 @@
         <field name="name">mrp.alternative.selector.form</field>
         <field name="model">mrp.alternative.selector</field>
         <field name="arch" type="xml">
-            <form string="Alternatif Malzemeler">
+            <form string="Alternatif Malzemeler" class="o_mrp_alternative_selector">
                 <sheet>
                     <div class="alert alert-warning d-flex align-items-center"
                          role="alert" invisible="not warning_message">
