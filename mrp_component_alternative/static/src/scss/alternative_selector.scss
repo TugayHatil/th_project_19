@@ -15,6 +15,25 @@
         white-space: normal;
     }
 
+    // Status badges and the Select column must never be truncated.
+    th[name="status_label"], td[name="status_label"],
+    th[data-name="status_label"], td[data-name="status_label"] {
+        min-width: 190px;
+        white-space: nowrap;
+    }
+
+    th[name="selected"], td[name="selected"],
+    th[data-name="selected"], td[data-name="selected"] {
+        min-width: 50px;
+        text-align: center;
+    }
+
+    // Keep the fold-caret column narrow.
+    td.o_list_button {
+        width: 30px;
+        text-align: center;
+    }
+
     // Options that cannot cover the demand are rendered as visibly
     // inactive rows (greyed out + faded), kept for information only.
     tbody tr.o_data_row.text-muted {
