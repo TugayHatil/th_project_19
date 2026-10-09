@@ -65,6 +65,7 @@
                             <field name="status_label" string="Durum"
                                    readonly="1" widget="badge"/>
                             <field name="selected" string="Seç"
+                                   readonly="not can_cover"
                                    invisible="parent.mode != 'production'"/>
                         </list>
                     </field>
