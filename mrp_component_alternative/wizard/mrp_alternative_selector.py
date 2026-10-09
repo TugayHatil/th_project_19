@@ -342,23 +342,26 @@ class MrpAlternativeSelectorLine(models.TransientModel):
     is_current = fields.Boolean(string="In Use", readonly=True)
     is_original = fields.Boolean(string="Original", readonly=True)
     status_label = fields.Char(
-        string="Status", compute="_compute_status_label", readonly=True)
+        string="Status", compute="_compute_labels", readonly=True)
+    component_label = fields.Char(
+        compute="_compute_labels", readonly=True)
     selected = fields.Boolean(string="Select")
 
-    @api.depends("can_cover", "is_suggested", "is_current", "is_original")
-    def _compute_status_label(self):
+    @api.depends("can_cover", "is_suggested", "is_current", "is_original",
+                 "product_id")
+    def _compute_labels(self):
         for line in self:
+            # The component name is shown only on the bold main row so
+            # each block reads as one component + its options.
+            line.component_label = (
+                line.product_id.display_name if line.is_original else "")
             parts = []
-            if line.is_original:
-                parts.append(_("Main Component"))
             if line.is_current:
-                parts.append(_("In Use"))
+                parts.append(_("Kullanımda"))
             if line.is_suggested:
-                parts.append(_("Suggested"))
-            elif line.can_cover and not line.is_original:
-                parts.append(_("Covers Demand"))
+                parts.append(_("Önerilen"))
             if not line.can_cover:
-                parts.append(_("Insufficient Stock"))
+                parts.append(_("Yetersiz Stok"))
             line.status_label = " \u00b7 ".join(parts)
 
 
