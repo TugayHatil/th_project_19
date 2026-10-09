@@ -36,9 +36,6 @@
                     </group>
                     <field name="line_ids" nolabel="1">
                         <list editable="bottom" create="0" delete="0"
-                              decoration-success="is_suggested"
-                              decoration-info="is_current and not is_original and not is_suggested"
-                              decoration-warning="is_original and not can_cover"
                               decoration-muted="not is_original and not can_cover"
                               decoration-bf="is_original">
                             <field name="sequence" column_invisible="True"/>
@@ -50,20 +47,24 @@
                             <field name="product_id" column_invisible="True"/>
                             <field name="component_label" string="Ana Bileşen"
                                    readonly="1"/>
+                            <field name="priority" string="Öncelik"
+                                   readonly="1"/>
                             <field name="alternative_product_id"
                                    string="Seçenek" readonly="1"
                                    options="{'no_open': True}"/>
-                            <field name="priority" string="Öncelik"
-                                   readonly="1"/>
                             <field name="demand_qty" string="İhtiyaç"
-                                   readonly="1"/>
+                                   readonly="1"
+                                   invisible="not is_original"/>
                             <field name="available_qty" string="Stok"
                                    readonly="1"/>
                             <field name="uom_id" string="Birim" readonly="1"
                                    groups="uom.group_uom"
                                    options="{'no_open': True}"/>
                             <field name="status_label" string="Durum"
-                                   readonly="1" widget="badge"/>
+                                   readonly="1" widget="badge"
+                                   decoration-success="is_suggested"
+                                   decoration-info="is_current and not is_suggested"
+                                   decoration-warning="not can_cover"/>
                             <field name="selected" string="Seç"
                                    readonly="not can_cover"
                                    invisible="not can_cover or parent.mode != 'production'"/>
