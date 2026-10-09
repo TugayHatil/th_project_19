@@ -45,6 +45,17 @@
                             <field name="is_suggested" column_invisible="True"/>
                             <field name="is_current" column_invisible="True"/>
                             <field name="product_id" column_invisible="True"/>
+                            <field name="is_folded" column_invisible="True"/>
+                            <field name="remembered_selected_id"
+                                   column_invisible="True"/>
+                            <field name="suggested_label"
+                                   column_invisible="True"/>
+                            <button name="action_toggle_fold" type="object"
+                                    icon="fa-caret-right" title="Alternatifleri Göster"
+                                    invisible="not is_original or not move_id or not is_folded or not alt_count"/>
+                            <button name="action_toggle_fold" type="object"
+                                    icon="fa-caret-down" title="Alternatifleri Gizle"
+                                    invisible="not is_original or not move_id or is_folded or not alt_count"/>
                             <field name="component_label" string="Ana Bileşen"
                                    readonly="1"/>
                             <field name="priority" string="Öncelik"
@@ -60,6 +71,8 @@
                             <field name="uom_id" string="Birim" readonly="1"
                                    groups="uom.group_uom"
                                    options="{'no_open': True}"/>
+                            <field name="alt_count" string="Alt."
+                                   readonly="1" invisible="not is_original"/>
                             <field name="status_label" string="Durum"
                                    readonly="1" widget="badge"
                                    decoration-success="is_suggested"

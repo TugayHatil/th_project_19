@@ -28,6 +28,7 @@ class MrpAlternativeSelector(models.TransientModel):
         "mrp.alternative.selector.move", "selector_id",
         string="Related Manufacturing Orders")
     has_move_lines = fields.Boolean(readonly=True)
+    folded_move_ids = fields.Many2many("stock.move", readonly=True)
 
     def _compute_user_can_apply(self):
         allowed = self.env.user.has_group(
@@ -68,15 +69,44 @@ class MrpAlternativeSelector(models.TransientModel):
             "production_id": production.id,
             "location_id": production.location_src_id.id,
         })
+        wizard.folded_move_ids = [Command.set(moves.ids)]
         line_vals = []
         for index, mv in enumerate(moves, start=1):
-            line_vals += wizard._prepare_move_lines(mv, index * 1000)
+            line_vals += wizard._prepare_move_lines(
+                mv, index * 1000, collapsed=True)
         wizard.line_ids = [Command.create(vals) for vals in line_vals]
         wizard._refresh_warning()
         return wizard._open_action(
             _("Alternative Components - %s", production.name))
 
-    def _prepare_move_lines(self, move, seq_base):
+    def _rebuild_lines(self):
+        """Regenerate option rows honouring the folded state of each move.
+
+        The product currently selected (or preselected) for each move is
+        remembered on the always-visible main row so folding a group never
+        loses the user's selection.
+        """
+        remembered = {}
+        for line in self.line_ids.filtered("is_original"):
+            if line.remembered_selected_id:
+                remembered[line.move_id.id] = line.remembered_selected_id.id
+        for line in self.line_ids.filtered("selected"):
+            remembered[line.move_id.id] = line.alternative_product_id.id
+        moves = self.line_ids.filtered(
+            "is_original").sorted("sequence").move_id
+        line_vals = []
+        for index, mv in enumerate(moves, start=1):
+            line_vals += self._prepare_move_lines(
+                mv, index * 1000,
+                collapsed=mv in self.folded_move_ids,
+                remembered=remembered.get(mv.id))
+        self.write({
+            "line_ids": [Command.clear()] + [
+                Command.create(vals) for vals in line_vals]})
+        self._refresh_warning()
+
+    def _prepare_move_lines(self, move, seq_base, collapsed=False,
+                            remembered=None):
         main = move._alt_main_component()
         location = move.location_id
         own_reserved = move._alt_own_reserved_qty()
@@ -87,23 +117,11 @@ class MrpAlternativeSelector(models.TransientModel):
             main_coverage, demand_main_uom,
             precision_rounding=main.uom_id.rounding) >= 0
 
-        lines = [{
-            "move_id": move.id,
-            "product_id": main.id,
-            "demand_qty": demand_main_uom,
-            "uom_id": main.uom_id.id,
-            "alternative_product_id": main.id,
-            "sequence": seq_base,
-            "priority": 0,
-            "available_qty": main_coverage,
-            "can_cover": main_ok,
-            "is_suggested": False,
-            "is_original": True,
-            "is_current": move.product_id == main,
-        }]
         alternatives = move.bom_line_id.alternative_ids.filtered(
             "active").sorted("sequence")
         suggested = False
+        suggested_name = ""
+        alt_vals = []
         for index, alternative in enumerate(alternatives, start=1):
             product = alternative.alternative_product_id
             coverage = move._alt_coverage(product, location, own_reserved)
@@ -117,8 +135,10 @@ class MrpAlternativeSelector(models.TransientModel):
                 precision_rounding=product.uom_id.rounding) >= 0
             is_suggested = (not main_ok and not suggested
                             and can_cover and not move.is_alternative_component)
+            if is_suggested:
+                suggested_name = product.display_name
             suggested = suggested or is_suggested
-            lines.append({
+            alt_vals.append({
                 "move_id": move.id,
                 "product_id": main.id,
                 "alternative_id": alternative.id,
@@ -132,17 +152,39 @@ class MrpAlternativeSelector(models.TransientModel):
                 "is_suggested": is_suggested,
                 "is_current": move.product_id == product,
             })
-        # Preselect the relevant row for this move
-        if move.is_alternative_component:
-            for line in lines:
-                line["selected"] = line["is_current"]
-        elif not main_ok:
-            suggested_lines = [l for l in lines if l["is_suggested"]]
-            if suggested_lines:
-                suggested_lines[0]["selected"] = True
+
+        if remembered:
+            chosen = remembered
+        elif move.is_alternative_component:
+            chosen = move.product_id.id
+        elif not main_ok and suggested:
+            suggested_val = [v for v in alt_vals if v["is_suggested"]]
+            chosen = suggested_val[0]["alternative_product_id"]
         else:
-            lines[0]["selected"] = True
-        return lines
+            chosen = main.id
+        main_vals = {
+            "move_id": move.id,
+            "product_id": main.id,
+            "demand_qty": demand_main_uom,
+            "uom_id": main.uom_id.id,
+            "alternative_product_id": main.id,
+            "sequence": seq_base,
+            "priority": 0,
+            "available_qty": main_coverage,
+            "can_cover": main_ok,
+            "is_suggested": False,
+            "is_original": True,
+            "is_current": move.product_id == main,
+            "alt_count": len(alternatives),
+            "remembered_selected_id": chosen,
+            "suggested_label": suggested_name,
+            "selected": chosen == main.id,
+        }
+        if collapsed:
+            return [main_vals]
+        for vals in alt_vals:
+            vals["selected"] = vals["alternative_product_id"] == chosen
+        return [main_vals] + alt_vals
 
     # ------------------------------------------------------------------
     # Replenishment (orderpoint) mode - information only
@@ -207,6 +249,7 @@ class MrpAlternativeSelector(models.TransientModel):
             "can_cover": main_ok,
             "is_original": True,
             "is_current": product in in_use_products,
+            "alt_count": len(by_product),
             "sequence": 0,
         }]
         suggested = False
@@ -292,10 +335,13 @@ class MrpAlternativeSelector(models.TransientModel):
                 raise UserError(_(
                     "Only one option can be selected for component %s.",
                     move._alt_main_component().display_name))
-            if not selected:
-                continue
             target = selected.alternative_product_id
-            if target == move.product_id:
+            if not selected:
+                # Folded group: fall back to the selection remembered on
+                # the always-visible main row.
+                target = lines.filtered(
+                    "is_original").remembered_selected_id
+            if not target or target == move.product_id:
                 continue
             demand = move.product_uom._compute_quantity(
                 move.product_uom_qty, target.uom_id)
@@ -345,10 +391,23 @@ class MrpAlternativeSelectorLine(models.TransientModel):
         string="Status", compute="_compute_labels", readonly=True)
     component_label = fields.Char(
         compute="_compute_labels", readonly=True)
+    is_folded = fields.Boolean(
+        compute="_compute_is_folded", readonly=True)
+    alt_count = fields.Integer(readonly=True)
+    remembered_selected_id = fields.Many2one(
+        "product.product", readonly=True)
+    suggested_label = fields.Char(readonly=True)
     selected = fields.Boolean(string="Select")
 
+    @api.depends("selector_id.folded_move_ids", "move_id")
+    def _compute_is_folded(self):
+        for line in self:
+            line.is_folded = bool(
+                line.move_id
+                and line.move_id in line.selector_id.folded_move_ids)
+
     @api.depends("can_cover", "is_suggested", "is_current", "is_original",
-                 "product_id")
+                 "product_id", "suggested_label")
     def _compute_labels(self):
         for line in self:
             # The component name is shown only on the bold main row so
@@ -362,7 +421,22 @@ class MrpAlternativeSelectorLine(models.TransientModel):
                 parts.append(_("Önerilen"))
             if not line.can_cover:
                 parts.append(_("Yetersiz Stok"))
+            if line.is_original and line.suggested_label:
+                parts.append(_("Önerilen: %s") % line.suggested_label)
             line.status_label = " \u00b7 ".join(parts)
+
+    def action_toggle_fold(self):
+        self.ensure_one()
+        selector = self.selector_id
+        move = self.move_id
+        if not move:
+            return True
+        if move in selector.folded_move_ids:
+            selector.folded_move_ids = [Command.unlink(move.id)]
+        else:
+            selector.folded_move_ids = [Command.link(move.id)]
+        selector._rebuild_lines()
+        return True
 
 
 class MrpAlternativeSelectorMove(models.TransientModel):
