@@ -436,7 +436,10 @@ class MrpAlternativeSelectorLine(models.TransientModel):
         else:
             selector.folded_move_ids = [Command.link(move.id)]
         selector._rebuild_lines()
-        return True
+        # Reopen the same wizard so the dialog refreshes instead of closing
+        return selector._open_action(
+            _("Alternative Components - %s",
+              selector.production_id.display_name))
 
 
 class MrpAlternativeSelectorMove(models.TransientModel):
