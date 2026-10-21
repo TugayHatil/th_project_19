@@ -126,10 +126,39 @@
     }
 
     .o_mnp_qty_input {
-        width: 95px;
+        width: 90px;
         display: inline-block;
         text-align: right;
-        padding: 2px 6px;
+        padding: 1px 8px;
+        font-size: 0.85rem;
+        border-radius: 4px;
+        border-color: #ced4da;
+        transition: border-color .15s, box-shadow .15s;
+
+        // unselected rows: show the default qty as plain text,
+        // not as a greyed-out box
+        &:disabled {
+            background: transparent;
+            border-color: transparent;
+            color: #495057;
+            -webkit-text-fill-color: #495057;
+            opacity: 1;
+            cursor: default;
+        }
+
+        &:focus {
+            border-color: #86b7fe;
+            box-shadow: 0 0 0 0.15rem rgba(13, 110, 253, .15);
+        }
+
+        // hide native spin buttons for a cleaner look
+        &::-webkit-outer-spin-button,
+        &::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        -moz-appearance: textfield;
+        appearance: textfield;
     }
 
     .o_mnp_sug_btn {
