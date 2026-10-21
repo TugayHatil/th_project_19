@@ -1,41 +1,89 @@
 .o_mnp {
-    background: var(--o-webclient-background-color, #fff);
+    background: var(--o-webclient-background-color, #f6f7f9);
+
+    // -- araç çubuğu -------------------------------------------------------
+
+    .o_mnp_toolbar {
+        background: #fff;
+        border-bottom: 1px solid #e5e7eb;
+        box-shadow: 0 1px 3px rgba(16, 24, 40, .06);
+        position: relative;
+        z-index: 3;
+
+        h4 {
+            font-weight: 700;
+            color: #111827;
+            letter-spacing: -0.01em;
+        }
+    }
 
     .o_mnp_search {
-        width: 240px;
+        width: 260px;
+    }
+
+    // -- tablo -------------------------------------------------------------
+
+    .o_mnp_grid {
+        padding: 14px 18px;
     }
 
     .o_mnp_table {
         width: 100%;
-        border-collapse: collapse;
-        font-size: 0.9rem;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 0.875rem;
+        color: #1f2937;
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(16, 24, 40, .07);
 
         thead th {
             position: sticky;
             top: 0;
             z-index: 1;
-            background: var(--o-list-header-background-color, #f7f7f7);
-            border-bottom: 1px solid #dee2e6;
-            padding: 8px 10px;
-            text-align: left;
-            white-space: nowrap;
+            background: #f9fafb;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 10px 12px;
+            font-size: 0.72rem;
             font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #6b7280;
+            white-space: nowrap;
         }
 
         td {
-            padding: 6px 10px;
-            border-bottom: 1px solid #f0f0f0;
+            padding: 8px 12px;
+            border-bottom: 1px solid #f3f4f6;
             white-space: nowrap;
             vertical-align: middle;
+            font-variant-numeric: tabular-nums;
+        }
+
+        tbody > tr:last-child td {
+            border-bottom: 0;
+        }
+
+        td:first-child,
+        td:nth-child(2) {
+            text-align: center;
         }
     }
 
+    .o_mnp_num {
+        text-align: right;
+    }
+
+    // -- sütun genişlikleri --------------------------------------------------
+
     .o_mnp_col_sel {
-        width: 34px;
+        width: 38px;
     }
 
     .o_mnp_col_exp {
-        width: 30px;
+        width: 34px;
     }
 
     .o_mnp_col_product {
@@ -58,70 +106,102 @@
     }
 
     .o_mnp_col_status {
-        width: 140px;
+        width: 150px;
     }
 
     .o_mnp_rowcount {
-        font-size: 0.8rem;
+        font-size: 0.78rem;
+        font-weight: 400;
     }
 
-    .o_mnp_num {
-        text-align: right;
+    // -- ürün grup satırı ----------------------------------------------------
+
+    .o_mnp_group td {
+        background: #f8fafc;
+        border-top: 1px solid #e5e7eb;
+        border-bottom: 1px solid #e5e7eb;
+        font-weight: 500;
+        padding-top: 10px;
+        padding-bottom: 10px;
     }
 
-    .o_mnp_group {
-        background: #fafbfc;
-        border-top: 1px solid #e3e6ea;
+    .o_mnp_group.o_mnp_late td {
+        background: #fdf2f2;
+    }
 
-        &.o_mnp_late {
-            background: #fff5f5;
-        }
+    .o_mnp_product strong {
+        color: #111827;
+        font-weight: 600;
     }
 
     .o_mnp_product .o_mnp_code {
-        color: #6c757d;
+        color: #9ca3af;
+        font-weight: 400;
     }
 
     .o_mnp_summary {
-        color: #495057;
+        color: #374151;
         font-size: 0.85rem;
+    }
+
+    // -- ihtiyaç detay satırları --------------------------------------------
+
+    .o_mnp_line td {
+        background: #fff;
+    }
+
+    .o_mnp_line:hover td {
+        background: #f5f8fe;
+    }
+
+    .o_mnp_line .o_mnp_source {
+        padding-left: 26px;
+        font-size: 0.8rem;
+        color: #6b7280;
+    }
+
+    .o_mnp_line.o_mnp_late td {
+        background: #fffafb;
+    }
+
+    .o_mnp_line.o_mnp_late:hover td {
+        background: #fdf4f4;
+    }
+
+    .o_mnp_line.o_mnp_requested td {
+        color: #9ca3af;
+        background: #fafafa;
+    }
+
+    .o_mnp_line.o_mnp_covered td {
+        color: #9ca3af;
+        background: #fbfdfb;
     }
 
     .o_mnp_expander {
         border: 0;
         background: transparent;
-        color: #6c757d;
-        padding: 0 4px;
+        color: #6b7280;
+        width: 22px;
+        height: 22px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        padding: 0;
         cursor: pointer;
-    }
+        transition: background .12s, color .12s;
 
-    .o_mnp_line {
-        td {
-            background: #fff;
-        }
-
-        &.o_mnp_late td {
-            background: #fffafb;
-        }
-
-        &.o_mnp_requested td {
-            color: #6c757d;
-            background: #fdfdfd;
-        }
-
-        &.o_mnp_covered td {
-            color: #6c757d;
-            background: #fcfffc;
+        &:hover {
+            background: #e5e7eb;
+            color: #111827;
         }
     }
 
-    .o_mnp_source {
-        color: #6c757d;
-        font-size: 0.85rem;
-    }
+    // -- yardımcı görünümler -------------------------------------------------
 
     .o_mnp_neg {
-        color: #dc3545;
+        color: #dc2626;
         font-weight: 600;
     }
 
@@ -129,10 +209,10 @@
         width: 90px;
         display: inline-block;
         text-align: right;
-        padding: 1px 8px;
+        padding: 2px 8px;
         font-size: 0.85rem;
-        border-radius: 4px;
-        border-color: #ced4da;
+        border-radius: 6px;
+        border: 1px solid #d1d5db;
         transition: border-color .15s, box-shadow .15s;
 
         // unselected rows: show the default qty as plain text,
@@ -140,15 +220,16 @@
         &:disabled {
             background: transparent;
             border-color: transparent;
-            color: #495057;
-            -webkit-text-fill-color: #495057;
+            color: #6b7280;
+            -webkit-text-fill-color: #6b7280;
             opacity: 1;
             cursor: default;
         }
 
         &:focus {
-            border-color: #86b7fe;
-            box-shadow: 0 0 0 0.15rem rgba(13, 110, 253, .15);
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, .18);
+            outline: 0;
         }
 
         // hide native spin buttons for a cleaner look
@@ -163,30 +244,32 @@
 
     .o_mnp_requested_qty {
         font-size: 0.72rem;
-        margin-top: 1px;
+        margin-top: 2px;
+        color: #6b7280;
     }
 
     .o_mnp_sug_btn {
-        --bs-btn-padding-y: 0.1rem;
-        --bs-btn-padding-x: 0.5rem;
-        --bs-btn-font-size: 0.8rem;
+        --bs-btn-padding-y: 0.15rem;
+        --bs-btn-padding-x: 0.55rem;
+        --bs-btn-font-size: 0.78rem;
         white-space: nowrap;
-    }
-
-    .o_mnp_order_link {
-        color: #084298;
-        text-decoration: none;
-
-        &:hover {
-            text-decoration: underline;
-        }
+        border-radius: 6px;
     }
 
     .o_mnp_overlay {
         position: absolute;
         inset: 0;
-        background: rgba(255, 255, 255, 0.6);
+        background: rgba(255, 255, 255, 0.65);
+        backdrop-filter: blur(1px);
         z-index: 2;
+    }
+
+    .o_mnp_empty {
+        background: #fff;
+        border: 1px dashed #d1d5db;
+        border-radius: 8px;
+        margin: 24px auto;
+        max-width: 480px;
     }
 }
 
