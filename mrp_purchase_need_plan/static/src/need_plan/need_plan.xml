@@ -220,6 +220,11 @@
                                                 <span class="text-muted"
                                                       t-esc="` (${fmtQty(line.uncovered_qty)} açık)`"/>
                                             </t>
+                                            <div t-if="line.pull_covered > 0"
+                                                 class="o_mnp_pull">
+                                                <i class="fa fa-level-up me-1"/>
+                                                <t t-esc="`+${fmtQty(line.pull_covered)} öneri`"/>
+                                            </div>
                                         </td>
                                         <td class="o_mnp_num">
                                             <input t-if="isSelectable(line)"
@@ -236,10 +241,7 @@
                                         </td>
                                         <td t-esc="fmtDate(line.purchase_start)"/>
                                         <td t-esc="fmtDate(line.approve_by)"/>
-                                        <td>
-                                            <span t-if="line.pull_covered > 0"
-                                                  class="badge text-bg-primary me-1"
-                                                  t-esc="`+${fmtQty(line.pull_covered)} öneri`"/>
+                                        <td class="o_mnp_status">
                                             <span t-if="line.requested_qty > 0 and line.requestable_qty &lt;= 0"
                                                   class="badge text-bg-info">Talep edildi</span>
                                             <span t-elif="line.requested_qty > 0"

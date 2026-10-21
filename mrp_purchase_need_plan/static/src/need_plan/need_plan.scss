@@ -262,6 +262,22 @@
         color: #6b7280;
     }
 
+    .o_mnp_pull {
+        font-size: 0.72rem;
+        margin-top: 2px;
+        color: #0d6efd;
+    }
+
+    // durum rozetleri: sabit genişlik + hap şekli
+    .o_mnp_status .badge {
+        display: inline-block;
+        min-width: 92px;
+        padding: 4px 10px;
+        border-radius: 50rem;
+        font-weight: 500;
+        text-align: center;
+    }
+
     .o_mnp_sug_btn {
         --bs-btn-padding-y: 0.15rem;
         --bs-btn-padding-x: 0.55rem;
