@@ -102,6 +102,20 @@
         font-weight: 600;
     }
 
+    .o_mnp_suggestion td {
+        background: #eef4ff;
+        border-left: 3px solid #0d6efd;
+        color: #084298;
+        font-size: 0.85rem;
+        padding: 8px 10px;
+        white-space: normal;
+    }
+
+    .o_mnp_suggestion_note {
+        font-size: 0.78rem;
+        margin-top: 2px;
+    }
+
     .o_mnp_overlay {
         position: absolute;
         inset: 0;

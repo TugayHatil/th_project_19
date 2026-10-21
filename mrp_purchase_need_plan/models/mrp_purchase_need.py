@@ -74,10 +74,11 @@ class MrpPurchaseNeed(models.AbstractModel):
             warehouse_id, date_from, date_to, "", products=product)
         data = plan.get(product.id)
         if not data:
-            return {"lines": [], "group": False}
+            return {"lines": [], "group": False, "suggestions": []}
         return {
             "lines": data["lines"],
             "group": self._group_payload(data),
+            "suggestions": data["suggestions"],
         }
 
     @api.model
@@ -254,17 +255,66 @@ class MrpPurchaseNeed(models.AbstractModel):
         balance = onhand
         deficit = 0.0
         detail = {}
+        late_supplies = []  # incoming moves that land while short
         for _date, incoming, mv, qty in events:
+            prev_deficit = deficit
             balance = balance + qty if incoming else balance - qty
-            current_deficit = max(0.0, -balance)
-            if not incoming and mv.id in need_set:
+            deficit = max(0.0, -balance)
+            if incoming:
+                absorbed = prev_deficit - deficit
+                if absorbed > 0.0:
+                    late_supplies.append((mv, qty, absorbed))
+            elif mv.id in need_set:
                 # the part of the new shortage this need is responsible for
-                uncovered = min(qty, max(0.0, current_deficit - deficit))
+                uncovered = min(qty, max(0.0, deficit - prev_deficit))
                 detail[mv.id] = {"forecast": balance, "uncovered": uncovered}
-            deficit = current_deficit
+
+        # Late supply can still serve earlier uncovered needs. For open
+        # purchase orders this yields a pull-forward suggestion — the
+        # order itself is never modified (BRD: suggestion only).
+        ordered_needs = need_moves.sorted(key=lambda m: (m.date, m.id))
+        covered_map = defaultdict(float)
+        suggestions = []
+        for mv, qty, absorbed in late_supplies:
+            supply_date = fields.Date.to_date(mv.date)
+            remaining = absorbed
+            covers = []
+            for nmv in ordered_needs:
+                if remaining <= 0.0:
+                    break
+                need_date = fields.Date.to_date(nmv.date)
+                if (need_date >= supply_date or nmv.id in requested
+                        or nmv.id not in detail):
+                    continue
+                open_need = detail[nmv.id]["uncovered"] - covered_map[nmv.id]
+                if open_need <= 0.0:
+                    continue
+                covered = min(open_need, remaining)
+                covered_map[nmv.id] += covered
+                remaining -= covered
+                covers.append((need_date, covered))
+            po_line = mv.purchase_line_id
+            order = po_line.order_id if po_line else self.env["purchase.order"]
+            if order and order.state == "purchase" and covers:
+                suggested = min(c[0] for c in covers)
+                suggestions.append({
+                    "move_id": mv.id,
+                    "order_id": order.id,
+                    "order": order.name,
+                    "partner": order.partner_id.display_name,
+                    "order_qty": qty,
+                    "cover_qty": sum(c[1] for c in covers),
+                    "current_date": fields.Date.to_string(supply_date),
+                    "suggested_date": fields.Date.to_string(suggested),
+                    "days": (supply_date - suggested).days,
+                    "covers": [
+                        {"need_date": fields.Date.to_string(d), "qty": q}
+                        for d, q in sorted(covers)
+                    ],
+                })
 
         lines = []
-        for mv in need_moves.sorted(key=lambda m: (m.date, m.id)):
+        for mv in ordered_needs:
             qty = mv.product_uom._compute_quantity(
                 self._move_open_qty(mv), product.uom_id, round=False)
             need_date = fields.Date.to_date(mv.date)
@@ -283,7 +333,9 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "onhand": onhand,
                 "forecast": info["forecast"],
                 "need_qty": qty,
-                "uncovered_qty": info["uncovered"],
+                "uncovered_qty": max(
+                    0.0, info["uncovered"] - covered_map[mv.id]),
+                "pull_covered": covered_map[mv.id],
                 "uom": product.uom_id.name,
                 "approve_by": fields.Date.to_string(approve_by),
                 "purchase_start": fields.Date.to_string(purchase_start),
@@ -296,6 +348,7 @@ class MrpPurchaseNeed(models.AbstractModel):
             "moves": need_moves,
             "onhand": onhand,
             "lines": lines,
+            "suggestions": suggestions,
         }
 
     def _group_payload(self, data):
@@ -318,6 +371,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                 and not ln["already_requested"] for ln in lines),
             "missing_lead_config": any(ln["missing_lead_config"] for ln in lines),
             "requested_count": sum(1 for ln in lines if ln["already_requested"]),
+            "suggestion_count": len(data.get("suggestions") or []),
         }
 
     # ------------------------------------------------------------------

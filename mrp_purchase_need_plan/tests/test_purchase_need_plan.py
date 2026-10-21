@@ -242,3 +242,71 @@ class TestPurchaseNeedPlan(TransactionCase):
         line = self._lines(self.vida)[0]
         self.assertAlmostEqual(line["forecast"], -100.0)
         self.assertAlmostEqual(line["uncovered_qty"], 100.0)
+
+    def _confirm_po(self, product, qty, delivery_date):
+        po = self.env["purchase.order"].create({
+            "partner_id": self.supplier.id,
+            "order_line": [(0, 0, {
+                "product_id": product.id,
+                "product_qty": qty,
+                "price_unit": 1.0,
+                "product_uom_id": product.uom_id.id,
+                "date_planned": fields.Datetime.to_datetime(delivery_date),
+            })],
+        })
+        po.button_confirm()
+        move = po.picking_ids.move_ids.filtered(
+            lambda m: m.product_id == product)[:1]
+        move.date = fields.Datetime.to_datetime(delivery_date)
+        return po, move
+
+    def test_11_pull_forward_suggestion(self):
+        """Late open PO -> pull-forward suggestion, remaining uncovered
+        drops by the covered amount (BRD pull-forward acceptance test).
+
+        Stock 0, needs 400 @D and 200 @D+1, open PO 100 @D+10:
+        suggestion = D (10 days early), covers 100 of the first need,
+        remaining uncovered 300 + 200 = 500.
+        """
+        d = fields.Date.today() + timedelta(days=30)
+        self._make_mo(self.vida, 400, d)
+        self._make_mo(self.vida, 200, d + timedelta(days=1))
+        po, move = self._confirm_po(self.vida, 100, d + timedelta(days=10))
+
+        res = self.Need.get_need_lines(self.vida.id)
+        lines, suggestions = res["lines"], res["suggestions"]
+
+        self.assertEqual(len(suggestions), 1)
+        sug = suggestions[0]
+        self.assertEqual(sug["move_id"], move.id)
+        self.assertEqual(sug["order"], po.name)
+        self.assertEqual(
+            fields.Date.to_date(sug["suggested_date"]), d)
+        self.assertEqual(sug["days"], 10)
+        self.assertAlmostEqual(sug["cover_qty"], 100.0)
+        self.assertAlmostEqual(sug["covers"][0]["qty"], 100.0)
+        self.assertEqual(
+            fields.Date.to_date(sug["covers"][0]["need_date"]), d)
+
+        # first need keeps 300 open, second 200 -> total 500
+        self.assertAlmostEqual(lines[0]["uncovered_qty"], 300.0)
+        self.assertAlmostEqual(lines[0]["pull_covered"], 100.0)
+        self.assertAlmostEqual(lines[1]["uncovered_qty"], 200.0)
+        self.assertAlmostEqual(
+            res["group"]["total_uncovered"], 500.0)
+
+        # the covered 100 is never requested a second time
+        res2 = self.Need.create_purchase_request([self.vida.id])
+        request = self.env["purchase.request"].browse(res2["requests"][0]["id"])
+        self.assertAlmostEqual(request.line_ids.product_qty, 500.0)
+
+    def test_11b_no_suggestion_when_po_on_time(self):
+        """PO arriving before the need covers it directly — no pull
+        suggestion is emitted."""
+        d = fields.Date.today() + timedelta(days=30)
+        self._make_mo(self.vida, 400, d)
+        self._confirm_po(self.vida, 100, d - timedelta(days=5))
+
+        res = self.Need.get_need_lines(self.vida.id)
+        self.assertFalse(res["suggestions"])
+        self.assertAlmostEqual(res["lines"][0]["uncovered_qty"], 300.0)

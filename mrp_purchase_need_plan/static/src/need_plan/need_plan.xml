@@ -140,6 +140,11 @@
                                         <strong t-esc="group.need_count"/></span>
                                     <span class="me-3">En erken başlangıç:
                                         <strong t-esc="fmtDate(group.earliest_start)"/></span>
+                                    <span t-if="group.suggestion_count"
+                                          class="badge text-bg-primary">
+                                        <i class="fa fa-level-up me-1"/>Öneri:
+                                        <t t-esc="group.suggestion_count"/>
+                                    </span>
                                 </td>
                             </tr>
                             <!-- ihtiyaç detay satırları -->
@@ -164,6 +169,9 @@
                                         <td t-esc="fmtDate(line.purchase_start)"/>
                                         <td t-esc="fmtDate(line.approve_by)"/>
                                         <td>
+                                            <span t-if="line.pull_covered > 0"
+                                                  class="badge text-bg-primary me-1"
+                                                  t-esc="`+${fmtQty(line.pull_covered)} öneri`"/>
                                             <span t-if="line.already_requested"
                                                   class="badge text-bg-info">Talep edildi</span>
                                             <span t-elif="line.uncovered_qty &lt;= 0"
@@ -178,6 +186,27 @@
                                 <tr t-if="!groupLines(group).length" class="o_mnp_line">
                                     <td colspan="11" class="text-muted text-center">
                                         Yükleniyor…
+                                    </td>
+                                </tr>
+                                <!-- öne çekme önerileri -->
+                                <tr t-foreach="groupSuggestions(group)" t-as="sug"
+                                    t-key="sug.move_id" class="o_mnp_suggestion">
+                                    <td colspan="11">
+                                        <i class="fa fa-level-up me-2"/>
+                                        <strong t-esc="sug.order"/>
+                                        <span class="text-muted" t-esc="` (${sug.partner})`"/>
+                                        <span class="ms-2" t-esc="`${fmtQty(sug.order_qty)} adet`"/>
+                                        <span class="mx-1">·</span>
+                                        beklenen <strong t-esc="fmtDate(sug.current_date)"/>
+                                        <i class="fa fa-long-arrow-right mx-1"/>
+                                        önerilen <strong class="text-primary" t-esc="fmtDate(sug.suggested_date)"/>
+                                        <span class="badge text-bg-primary ms-2"
+                                              t-esc="`${sug.days} gün öne`"/>
+                                        <span class="ms-2">karşılıyor:
+                                            <strong t-esc="coversText(sug)"/></span>
+                                        <div class="o_mnp_suggestion_note text-muted">
+                                            Öneri bilgilendirme amaçlıdır; teslim tarihi tedarikçi teyidi sonrası ilgili satınalma siparişi üzerinden güncellenmelidir.
+                                        </div>
                                     </td>
                                 </tr>
                             </t>

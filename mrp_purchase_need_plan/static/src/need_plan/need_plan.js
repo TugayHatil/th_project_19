@@ -23,6 +23,7 @@ export class NeedPlan extends Component {
             groups: [],
             // product_id -> need line list, filled lazily on expand (BRD §9)
             lines: {},
+            suggestions: {},
             expanded: {},
             selected: {},
             warehouses: [],
@@ -106,6 +107,7 @@ export class NeedPlan extends Component {
             for (const pid of Object.keys(this.state.lines)) {
                 if (!alive.has(parseInt(pid, 10))) {
                     delete this.state.lines[pid];
+                    delete this.state.suggestions[pid];
                     delete this.state.expanded[pid];
                     delete this.state.selected[pid];
                 }
@@ -136,6 +138,7 @@ export class NeedPlan extends Component {
                     date_to: this.state.dateTo || false,
                 });
             this.state.lines[pid] = data.lines || [];
+            this.state.suggestions[pid] = data.suggestions || [];
             if (data.group) {
                 // keep the header in sync with the lazily computed detail
                 Object.assign(group, data.group);
@@ -262,6 +265,16 @@ export class NeedPlan extends Component {
 
     groupLines(group) {
         return this.state.lines[group.product_id] || [];
+    }
+
+    groupSuggestions(group) {
+        return this.state.suggestions[group.product_id] || [];
+    }
+
+    coversText(suggestion) {
+        return suggestion.covers
+            .map((c) => `${this.fmtDate(c.need_date)}: ${this.fmtQty(c.qty)}`)
+            .join(" · ");
     }
 
     groupClass(group) {
