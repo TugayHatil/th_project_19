@@ -87,8 +87,13 @@
     }
 
     .o_mnp_col_product {
-        width: 24%;
-        min-width: 220px;
+        width: 22%;
+        min-width: 200px;
+    }
+
+    .o_mnp_col_src {
+        width: 10%;
+        min-width: 95px;
     }
 
     .o_mnp_col_date {
@@ -159,8 +164,12 @@
         background: #f5f8fe;
     }
 
-    .o_mnp_line .o_mnp_source {
+    .o_mnp_line .o_mnp_product {
         padding-left: 26px;
+        font-size: 0.8rem;
+    }
+
+    .o_mnp_line .o_mnp_source {
         font-size: 0.8rem;
         color: #6b7280;
     }

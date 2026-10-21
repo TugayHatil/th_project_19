@@ -97,6 +97,7 @@
                         <col class="o_mnp_col_sel"/>
                         <col class="o_mnp_col_exp"/>
                         <col class="o_mnp_col_product"/>
+                        <col class="o_mnp_col_src"/>
                         <col class="o_mnp_col_date"/>
                         <col class="o_mnp_col_loc"/>
                         <col class="o_mnp_col_qty"/>
@@ -112,6 +113,7 @@
                             <th class="o_mnp_col_sel"></th>
                             <th class="o_mnp_col_exp"></th>
                             <th class="o_mnp_col_product">Ürün</th>
+                            <th>Kaynak</th>
                             <th>İhtiyaç Tarihi</th>
                             <th>Konum</th>
                             <th class="o_mnp_num">Mevcut Stok</th>
@@ -147,6 +149,7 @@
                                     <span class="text-muted ms-2 o_mnp_rowcount"
                                           t-esc="`· ${group.need_count} satır`"/>
                                 </td>
+                                <td/>
                                 <td class="o_mnp_summary"
                                     t-esc="fmtDate(group.earliest_need)"/>
                                 <td class="o_mnp_summary text-muted"
@@ -200,7 +203,12 @@
                                                    t-on-click.stop="() => {}"/>
                                         </td>
                                         <td></td>
-                                        <td class="o_mnp_source text-muted" t-esc="line.source"/>
+                                        <td class="o_mnp_product">
+                                            <span class="text-muted"
+                                                  t-esc="group.name"/>
+                                        </td>
+                                        <td class="o_mnp_source text-muted"
+                                            t-esc="line.source"/>
                                         <td t-esc="fmtDate(line.need_date)"/>
                                         <td t-esc="line.location"/>
                                         <td class="o_mnp_num" t-esc="fmtQty(line.onhand)"/>
@@ -246,7 +254,7 @@
                                     </tr>
                                 </t>
                                 <tr t-if="!groupLines(group).length" class="o_mnp_line">
-                                    <td colspan="12" class="text-muted text-center">
+                                    <td colspan="13" class="text-muted text-center">
                                         Yükleniyor…
                                     </td>
                                 </tr>
