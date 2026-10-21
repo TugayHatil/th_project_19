@@ -31,7 +31,7 @@
     }
 
     .o_mnp_col_sel {
-        width: 30px;
+        width: 34px;
     }
 
     .o_mnp_col_exp {
@@ -39,7 +39,30 @@
     }
 
     .o_mnp_col_product {
-        min-width: 240px;
+        width: 24%;
+        min-width: 220px;
+    }
+
+    .o_mnp_col_date {
+        width: 105px;
+    }
+
+    .o_mnp_col_loc {
+        width: 12%;
+        min-width: 90px;
+    }
+
+    .o_mnp_col_qty {
+        width: 9%;
+        min-width: 95px;
+    }
+
+    .o_mnp_col_status {
+        width: 140px;
+    }
+
+    .o_mnp_rowcount {
+        font-size: 0.8rem;
     }
 
     .o_mnp_num {

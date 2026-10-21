@@ -93,6 +93,19 @@
             <!-- Liste -->
             <div class="o_mnp_grid flex-grow-1 overflow-auto position-relative">
                 <table class="o_mnp_table">
+                    <colgroup>
+                        <col class="o_mnp_col_sel"/>
+                        <col class="o_mnp_col_exp"/>
+                        <col class="o_mnp_col_product"/>
+                        <col class="o_mnp_col_date"/>
+                        <col class="o_mnp_col_loc"/>
+                        <col class="o_mnp_col_qty"/>
+                        <col class="o_mnp_col_qty"/>
+                        <col class="o_mnp_col_qty"/>
+                        <col class="o_mnp_col_date"/>
+                        <col class="o_mnp_col_date"/>
+                        <col class="o_mnp_col_status"/>
+                    </colgroup>
                     <thead>
                         <tr>
                             <th class="o_mnp_col_sel"></th>
@@ -131,16 +144,25 @@
                                           t-esc="`[${group.code}] `"/>
                                     <strong t-esc="group.name"/>
                                     <span class="text-muted" t-esc="` (${group.uom})`"/>
+                                    <span class="text-muted ms-2 o_mnp_rowcount"
+                                          t-esc="`· ${group.need_count} satır`"/>
                                 </td>
-                                <td colspan="8" class="o_mnp_summary">
-                                    <span class="me-3">Mevcut stok:
-                                        <strong t-esc="fmtQty(group.onhand)"/></span>
-                                    <span class="me-3">Karşılanmamış:
-                                        <strong t-esc="`${fmtQty(group.total_uncovered)} / ${fmtQty(group.total_need)}`"/></span>
-                                    <span class="me-3">İhtiyaç satırı:
-                                        <strong t-esc="group.need_count"/></span>
-                                    <span class="me-3">En erken başlangıç:
-                                        <strong t-esc="fmtDate(group.earliest_start)"/></span>
+                                <td/>
+                                <td/>
+                                <td class="o_mnp_num o_mnp_summary">
+                                    <strong t-esc="fmtQty(group.onhand)"/>
+                                </td>
+                                <td/>
+                                <td class="o_mnp_num o_mnp_summary">
+                                    <strong t-esc="fmtQty(group.total_uncovered)"/>
+                                    <span class="text-muted"
+                                          t-esc="` / ${fmtQty(group.total_need)}`"/>
+                                </td>
+                                <td class="o_mnp_summary">
+                                    <strong t-esc="fmtDate(group.earliest_start)"/>
+                                </td>
+                                <td/>
+                                <td>
                                     <span t-if="group.suggestion_count"
                                           class="badge text-bg-primary">
                                         <i class="fa fa-level-up me-1"/>Öneri:
