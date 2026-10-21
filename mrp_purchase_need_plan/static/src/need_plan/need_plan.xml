@@ -116,12 +116,12 @@
                             <th>Kaynak</th>
                             <th>İhtiyaç Tarihi</th>
                             <th>Konum</th>
-                            <th class="o_mnp_num">Mevcut Stok</th>
-                            <th class="o_mnp_num">Öngörülen Miktar</th>
+                            <th class="o_mnp_num">Stok</th>
+                            <th class="o_mnp_num">Öngörülen</th>
                             <th class="o_mnp_num">İhtiyaç Miktarı</th>
                             <th class="o_mnp_num">Talep Miktarı</th>
-                            <th>Satınalma Başlangıcı</th>
-                            <th>Son Onay Tarihi</th>
+                            <th>Başlangıç</th>
+                            <th>Son Onay</th>
                             <th>Durum</th>
                         </tr>
                     </thead>
