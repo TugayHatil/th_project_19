@@ -463,6 +463,8 @@ class MrpPurchaseNeed(models.AbstractModel):
         domain = [
             ("state", "in", OPEN_STATES),
             ("product_uom_qty", ">", 0),
+            # only inventory-tracked goods belong to material planning
+            ("product_id.is_storable", "=", True),
             ("company_id", "in", self.env.companies.ids),
             ("location_id", "in", list(scope_ids)),
             "|",
