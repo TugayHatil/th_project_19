@@ -223,9 +223,26 @@ class TestPurchaseNeedPlan(TransactionCase):
         self.assertAlmostEqual(request.line_ids.product_qty, 150.0)
         self.assertEqual(request.line_ids.need_move_ids, m1)
 
+        # a partial request keeps the line selectable: 150 done, 250 left
+        line = [ln for ln in self._lines(self.vida)
+                if ln["move_id"] == m1.id][0]
+        self.assertAlmostEqual(line["requested_qty"], 150.0)
+        self.assertAlmostEqual(line["requestable_qty"], 250.0)
+        self.assertFalse(line["already_requested"])
+
         with self.assertRaises(UserError):
             self.Need.create_purchase_request(
                 move_quantities={str(m1.id): 0})
+
+        # the remainder can be requested in a second pass
+        res2 = self.Need.create_purchase_request(move_ids=[m1.id])
+        req2 = self.env["purchase.request"].browse(res2["requests"][0]["id"])
+        self.assertAlmostEqual(req2.line_ids.product_qty, 250.0)
+
+        line = [ln for ln in self._lines(self.vida)
+                if ln["move_id"] == m1.id][0]
+        self.assertAlmostEqual(line["requestable_qty"], 0.0)
+        self.assertTrue(line["already_requested"])
 
     def test_07_stock_change_rechecked(self):
         """New stock before requesting -> covered qty not re-requested

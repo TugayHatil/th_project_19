@@ -144,7 +144,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                 continue
             fresh = [
                 ln for ln in data["lines"]
-                if ln["uncovered_qty"] > 0 and not ln["already_requested"]
+                if ln["requestable_qty"] > 0
                 and (selected is None or ln["move_id"] in selected)
             ]
             if selected is not None and not any(
@@ -155,8 +155,8 @@ class MrpPurchaseNeed(models.AbstractModel):
                 skipped.append(product.display_name)
                 continue
             for ln in fresh:
-                # planner-entered quantity overrides the uncovered qty
-                req_qty = qty_map.get(ln["move_id"], ln["uncovered_qty"])
+                # planner-entered quantity overrides the remaining qty
+                req_qty = qty_map.get(ln["move_id"], ln["requestable_qty"])
                 key = (ln["company_id"], ln["warehouse_id"])
                 entry = grouped[key][product.id]
                 entry.setdefault("product", product)
@@ -244,7 +244,7 @@ class MrpPurchaseNeed(models.AbstractModel):
         products = need_moves.product_id
         flow_moves = self._get_flow_moves(products, scope_ids)
         onhand = self._get_onhand(products, scope_ids)
-        requested = self._get_requested_move_ids(need_moves)
+        requested = self._get_requested_quantities(need_moves)
         lead_info = self._get_lead_info(products)
         today = fields.Date.context_today(self)
 
@@ -335,11 +335,11 @@ class MrpPurchaseNeed(models.AbstractModel):
                 if remaining <= 0.0:
                     break
                 need_date = fields.Date.to_date(_need_dt(nmv))
-                if (need_date >= supply_date or nmv.id in requested
-                        or nmv.id not in detail):
+                if (need_date >= supply_date or nmv.id not in detail):
                     continue
                 open_need = (
-                    detail[nmv.id]["uncovered"] - suggest_map[nmv.id])
+                    detail[nmv.id]["uncovered"] - suggest_map[nmv.id]
+                    - requested.get(nmv.id, 0.0))
                 if open_need <= 0.0:
                     continue
                 covered = min(open_need, remaining)
@@ -390,6 +390,8 @@ class MrpPurchaseNeed(models.AbstractModel):
             approve_by = need_date - timedelta(days=delay)
             purchase_start = approve_by - timedelta(days=lead["proc"])
             info = detail.get(mv.id, {"forecast": balance, "uncovered": 0.0})
+            req_qty = requested.get(mv.id, 0.0)
+            requestable = max(0.0, info["uncovered"] - req_qty)
             lines.append({
                 "move_id": mv.id,
                 "company_id": mv.company_id.id,
@@ -406,7 +408,9 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "approve_by": fields.Date.to_string(approve_by),
                 "purchase_start": fields.Date.to_string(purchase_start),
                 "is_late": purchase_start < today,
-                "already_requested": mv.id in requested,
+                "requested_qty": req_qty,
+                "requestable_qty": requestable,
+                "already_requested": req_qty > 0.0 and requestable <= 0.0,
                 "missing_lead_config": lead["missing"],
             })
         return {
@@ -439,10 +443,11 @@ class MrpPurchaseNeed(models.AbstractModel):
             "earliest_approve": min(ln["approve_by"] for ln in lines),
             "earliest_start": min(starts),
             "has_late": any(
-                ln["is_late"] and ln["uncovered_qty"] > 0
-                and not ln["already_requested"] for ln in lines),
+                ln["is_late"] and ln["requestable_qty"] > 0
+                for ln in lines),
             "missing_lead_config": any(ln["missing_lead_config"] for ln in lines),
-            "requested_count": sum(1 for ln in lines if ln["already_requested"]),
+            "requested_count": sum(
+                1 for ln in lines if ln["requested_qty"] > 0),
             "suggestion_count": len(data.get("suggestions") or []),
         }
 
@@ -542,9 +547,13 @@ class MrpPurchaseNeed(models.AbstractModel):
         return result
 
     @api.model
-    def _get_requested_move_ids(self, need_moves):
-        """Need moves already attached to a live purchase request line —
-        the dedup guard of BRD §7.2."""
+    def _get_requested_quantities(self, need_moves):
+        """{move_id: qty already covered by a live purchase request}.
+
+        A merged request line is attributed to its need moves in
+        need-date order — earliest needs are considered served first,
+        matching the merge order — so a partially requested need line
+        keeps its remaining quantity requestable (BRD §7.2)."""
         # sudo: dedup must work even for users who cannot read purchase
         # request lines directly (BRD §10)
         lines = self.env["purchase.request.line"].sudo().search([
@@ -552,7 +561,31 @@ class MrpPurchaseNeed(models.AbstractModel):
             ("cancelled", "=", False),
             ("request_state", "in", list(ACTIVE_REQUEST_STATES)),
         ])
-        return set(lines.need_move_ids.ids)
+        need_by_id = {mv.id: mv for mv in need_moves}
+        alloc = defaultdict(float)
+        for rl in lines:
+            moves = [need_by_id[i] for i in rl.need_move_ids.ids
+                     if i in need_by_id]
+            moves.sort(key=lambda m: (m.date or fields.Datetime.now(),
+                                      m.id))
+            remaining = rl.product_uom_id._compute_quantity(
+                rl.product_qty, rl.product_id.uom_id, round=False)
+            last_id = None
+            for mv in moves:
+                if remaining <= 0.0:
+                    break
+                open_need = mv.product_uom._compute_quantity(
+                    self._move_open_qty(mv), mv.product_id.uom_id,
+                    round=False)
+                take = min(open_need, remaining)
+                alloc[mv.id] += take
+                remaining -= take
+                last_id = mv.id
+            if remaining > 0.0 and last_id is not None:
+                # planner asked for more than the raw need — attribute
+                # the surplus to the latest need so sums stay truthful
+                alloc[last_id] += remaining
+        return dict(alloc)
 
     @api.model
     def _get_lead_info(self, products):

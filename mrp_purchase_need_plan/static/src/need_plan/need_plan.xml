@@ -223,6 +223,10 @@
                                                    t-att-disabled="!isLineSelected(line)"
                                                    t-on-change="(ev) => this.onQtyChange(line, ev)"
                                                    t-on-click.stop="() => {}"/>
+                                            <div t-if="line.requested_qty > 0"
+                                                 class="o_mnp_requested_qty text-muted">
+                                                <t t-esc="fmtQty(line.requested_qty)"/> talep edildi
+                                            </div>
                                         </td>
                                         <td t-esc="fmtDate(line.purchase_start)"/>
                                         <td t-esc="fmtDate(line.approve_by)"/>
@@ -230,8 +234,10 @@
                                             <span t-if="line.pull_covered > 0"
                                                   class="badge text-bg-primary me-1"
                                                   t-esc="`+${fmtQty(line.pull_covered)} öneri`"/>
-                                            <span t-if="line.already_requested"
+                                            <span t-if="line.requested_qty > 0 and line.requestable_qty &lt;= 0"
                                                   class="badge text-bg-info">Talep edildi</span>
+                                            <span t-elif="line.requested_qty > 0"
+                                                  class="badge text-bg-secondary">Kısmi Talep</span>
                                             <span t-elif="line.uncovered_qty &lt;= 0"
                                                   class="badge text-bg-success">Karşılandı</span>
                                             <span t-elif="line.is_late"
