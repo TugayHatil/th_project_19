@@ -271,6 +271,15 @@ export class NeedPlan extends Component {
         return this.state.suggestions[group.product_id] || [];
     }
 
+    async openOrder(suggestion) {
+        await this.action.doAction({
+            type: "ir.actions.act_window",
+            res_model: "purchase.order",
+            res_id: suggestion.order_id,
+            views: [[false, "form"]],
+        });
+    }
+
     coversText(suggestion) {
         return suggestion.covers
             .map((c) => `${this.fmtDate(c.need_date)}: ${this.fmtQty(c.qty)}`)

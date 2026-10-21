@@ -193,7 +193,10 @@
                                     t-key="sug.move_id" class="o_mnp_suggestion">
                                     <td colspan="11">
                                         <i class="fa fa-level-up me-2"/>
-                                        <strong t-esc="sug.order"/>
+                                        <a href="#" class="o_mnp_order_link"
+                                           t-on-click.prevent="() => this.openOrder(sug)">
+                                            <strong t-esc="sug.order"/>
+                                        </a>
                                         <span class="text-muted" t-esc="` (${sug.partner})`"/>
                                         <span class="ms-2" t-esc="`${fmtQty(sug.order_qty)} adet`"/>
                                         <span class="mx-1">·</span>

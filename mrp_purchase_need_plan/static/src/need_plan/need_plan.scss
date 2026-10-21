@@ -111,6 +111,15 @@
         white-space: normal;
     }
 
+    .o_mnp_order_link {
+        color: #084298;
+        text-decoration: none;
+
+        &:hover {
+            text-decoration: underline;
+        }
+    }
+
     .o_mnp_suggestion_note {
         font-size: 0.78rem;
         margin-top: 2px;
