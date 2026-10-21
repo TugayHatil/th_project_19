@@ -10,7 +10,7 @@
                     <button type="button" class="btn btn-sm btn-primary"
                             t-att-disabled="!state.canCreate or !selectedCount or state.creating"
                             t-on-click="onCreateRequest">
-                        <i class="fa fa-shopping-cart me-1"/>Seçilen Ürünler İçin Satınalma Talebi Oluştur
+                        <i class="fa fa-shopping-cart me-1"/>Seçilen İhtiyaçlar İçin Satınalma Talebi Oluştur
                         <t t-if="selectedCount"> (<t t-esc="selectedCount"/>)</t>
                     </button>
                 </div>
@@ -114,9 +114,10 @@
                             <tr t-att-class="groupClass(group)">
                                 <td>
                                     <input type="checkbox" class="form-check-input"
-                                           t-att-checked="isSelected(group)"
+                                           title="Gruptaki tüm seçilebilir satırları seç/kaldır"
+                                           t-att-checked="groupChecked(group)"
                                            t-att-disabled="!state.canCreate"
-                                           t-on-change="(ev) => this.toggleSelect(group, ev)"
+                                           t-on-change="(ev) => this.toggleSelectAll(group, ev)"
                                            t-on-click.stop="() => {}"/>
                                 </td>
                                 <td>
@@ -151,7 +152,14 @@
                             <t t-if="isExpanded(group)">
                                 <t t-foreach="groupLines(group)" t-as="line" t-key="line.move_id">
                                     <tr t-att-class="lineClass(line)">
-                                        <td></td>
+                                        <td>
+                                            <input type="checkbox" class="form-check-input"
+                                                   t-if="isSelectable(line)"
+                                                   t-att-checked="isLineSelected(line)"
+                                                   t-att-disabled="!state.canCreate"
+                                                   t-on-change="(ev) => this.toggleLine(line, group, ev)"
+                                                   t-on-click.stop="() => {}"/>
+                                        </td>
                                         <td></td>
                                         <td class="o_mnp_source text-muted" t-esc="line.source"/>
                                         <td t-esc="fmtDate(line.need_date)"/>

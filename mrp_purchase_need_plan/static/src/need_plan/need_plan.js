@@ -38,6 +38,9 @@ export class NeedPlan extends Component {
             today: "",
         });
         this._searchTimer = null;
+        // move_id -> product_id, so a line selection can be pruned when
+        // its group disappears or reloads
+        this._selOwner = {};
         onMounted(async () => {
             await this.loadFilters();
             await this.loadGroups();
@@ -63,6 +66,10 @@ export class NeedPlan extends Component {
 
     get selectedCount() {
         return Object.values(this.state.selected).filter(Boolean).length;
+    }
+
+    isSelectable(line) {
+        return line.uncovered_qty > 0 && !line.already_requested;
     }
 
     get missingConfigGroups() {
@@ -109,7 +116,12 @@ export class NeedPlan extends Component {
                     delete this.state.lines[pid];
                     delete this.state.suggestions[pid];
                     delete this.state.expanded[pid];
-                    delete this.state.selected[pid];
+                }
+            }
+            for (const [moveId, ownerPid] of Object.entries(this._selOwner)) {
+                if (!alive.has(ownerPid)) {
+                    delete this.state.selected[moveId];
+                    delete this._selOwner[moveId];
                 }
             }
         } catch (error) {
@@ -119,16 +131,8 @@ export class NeedPlan extends Component {
         }
     }
 
-    async toggleGroup(group) {
+    async loadLines(group) {
         const pid = group.product_id;
-        if (this.state.expanded[pid]) {
-            this.state.expanded[pid] = false;
-            return;
-        }
-        this.state.expanded[pid] = true;
-        if (this.state.lines[pid]) {
-            return;
-        }
         try {
             const data = await this.orm.call(
                 "mrp.purchase.need", "get_need_lines", [], {
@@ -139,6 +143,14 @@ export class NeedPlan extends Component {
                 });
             this.state.lines[pid] = data.lines || [];
             this.state.suggestions[pid] = data.suggestions || [];
+            // drop selections that no longer point at a visible line
+            const ids = new Set(this.state.lines[pid].map((l) => l.move_id));
+            for (const moveId of Object.keys(this.state.selected)) {
+                if (!ids.has(parseInt(moveId, 10)) && this._selOwner[moveId] === pid) {
+                    delete this.state.selected[moveId];
+                    delete this._selOwner[moveId];
+                }
+            }
             if (data.group) {
                 // keep the header in sync with the lazily computed detail
                 Object.assign(group, data.group);
@@ -149,22 +161,69 @@ export class NeedPlan extends Component {
         }
     }
 
-    toggleSelect(group, ev) {
-        this.state.selected[group.product_id] = ev.target.checked;
+    async toggleGroup(group) {
+        const pid = group.product_id;
+        if (this.state.expanded[pid]) {
+            this.state.expanded[pid] = false;
+            return;
+        }
+        this.state.expanded[pid] = true;
+        if (!this.state.lines[pid]) {
+            await this.loadLines(group);
+        }
+    }
+
+    toggleLine(line, group, ev) {
+        const mid = line.move_id;
+        if (ev.target.checked) {
+            this.state.selected[mid] = true;
+            this._selOwner[mid] = group.product_id;
+        } else {
+            delete this.state.selected[mid];
+            delete this._selOwner[mid];
+        }
+    }
+
+    async toggleSelectAll(group, ev) {
+        const want = ev.target.checked;
+        if (want && !this.state.lines[group.product_id]) {
+            // need the rows to know which lines exist — load & expand
+            this.state.expanded[group.product_id] = true;
+            await this.loadLines(group);
+        }
+        for (const line of this.state.lines[group.product_id] || []) {
+            if (!this.isSelectable(line)) {
+                continue;
+            }
+            if (want) {
+                this.state.selected[line.move_id] = true;
+                this._selOwner[line.move_id] = group.product_id;
+            } else {
+                delete this.state.selected[line.move_id];
+                delete this._selOwner[line.move_id];
+            }
+        }
+    }
+
+    groupChecked(group) {
+        const lines = this.state.lines[group.product_id] || [];
+        const eligible = lines.filter((l) => this.isSelectable(l));
+        return eligible.length > 0
+            && eligible.every((l) => this.state.selected[l.move_id]);
     }
 
     async onCreateRequest() {
-        const productIds = this.state.groups
-            .filter((g) => this.state.selected[g.product_id])
-            .map((g) => g.product_id);
-        if (!productIds.length) {
+        const moveIds = Object.keys(this.state.selected)
+            .filter((k) => this.state.selected[k])
+            .map((k) => parseInt(k, 10));
+        if (!moveIds.length) {
             return;
         }
         this.state.creating = true;
         try {
             const res = await this.orm.call(
                 "mrp.purchase.need", "create_purchase_request", [], {
-                    product_ids: productIds,
+                    move_ids: moveIds,
                     warehouse_id: this.state.warehouseId || false,
                     date_from: this.state.dateFrom || false,
                     date_to: this.state.dateTo || false,
@@ -259,8 +318,8 @@ export class NeedPlan extends Component {
         return !!this.state.expanded[group.product_id];
     }
 
-    isSelected(group) {
-        return !!this.state.selected[group.product_id];
+    isLineSelected(line) {
+        return !!this.state.selected[line.move_id];
     }
 
     groupLines(group) {

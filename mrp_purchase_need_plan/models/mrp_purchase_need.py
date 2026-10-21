@@ -82,23 +82,35 @@ class MrpPurchaseNeed(models.AbstractModel):
         }
 
     @api.model
-    def create_purchase_request(self, product_ids, warehouse_id=False,
+    def create_purchase_request(self, product_ids=None, move_ids=None,
+                                warehouse_id=False,
                                 date_from=None, date_to=None):
-        """Merge uncovered needs of the selected products into purchase
+        """Merge uncovered needs of the selected need lines into purchase
         requests — one request per company (BRD §7.1/§7.2).
+
+        ``product_ids`` selects every uncovered need of those products;
+        ``move_ids`` selects individual need rows (line-level picking).
 
         Current stock and expected supply are re-evaluated right before
         creating the request (BRD §9 / Test 7). The advisory lock plus the
         already-requested check inside the same transaction prevents
         duplicate requests from concurrent runs (BRD §10 / Test 9).
         """
-        if not product_ids:
-            raise UserError(self.env._("En az bir ürün grubu seçin."))
+        if not product_ids and not move_ids:
+            raise UserError(self.env._("En az bir ihtiyaç satırı seçin."))
         # serialize concurrent request creation for the whole screen
         self.env.cr.execute(
             "SELECT pg_advisory_xact_lock(hashtext('mrp_purchase_need_plan'))")
 
-        products = self.env["product.product"].browse([int(p) for p in product_ids])
+        selected = None
+        if move_ids:
+            selected = {int(i) for i in move_ids}
+        if product_ids:
+            products = self.env["product.product"].browse(
+                [int(p) for p in product_ids])
+        else:
+            products = self.env["stock.move"].browse(
+                list(selected)).product_id
         plan = self._build_plan(
             warehouse_id, date_from, date_to, "", products=products)
 
@@ -112,7 +124,12 @@ class MrpPurchaseNeed(models.AbstractModel):
             fresh = [
                 ln for ln in data["lines"]
                 if ln["uncovered_qty"] > 0 and not ln["already_requested"]
+                and (selected is None or ln["move_id"] in selected)
             ]
+            if selected is not None and not any(
+                    ln["move_id"] in selected for ln in data["lines"]):
+                # none of this product's need rows was selected
+                continue
             if not fresh:
                 skipped.append(product.display_name)
                 continue

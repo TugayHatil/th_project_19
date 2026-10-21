@@ -193,6 +193,24 @@ class TestPurchaseNeedPlan(TransactionCase):
         # earliest need drives the line's required date
         self.assertEqual(vida_line.date_required, min(need_dates))
 
+    def test_06b_line_level_selection(self):
+        """move_ids selects individual need rows: only the picked line's
+        uncovered quantity flows into the request."""
+        d = fields.Date.today() + timedelta(days=30)
+        m1 = self._make_mo(self.vida, 400, d)
+        m2 = self._make_mo(self.vida, 200, d + timedelta(days=1))
+
+        res = self.Need.create_purchase_request(move_ids=[m2.id])
+        request = self.env["purchase.request"].browse(res["requests"][0]["id"])
+        self.assertEqual(len(request.line_ids), 1)
+        self.assertAlmostEqual(request.line_ids.product_qty, 200.0)
+        self.assertEqual(request.line_ids.need_move_ids, m2)
+
+        # the unselected line is still fully requestable
+        res2 = self.Need.create_purchase_request(move_ids=[m1.id])
+        req2 = self.env["purchase.request"].browse(res2["requests"][0]["id"])
+        self.assertAlmostEqual(req2.line_ids.product_qty, 400.0)
+
     def test_07_stock_change_rechecked(self):
         """New stock before requesting -> covered qty not re-requested
         (Test 7)."""
