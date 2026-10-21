@@ -58,7 +58,15 @@ class MrpPurchaseNeed(models.AbstractModel):
         group (BRD §9).
         """
         plan = self._build_plan(warehouse_id, date_from, date_to, query)
-        groups = [self._group_payload(p) for p in plan.values()]
+        groups = []
+        for p in plan.values():
+            payload = self._group_payload(p)
+            # a fully covered product has nothing to plan; hide it unless
+            # some need is already attached to a request (traceability)
+            if payload["total_uncovered"] <= 0 \
+                    and not payload["requested_count"]:
+                continue
+            groups.append(payload)
         groups.sort(key=lambda g: (g["earliest_start"], g["name"]))
         return {
             "groups": groups,
