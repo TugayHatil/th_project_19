@@ -261,12 +261,13 @@ class TestPurchaseNeedPlan(TransactionCase):
         return po, move
 
     def test_11_pull_forward_suggestion(self):
-        """Late open PO -> pull-forward suggestion, remaining uncovered
-        drops by the covered amount (BRD pull-forward acceptance test).
+        """Late open PO -> pull-forward suggestion. The suggestion is
+        informational only: until the order is actually rescheduled the
+        needs stay uncovered at their own dates.
 
         Stock 0, needs 400 @D and 200 @D+1, open PO 100 @D+10:
-        suggestion = D (10 days early), covers 100 of the first need,
-        remaining uncovered 300 + 200 = 500.
+        suggestion = D (10 days early, covers 100 of the first need),
+        but uncovered stays 400 + 200 = 600 and a request asks 600.
         """
         d = fields.Date.today() + timedelta(days=30)
         self._make_mo(self.vida, 400, d)
@@ -288,17 +289,16 @@ class TestPurchaseNeedPlan(TransactionCase):
         self.assertEqual(
             fields.Date.to_date(sug["covers"][0]["need_date"]), d)
 
-        # first need keeps 300 open, second 200 -> total 500
-        self.assertAlmostEqual(lines[0]["uncovered_qty"], 300.0)
+        # planning still follows the real Nov-8 delivery date
+        self.assertAlmostEqual(lines[0]["uncovered_qty"], 400.0)
         self.assertAlmostEqual(lines[0]["pull_covered"], 100.0)
         self.assertAlmostEqual(lines[1]["uncovered_qty"], 200.0)
         self.assertAlmostEqual(
-            res["group"]["total_uncovered"], 500.0)
+            res["group"]["total_uncovered"], 600.0)
 
-        # the covered 100 is never requested a second time
         res2 = self.Need.create_purchase_request([self.vida.id])
         request = self.env["purchase.request"].browse(res2["requests"][0]["id"])
-        self.assertAlmostEqual(request.line_ids.product_qty, 500.0)
+        self.assertAlmostEqual(request.line_ids.product_qty, 600.0)
 
     def test_11b_no_suggestion_when_po_on_time(self):
         """PO arriving before the need covers it directly — no pull

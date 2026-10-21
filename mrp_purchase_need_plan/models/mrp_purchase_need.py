@@ -269,11 +269,13 @@ class MrpPurchaseNeed(models.AbstractModel):
                 uncovered = min(qty, max(0.0, deficit - prev_deficit))
                 detail[mv.id] = {"forecast": balance, "uncovered": uncovered}
 
-        # Late supply can still serve earlier uncovered needs. For open
-        # purchase orders this yields a pull-forward suggestion — the
-        # order itself is never modified (BRD: suggestion only).
+        # Late supply that lands while a shortage exists could still serve
+        # earlier uncovered needs if it were pulled forward. For open
+        # purchase orders this yields a suggestion — purely informational:
+        # until the planner actually reschedules the order, planning keeps
+        # using its real delivery date and the need stays uncovered.
         ordered_needs = need_moves.sorted(key=lambda m: (m.date, m.id))
-        covered_map = defaultdict(float)
+        suggest_map = defaultdict(float)
         suggestions = []
         for mv, qty, absorbed in late_supplies:
             supply_date = fields.Date.to_date(mv.date)
@@ -286,11 +288,12 @@ class MrpPurchaseNeed(models.AbstractModel):
                 if (need_date >= supply_date or nmv.id in requested
                         or nmv.id not in detail):
                     continue
-                open_need = detail[nmv.id]["uncovered"] - covered_map[nmv.id]
+                open_need = (
+                    detail[nmv.id]["uncovered"] - suggest_map[nmv.id])
                 if open_need <= 0.0:
                     continue
                 covered = min(open_need, remaining)
-                covered_map[nmv.id] += covered
+                suggest_map[nmv.id] += covered
                 remaining -= covered
                 covers.append((need_date, covered))
             po_line = mv.purchase_line_id
@@ -333,9 +336,8 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "onhand": onhand,
                 "forecast": info["forecast"],
                 "need_qty": qty,
-                "uncovered_qty": max(
-                    0.0, info["uncovered"] - covered_map[mv.id]),
-                "pull_covered": covered_map[mv.id],
+                "uncovered_qty": info["uncovered"],
+                "pull_covered": suggest_map[mv.id],
                 "uom": product.uom_id.name,
                 "approve_by": fields.Date.to_string(approve_by),
                 "purchase_start": fields.Date.to_string(purchase_start),
