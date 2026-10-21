@@ -11,7 +11,7 @@
         z-index: 3;
 
         h4 {
-            font-weight: 700;
+            font-weight: 500;
             color: #111827;
             letter-spacing: -0.01em;
         }
@@ -131,7 +131,12 @@
 
     .o_mnp_product strong {
         color: #111827;
-        font-weight: 600;
+        font-weight: 500;
+    }
+
+    // kalın görünüm istenmiyor — tüm strong'ları normal ağırlığa indir
+    strong {
+        font-weight: 500;
     }
 
     .o_mnp_product .o_mnp_code {
@@ -202,7 +207,7 @@
 
     .o_mnp_neg {
         color: #dc2626;
-        font-weight: 600;
+        font-weight: 500;
     }
 
     .o_mnp_qty_input {
@@ -276,6 +281,10 @@
 // Öne çekme önerileri diyaloğu (modal, .o_mnp dışında render edilir)
 .o_mnp_sug_card {
     background: #fbfcff;
+
+    strong {
+        font-weight: 500;
+    }
 
     .o_mnp_order_link {
         color: #084298;
