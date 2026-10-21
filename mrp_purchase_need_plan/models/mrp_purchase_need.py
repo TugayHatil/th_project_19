@@ -22,7 +22,7 @@ class MrpPurchaseNeed(models.AbstractModel):
     """
 
     _name = "mrp.purchase.need"
-    _description = "Material Need & Purchase Planning"
+    _description = "Malzeme İhtiyaç ve Satınalma Planlama"
 
     # ------------------------------------------------------------------
     # public API used by the OWL screen
@@ -92,7 +92,7 @@ class MrpPurchaseNeed(models.AbstractModel):
         duplicate requests from concurrent runs (BRD §10 / Test 9).
         """
         if not product_ids:
-            raise UserError(self.env._("Select at least one product group."))
+            raise UserError(self.env._("En az bir ürün grubu seçin."))
         # serialize concurrent request creation for the whole screen
         self.env.cr.execute(
             "SELECT pg_advisory_xact_lock(hashtext('mrp_purchase_need_plan'))")
@@ -124,8 +124,8 @@ class MrpPurchaseNeed(models.AbstractModel):
 
         if not by_company:
             raise UserError(self.env._(
-                "All needs of the selected products are already covered by "
-                "stock, expected supply or an existing purchase request."
+                "Seçilen ürünlerin tüm ihtiyaçları stok, beklenen tedarik "
+                "veya mevcut bir satınalma talebi ile zaten karşılanıyor."
             ))
 
         Request = self.env["purchase.request"]
@@ -152,7 +152,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                 company_id=company_id)._default_picking_type()
             if not picking_type:
                 raise UserError(self.env._(
-                    "No incoming picking type found for company %s.",
+                    "%s şirketi için mal kabul operasyon tipi bulunamadı.",
                     self.env["res.company"].browse(company_id).name,
                 ))
             origins = set()
@@ -163,7 +163,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "picking_type_id": picking_type.id,
                 "origin": ", ".join(sorted(origins))[:256],
                 "description": self.env._(
-                    "Created from Material Need Planning."),
+                    "Malzeme İhtiyaç Planlama ekranından oluşturuldu."),
                 "line_ids": line_cmds,
             })
             created.append({"id": request.id, "name": request.name})

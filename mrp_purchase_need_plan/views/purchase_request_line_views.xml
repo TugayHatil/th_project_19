@@ -6,7 +6,7 @@
         <field name="inherit_id" ref="purchase_request.purchase_request_line_form"/>
         <field name="arch" type="xml">
             <xpath expr="//notebook/page[@name='allocations']" position="after">
-                <page name="material_needs" string="Material Needs"
+                <page name="material_needs" string="Malzeme İhtiyaçları"
                       invisible="not need_move_ids">
                     <field name="need_move_ids" nolabel="1">
                         <list create="false" edit="false" delete="false">

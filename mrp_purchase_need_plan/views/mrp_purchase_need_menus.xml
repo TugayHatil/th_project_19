@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="action_mrp_purchase_need_screen" model="ir.actions.client">
-        <field name="name">Material Need Planning</field>
+        <field name="name">Malzeme İhtiyaç Planlama</field>
         <field name="tag">mrp_purchase_need_plan.screen</field>
     </record>
 
     <!-- Manufacturing -> Planning -> Material Need Planning -->
     <menuitem id="menu_mrp_purchase_need"
-              name="Material Need Planning"
+              name="Malzeme İhtiyaç Planlama"
               parent="mrp.mrp_planning_menu_root"
               action="action_mrp_purchase_need_screen"
               groups="stock.group_stock_user"

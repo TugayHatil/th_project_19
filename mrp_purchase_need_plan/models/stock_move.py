@@ -13,7 +13,7 @@ class StockMove(models.Model):
         relation="purchase_request_line_need_move_rel",
         column1="move_id",
         column2="purchase_request_line_id",
-        string="Purchase Request Lines",
+        string="Satınalma Talebi Satırları",
         copy=False,
         readonly=True,
     )

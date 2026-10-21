@@ -6,7 +6,7 @@
         <field name="inherit_id" ref="purchase.view_product_supplier_inherit"/>
         <field name="arch" type="xml">
             <xpath expr="//page[@name='purchase']/group[@name='purchase']" position="inside">
-                <group string="Material Need Planning" name="purchase_need_plan">
+                <group string="Malzeme İhtiyaç Planlama" name="purchase_need_plan">
                     <field name="x_purchase_process_days"/>
                 </group>
             </xpath>

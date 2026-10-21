@@ -9,11 +9,11 @@ class ResConfigSettings(models.TransientModel):
     # BRD §4.2 — company-wide fallback used when the product card does
     # not define x_purchase_process_days.
     purchase_need_process_days = fields.Integer(
-        string="Default Purchase Process Days",
+        string="Varsayılan Satınalma için Gerekli Gün",
         config_parameter="mrp_purchase_need_plan.default_process_days",
-        help="Default number of days needed by the internal purchase "
-             "process. Used by the Material Need Planning screen when the "
-             "product card does not define its own value.",
+        help="Şirket içi satınalma süreci için varsayılan gün sayısı. "
+             "Ürün kartında değer tanımlanmamışsa Malzeme İhtiyaç "
+             "Planlama ekranı bu değeri kullanır.",
     )
 
     @api.constrains("purchase_need_process_days")
@@ -21,5 +21,5 @@ class ResConfigSettings(models.TransientModel):
         for rec in self:
             if rec.purchase_need_process_days and rec.purchase_need_process_days < 0:
                 raise ValidationError(
-                    self.env._("Default Purchase Process Days cannot be negative.")
+                    self.env._("Varsayılan Satınalma için Gerekli Gün negatif olamaz.")
                 )

@@ -85,7 +85,7 @@ export class NeedPlan extends Component {
             this.state.canCreate = data.can_create_request;
             this.state.today = data.today;
         } catch (error) {
-            this.notifyError(error, _t("Filters could not be loaded."));
+            this.notifyError(error, _t("Filtreler yüklenemedi."));
         }
     }
 
@@ -111,7 +111,7 @@ export class NeedPlan extends Component {
                 }
             }
         } catch (error) {
-            this.notifyError(error, _t("Planning data could not be loaded."));
+            this.notifyError(error, _t("Planlama verisi yüklenemedi."));
         } finally {
             this.state.loading = false;
         }
@@ -142,7 +142,7 @@ export class NeedPlan extends Component {
             }
         } catch (error) {
             this.state.expanded[pid] = false;
-            this.notifyError(error, _t("Need details could not be loaded."));
+            this.notifyError(error, _t("İhtiyaç detayları yüklenemedi."));
         }
     }
 
@@ -168,10 +168,10 @@ export class NeedPlan extends Component {
                 });
             const names = (res.requests || []).map((r) => r.name).join(", ");
             let msg = names
-                ? `${_t("Purchase request created:")} ${names}`
-                : _t("Purchase request created.");
+                ? `${_t("Satınalma talebi oluşturuldu:")} ${names}`
+                : _t("Satınalma talebi oluşturuldu.");
             if (res.skipped && res.skipped.length) {
-                msg += ` — ${_t("already covered:")} ${res.skipped.join(", ")}`;
+                msg += ` — ${_t("zaten karşılanıyor:")} ${res.skipped.join(", ")}`;
             }
             this.notification.add(msg, { type: "success" });
             this.state.selected = {};
@@ -192,7 +192,7 @@ export class NeedPlan extends Component {
                 });
             }
         } catch (error) {
-            this.notifyError(error, _t("The purchase request could not be created."));
+            this.notifyError(error, _t("Satınalma talebi oluşturulamadı."));
         } finally {
             this.state.creating = false;
         }

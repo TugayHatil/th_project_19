@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 {
-    "name": "Material Need & Purchase Planning",
-    "summary": "Product-grouped material need planning screen with merged purchase requests",
+    "name": "Malzeme İhtiyaç ve Satınalma Planlama",
+    "summary": "Ürün bazında gruplanmış malzeme ihtiyaç planlama ekranı ve birleşik satınalma talebi",
     "version": "19.0.1.0.0",
     "category": "Manufacturing/Manufacturing",
     "author": "Projet Solutions",

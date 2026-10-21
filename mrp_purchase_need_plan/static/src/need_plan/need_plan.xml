@@ -3,26 +3,26 @@
     <t t-name="mrp_purchase_need_plan.NeedPlan">
         <div class="o_mnp d-flex flex-column h-100 overflow-hidden">
 
-            <!-- Toolbar -->
+            <!-- Araç çubuğu -->
             <div class="o_mnp_toolbar border-bottom px-3 py-2">
                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                    <h4 class="mb-0">Material Need Planning</h4>
+                    <h4 class="mb-0">Malzeme İhtiyaç Planlama</h4>
                     <button type="button" class="btn btn-sm btn-primary"
                             t-att-disabled="!state.canCreate or !selectedCount or state.creating"
                             t-on-click="onCreateRequest">
-                        <i class="fa fa-shopping-cart me-1"/>Create Purchase Request
+                        <i class="fa fa-shopping-cart me-1"/>Seçilen Ürünler İçin Satınalma Talebi Oluştur
                         <t t-if="selectedCount"> (<t t-esc="selectedCount"/>)</t>
                     </button>
                 </div>
                 <div class="d-flex align-items-center gap-3 mt-2 flex-wrap">
                     <input type="text" class="form-control form-control-sm o_mnp_search"
-                           placeholder="Search product or code…"
+                           placeholder="Ürün adı veya kodu ara…"
                            t-on-input="onSearchInput"/>
                     <div class="d-flex align-items-center gap-2">
-                        <label class="form-label mb-0 text-nowrap">Warehouse</label>
+                        <label class="form-label mb-0 text-nowrap">Depo</label>
                         <select class="form-select form-select-sm w-auto"
                                 t-on-change="onWarehouseChange">
-                            <option value="">All</option>
+                            <option value="">Tümü</option>
                             <t t-foreach="state.warehouses" t-as="wh" t-key="wh.id">
                                 <option t-att-value="wh.id"
                                         t-att-selected="wh.id === state.warehouseId"
@@ -31,7 +31,7 @@
                         </select>
                     </div>
                     <div class="d-flex align-items-center gap-2">
-                        <label class="form-label mb-0 text-nowrap">Need date</label>
+                        <label class="form-label mb-0 text-nowrap">İhtiyaç tarihi</label>
                         <input type="date" class="form-control form-control-sm w-auto"
                                t-att-value="state.dateFrom"
                                t-on-change="onDateFromChange"/>
@@ -46,7 +46,7 @@
                                t-att-checked="state.uncoveredOnly"
                                t-on-change="onUncoveredChange"/>
                         <label for="o_mnp_uncovered" class="form-check-label text-nowrap">
-                            Uncovered only
+                            Sadece karşılanmamış
                         </label>
                     </div>
                     <div class="form-check">
@@ -55,26 +55,26 @@
                                t-att-checked="state.lateOnly"
                                t-on-change="onLateChange"/>
                         <label for="o_mnp_late" class="form-check-label text-nowrap">
-                            Late risk
+                            Gecikme riski
                         </label>
                     </div>
                     <div class="d-flex align-items-center gap-2">
-                        <label class="form-label mb-0 text-nowrap">Sort by</label>
+                        <label class="form-label mb-0 text-nowrap">Sırala</label>
                         <select class="form-select form-select-sm w-auto"
                                 t-on-change="onSortChange">
                             <option value="purchase_start"
                                     t-att-selected="state.sortBy === 'purchase_start'">
-                                Purchase start
+                                Satınalma başlangıcı
                             </option>
                             <option value="need_date"
                                     t-att-selected="state.sortBy === 'need_date'">
-                                Need date
+                                İhtiyaç tarihi
                             </option>
                         </select>
                     </div>
                     <button type="button" class="btn btn-sm btn-outline-secondary ms-auto"
                             t-on-click="loadGroups">
-                        <i class="fa fa-refresh me-1"/>Refresh
+                        <i class="fa fa-refresh me-1"/>Yenile
                     </button>
                 </div>
 
@@ -82,35 +82,35 @@
                      class="alert alert-warning d-flex align-items-center gap-2 mt-2 mb-0 py-2">
                     <i class="fa fa-exclamation-triangle"/>
                     <span>
-                        Purchase process days are not configured for
-                        <t t-esc="missingConfigGroups.length"/> product group(s)
-                        — set them on the product card or in
-                        Purchase settings; dates were computed with 0 days.
+                        <t t-esc="missingConfigGroups.length"/> ürün grubu için
+                        satınalma süresi tanımlanmamış — ürün kartından veya
+                        Satınalma ayarlarından tanımlayın; tarihler 0 gün ile
+                        hesaplandı.
                     </span>
                 </div>
             </div>
 
-            <!-- Grid -->
+            <!-- Liste -->
             <div class="o_mnp_grid flex-grow-1 overflow-auto position-relative">
                 <table class="o_mnp_table">
                     <thead>
                         <tr>
                             <th class="o_mnp_col_sel"></th>
                             <th class="o_mnp_col_exp"></th>
-                            <th class="o_mnp_col_product">Product</th>
-                            <th>Need Date</th>
-                            <th>Location</th>
-                            <th class="o_mnp_num">On Hand</th>
-                            <th class="o_mnp_num">Forecast</th>
-                            <th class="o_mnp_num">Need Qty</th>
-                            <th>Purchase Start</th>
-                            <th>Approve By</th>
-                            <th>Status</th>
+                            <th class="o_mnp_col_product">Ürün</th>
+                            <th>İhtiyaç Tarihi</th>
+                            <th>Konum</th>
+                            <th class="o_mnp_num">Mevcut Stok</th>
+                            <th class="o_mnp_num">Öngörülen Miktar</th>
+                            <th class="o_mnp_num">İhtiyaç Miktarı</th>
+                            <th>Satınalma Başlangıcı</th>
+                            <th>Son Onay Tarihi</th>
+                            <th>Durum</th>
                         </tr>
                     </thead>
                     <tbody>
                         <t t-foreach="visibleGroups" t-as="group" t-key="group.product_id">
-                            <!-- group header -->
+                            <!-- ürün grubu başlığı -->
                             <tr t-att-class="groupClass(group)">
                                 <td>
                                     <input type="checkbox" class="form-check-input"
@@ -132,17 +132,17 @@
                                     <span class="text-muted" t-esc="` (${group.uom})`"/>
                                 </td>
                                 <td colspan="8" class="o_mnp_summary">
-                                    <span class="me-3">On hand:
+                                    <span class="me-3">Mevcut stok:
                                         <strong t-esc="fmtQty(group.onhand)"/></span>
-                                    <span class="me-3">Uncovered:
+                                    <span class="me-3">Karşılanmamış:
                                         <strong t-esc="`${fmtQty(group.total_uncovered)} / ${fmtQty(group.total_need)}`"/></span>
-                                    <span class="me-3">Needs:
+                                    <span class="me-3">İhtiyaç satırı:
                                         <strong t-esc="group.need_count"/></span>
-                                    <span class="me-3">Earliest start:
+                                    <span class="me-3">En erken başlangıç:
                                         <strong t-esc="fmtDate(group.earliest_start)"/></span>
                                 </td>
                             </tr>
-                            <!-- need detail rows -->
+                            <!-- ihtiyaç detay satırları -->
                             <t t-if="isExpanded(group)">
                                 <t t-foreach="groupLines(group)" t-as="line" t-key="line.move_id">
                                     <tr t-att-class="lineClass(line)">
@@ -158,26 +158,26 @@
                                             <t t-esc="fmtQty(line.need_qty)"/>
                                             <t t-if="line.uncovered_qty > 0 and line.uncovered_qty &lt; line.need_qty">
                                                 <span class="text-muted"
-                                                      t-esc="` (${fmtQty(line.uncovered_qty)} open)`"/>
+                                                      t-esc="` (${fmtQty(line.uncovered_qty)} açık)`"/>
                                             </t>
                                         </td>
                                         <td t-esc="fmtDate(line.purchase_start)"/>
                                         <td t-esc="fmtDate(line.approve_by)"/>
                                         <td>
                                             <span t-if="line.already_requested"
-                                                  class="badge text-bg-info">Requested</span>
+                                                  class="badge text-bg-info">Talep edildi</span>
                                             <span t-elif="line.uncovered_qty &lt;= 0"
-                                                  class="badge text-bg-success">Covered</span>
+                                                  class="badge text-bg-success">Karşılandı</span>
                                             <span t-elif="line.is_late"
-                                                  class="badge text-bg-danger">Late</span>
+                                                  class="badge text-bg-danger">Gecikmiş</span>
                                             <span t-else=""
-                                                  class="badge text-bg-warning">Open</span>
+                                                  class="badge text-bg-warning">Açık</span>
                                         </td>
                                     </tr>
                                 </t>
                                 <tr t-if="!groupLines(group).length" class="o_mnp_line">
                                     <td colspan="11" class="text-muted text-center">
-                                        Loading…
+                                        Yükleniyor…
                                     </td>
                                 </tr>
                             </t>
@@ -191,7 +191,7 @@
                 </div>
                 <div t-if="!state.loading &amp;&amp; !visibleGroups.length"
                      class="o_mnp_empty text-muted text-center py-5">
-                    No material needs for the current filters.
+                    Mevcut filtrelere uygun malzeme ihtiyacı bulunamadı.
                 </div>
             </div>
         </div>

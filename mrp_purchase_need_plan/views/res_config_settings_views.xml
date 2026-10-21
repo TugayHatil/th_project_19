@@ -7,12 +7,12 @@
         <field name="arch" type="xml">
             <xpath expr="//block[@name='purchase_setting_container']" position="inside">
                 <setting id="purchase_need_process_days_setting"
-                         string="Purchase Process Days"
-                         help="Default internal purchase process duration used by the Material Need Planning screen when the product card does not define one.">
+                         string="Satınalma için Gerekli Gün"
+                         help="Ürün kartında değer tanımlanmamışsa Malzeme İhtiyaç Planlama ekranının kullandığı varsayılan iç satınalma süresi (gün).">
                     <div class="content-group">
                         <div class="mt16">
                             <label for="purchase_need_process_days"
-                                   string="Default Days"
+                                   string="Varsayılan Gün"
                                    class="col-3 col-lg-3 o_light_label"/>
                             <field name="purchase_need_process_days" class="w-25"/>
                         </div>

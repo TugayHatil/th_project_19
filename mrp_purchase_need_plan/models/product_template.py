@@ -10,10 +10,10 @@ class ProductTemplate(models.Model):
     # supplier lead time starts. Empty = fall back to the global default
     # (Settings > Purchase > Default Purchase Process Days).
     x_purchase_process_days = fields.Integer(
-        string="Purchase Process Days",
-        help="Number of days needed by the internal purchase process for "
-             "this product. When left empty, the default value configured "
-             "in Purchase settings is used.",
+        string="Satınalma için Gerekli Gün",
+        help="Bu ürün için şirket içi satınalma sürecinin gerektirdiği gün "
+             "sayısı. Boş bırakılırsa Satınalma ayarlarındaki varsayılan "
+             "değer kullanılır.",
     )
 
     @api.constrains("x_purchase_process_days")
@@ -21,5 +21,5 @@ class ProductTemplate(models.Model):
         for tmpl in self:
             if tmpl.x_purchase_process_days and tmpl.x_purchase_process_days < 0:
                 raise ValidationError(
-                    self.env._("Purchase Process Days cannot be negative.")
+                    self.env._("Satınalma için Gerekli Gün negatif olamaz.")
                 )
