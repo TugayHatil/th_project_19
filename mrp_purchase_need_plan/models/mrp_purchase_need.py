@@ -114,8 +114,10 @@ class MrpPurchaseNeed(models.AbstractModel):
         plan = self._build_plan(
             warehouse_id, date_from, date_to, "", products=products)
 
-        # gather uncovered, not-yet-requested need lines per (company, product)
-        by_company = defaultdict(lambda: defaultdict(dict))
+        # gather uncovered, not-yet-requested need lines per
+        # (company, warehouse, product) — needs with incompatible
+        # destinations must not merge into one request/line (BRD §8)
+        grouped = defaultdict(lambda: defaultdict(dict))
         skipped = []
         for product in products:
             data = plan.get(product.id)
@@ -133,14 +135,13 @@ class MrpPurchaseNeed(models.AbstractModel):
             if not fresh:
                 skipped.append(product.display_name)
                 continue
-            # never merge needs of different companies into one request
-            # (BRD §7.2)
             for ln in fresh:
-                entry = by_company[ln["company_id"]][product.id]
+                key = (ln["company_id"], ln["warehouse_id"])
+                entry = grouped[key][product.id]
                 entry.setdefault("product", product)
                 entry.setdefault("lines", []).append(ln)
 
-        if not by_company:
+        if not grouped:
             raise UserError(self.env._(
                 "Seçilen ürünlerin tüm ihtiyaçları stok, beklenen tedarik "
                 "veya mevcut bir satınalma talebi ile zaten karşılanıyor."
@@ -148,7 +149,7 @@ class MrpPurchaseNeed(models.AbstractModel):
 
         Request = self.env["purchase.request"]
         created = []
-        for company_id, product_map in by_company.items():
+        for (company_id, wh_id), product_map in grouped.items():
             line_cmds = []
             for entry in product_map.values():
                 product = entry["product"]
@@ -166,8 +167,12 @@ class MrpPurchaseNeed(models.AbstractModel):
                     "estimated_cost": qty * product.standard_price,
                     "need_move_ids": [(6, 0, move_ids)],
                 }))
-            picking_type = Request.with_context(
-                company_id=company_id)._default_picking_type()
+            if wh_id:
+                picking_type = self.env["stock.warehouse"].browse(
+                    wh_id).in_type_id
+            else:
+                picking_type = Request.with_context(
+                    company_id=company_id)._default_picking_type()
             if not picking_type:
                 raise UserError(self.env._(
                     "%s şirketi için mal kabul operasyon tipi bulunamadı.",
@@ -366,6 +371,7 @@ class MrpPurchaseNeed(models.AbstractModel):
             lines.append({
                 "move_id": mv.id,
                 "company_id": mv.company_id.id,
+                "warehouse_id": mv.warehouse_id.id,
                 "need_date": fields.Date.to_string(need_date),
                 "location": mv.location_id.display_name,
                 "source": source,

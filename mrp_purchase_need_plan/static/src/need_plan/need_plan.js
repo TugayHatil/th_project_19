@@ -341,8 +341,8 @@ export class NeedPlan extends Component {
 
     coversText(suggestion) {
         return suggestion.covers
-            .map((c) => `${this.fmtDate(c.need_date)}: ${this.fmtQty(c.qty)}`)
-            .join(" · ");
+            .map((c) => `${this.fmtQty(c.qty)} adet · ${this.fmtDate(c.need_date)}`)
+            .join(" / ");
     }
 
     groupClass(group) {

@@ -222,24 +222,31 @@
                                 <tr t-foreach="groupSuggestions(group)" t-as="sug"
                                     t-key="sug.move_id" class="o_mnp_suggestion">
                                     <td colspan="11">
-                                        <i class="fa fa-level-up me-2"/>
-                                        <a href="#" class="o_mnp_order_link"
-                                           t-on-click.prevent="() => this.openOrder(sug)">
-                                            <strong t-esc="sug.order"/>
-                                        </a>
-                                        <span class="text-muted" t-esc="` (${sug.partner})`"/>
-                                        <span class="ms-2" t-esc="`${fmtQty(sug.order_qty)} adet`"/>
-                                        <span class="mx-1">·</span>
-                                        beklenen <strong t-esc="fmtDate(sug.current_date)"/>
-                                        <i class="fa fa-long-arrow-right mx-1"/>
-                                        önerilen <strong class="text-primary" t-esc="fmtDate(sug.suggested_date)"/>
-                                        <span class="badge text-bg-primary ms-2"
-                                              t-esc="`${sug.days} gün öne`"/>
-                                        <span class="ms-2">karşılıyor:
-                                            <strong t-esc="coversText(sug)"/></span>
-                                        <div class="o_mnp_suggestion_note text-muted">
-                                            Öneri bilgilendirme amaçlıdır; teslim tarihi tedarikçi teyidi sonrası ilgili satınalma siparişi üzerinden güncellenmelidir.
+                                        <div>
+                                            <i class="fa fa-level-up me-2"/>
+                                            <a href="#" class="o_mnp_order_link"
+                                               t-on-click.prevent="() => this.openOrder(sug)">
+                                                <strong t-esc="sug.order"/>
+                                            </a>
+                                            <span class="text-muted" t-esc="` · ${sug.partner}`"/>
+                                            <span class="ms-2" t-esc="`${fmtQty(sug.order_qty)} adet`"/>
+                                            <span class="mx-1">·</span>
+                                            Beklenen: <strong t-esc="fmtDate(sug.current_date)"/>
+                                            <i class="fa fa-long-arrow-right mx-1"/>
+                                            Önerilen: <strong class="text-primary" t-esc="fmtDate(sug.suggested_date)"/>
+                                            <span class="badge text-bg-primary ms-2"
+                                                  t-esc="`${sug.days} gün öne`"/>
                                         </div>
+                                        <div class="o_mnp_suggestion_line2">
+                                            Karşılanan ihtiyaç:
+                                            <strong t-esc="coversText(sug)"/>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr t-if="groupSuggestions(group).length"
+                                    class="o_mnp_suggestion_footer">
+                                    <td colspan="11" class="text-muted">
+                                        Öne çekme önerileri bilgilendirme amaçlıdır. Teslim tarihi, tedarikçi teyidi sonrasında ilgili satınalma siparişi üzerinden güncellenmelidir.
                                     </td>
                                 </tr>
                             </t>
