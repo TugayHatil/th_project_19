@@ -102,6 +102,7 @@
                         <col class="o_mnp_col_qty"/>
                         <col class="o_mnp_col_qty"/>
                         <col class="o_mnp_col_qty"/>
+                        <col class="o_mnp_col_qty"/>
                         <col class="o_mnp_col_date"/>
                         <col class="o_mnp_col_date"/>
                         <col class="o_mnp_col_status"/>
@@ -116,6 +117,7 @@
                             <th class="o_mnp_num">Mevcut Stok</th>
                             <th class="o_mnp_num">Öngörülen Miktar</th>
                             <th class="o_mnp_num">İhtiyaç Miktarı</th>
+                            <th class="o_mnp_num">Talep Miktarı</th>
                             <th>Satınalma Başlangıcı</th>
                             <th>Son Onay Tarihi</th>
                             <th>Durum</th>
@@ -162,6 +164,12 @@
                                     <span class="text-muted"
                                           t-esc="` / ${fmtQty(group.total_need)}`"/>
                                 </td>
+                                <td class="o_mnp_num o_mnp_summary">
+                                    <t t-if="groupSelectedQty(group)">
+                                        <strong class="text-primary"
+                                                t-esc="fmtQty(groupSelectedQty(group))"/>
+                                    </t>
+                                </td>
                                 <td class="o_mnp_summary">
                                     <strong t-esc="fmtDate(group.earliest_start)"/>
                                 </td>
@@ -207,6 +215,15 @@
                                                       t-esc="` (${fmtQty(line.uncovered_qty)} açık)`"/>
                                             </t>
                                         </td>
+                                        <td class="o_mnp_num">
+                                            <input t-if="isSelectable(line)"
+                                                   type="number" min="0" step="any"
+                                                   class="form-control form-control-sm o_mnp_qty_input"
+                                                   t-att-value="requestQtyOf(line)"
+                                                   t-att-disabled="!isLineSelected(line)"
+                                                   t-on-change="(ev) => this.onQtyChange(line, ev)"
+                                                   t-on-click.stop="() => {}"/>
+                                        </td>
                                         <td t-esc="fmtDate(line.purchase_start)"/>
                                         <td t-esc="fmtDate(line.approve_by)"/>
                                         <td>
@@ -225,7 +242,7 @@
                                     </tr>
                                 </t>
                                 <tr t-if="!groupLines(group).length" class="o_mnp_line">
-                                    <td colspan="11" class="text-muted text-center">
+                                    <td colspan="12" class="text-muted text-center">
                                         Yükleniyor…
                                     </td>
                                 </tr>

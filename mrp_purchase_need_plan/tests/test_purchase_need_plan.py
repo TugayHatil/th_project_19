@@ -211,6 +211,22 @@ class TestPurchaseNeedPlan(TransactionCase):
         req2 = self.env["purchase.request"].browse(res2["requests"][0]["id"])
         self.assertAlmostEqual(req2.line_ids.product_qty, 400.0)
 
+    def test_06c_planner_edited_quantity(self):
+        """move_quantities overrides the uncovered qty of a selected
+        line and rejects non-positive values."""
+        d = fields.Date.today() + timedelta(days=30)
+        m1 = self._make_mo(self.vida, 400, d)
+
+        res = self.Need.create_purchase_request(
+            move_quantities={str(m1.id): 150.0})
+        request = self.env["purchase.request"].browse(res["requests"][0]["id"])
+        self.assertAlmostEqual(request.line_ids.product_qty, 150.0)
+        self.assertEqual(request.line_ids.need_move_ids, m1)
+
+        with self.assertRaises(UserError):
+            self.Need.create_purchase_request(
+                move_quantities={str(m1.id): 0})
+
     def test_07_stock_change_rechecked(self):
         """New stock before requesting -> covered qty not re-requested
         (Test 7)."""

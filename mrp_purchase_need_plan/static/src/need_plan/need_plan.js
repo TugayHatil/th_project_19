@@ -44,6 +44,8 @@ export class NeedPlan extends Component {
             suggestions: {},
             expanded: {},
             selected: {},
+            // move_id -> planner-edited request quantity
+            requestQty: {},
             warehouses: [],
             warehouseId: false,
             dateFrom: "",
@@ -140,6 +142,7 @@ export class NeedPlan extends Component {
                 if (!alive.has(ownerPid)) {
                     delete this.state.selected[moveId];
                     delete this._selOwner[moveId];
+                    delete this.state.requestQty[moveId];
                 }
             }
         } catch (error) {
@@ -161,12 +164,20 @@ export class NeedPlan extends Component {
                 });
             this.state.lines[pid] = data.lines || [];
             this.state.suggestions[pid] = data.suggestions || [];
+            // default the editable request qty to the uncovered qty
+            for (const line of this.state.lines[pid]) {
+                if (this.isSelectable(line)
+                        && this.state.requestQty[line.move_id] === undefined) {
+                    this.state.requestQty[line.move_id] = line.uncovered_qty;
+                }
+            }
             // drop selections that no longer point at a visible line
             const ids = new Set(this.state.lines[pid].map((l) => l.move_id));
             for (const moveId of Object.keys(this.state.selected)) {
                 if (!ids.has(parseInt(moveId, 10)) && this._selOwner[moveId] === pid) {
                     delete this.state.selected[moveId];
                     delete this._selOwner[moveId];
+                    delete this.state.requestQty[moveId];
                 }
             }
             if (data.group) {
@@ -196,9 +207,13 @@ export class NeedPlan extends Component {
         if (ev.target.checked) {
             this.state.selected[mid] = true;
             this._selOwner[mid] = group.product_id;
+            if (this.state.requestQty[mid] === undefined) {
+                this.state.requestQty[mid] = line.uncovered_qty;
+            }
         } else {
             delete this.state.selected[mid];
             delete this._selOwner[mid];
+            delete this.state.requestQty[mid];
         }
     }
 
@@ -216,9 +231,13 @@ export class NeedPlan extends Component {
             if (want) {
                 this.state.selected[line.move_id] = true;
                 this._selOwner[line.move_id] = group.product_id;
+                if (this.state.requestQty[line.move_id] === undefined) {
+                    this.state.requestQty[line.move_id] = line.uncovered_qty;
+                }
             } else {
                 delete this.state.selected[line.move_id];
                 delete this._selOwner[line.move_id];
+                delete this.state.requestQty[line.move_id];
             }
         }
     }
@@ -230,6 +249,26 @@ export class NeedPlan extends Component {
             && eligible.every((l) => this.state.selected[l.move_id]);
     }
 
+    requestQtyOf(line) {
+        const v = this.state.requestQty[line.move_id];
+        return v === undefined ? line.uncovered_qty : v;
+    }
+
+    onQtyChange(line, ev) {
+        const v = parseFloat(ev.target.value);
+        this.state.requestQty[line.move_id] = Number.isNaN(v) ? 0 : v;
+    }
+
+    groupSelectedQty(group) {
+        let total = 0;
+        for (const line of this.state.lines[group.product_id] || []) {
+            if (this.state.selected[line.move_id]) {
+                total += this.requestQtyOf(line) || 0;
+            }
+        }
+        return total;
+    }
+
     async onCreateRequest() {
         const moveIds = Object.keys(this.state.selected)
             .filter((k) => this.state.selected[k])
@@ -237,11 +276,16 @@ export class NeedPlan extends Component {
         if (!moveIds.length) {
             return;
         }
+        const moveQuantities = {};
+        for (const mid of moveIds) {
+            const q = this.state.requestQty[mid];
+            moveQuantities[mid] = q === undefined ? 0 : q;
+        }
         this.state.creating = true;
         try {
             const res = await this.orm.call(
                 "mrp.purchase.need", "create_purchase_request", [], {
-                    move_ids: moveIds,
+                    move_quantities: moveQuantities,
                     warehouse_id: this.state.warehouseId || false,
                     date_from: this.state.dateFrom || false,
                     date_to: this.state.dateTo || false,

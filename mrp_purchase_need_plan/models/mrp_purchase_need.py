@@ -91,28 +91,39 @@ class MrpPurchaseNeed(models.AbstractModel):
 
     @api.model
     def create_purchase_request(self, product_ids=None, move_ids=None,
-                                warehouse_id=False,
+                                move_quantities=None, warehouse_id=False,
                                 date_from=None, date_to=None):
         """Merge uncovered needs of the selected need lines into purchase
-        requests — one request per company (BRD §7.1/§7.2).
+        requests — one request per (company, warehouse) (BRD §7.1/§7.2).
 
         ``product_ids`` selects every uncovered need of those products;
-        ``move_ids`` selects individual need rows (line-level picking).
+        ``move_ids`` selects individual need rows (line-level picking);
+        ``move_quantities`` additionally overrides the requested quantity
+        of a selected row (planner-edited "Talep Miktarı").
 
         Current stock and expected supply are re-evaluated right before
         creating the request (BRD §9 / Test 7). The advisory lock plus the
         already-requested check inside the same transaction prevents
         duplicate requests from concurrent runs (BRD §10 / Test 9).
         """
-        if not product_ids and not move_ids:
+        if not product_ids and not move_ids and not move_quantities:
             raise UserError(self.env._("En az bir ihtiyaç satırı seçin."))
         # serialize concurrent request creation for the whole screen
         self.env.cr.execute(
             "SELECT pg_advisory_xact_lock(hashtext('mrp_purchase_need_plan'))")
 
         selected = None
+        qty_map = {}
         if move_ids:
             selected = {int(i) for i in move_ids}
+        if move_quantities:
+            qty_map = {
+                int(k): float(v) for k, v in move_quantities.items()}
+            for qty in qty_map.values():
+                if qty <= 0:
+                    raise UserError(self.env._(
+                        "Talep miktarı sıfırdan büyük olmalıdır."))
+            selected = (selected or set()) | set(qty_map)
         if product_ids:
             products = self.env["product.product"].browse(
                 [int(p) for p in product_ids])
@@ -144,10 +155,12 @@ class MrpPurchaseNeed(models.AbstractModel):
                 skipped.append(product.display_name)
                 continue
             for ln in fresh:
+                # planner-entered quantity overrides the uncovered qty
+                req_qty = qty_map.get(ln["move_id"], ln["uncovered_qty"])
                 key = (ln["company_id"], ln["warehouse_id"])
                 entry = grouped[key][product.id]
                 entry.setdefault("product", product)
-                entry.setdefault("lines", []).append(ln)
+                entry.setdefault("items", []).append((ln, req_qty))
 
         if not grouped:
             raise UserError(self.env._(
@@ -161,10 +174,10 @@ class MrpPurchaseNeed(models.AbstractModel):
             line_cmds = []
             for entry in product_map.values():
                 product = entry["product"]
-                lines = entry["lines"]
-                qty = sum(ln["uncovered_qty"] for ln in lines)
-                earliest = min(ln["need_date"] for ln in lines)
-                move_ids = [ln["move_id"] for ln in lines]
+                items = entry["items"]
+                qty = sum(q for _ln, q in items)
+                earliest = min(ln["need_date"] for ln, _q in items)
+                move_ids = [ln["move_id"] for ln, _q in items]
                 name = product.display_name
                 line_cmds.append((0, 0, {
                     "product_id": product.id,
