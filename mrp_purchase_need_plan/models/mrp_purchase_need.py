@@ -493,11 +493,21 @@ class MrpPurchaseNeed(models.AbstractModel):
                         products=None):
         """Open stock demands: manufacturing component moves and customer
         deliveries (BRD §1/§6.2)."""
+        # this screen only plans purchasable goods: products must carry a
+        # route containing a "buy" rule (manufacture/MTO handled elsewhere)
+        buy_routes = self.env["stock.route"].sudo().search(
+            [("rule_ids.action", "=", "buy")])
+        if not buy_routes:
+            buy_route = self.env.ref(
+                "purchase_stock.route_warehouse0_buy",
+                raise_if_not_found=False)
+            buy_routes = buy_route or self.env["stock.route"]
         domain = [
             ("state", "in", OPEN_STATES),
             ("product_uom_qty", ">", 0),
             # only inventory-tracked goods belong to material planning
             ("product_id.is_storable", "=", True),
+            ("product_id.route_ids", "in", buy_routes.ids),
             ("company_id", "in", self.env.companies.ids),
             ("location_id", "in", list(scope_ids)),
             "|",
