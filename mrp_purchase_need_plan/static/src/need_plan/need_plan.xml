@@ -184,10 +184,6 @@
                                         <i class="fa fa-level-up me-1"/>Öneri
                                         (<t t-esc="group.suggestion_count"/>)
                                     </button>
-                                    <span t-if="group.has_late"
-                                          class="badge text-bg-danger ms-1">
-                                        Gecikme
-                                    </span>
                                 </td>
                             </tr>
                             <!-- ihtiyaç detay satırları -->
