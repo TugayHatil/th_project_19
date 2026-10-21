@@ -142,8 +142,6 @@
                                     </button>
                                 </td>
                                 <td class="o_mnp_product">
-                                    <span class="o_mnp_code" t-if="group.code"
-                                          t-esc="`[${group.code}] `"/>
                                     <strong t-esc="group.name"/>
                                     <span class="text-muted" t-esc="` (${group.uom})`"/>
                                     <span class="text-muted ms-2 o_mnp_rowcount"
