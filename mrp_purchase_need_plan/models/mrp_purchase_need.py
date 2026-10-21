@@ -399,6 +399,7 @@ class MrpPurchaseNeed(models.AbstractModel):
             "product": product,
             "moves": need_moves,
             "onhand": onhand,
+            "end_balance": balance,
             "lines": lines,
             "suggestions": suggestions,
         }
@@ -407,16 +408,21 @@ class MrpPurchaseNeed(models.AbstractModel):
         product = data["product"]
         lines = data["lines"]
         starts = [ln["purchase_start"] for ln in lines]
+        locs = list(dict.fromkeys(ln["location"] for ln in lines))
         return {
             "product_id": product.id,
             "name": product.display_name,
             "code": product.default_code or "",
             "uom": product.uom_id.name,
             "onhand": data["onhand"],
+            "end_forecast": data["end_balance"],
+            "location": locs[0] if len(locs) == 1 else self.env._(
+                "%s konum") % len(locs),
             "total_need": sum(ln["need_qty"] for ln in lines),
             "total_uncovered": sum(ln["uncovered_qty"] for ln in lines),
             "need_count": len(lines),
             "earliest_need": min(ln["need_date"] for ln in lines),
+            "earliest_approve": min(ln["approve_by"] for ln in lines),
             "earliest_start": min(starts),
             "has_late": any(
                 ln["is_late"] and ln["uncovered_qty"] > 0

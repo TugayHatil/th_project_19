@@ -147,12 +147,16 @@
                                     <span class="text-muted ms-2 o_mnp_rowcount"
                                           t-esc="`· ${group.need_count} satır`"/>
                                 </td>
-                                <td/>
-                                <td/>
+                                <td class="o_mnp_summary"
+                                    t-esc="fmtDate(group.earliest_need)"/>
+                                <td class="o_mnp_summary text-muted"
+                                    t-esc="group.location"/>
                                 <td class="o_mnp_num o_mnp_summary">
                                     <strong t-esc="fmtQty(group.onhand)"/>
                                 </td>
-                                <td/>
+                                <td t-att-class="'o_mnp_num o_mnp_summary' + (group.end_forecast &lt; 0 ? ' o_mnp_neg' : '')">
+                                    <strong t-esc="fmtQty(group.end_forecast)"/>
+                                </td>
                                 <td class="o_mnp_num o_mnp_summary">
                                     <strong t-esc="fmtQty(group.total_uncovered)"/>
                                     <span class="text-muted"
@@ -161,7 +165,8 @@
                                 <td class="o_mnp_summary">
                                     <strong t-esc="fmtDate(group.earliest_start)"/>
                                 </td>
-                                <td/>
+                                <td class="o_mnp_summary"
+                                    t-esc="fmtDate(group.earliest_approve)"/>
                                 <td>
                                     <button t-if="group.suggestion_count"
                                             type="button"
@@ -170,6 +175,10 @@
                                         <i class="fa fa-level-up me-1"/>Öneri
                                         (<t t-esc="group.suggestion_count"/>)
                                     </button>
+                                    <span t-if="group.has_late"
+                                          class="badge text-bg-danger ms-1">
+                                        Gecikme
+                                    </span>
                                 </td>
                             </tr>
                             <!-- ihtiyaç detay satırları -->
