@@ -3,7 +3,6 @@
 import { Component, onMounted, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { _t } from "@web/core/l10n/translation";
-import { session } from "@web/session";
 import { useService } from "@web/core/utils/hooks";
 import { formatFloat } from "@web/core/utils/numbers";
 import { Dialog } from "@web/core/dialog/dialog";
@@ -328,9 +327,10 @@ export class NeedPlan extends Component {
         if (!value) {
             return "";
         }
-        const lang = (session.user_context?.lang || "en_US").replace("_", "-");
-        return new Intl.DateTimeFormat(lang, { dateStyle: "short" })
-            .format(new Date(value));
+        // fixed dd.mm.yyyy, parsed from the ISO string so timezone
+        // offsets never shift the displayed day
+        const [y, m, d] = String(value).slice(0, 10).split("-");
+        return `${d}.${m}.${y}`;
     }
 
     isExpanded(group) {
