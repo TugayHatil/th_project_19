@@ -6,8 +6,26 @@ import { _t } from "@web/core/l10n/translation";
 import { session } from "@web/session";
 import { useService } from "@web/core/utils/hooks";
 import { formatFloat } from "@web/core/utils/numbers";
+import { Dialog } from "@web/core/dialog/dialog";
 
 const SEARCH_DELAY = 350;
+
+export class SuggestionsDialog extends Component {
+    static template = "mrp_purchase_need_plan.SuggestionsDialog";
+    static components = { Dialog };
+    static props = {
+        suggestions: Array,
+        openOrder: Function,
+        fmtDate: Function,
+        fmtQty: Function,
+        close: Function,
+    };
+
+    onOrderClick(sug) {
+        this.props.close();
+        this.props.openOrder(sug);
+    }
+}
 
 export class NeedPlan extends Component {
     static template = "mrp_purchase_need_plan.NeedPlan";
@@ -17,6 +35,7 @@ export class NeedPlan extends Component {
         this.orm = useService("orm");
         this.action = useService("action");
         this.notification = useService("notification");
+        this.dialog = useService("dialog");
         this.state = useState({
             loading: false,
             creating: false,
@@ -330,6 +349,15 @@ export class NeedPlan extends Component {
         return this.state.suggestions[group.product_id] || [];
     }
 
+    openSuggestions(group) {
+        this.dialog.add(SuggestionsDialog, {
+            suggestions: this.groupSuggestions(group),
+            openOrder: (sug) => this.openOrder(sug),
+            fmtDate: (d) => this.fmtDate(d),
+            fmtQty: (q) => this.fmtQty(q),
+        });
+    }
+
     async openOrder(suggestion) {
         await this.action.doAction({
             type: "ir.actions.act_window",
@@ -337,12 +365,6 @@ export class NeedPlan extends Component {
             res_id: suggestion.order_id,
             views: [[false, "form"]],
         });
-    }
-
-    coversText(suggestion) {
-        return suggestion.covers
-            .map((c) => `${this.fmtQty(c.qty)} adet · ${this.fmtDate(c.need_date)}`)
-            .join(" / ");
     }
 
     groupClass(group) {

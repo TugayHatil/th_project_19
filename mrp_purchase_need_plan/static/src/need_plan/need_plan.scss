@@ -125,13 +125,11 @@
         font-weight: 600;
     }
 
-    .o_mnp_suggestion td {
-        background: #eef4ff;
-        border-left: 3px solid #0d6efd;
-        color: #084298;
-        font-size: 0.85rem;
-        padding: 8px 10px;
-        white-space: normal;
+    .o_mnp_sug_btn {
+        --bs-btn-padding-y: 0.1rem;
+        --bs-btn-padding-x: 0.5rem;
+        --bs-btn-font-size: 0.8rem;
+        white-space: nowrap;
     }
 
     .o_mnp_order_link {
@@ -143,23 +141,36 @@
         }
     }
 
-    .o_mnp_suggestion_line2 {
-        margin-top: 2px;
-        padding-left: 22px;
-    }
-
-    .o_mnp_suggestion_footer td {
-        background: #eef4ff;
-        border-left: 3px solid #0d6efd;
-        font-size: 0.78rem;
-        padding: 4px 10px 8px;
-        white-space: normal;
-    }
-
     .o_mnp_overlay {
         position: absolute;
         inset: 0;
         background: rgba(255, 255, 255, 0.6);
         z-index: 2;
     }
+}
+
+// Öne çekme önerileri diyaloğu (modal, .o_mnp dışında render edilir)
+.o_mnp_sug_card {
+    background: #fbfcff;
+
+    .o_mnp_order_link {
+        color: #084298;
+        text-decoration: none;
+
+        &:hover {
+            text-decoration: underline;
+        }
+    }
+}
+
+.o_mnp_sug_label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6c757d;
+}
+
+.o_mnp_sug_table {
+    width: auto;
+    font-size: 0.85rem;
 }

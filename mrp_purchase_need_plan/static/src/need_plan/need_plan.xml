@@ -163,11 +163,13 @@
                                 </td>
                                 <td/>
                                 <td>
-                                    <span t-if="group.suggestion_count"
-                                          class="badge text-bg-primary">
-                                        <i class="fa fa-level-up me-1"/>Öneri:
-                                        <t t-esc="group.suggestion_count"/>
-                                    </span>
+                                    <button t-if="group.suggestion_count"
+                                            type="button"
+                                            class="btn btn-sm btn-outline-primary o_mnp_sug_btn"
+                                            t-on-click.stop="() => this.openSuggestions(group)">
+                                        <i class="fa fa-level-up me-1"/>Öneri
+                                        (<t t-esc="group.suggestion_count"/>)
+                                    </button>
                                 </td>
                             </tr>
                             <!-- ihtiyaç detay satırları -->
@@ -218,37 +220,8 @@
                                         Yükleniyor…
                                     </td>
                                 </tr>
-                                <!-- öne çekme önerileri -->
-                                <tr t-foreach="groupSuggestions(group)" t-as="sug"
-                                    t-key="sug.move_id" class="o_mnp_suggestion">
-                                    <td colspan="11">
-                                        <div>
-                                            <i class="fa fa-level-up me-2"/>
-                                            <a href="#" class="o_mnp_order_link"
-                                               t-on-click.prevent="() => this.openOrder(sug)">
-                                                <strong t-esc="sug.order"/>
-                                            </a>
-                                            <span class="text-muted" t-esc="` · ${sug.partner}`"/>
-                                            <span class="ms-2" t-esc="`${fmtQty(sug.order_qty)} adet`"/>
-                                            <span class="mx-1">·</span>
-                                            Beklenen: <strong t-esc="fmtDate(sug.current_date)"/>
-                                            <i class="fa fa-long-arrow-right mx-1"/>
-                                            Önerilen: <strong class="text-primary" t-esc="fmtDate(sug.suggested_date)"/>
-                                            <span class="badge text-bg-primary ms-2"
-                                                  t-esc="`${sug.days} gün öne`"/>
-                                        </div>
-                                        <div class="o_mnp_suggestion_line2">
-                                            Karşılanan ihtiyaç:
-                                            <strong t-esc="coversText(sug)"/>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr t-if="groupSuggestions(group).length"
-                                    class="o_mnp_suggestion_footer">
-                                    <td colspan="11" class="text-muted">
-                                        Öne çekme önerileri bilgilendirme amaçlıdır. Teslim tarihi, tedarikçi teyidi sonrasında ilgili satınalma siparişi üzerinden güncellenmelidir.
-                                    </td>
-                                </tr>
+                                <!-- öne çekme önerileri artık "Öneri" butonu
+                                     ile açılan diyalogda gösteriliyor (§7.3) -->
                             </t>
                         </t>
                     </tbody>
@@ -264,5 +237,65 @@
                 </div>
             </div>
         </div>
+    </t>
+
+    <t t-name="mrp_purchase_need_plan.SuggestionsDialog">
+        <Dialog title="'Öne Çekme Önerileri'" size="lg">
+            <div class="o_mnp_sug_list">
+                <div t-foreach="props.suggestions" t-as="sug" t-key="sug.move_id"
+                     class="o_mnp_sug_card border rounded p-3 mb-3">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div class="fs-6">
+                            <a href="#" class="o_mnp_order_link fw-bold"
+                               t-on-click.prevent="() => this.onOrderClick(sug)">
+                                <t t-esc="sug.order"/>
+                            </a>
+                            <span class="text-muted" t-esc="` · ${sug.partner}`"/>
+                        </div>
+                        <span class="badge text-bg-primary"
+                              t-esc="`${sug.days} gün öne`"/>
+                    </div>
+                    <div class="d-flex gap-4 mt-2 flex-wrap">
+                        <div>
+                            <div class="o_mnp_sug_label">Sipariş Miktarı</div>
+                            <strong t-esc="`${props.fmtQty(sug.order_qty)} adet`"/>
+                        </div>
+                        <div>
+                            <div class="o_mnp_sug_label">Beklenen Teslim</div>
+                            <strong t-esc="props.fmtDate(sug.current_date)"/>
+                        </div>
+                        <div>
+                            <div class="o_mnp_sug_label">Önerilen Teslim</div>
+                            <strong class="text-primary"
+                                    t-esc="props.fmtDate(sug.suggested_date)"/>
+                        </div>
+                    </div>
+                    <table class="table table-sm o_mnp_sug_table mt-3 mb-0">
+                        <thead>
+                            <tr>
+                                <th>Karşılanan İhtiyaç Tarihi</th>
+                                <th class="text-end">Miktar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="sug.covers" t-as="cov"
+                                t-key="cov.need_date">
+                                <td t-esc="props.fmtDate(cov.need_date)"/>
+                                <td class="text-end"
+                                    t-esc="`${props.fmtQty(cov.qty)} adet`"/>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="alert alert-info d-flex align-items-center gap-2 mb-0 py-2 small">
+                <i class="fa fa-info-circle"/>
+                <span>
+                    Öne çekme önerileri bilgilendirme amaçlıdır. Teslim tarihi,
+                    tedarikçi teyidi sonrasında ilgili satınalma siparişi
+                    üzerinden güncellenmelidir.
+                </span>
+            </div>
+        </Dialog>
     </t>
 </templates>
