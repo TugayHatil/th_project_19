@@ -1,0 +1,111 @@
+.o_mnp {
+    background: var(--o-webclient-background-color, #fff);
+
+    .o_mnp_search {
+        width: 240px;
+    }
+
+    .o_mnp_table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+
+        thead th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            background: var(--o-list-header-background-color, #f7f7f7);
+            border-bottom: 1px solid #dee2e6;
+            padding: 8px 10px;
+            text-align: left;
+            white-space: nowrap;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 6px 10px;
+            border-bottom: 1px solid #f0f0f0;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+    }
+
+    .o_mnp_col_sel {
+        width: 30px;
+    }
+
+    .o_mnp_col_exp {
+        width: 30px;
+    }
+
+    .o_mnp_col_product {
+        min-width: 240px;
+    }
+
+    .o_mnp_num {
+        text-align: right;
+    }
+
+    .o_mnp_group {
+        background: #fafbfc;
+        border-top: 1px solid #e3e6ea;
+
+        &.o_mnp_late {
+            background: #fff5f5;
+        }
+    }
+
+    .o_mnp_product .o_mnp_code {
+        color: #6c757d;
+    }
+
+    .o_mnp_summary {
+        color: #495057;
+        font-size: 0.85rem;
+    }
+
+    .o_mnp_expander {
+        border: 0;
+        background: transparent;
+        color: #6c757d;
+        padding: 0 4px;
+        cursor: pointer;
+    }
+
+    .o_mnp_line {
+        td {
+            background: #fff;
+        }
+
+        &.o_mnp_late td {
+            background: #fffafb;
+        }
+
+        &.o_mnp_requested td {
+            color: #6c757d;
+            background: #fdfdfd;
+        }
+
+        &.o_mnp_covered td {
+            color: #6c757d;
+            background: #fcfffc;
+        }
+    }
+
+    .o_mnp_source {
+        color: #6c757d;
+        font-size: 0.85rem;
+    }
+
+    .o_mnp_neg {
+        color: #dc3545;
+        font-weight: 600;
+    }
+
+    .o_mnp_overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(255, 255, 255, 0.6);
+        z-index: 2;
+    }
+}

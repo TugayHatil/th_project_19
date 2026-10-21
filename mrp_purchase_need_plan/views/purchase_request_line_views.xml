@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="purchase_request_line_form_need" model="ir.ui.view">
+        <field name="name">purchase.request.line.form.need</field>
+        <field name="model">purchase.request.line</field>
+        <field name="inherit_id" ref="purchase_request.purchase_request_line_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook/page[@name='allocations']" position="after">
+                <page name="material_needs" string="Material Needs"
+                      invisible="not need_move_ids">
+                    <field name="need_move_ids" nolabel="1">
+                        <list create="false" edit="false" delete="false">
+                            <field name="date" widget="date"/>
+                            <field name="raw_material_production_id"/>
+                            <field name="location_id"/>
+                            <field name="product_uom_qty"/>
+                            <field name="quantity"/>
+                            <field name="product_uom" column_invisible="1"/>
+                            <field name="state" widget="badge"
+                                   decoration-info="state == 'confirmed'"
+                                   decoration-warning="state == 'partially_available'"
+                                   decoration-success="state in ('assigned','done')"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
