@@ -201,7 +201,8 @@ class MrpPurchaseNeed(models.AbstractModel):
                 ))
             origins = set()
             for entry in product_map.values():
-                origins.update(ln["source"] for ln in entry["lines"] if ln["source"])
+                origins.update(
+                    ln["source"] for ln, _q in entry["items"] if ln["source"])
             request = Request.create({
                 "company_id": company_id,
                 "picking_type_id": picking_type.id,
