@@ -291,7 +291,13 @@ class MrpPurchaseNeed(models.AbstractModel):
         # purchase orders this yields a suggestion — purely informational:
         # until the planner actually reschedules the order, planning keeps
         # using its real delivery date and the need stays uncovered.
-        ordered_needs = need_moves.sorted(key=lambda m: (m.date, m.id))
+        def _need_dt(mv):
+            # components: scheduled consumption; deliveries: promised date
+            if mv.raw_material_production_id:
+                return mv.date
+            return mv.date_deadline or mv.date
+
+        ordered_needs = need_moves.sorted(key=lambda m: (_need_dt(m), m.id))
         suggest_map = defaultdict(float)
         suggestions = []
         for mv, qty, absorbed in late_supplies:
@@ -301,7 +307,7 @@ class MrpPurchaseNeed(models.AbstractModel):
             for nmv in ordered_needs:
                 if remaining <= 0.0:
                     break
-                need_date = fields.Date.to_date(nmv.date)
+                need_date = fields.Date.to_date(_need_dt(nmv))
                 if (need_date >= supply_date or nmv.id in requested
                         or nmv.id not in detail):
                     continue
@@ -337,7 +343,20 @@ class MrpPurchaseNeed(models.AbstractModel):
         for mv in ordered_needs:
             qty = mv.product_uom._compute_quantity(
                 self._move_open_qty(mv), product.uom_id, round=False)
-            need_date = fields.Date.to_date(mv.date)
+            # MO components are needed when production is scheduled to
+            # consume them (move.date); customer deliveries are needed by
+            # the promised ship date (date_deadline, falling back to the
+            # scheduled date)
+            need_dt = _need_dt(mv)
+            if mv.raw_material_production_id:
+                source = mv.raw_material_production_id.name
+            else:
+                if "sale_line_id" in mv._fields and mv.sale_line_id:
+                    source = mv.sale_line_id.order_id.name
+                else:
+                    source = mv.origin or (
+                        mv.picking_id.name if mv.picking_id else "")
+            need_date = fields.Date.to_date(need_dt)
             seller = product._select_seller(
                 quantity=qty, date=need_date, uom_id=product.uom_id)
             delay = seller.delay if seller else 0
@@ -349,7 +368,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "company_id": mv.company_id.id,
                 "need_date": fields.Date.to_string(need_date),
                 "location": mv.location_id.display_name,
-                "source": mv.raw_material_production_id.name or mv.origin or "",
+                "source": source,
                 "onhand": onhand,
                 "forecast": info["forecast"],
                 "need_qty": qty,
@@ -433,13 +452,16 @@ class MrpPurchaseNeed(models.AbstractModel):
     @api.model
     def _get_need_moves(self, scope_ids, date_from, date_to, query,
                         products=None):
-        """Open manufacturing component demands (BRD §1/§6.2)."""
+        """Open stock demands: manufacturing component moves and customer
+        deliveries (BRD §1/§6.2)."""
         domain = [
-            ("raw_material_production_id", "!=", False),
             ("state", "in", OPEN_STATES),
             ("product_uom_qty", ">", 0),
             ("company_id", "in", self.env.companies.ids),
             ("location_id", "in", list(scope_ids)),
+            "|",
+            ("raw_material_production_id", "!=", False),
+            ("location_dest_id.usage", "=", "customer"),
         ]
         if products:
             domain.append(("product_id", "in", products.ids))

@@ -318,6 +318,39 @@ class TestPurchaseNeedPlan(TransactionCase):
         request = self.env["purchase.request"].browse(res2["requests"][0]["id"])
         self.assertAlmostEqual(request.line_ids.product_qty, 600.0)
 
+    def test_12_customer_delivery_as_need(self):
+        """A confirmed outgoing picking shows up as its own need row,
+        dated by the delivery deadline, with the risk flag set when the
+        computed purchase start is already in the past."""
+        d = fields.Date.today() + timedelta(days=5)
+        wh = self.env["stock.warehouse"].search(
+            [("company_id", "=", self.env.company.id)], limit=1)
+        customer_loc = self.env.ref("stock.stock_location_customers")
+        picking = self.env["stock.picking"].create({
+            "picking_type_id": wh.out_type_id.id,
+            "location_id": wh.lot_stock_id.id,
+            "location_dest_id": customer_loc.id,
+        })
+        move = self.env["stock.move"].create({
+            "product_id": self.vida.id,
+            "product_uom_qty": 30,
+            "product_uom": self.vida.uom_id.id,
+            "picking_id": picking.id,
+            "location_id": wh.lot_stock_id.id,
+            "location_dest_id": customer_loc.id,
+        })
+        picking.action_confirm()
+        move.date_deadline = fields.Datetime.to_datetime(d)
+
+        lines = self._lines(self.vida)
+        self.assertEqual(len(lines), 1)
+        line = lines[0]
+        self.assertEqual(fields.Date.to_date(line["need_date"]), d)
+        self.assertAlmostEqual(line["need_qty"], 30.0)
+        self.assertAlmostEqual(line["uncovered_qty"], 30.0)
+        # lead 5 + proc 2 -> purchase start is already past -> late risk
+        self.assertTrue(line["is_late"])
+
     def test_11b_no_suggestion_when_po_on_time(self):
         """PO arriving before the need covers it directly — no pull
         suggestion is emitted."""
