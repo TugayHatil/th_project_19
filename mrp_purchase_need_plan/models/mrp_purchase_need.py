@@ -402,6 +402,7 @@ class MrpPurchaseNeed(models.AbstractModel):
             if order and order.state == "purchase" and covers:
                 suggested = min(c[0] for c in covers)
                 suggestions.append({
+                    "kind": "pull",
                     "move_id": mv.id,
                     "order_id": order.id,
                     "order": order.name,
@@ -416,6 +417,24 @@ class MrpPurchaseNeed(models.AbstractModel):
                         for d, q in sorted(covers)
                     ],
                 })
+
+        # Supply left in the pool after every need consumed its share is
+        # no longer needed at all — a PO receipt standing there suggests
+        # cancelling (nothing consumed) or reducing it (only part left).
+        for chunk in pool:
+            if chunk["kind"] != "po" or chunk["qty"] <= 0.0:
+                continue
+            suggestions.append({
+                "kind": "cancel"
+                    if chunk["qty"] >= chunk["orig_qty"] else "reduce",
+                "move_id": chunk["move_id"],
+                "order_id": chunk["order_id"],
+                "order": chunk["name"],
+                "partner": chunk["partner"],
+                "order_qty": chunk["orig_qty"],
+                "surplus_qty": chunk["qty"],
+                "current_date": chunk["date"],
+            })
 
         lines = []
         for mv in ordered_needs:
@@ -577,6 +596,8 @@ class MrpPurchaseNeed(models.AbstractModel):
             "partner": partner,
             "date": fields.Date.to_string(self._local_date(move.date)),
             "order_id": order_id,
+            "move_id": move.id,
+            "orig_qty": qty,
             "qty": qty,
             "uom": move.product_id.uom_id.name,
         }

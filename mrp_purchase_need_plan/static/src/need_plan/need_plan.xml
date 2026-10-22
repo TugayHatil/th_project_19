@@ -357,9 +357,9 @@
     </t>
 
     <t t-name="mrp_purchase_need_plan.SuggestionsDialog">
-        <Dialog title="'Öne Çekme Önerileri'" size="lg">
+        <Dialog title="'Öneriler'" size="lg">
             <div class="o_mnp_sug_list">
-                <div t-foreach="props.suggestions" t-as="sug" t-key="sug.move_id"
+                <div t-foreach="props.suggestions" t-as="sug" t-key="sug_index"
                      class="o_mnp_sug_card border rounded p-3 mb-3">
                     <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
                         <div class="fs-6">
@@ -369,8 +369,17 @@
                             </a>
                             <span class="text-muted" t-esc="` · ${sug.partner}`"/>
                         </div>
-                        <span class="badge text-bg-primary"
-                              t-esc="`${sug.days} gün öne`"/>
+                        <div class="text-end">
+                            <span t-if="sug.kind === 'pull'"
+                                  class="badge text-bg-primary">İşlemi Öne Al</span>
+                            <span t-elif="sug.kind === 'cancel'"
+                                  class="badge text-bg-danger">İşlemi İptal Et</span>
+                            <span t-else=""
+                                  class="badge text-bg-warning">Miktarı Azalt</span>
+                            <div t-if="sug.kind === 'pull'"
+                                 class="text-muted small mt-1"
+                                 t-esc="`${sug.days} gün öne`"/>
+                        </div>
                     </div>
                     <div class="d-flex gap-4 mt-2 flex-wrap">
                         <div>
@@ -381,13 +390,19 @@
                             <div class="o_mnp_sug_label">Beklenen Teslim</div>
                             <strong t-esc="props.fmtDate(sug.current_date)"/>
                         </div>
-                        <div>
+                        <div t-if="sug.kind === 'pull'">
                             <div class="o_mnp_sug_label">Önerilen Teslim</div>
                             <strong class="text-primary"
                                     t-esc="props.fmtDate(sug.suggested_date)"/>
                         </div>
+                        <div t-if="sug.kind === 'reduce'">
+                            <div class="o_mnp_sug_label">Kullanılmayan Miktar</div>
+                            <strong class="text-warning"
+                                    t-esc="`${props.fmtQty(sug.surplus_qty)} adet`"/>
+                        </div>
                     </div>
-                    <table class="table table-sm o_mnp_sug_table mt-3 mb-0">
+                    <table t-if="sug.kind === 'pull'"
+                           class="table table-sm o_mnp_sug_table mt-3 mb-0">
                         <thead>
                             <tr>
                                 <th>Karşılanan İhtiyaç Tarihi</th>
@@ -408,9 +423,8 @@
             <div class="alert alert-info d-flex align-items-center gap-2 mb-0 py-2 small">
                 <i class="fa fa-info-circle"/>
                 <span>
-                    Öne çekme önerileri bilgilendirme amaçlıdır. Teslim tarihi,
-                    tedarikçi teyidi sonrasında ilgili satınalma siparişi
-                    üzerinden güncellenmelidir.
+                    Öneriler bilgilendirme amaçlıdır; ilgili satınalma
+                    belgesi üzerinden işlem yapılmalıdır.
                 </span>
             </div>
         </Dialog>
