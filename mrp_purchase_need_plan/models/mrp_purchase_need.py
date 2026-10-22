@@ -416,6 +416,10 @@ class MrpPurchaseNeed(models.AbstractModel):
                 action = self.env._("Miktarı azalt")
             elif suggest_map[mv.id] > 0.0:
                 action = self.env._("İşlemi öne al")
+            elif 0.0 < req_qty < info["uncovered"]:
+                # part of the need already has a request; the remainder
+                # can be added to it
+                action = self.env._("Miktarı arttır")
             if action == self.env._("İşlemi öne al"):
                 # a pull-forward always points at a confirmed PO
                 action_doc = self.env._("Onaylı Sipariş")

@@ -279,10 +279,6 @@
                                                    t-att-disabled="!isLineSelected(line)"
                                                    t-on-change="(ev) => this.onQtyChange(line, ev)"
                                                    t-on-click.stop="() => {}"/>
-                                            <div t-if="line.requested_qty > 0"
-                                                 class="o_mnp_requested_qty text-muted">
-                                                <t t-esc="fmtQty(line.requested_qty)"/> talep edildi
-                                            </div>
                                         </td>
                                         <td class="text-muted" t-esc="line.uom"/>
                                         <td t-esc="fmtDate(line.purchase_start)"/>
@@ -293,6 +289,9 @@
                                                   t-esc="line.action"/>
                                             <span t-elif="line.action === 'İşlemi öne al'"
                                                   class="badge text-bg-info"
+                                                  t-esc="line.action"/>
+                                            <span t-elif="line.action === 'Miktarı arttır'"
+                                                  class="badge text-bg-secondary"
                                                   t-esc="line.action"/>
                                             <span t-elif="line.action"
                                                   class="badge text-bg-warning"
