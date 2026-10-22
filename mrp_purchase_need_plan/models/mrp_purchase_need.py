@@ -1,15 +1,39 @@
 # -*- coding: utf-8 -*-
+import threading
 from collections import defaultdict, deque
 from datetime import timedelta
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
+from pytz import timezone, utc
+
 # Moves in these states are pending supply/demand, matching the set Odoo's
 # own forecast uses (BRD §6.2).
 OPEN_STATES = ("confirmed", "assigned", "partially_available")
 # Request states that still reserve the need against a live request.
 ACTIVE_REQUEST_STATES = ("draft", "to_approve", "approved", "in_progress", "done")
+
+# ------------------------------------------------------------------
+# plan result cache — the whole computation is pure data (no recordsets)
+# so a computed plan can safely outlive its request for a short TTL.
+# Per-process LRU: each worker keeps at most _PLAN_CACHE_MAX entries.
+# ------------------------------------------------------------------
+_PLAN_CACHE = {}
+_PLAN_CACHE_LOCK = threading.Lock()
+_PLAN_CACHE_TTL = 120.0  # seconds
+_PLAN_CACHE_MAX = 8
+
+# stock.move fields read once per build — plain dicts from here on, the
+# per-record ORM attribute access is what used to make large plans crawl
+_MOVE_FIELDS = [
+    "id", "product_id", "state", "date", "date_deadline",
+    "product_uom", "product_uom_qty", "location_id", "location_dest_id",
+    "company_id", "warehouse_id", "origin", "picking_id",
+    "purchase_line_id", "production_id", "raw_material_production_id",
+]
+
+_MIP_CHUNK = 1000
 
 
 class MrpPurchaseNeed(models.AbstractModel):
@@ -50,14 +74,17 @@ class MrpPurchaseNeed(models.AbstractModel):
 
     @api.model
     def get_need_groups(self, warehouse_id=False, date_from=None,
-                        date_to=None, query=""):
-        """Product-grouped need summaries (BRD §3.1).
+                        date_to=None, query="", limit=None, offset=0,
+                        uncovered_only=False, late_only=False,
+                        sort_by="purchase_start"):
+        """Product-grouped need summaries (BRD §3.1), server-paged.
 
         Need lines are intentionally not serialized; they are fetched
         lazily per product via get_need_lines() when the user expands a
-        group (BRD §9).
-        """
-        plan = self._build_plan(warehouse_id, date_from, date_to, query)
+        group (BRD §9). Pagination, the uncovered/late filters and the
+        sort all happen on the already-computed plan so the payload stays
+        small regardless of how many products exist (BRD §9)."""
+        plan = self._get_plan(warehouse_id, date_from, date_to, query)
         groups = []
         for p in plan.values():
             payload = self._group_payload(p)
@@ -66,10 +93,19 @@ class MrpPurchaseNeed(models.AbstractModel):
             if payload["total_uncovered"] <= 0 \
                     and not payload["requested_count"]:
                 continue
+            if uncovered_only and payload["total_uncovered"] <= 0:
+                continue
+            if late_only and not payload["has_late"]:
+                continue
             groups.append(payload)
-        groups.sort(key=lambda g: (g["earliest_start"], g["name"]))
+        key = "earliest_need" if sort_by == "need_date" else "earliest_start"
+        groups.sort(key=lambda g: (g[key], g["name"]))
+        total = len(groups)
+        if limit:
+            groups = groups[int(offset or 0):int(offset or 0) + int(limit)]
         return {
             "groups": groups,
+            "total": total,
             "today": fields.Date.to_string(fields.Date.context_today(self)),
         }
 
@@ -80,11 +116,10 @@ class MrpPurchaseNeed(models.AbstractModel):
 
         The whole plan is computed even for a single product: virtual
         component rows exist only when the parent demand is part of the
-        same computation."""
-        product = self.env["product.product"].browse(int(product_id))
-        plan = self._build_plan(
-            warehouse_id, date_from, date_to, "", products=None)
-        data = plan.get(product.id)
+        same computation. Served from the shared plan cache, so expanding
+        a group right after load does not recompute anything."""
+        plan = self._get_plan(warehouse_id, date_from, date_to, "")
+        data = plan.get(int(product_id))
         if not data:
             return {"lines": [], "group": False, "suggestions": []}
         return {
@@ -137,9 +172,10 @@ class MrpPurchaseNeed(models.AbstractModel):
                         "Talep miktarı sıfırdan büyük olmalıdır."))
             selected = (selected or set()) | set(qty_map)
         # the full plan is required: virtual component rows exist only
-        # when the parent product's demand is part of the computation
-        plan = self._build_plan(
-            warehouse_id, date_from, date_to, "", products=None)
+        # when the parent product's demand is part of the computation —
+        # and it must be fresh right before creating documents (BRD §9)
+        plan = self._get_plan(
+            warehouse_id, date_from, date_to, "", force=True)
         product_filter = ({int(p) for p in product_ids}
                           if product_ids else None)
 
@@ -163,13 +199,13 @@ class MrpPurchaseNeed(models.AbstractModel):
                 and (selected is None or ln["key"] in selected)
             ]
             if not fresh:
-                skipped.append(product.display_name)
+                skipped.append(product["display_name"])
                 continue
             for ln in fresh:
                 # planner-entered quantity overrides the remaining qty
                 req_qty = qty_map.get(ln["key"], ln["requestable_qty"])
                 key = (ln["company_id"], ln["warehouse_id"])
-                entry = grouped[key][product.id]
+                entry = grouped[key][pid]
                 entry.setdefault("product", product)
                 entry.setdefault("items", []).append((ln, req_qty))
 
@@ -192,14 +228,13 @@ class MrpPurchaseNeed(models.AbstractModel):
                             if ln["move_id"]]
                 mip_ids = [ln["mip_id"] for ln, _q in items
                            if ln["mip_id"]]
-                name = product.display_name
                 line_cmds.append((0, 0, {
-                    "product_id": product.id,
-                    "name": name,
+                    "product_id": product["id"],
+                    "name": product["display_name"],
                     "product_qty": qty,
-                    "product_uom_id": product.uom_id.id,
+                    "product_uom_id": product["uom_id"],
                     "date_required": earliest,
-                    "estimated_cost": qty * product.standard_price,
+                    "estimated_cost": qty * product["standard_price"],
                     "need_move_ids": [(6, 0, move_ids)],
                     "need_mip_ids": [(6, 0, mip_ids)],
                 }))
@@ -228,10 +263,53 @@ class MrpPurchaseNeed(models.AbstractModel):
             })
             created.append({"id": request.id, "name": request.name})
 
+        # the plan cache now describes the pre-request world — drop it so
+        # the next screen load re-reads stock and live request links
+        self._invalidate_plan_cache()
         return {
             "requests": created,
             "skipped": skipped,
         }
+
+    # ------------------------------------------------------------------
+    # plan cache
+    # ------------------------------------------------------------------
+
+    @api.model
+    def _plan_cache_key(self, warehouse_id, date_from, date_to, query):
+        return (
+            self.env.cr.dbname,
+            self.env.uid,
+            tuple(sorted(self.env.companies.ids)),
+            int(warehouse_id) if warehouse_id else 0,
+            str(date_from or ""), str(date_to or ""), str(query or ""),
+        )
+
+    @api.model
+    def _get_plan(self, warehouse_id, date_from, date_to, query,
+                  force=False):
+        """Shared plan accessor — a computed plan is pure data, so it can
+        be reused by detail calls and repeated loads for a short TTL."""
+        key = self._plan_cache_key(warehouse_id, date_from, date_to, query)
+        now = fields.Datetime.now().timestamp()
+        if not force:
+            with _PLAN_CACHE_LOCK:
+                entry = _PLAN_CACHE.get(key)
+                if entry and now - entry[0] < _PLAN_CACHE_TTL:
+                    return entry[1]
+        plan = self._build_plan(warehouse_id, date_from, date_to, query)
+        with _PLAN_CACHE_LOCK:
+            while len(_PLAN_CACHE) >= _PLAN_CACHE_MAX:
+                _PLAN_CACHE.pop(next(iter(_PLAN_CACHE)))
+            _PLAN_CACHE[key] = (now, plan)
+        return plan
+
+    @api.model
+    def _invalidate_plan_cache(self):
+        db = self.env.cr.dbname
+        with _PLAN_CACHE_LOCK:
+            for key in [k for k in _PLAN_CACHE if k[0] == db]:
+                _PLAN_CACHE.pop(key, None)
 
     # ------------------------------------------------------------------
     # plan computation
@@ -240,140 +318,463 @@ class MrpPurchaseNeed(models.AbstractModel):
     @api.model
     def _build_plan(self, warehouse_id, date_from, date_to, query,
                     products=None):
-        """Compute per-product need data.
+        """Compute per-product need data — pure dicts, no recordsets.
 
-        All heavy lifting is done with three batched reads — the need
-        moves, every pending stock move for those products, and the quants
-        — so the cost stays flat regardless of product count (BRD §9).
+        Every heavy read is batched into _load_ctx(): moves, picked
+        quantities, locations, PO/MO/picking/SO names, UoM factors and
+        seller info are fetched once, then the chronological stock walk
+        runs in plain Python. The result is serializable so _get_plan can
+        cache it between requests (BRD §9).
 
-        Returns {product_id: {...}}; entry keys:
-          product, onhand, moves (need moves), lines, total_need,
-          total_uncovered, earliest_need, earliest_start, has_late,
-          missing_lead_config, requested_count
+        Returns {product_id: {product, onhand, end_balance, route, lines,
+        suggestions}}.
         """
         scope_ids = set(self._get_scope_locations(warehouse_id).ids)
         need_moves = self._get_need_moves(
             scope_ids, date_from, date_to, query, products=products)
         if not need_moves:
             return {}
+        ctx = self._load_ctx(need_moves)
+        need_products = need_moves.product_id
+        need_set = set(need_moves.ids)
         # durable MİP records are upserted on every plan build so each
         # need row gets a stable number without duplicating on refresh
-        mip_by_move = self._ensure_mip_lines(need_moves)
-        need_products = need_moves.product_id
+        mip_by_move = self._ensure_mip_lines(need_moves, ctx)
         # BoM explosion graph: components of demanded manufactured
         # products become virtual needs, level by level (depth order so
         # every parent is processed before its components)
         bom_map, children, depth, comp_products = self._get_bom_graph(
             need_products)
         products = need_products | comp_products
+        # components with no pending move at all still need their product
+        # card (uom, routes, sellers, lead days) in ctx — virtual demand
+        # is planned for them even without stock flow
+        self._load_products(ctx, products)
         flow_moves = self._get_flow_moves(products, scope_ids)
+        self._load_ctx(flow_moves, ctx)
         onhand = self._get_onhand(products, scope_ids)
         requested, req_docs, pend = self._get_requested_quantities(
-            need_moves)
-        lead_info = self._get_lead_info(products)
-        route_sets = (self._get_buy_route_ids(), self._get_manu_route_ids())
+            need_moves, ctx)
+        lead_info = self._get_lead_info(products, ctx)
+        buy_ids = self._get_buy_route_ids()
+        manu_ids = self._get_manu_route_ids()
+        route_sets = (buy_ids, manu_ids)
         today = fields.Date.context_today(self)
 
-        flow_by_product = defaultdict(lambda: self.env["stock.move"])
-        for mv in flow_moves:
-            flow_by_product[mv.product_id.id] |= mv
-        need_by_product = defaultdict(lambda: self.env["stock.move"])
-        for mv in need_moves:
-            need_by_product[mv.product_id.id] |= mv
+        # need moves are themselves pending outgoing flow — they appear
+        # in flow_by_product too (that is what consumes the supply pool)
+        flow_by_product = defaultdict(list)
+        need_by_product = defaultdict(list)
+        for mid in flow_moves.ids:
+            mv = ctx["moves"][mid]
+            flow_by_product[mv["product_id"]].append(mv)
+        for mid in need_moves.ids:
+            mv = ctx["moves"][mid]
+            need_by_product[mv["product_id"]].append(mv)
 
-        plan = {}
+        # ---- phase A: per-product chronological walk + BoM explosion --
+        walks = {}
         virtual_events = defaultdict(dict)  # pid -> {key: event dict}
         seen_keys = set()
-        ordered = products.sorted(
-            key=lambda p: depth.get(p.product_tmpl_id.id, 0))
-        for product in ordered:
-            ev_map = virtual_events.pop(product.id, {})
+        ordered = sorted(
+            products.ids,
+            key=lambda pid: depth.get(
+                ctx["prod"][pid]["tmpl_id"], 0))
+        for pid in ordered:
+            ev_map = virtual_events.pop(pid, {})
             seen_keys.update(ev_map)
             vevents = list(ev_map.values())
-            vmips = self._ensure_virtual_mip(product, vevents)
-            vreq, vdocs, vpend = self._get_virtual_requested(
-                vevents, vmips)
-            data = self._compute_product(
-                product,
-                need_by_product[product.id],
-                flow_by_product[product.id],
-                onhand.get(product.id, 0.0),
+            walk = self._walk_product(
+                pid,
+                need_by_product[pid],
+                flow_by_product[pid],
+                onhand.get(pid, 0.0),
                 scope_ids,
-                requested,
-                req_docs,
-                pend,
+                need_set,
                 vevents,
-                vmips,
-                vreq,
-                vdocs,
-                vpend,
-                mip_by_move,
-                lead_info[product.id],
-                today,
-                route_sets,
+                ctx,
             )
-            self._sync_virtual_mips(vmips, data["lines"])
-            if data["lines"]:
-                plan[product.id] = data
+            walks[pid] = walk
+            if walk["needs"]:
                 self._explode_bom(
-                    product, data["lines"], bom_map, manu_route_ids=
-                    route_sets[1], out=virtual_events)
+                    pid, walk, bom_map, manu_ids, ctx,
+                    out=virtual_events)
+
+        # ---- virtual MİP records + live request links, in one batch ---
+        all_vevents = [
+            ev for w in walks.values() for ev in w["vevents"]]
+        vmips = self._ensure_virtual_mips(all_vevents)
+        demand = {ev["key"]: ev["qty"] for ev in all_vevents}
+        vreq, _vdocs, vpend = self._get_virtual_requested(
+            demand, vmips, ctx)
+
+        # ---- phase B: suggestions + serializable lines ----------------
+        plan = {}
+        for pid in ordered:
+            walk = walks[pid]
+            if not walk["needs"]:
+                continue
+            data = self._finalize_product(
+                pid, walk, ctx, mip_by_move, requested, req_docs, pend,
+                vmips, vreq, vpend,
+                lead_info[pid], today, route_sets)
+            if data["lines"]:
+                plan[pid] = data
+
+        # ---- MİP housekeeping (bulk, diff-only writes) ----------------
+        self._sync_mips(mip_by_move, ctx)
+        virt_lines = {
+            ln["key"]: ln
+            for data in plan.values() for ln in data["lines"]
+            if ln["virtual"]}
+        self._sync_virtual_mips(vmips, virt_lines)
         # virtual needs that vanished from the plan close their MİP
         # records — the history stays queryable (BRD §4.3)
         self._close_stale_virtual_mips(seen_keys, warehouse_id)
         return plan
 
-    def _compute_product(self, product, need_moves, flow_moves, onhand,
-                         scope_ids, requested, req_docs, pend, vevents,
-                         vmips, vreq, vdocs, vpend, mip_by_move,
-                         lead, today, route_sets):
-        """Chronological stock walk for one product.
+    # ------------------------------------------------------------------
+    # bulk data loading — everything the walk needs, in a handful of
+    # queries instead of per-record attribute access
+    # ------------------------------------------------------------------
+
+    @api.model
+    def _load_ctx(self, moves, ctx=None):
+        """Bulk-read move rows and every lookup table they reference.
+
+        Returns a ctx dict:
+          moves     {move_id: dict}
+          picked    {move_id: picked qty in move uom}
+          loc_usage / loc_name / loc_company
+          prod      {pid: dict(uom_id, uom_name, name, default_code,
+                     display_name, tmpl_id, routes:set, produce_delay,
+                     proc_days, standard_price)}
+          po_line   {plid: dict(order_id, product_qty, qty_received,
+                     uom, date_planned)}
+          po        {oid: dict(name, partner, state, date_planned)}
+          mo_name / pick_name / so_name / partner_name
+          uom_factor / uom_name / uom_cat
+          sellers   {pid: [seller dicts]}
+        """
+        if ctx is None:
+            ctx = {
+                "moves": {}, "picked": defaultdict(float),
+                "loc_usage": {}, "loc_name": {}, "loc_company": {},
+                "prod": {},
+                "po_line": {}, "po": {},
+                "mo_name": {}, "pick_name": {}, "so_name": {},
+                "sl_order": {}, "partner_name": {},
+                "uom_factor": {}, "uom_name": {}, "uom_cat": {},
+                "sellers": defaultdict(list),
+                "tz": timezone(self.env.user.tz or "UTC"),
+            }
+        if not moves:
+            return ctx
+        fields_list = list(_MOVE_FIELDS)
+        has_sale = "sale_line_id" in self.env["stock.move"]._fields
+        if has_sale:
+            fields_list.append("sale_line_id")
+        loc_ids, prod_ids, pl_ids = set(), set(), set()
+        mo_ids, pick_ids, sl_ids, uom_ids = set(), set(), set(), set()
+        for d in moves.read(fields_list, load="_classic_write"):
+            mid = d["id"]
+            # read() may yield ISO strings for datetimes depending on the
+            # serialization path — normalize once so every comparison
+            # and timezone conversion downstream sees real datetimes
+            d["date"] = fields.Datetime.to_datetime(d["date"])
+            d["date_deadline"] = fields.Datetime.to_datetime(
+                d["date_deadline"])
+            ctx["moves"][mid] = d
+            prod_ids.add(d["product_id"])
+            loc_ids.add(d["location_id"])
+            loc_ids.add(d["location_dest_id"])
+            uom_ids.add(d["product_uom"])
+            if d.get("purchase_line_id"):
+                pl_ids.add(d["purchase_line_id"])
+            if d.get("production_id"):
+                mo_ids.add(d["production_id"])
+            if d.get("raw_material_production_id"):
+                mo_ids.add(d["raw_material_production_id"])
+            if d.get("picking_id"):
+                pick_ids.add(d["picking_id"])
+            if has_sale and d.get("sale_line_id"):
+                sl_ids.add(d["sale_line_id"])
+
+        # picked quantities — picked move lines reduce the open demand
+        picked_rows = self.env["stock.move.line"].sudo().search_read(
+            [("move_id", "in", moves.ids), ("picked", "=", True)],
+            ["move_id", "quantity", "product_uom_id"],
+            load="_classic_write")
+        for d in picked_rows:
+            uom_ids.add(d["product_uom_id"])
+        self._load_uoms(ctx, uom_ids)
+        for d in picked_rows:
+            src = d["product_uom_id"]
+            dst = ctx["moves"][d["move_id"]]["product_uom"]
+            ctx["picked"][d["move_id"]] += self._conv(
+                ctx, d["quantity"], src, dst)
+
+        # locations — usage decides supply vs demand, name/company the
+        # displayed row metadata
+        for d in self.env["stock.location"].sudo().browse(
+                loc_ids).read(["usage", "display_name", "company_id"],
+                              load="_classic_write"):
+            ctx["loc_usage"][d["id"]] = d["usage"]
+            ctx["loc_name"][d["id"]] = d["display_name"]
+            ctx["loc_company"][d["id"]] = d.get("company_id") or False
+
+        # products — one read for every field the plan consults
+        prods = self.env["product.product"].browse(prod_ids)
+        prod_rows = prods.read([
+            "display_name", "default_code", "uom_id", "product_tmpl_id",
+            "route_ids", "produce_delay", "x_purchase_process_days",
+            "standard_price",
+        ], load="_classic_write")
+        tmpl_ids = set()
+        for d in prod_rows:
+            uom_ids.add(d["uom_id"])
+            tmpl_ids.add(d["product_tmpl_id"])
+        for d in prod_rows:
+            ctx["prod"][d["id"]] = {
+                "id": d["id"],
+                "display_name": d["display_name"],
+                "default_code": d["default_code"] or "",
+                "uom_id": d["uom_id"],
+                "uom_name": "",  # filled once uoms are loaded
+                "tmpl_id": d["product_tmpl_id"],
+                "routes": set(d["route_ids"]),
+                "produce_delay": d["produce_delay"] or 0,
+                "proc_days": d["x_purchase_process_days"] or 0,
+                "standard_price": d["standard_price"] or 0.0,
+            }
+        self._load_uoms(ctx, uom_ids)
+        for d in ctx["prod"].values():
+            d["uom_name"] = ctx["uom_name"].get(d["uom_id"], "")
+
+        # purchase lines + their orders (supply attribution, suggestions)
+        if pl_ids:
+            order_ids = set()
+            pol = self.env["purchase.order.line"].sudo().browse(pl_ids)
+            for d in pol.read([
+                    "order_id", "product_qty", "qty_received",
+                    "product_uom_id", "date_planned"],
+                    load="_classic_write"):
+                ctx["po_line"][d["id"]] = d
+                order_ids.add(d["order_id"])
+                uom_ids.add(d["product_uom_id"])
+            po = self.env["purchase.order"].sudo().browse(order_ids)
+            partner_ids = set()
+            for d in po.read(["name", "partner_id", "state",
+                              "date_planned"], load="_classic_write"):
+                ctx["po"][d["id"]] = d
+                if d["partner_id"]:
+                    partner_ids.add(d["partner_id"])
+            self._load_partners(ctx, partner_ids)
+            self._load_uoms(ctx, uom_ids)
+
+        # MO / picking / SO display names for the source column
+        if mo_ids:
+            for d in self.env["mrp.production"].sudo().browse(
+                    mo_ids).read(["name"], load="_classic_write"):
+                ctx["mo_name"][d["id"]] = d["name"]
+        if pick_ids:
+            for d in self.env["stock.picking"].sudo().browse(
+                    pick_ids).read(["name"], load="_classic_write"):
+                ctx["pick_name"][d["id"]] = d["name"]
+        if sl_ids:
+            sl_rows = self.env["sale.order.line"].sudo().browse(
+                sl_ids).read(["order_id"], load="_classic_write")
+            ctx["sl_order"] = {d["id"]: d["order_id"] for d in sl_rows}
+            order_ids = {d["order_id"] for d in sl_rows}
+            for d in self.env["sale.order"].sudo().browse(
+                    order_ids).read(["name"], load="_classic_write"):
+                ctx["so_name"][d["id"]] = d["name"]
+
+        # seller lookup used for the purchase lead time of each line —
+        # mirrors product._select_seller without per-line ORM calls
+        self._load_sellers(ctx, prod_ids, tmpl_ids)
+        return ctx
+
+    @api.model
+    def _load_products(self, ctx, products):
+        """Fill ctx["prod"] (+ uom names + seller rows) for products that
+        did not appear in any move read — e.g. BoM components whose only
+        demand is the virtual need this plan is about to create."""
+        missing = [pid for pid in products.ids if pid not in ctx["prod"]]
+        if not missing:
+            return
+        uom_ids = set()
+        rows = self.env["product.product"].browse(missing).read([
+            "display_name", "default_code", "uom_id", "product_tmpl_id",
+            "route_ids", "produce_delay", "x_purchase_process_days",
+            "standard_price",
+        ], load="_classic_write")
+        for d in rows:
+            uom_ids.add(d["uom_id"])
+        self._load_uoms(ctx, uom_ids)
+        tmpl_ids = set()
+        for d in rows:
+            tmpl_ids.add(d["product_tmpl_id"])
+            ctx["prod"][d["id"]] = {
+                "id": d["id"],
+                "display_name": d["display_name"],
+                "default_code": d["default_code"] or "",
+                "uom_id": d["uom_id"],
+                "uom_name": ctx["uom_name"].get(d["uom_id"], ""),
+                "tmpl_id": d["product_tmpl_id"],
+                "routes": set(d["route_ids"]),
+                "produce_delay": d["produce_delay"] or 0,
+                "proc_days": d["x_purchase_process_days"] or 0,
+                "standard_price": d["standard_price"] or 0.0,
+            }
+        self._load_sellers(ctx, missing, tmpl_ids)
+
+    @api.model
+    def _load_sellers(self, ctx, prod_ids, tmpl_ids):
+        """Load vendor rows used for per-line purchase lead time —
+        mirrors product._select_seller without per-line ORM calls."""
+        seller_rows = self.env["product.supplierinfo"].sudo().search_read(
+            ["|", ("product_id", "in", list(prod_ids)),
+             ("product_tmpl_id", "in", list(tmpl_ids))],
+            ["product_id", "product_tmpl_id", "partner_id", "delay",
+             "min_qty", "sequence", "price", "company_id",
+             "date_start", "date_end"],
+            load="_classic_write")
+        for d in seller_rows:
+            d["date_start"] = fields.Date.to_date(d["date_start"])
+            d["date_end"] = fields.Date.to_date(d["date_end"])
+        tmpl_of = {pid: ctx["prod"][pid]["tmpl_id"]
+                   for pid in ctx["prod"]}
+        for d in seller_rows:
+            pids = []
+            if d["product_id"]:
+                pids = [d["product_id"]]
+            elif d["product_tmpl_id"]:
+                pids = [pid for pid, t in tmpl_of.items()
+                        if t == d["product_tmpl_id"]]
+            for pid in pids:
+                if pid in ctx["prod"]:
+                    ctx["sellers"][pid].append(d)
+        for rows in ctx["sellers"].values():
+            rows.sort(key=lambda s: (
+                s["sequence"], -(s["min_qty"] or 0.0),
+                s["price"] or 0.0, s["id"]))
+
+    @api.model
+    def _load_uoms(self, ctx, uom_ids):
+        missing = [i for i in uom_ids if i not in ctx["uom_factor"]]
+        if not missing:
+            return
+        rows = self.env["uom.uom"].sudo().browse(missing).read(
+            ["factor", "name", "category_id"], load="_classic_write")
+        for d in rows:
+            ctx["uom_factor"][d["id"]] = d["factor"]
+            ctx["uom_name"][d["id"]] = d["name"]
+            ctx["uom_cat"][d["id"]] = d["category_id"]
+
+    @api.model
+    def _load_partners(self, ctx, partner_ids):
+        missing = [i for i in partner_ids if i not in ctx["partner_name"]]
+        if not missing:
+            return
+        rows = self.env["res.partner"].sudo().browse(missing).read(
+            ["display_name"], load="_classic_write")
+        for d in rows:
+            ctx["partner_name"][d["id"]] = d["display_name"]
+
+    @api.model
+    def _conv(self, ctx, qty, src_uom, dst_uom):
+        """UoM conversion via cached factors (same category only)."""
+        if not src_uom or not dst_uom or src_uom == dst_uom:
+            return qty
+        if ctx["uom_cat"].get(src_uom) != ctx["uom_cat"].get(dst_uom):
+            return qty
+        return qty * ctx["uom_factor"][dst_uom] \
+            / ctx["uom_factor"][src_uom]
+
+    @api.model
+    def _open_qty(self, ctx, mv):
+        """Remaining move demand in the move's own UoM."""
+        return mv["product_uom_qty"] - ctx["picked"].get(mv["id"], 0.0)
+
+    @api.model
+    def _move_open_qty(self, move):
+        """Remaining move demand in the move's UoM — ORM variant used by
+        mip.need.line._sync_from_moves (cron path, recordset input).
+
+        Reserved-but-not-done lines keep the full demand (the stock has
+        not left the building yet); already picked/done portions are
+        subtracted so partially consumed component moves only report the
+        still-needed remainder.
+        """
+        picked = sum(
+            line.product_uom_id._compute_quantity(
+                line.quantity, move.product_uom, round=False)
+            for line in move.move_line_ids if line.picked
+        )
+        return move.product_uom_qty - picked
+
+    @api.model
+    def _seller_delay(self, ctx, pid, qty, date):
+        """Lead days of the best-matching vendor — mirrors
+        product._select_seller (sequence, min_qty, date validity,
+        company) without per-line ORM calls."""
+        today = fields.Date.context_today(self)
+        ref = date or today
+        company_ids = set(self.env.companies.ids)
+        best = None
+        for s in ctx["sellers"].get(pid, ()):
+            if s["company_id"] and s["company_id"] not in company_ids:
+                continue
+            if s["min_qty"] and s["min_qty"] > qty:
+                continue
+            if s["date_start"] and s["date_start"] > ref:
+                continue
+            if s["date_end"] and s["date_end"] < ref:
+                continue
+            best = s
+            break  # sellers list is already preference-sorted
+        return best["delay"] if best else 0
+
+    # ------------------------------------------------------------------
+    # phase A — chronological stock walk per product
+    # ------------------------------------------------------------------
+
+    @api.model
+    def _walk_product(self, pid, need_moves, flow_moves, onhand,
+                      scope_ids, need_set, vevents, ctx):
+        """Chronological stock walk for one product — pure data.
 
         Incoming and outgoing pending moves are applied in date order —
-        receipts before issues on the same day. Each need line keeps the
-        running balance right after its own consumption (the "forecast"
-        column) and the incremental shortage it introduces (the
-        "uncovered" quantity, BRD §6.2). ``vevents`` carries virtual
-        (BoM-exploded) component demands — plain dicts keyed by their
-        "bom:…" need key, treated exactly like outgoing demand rows.
+        receipts before issues on the same day. ``detail`` keeps the
+        running balance right after each need's consumption (forecast)
+        and the incremental shortage it introduces (uncovered, BRD §6.2).
         """
-        need_set = set(need_moves.ids)
-
-        def eid(mv):
-            """Demand identity — move id for real needs, need key for
-            virtual ones (mixed int/str keys never collide)."""
-            return mv["key"] if isinstance(mv, dict) else mv.id
-        need_keys = need_set | {ev["key"] for ev in vevents}
+        need_ids = {mv["id"] for mv in need_moves}
         events = []
         for mv in flow_moves:
-            src_in = mv.location_id.id in scope_ids
-            dst_in = mv.location_dest_id.id in scope_ids
+            src_in = mv["location_id"] in scope_ids
+            dst_in = mv["location_dest_id"] in scope_ids
             if src_in == dst_in:
                 # either fully outside the scope or an internal transfer
                 # inside it — neither changes the scoped balance
                 continue
-            qty = mv.product_uom._compute_quantity(
-                self._move_open_qty(mv), product.uom_id, round=False)
+            qty = self._conv(
+                ctx, self._open_qty(ctx, mv), mv["product_uom"],
+                ctx["prod"][pid]["uom_id"])
             # day-level chronology — the time-of-day must not decide
             # whether a receipt lands "late": a delivery due on the same
             # day as the need covers it
-            mv_dt = self._need_dt(mv) if mv.id in need_set else mv.date
+            mv_dt = self._need_dt(mv) if mv["id"] in need_set \
+                else mv["date"]
             events.append((self._local_date(
-                mv_dt or fields.Datetime.now()), not src_in, mv, qty))
+                mv_dt or fields.Datetime.now(), ctx),
+                not src_in, ("mv", mv["id"]), qty, mv))
         for ev in vevents:
-            events.append((ev["date"], False, ev, ev["qty"]))
+            events.append((ev["date"], False, ("ev", ev["key"]),
+                           ev["qty"], ev))
         # receipts are applied before issues on the same date
-        events.sort(key=lambda e: (e[0], 0 if e[1] else 1, str(eid(e[2]))))
-
-        # route label, SAP BESKZ style: S = Satınal, Ü = Üret, S+Ü = both
-        buy_ids, manu_ids = route_sets
-        product_routes = set(product.route_ids.ids)
-        parts = []
-        if buy_ids & product_routes:
-            parts.append("S")
-        if manu_ids & product_routes:
-            parts.append("Ü")
-        route_abbr = "+".join(parts) or "-"
+        events.sort(key=lambda e: (e[0], 0 if e[1] else 1, str(e[2][1])))
 
         balance = onhand
         deficit = 0.0
@@ -392,94 +793,139 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "partner": "",
                 "date": "",
                 "order_id": False,
+                "move_id": False,
+                "orig_qty": onhand,
                 "qty": onhand,
-                "uom": product.uom_id.name,
+                "uom": ctx["prod"][pid]["uom_name"],
             })
-        for _date, incoming, mv, qty in events:
+        pool_idx = 0  # first chunk that may still hold quantity
+        need_keys = need_ids | {ev["key"] for ev in vevents}
+        for _date, incoming, (_kind, eid), qty, mv in events:
             prev_deficit = deficit
             balance = balance + qty if incoming else balance - qty
             deficit = max(0.0, -balance)
             if incoming:
-                pool.append(self._supply_chunk(mv, qty))
+                pool.append(self._supply_chunk(ctx, mv, qty, pid))
                 absorbed = prev_deficit - deficit
                 if absorbed > 0.0:
                     late_supplies.append((mv, qty, absorbed))
             else:
                 remaining_out = qty
                 covers = []
-                for chunk in pool:
-                    if remaining_out <= 0.0:
-                        break
+                # walk the pool from the first non-empty chunk — zeroed
+                # chunks are skipped once via the moving cursor so a hot
+                # product never rescans its whole supply history
+                while remaining_out > 0.0 and pool_idx < len(pool):
+                    chunk = pool[pool_idx]
                     take = min(chunk["qty"], remaining_out)
                     if take <= 0.0:
+                        pool_idx += 1
                         continue
                     chunk["qty"] -= take
                     remaining_out -= take
                     cover = dict(chunk)
                     cover["qty"] = take
                     covers.append(cover)
-                if eid(mv) in need_keys:
+                    if chunk["qty"] <= 0.0:
+                        pool_idx += 1
+                if eid in need_keys:
                     # the part of the new shortage this need is
                     # responsible for
                     uncovered = min(qty, max(0.0, deficit - prev_deficit))
-                    detail[eid(mv)] = {
+                    detail[eid] = {
                         "forecast": balance,
                         "uncovered": uncovered,
                     }
-                    coverage_map[eid(mv)] = covers
+                    coverage_map[eid] = covers
 
-        # Late supply that lands while a shortage exists could still serve
-        # earlier uncovered needs if it were pulled forward. For open
-        # purchase orders this yields a suggestion — purely informational:
-        # until the planner actually reschedules the order, planning keeps
-        # using its real delivery date and the need stays uncovered.
+        # needs in chronological order — real moves and virtual events
         ordered_needs = sorted(
-            list(need_moves) + list(vevents),
-            key=lambda e: (
-                e["date"] if isinstance(e, dict)
-                else self._local_date(self._need_dt(e)),
-                str(eid(e))))
+            [("mv", mv) for mv in need_moves]
+            + [("ev", ev) for ev in vevents],
+            key=lambda item: (
+                item[1]["date"] if item[0] == "ev"
+                else self._local_date(self._need_dt(item[1]), ctx),
+                item[1]["key"] if item[0] == "ev" else str(item[1]["id"]),
+            ))
+        return {
+            "detail": detail,
+            "coverage_map": coverage_map,
+            "late_supplies": late_supplies,
+            "pool": pool,
+            "balance": balance,
+            "onhand": onhand,
+            "needs": ordered_needs,
+            "vevents": vevents,
+        }
 
-        def need_day(entry):
-            return (entry["date"] if isinstance(entry, dict)
-                    else self._local_date(self._need_dt(entry)))
+    # ------------------------------------------------------------------
+    # phase B — suggestions + serializable lines
+    # ------------------------------------------------------------------
 
-        def req_of(entry):
-            return (vreq.get(entry["key"], 0.0)
-                    if isinstance(entry, dict)
-                    else requested.get(entry.id, 0.0))
+    @api.model
+    def _finalize_product(self, pid, walk, ctx, mip_by_move, requested,
+                          req_docs, pend, vmips, vreq, vpend, lead,
+                          today, route_sets):
+        """Turn a phase-A walk into the screen payload for one product."""
+        prod = ctx["prod"][pid]
+        detail = walk["detail"]
+        ordered_needs = walk["needs"]
+        buy_ids, manu_ids = route_sets
+        product_routes = prod["routes"]
+        parts = []
+        if buy_ids & product_routes:
+            parts.append("S")
+        if manu_ids & product_routes:
+            parts.append("Ü")
+        route_abbr = "+".join(parts) or "-"
+
+        def req_of(kind, entry):
+            if kind == "ev":
+                return vreq.get(entry["key"], 0.0)
+            return requested.get(entry["id"], 0.0)
+
+        def eid_of(kind, entry):
+            return entry["key"] if kind == "ev" else entry["id"]
+
+        # Late supply that lands while a shortage exists could still
+        # serve earlier uncovered needs if it were pulled forward —
+        # informational only (BRD: never reschedule automatically).
         suggest_map = defaultdict(float)
         suggestions = []
-        for mv, qty, absorbed in late_supplies:
-            supply_date = self._local_date(mv.date)
+        for mv, qty, absorbed in walk["late_supplies"]:
+            supply_date = self._local_date(mv["date"], ctx)
             remaining = absorbed
             covers = []
-            for nmv in ordered_needs:
+            for kind, nmv in ordered_needs:
                 if remaining <= 0.0:
                     break
-                need_date = need_day(nmv)
-                if need_date >= supply_date or eid(nmv) not in detail:
+                need_date = (nmv["date"] if kind == "ev"
+                             else self._local_date(
+                                 self._need_dt(nmv), ctx))
+                neid = eid_of(kind, nmv)
+                if need_date >= supply_date or neid not in detail:
                     continue
                 open_need = (
-                    detail[eid(nmv)]["uncovered"]
-                    - suggest_map[eid(nmv)]
-                    - req_of(nmv))
+                    detail[neid]["uncovered"]
+                    - suggest_map[neid]
+                    - req_of(kind, nmv))
                 if open_need <= 0.0:
                     continue
                 covered = min(open_need, remaining)
-                suggest_map[eid(nmv)] += covered
+                suggest_map[neid] += covered
                 remaining -= covered
                 covers.append((need_date, covered))
-            po_line = mv.purchase_line_id
-            order = po_line.order_id if po_line else self.env["purchase.order"]
-            if order and order.state == "purchase" and covers:
+            pl = ctx["po_line"].get(mv["purchase_line_id"] or 0)
+            order = ctx["po"].get(pl["order_id"]) if pl else None
+            if order and order["state"] == "purchase" and covers:
                 suggested = min(c[0] for c in covers)
                 suggestions.append({
                     "kind": "pull",
-                    "move_id": mv.id,
-                    "order_id": order.id,
-                    "order": order.name,
-                    "partner": order.partner_id.display_name,
+                    "move_id": mv["id"],
+                    "order_id": order["id"],
+                    "order": order["name"],
+                    "partner": ctx["partner_name"].get(
+                        order["partner_id"], ""),
                     "order_qty": qty,
                     "cover_qty": sum(c[1] for c in covers),
                     "current_date": fields.Date.to_string(supply_date),
@@ -494,11 +940,10 @@ class MrpPurchaseNeed(models.AbstractModel):
         # Supply left in the pool after every need consumed its share is
         # no longer needed at all — a PO receipt standing there suggests
         # cancelling (nothing consumed) or reducing it (only part left).
-        # A receipt that could still serve needs when pulled forward keeps
-        # that suggestion exclusively — never both on the same order.
-        pull_move_ids = {
-            sug["move_id"] for sug in suggestions}
-        for chunk in pool:
+        # A receipt that could still serve needs when pulled forward
+        # keeps that suggestion exclusively — never both on one order.
+        pull_move_ids = {sug["move_id"] for sug in suggestions}
+        for chunk in walk["pool"]:
             if chunk["kind"] != "po" or chunk["qty"] <= 0.0 \
                     or chunk["move_id"] in pull_move_ids:
                 continue
@@ -515,44 +960,43 @@ class MrpPurchaseNeed(models.AbstractModel):
             })
 
         lines = []
-        for mv in ordered_needs:
-            if isinstance(mv, dict):
+        for kind, entry in ordered_needs:
+            if kind == "ev":
                 # virtual (BoM-exploded) component need
-                need_date = mv["date"]
-                seller = product._select_seller(
-                    quantity=mv["qty"], date=need_date,
-                    uom_id=product.uom_id)
-                delay = seller.delay if seller else 0
+                need_date = entry["date"]
+                delay = self._seller_delay(
+                    ctx, pid, entry["qty"], need_date)
                 approve_by = need_date - timedelta(days=delay)
                 purchase_start = approve_by - timedelta(days=lead["proc"])
                 info = detail.get(
-                    mv["key"], {"forecast": balance, "uncovered": 0.0})
-                req_qty = vreq.get(mv["key"], 0.0)
+                    entry["key"], {"forecast": walk["balance"],
+                                   "uncovered": 0.0})
+                req_qty = vreq.get(entry["key"], 0.0)
                 requestable = max(0.0, info["uncovered"] - req_qty)
-                mip = vmips.get(mv["key"], self.env["mip.need.line"])
+                mip = vmips.get(entry["key"])
                 lines.append({
-                    "key": mv["key"],
+                    "key": entry["key"],
                     "move_id": False,
                     "virtual": True,
-                    "mip_id": mip.id,
-                    "mip_name": mip.name,
-                    "company_id": mv["company_id"],
-                    "warehouse_id": mv["warehouse_id"],
+                    "mip_id": mip["id"] if mip else False,
+                    "mip_name": mip["name"] if mip else "",
+                    "company_id": entry["company_id"],
+                    "warehouse_id": entry["warehouse_id"],
                     "need_date": fields.Date.to_string(need_date),
-                    "location": mv["location"],
+                    "location": entry["location"],
                     "route": route_abbr,
-                    "source": " / ".join(sorted(mv["parents"]))
+                    "source": " / ".join(sorted(entry["parents"]))
                         or self.env._("Üretim Planı"),
                     "source_type": "ÜP",
-                    "onhand": onhand,
+                    "onhand": walk["onhand"],
                     "forecast": info["forecast"],
-                    "need_qty": mv["qty"],
+                    "need_qty": entry["qty"],
                     "uncovered_qty": info["uncovered"],
-                    "covered_qty": mv["qty"] - info["uncovered"],
-                    "coverage": coverage_map.get(mv["key"], []),
-                    "pending": vpend.get(mv["key"], []),
-                    "pull_covered": suggest_map[mv["key"]],
-                    "uom": product.uom_id.name,
+                    "covered_qty": entry["qty"] - info["uncovered"],
+                    "coverage": walk["coverage_map"].get(entry["key"], []),
+                    "pending": vpend.get(entry["key"], []),
+                    "pull_covered": suggest_map[entry["key"]],
+                    "uom": prod["uom_name"],
                     "approve_by": fields.Date.to_string(approve_by),
                     "purchase_start": fields.Date.to_string(purchase_start),
                     "is_late": purchase_start < today,
@@ -566,31 +1010,35 @@ class MrpPurchaseNeed(models.AbstractModel):
                     "missing_lead_config": lead["missing"],
                 })
                 continue
-            qty = mv.product_uom._compute_quantity(
-                self._move_open_qty(mv), product.uom_id, round=False)
+            mv = entry
+            qty = self._conv(
+                ctx, self._open_qty(ctx, mv), mv["product_uom"],
+                prod["uom_id"])
             # MO components are needed when production is scheduled to
             # consume them (move.date); customer deliveries are needed by
             # the promised ship date (date_deadline, falling back to the
             # scheduled date)
             need_dt = self._need_dt(mv)
-            if mv.raw_material_production_id:
-                source = mv.raw_material_production_id.name
+            if mv["raw_material_production_id"]:
+                source = ctx["mo_name"].get(
+                    mv["raw_material_production_id"], "")
                 source_type = "MO"
             else:
-                source_type = "SO" if mv.location_dest_id.usage == "customer" else "-"
-                if "sale_line_id" in mv._fields and mv.sale_line_id:
-                    source = mv.sale_line_id.order_id.name
+                source_type = "SO" if ctx["loc_usage"].get(
+                    mv["location_dest_id"]) == "customer" else "-"
+                sl = mv.get("sale_line_id")
+                if sl and ctx["so_name"].get(ctx["sl_order"].get(sl)):
+                    source = ctx["so_name"][ctx["sl_order"][sl]]
                 else:
-                    source = mv.origin or (
-                        mv.picking_id.name if mv.picking_id else "")
-            need_date = self._local_date(need_dt)
-            seller = product._select_seller(
-                quantity=qty, date=need_date, uom_id=product.uom_id)
-            delay = seller.delay if seller else 0
+                    source = mv["origin"] or ctx["pick_name"].get(
+                        mv["picking_id"], "")
+            need_date = self._local_date(need_dt, ctx)
+            delay = self._seller_delay(ctx, pid, qty, need_date)
             approve_by = need_date - timedelta(days=delay)
             purchase_start = approve_by - timedelta(days=lead["proc"])
-            info = detail.get(mv.id, {"forecast": balance, "uncovered": 0.0})
-            req_qty = requested.get(mv.id, 0.0)
+            info = detail.get(mv["id"], {"forecast": walk["balance"],
+                                         "uncovered": 0.0})
+            req_qty = requested.get(mv["id"], 0.0)
             requestable = max(0.0, info["uncovered"] - req_qty)
             # informational exception flag: linked request/RFQ/PO is no
             # longer (fully) needed — nothing is cancelled automatically
@@ -599,7 +1047,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                 action = self.env._("İşlemi iptal et")
             elif req_qty > info["uncovered"]:
                 action = self.env._("Miktarı azalt")
-            elif suggest_map[mv.id] > 0.0:
+            elif suggest_map[mv["id"]] > 0.0:
                 action = self.env._("İşlemi öne al")
             elif 0.0 < req_qty < info["uncovered"]:
                 # part of the need already has a request; the remainder
@@ -609,31 +1057,32 @@ class MrpPurchaseNeed(models.AbstractModel):
                 # a pull-forward always points at a confirmed PO
                 action_doc = self.env._("Onaylı Sipariş")
             elif action:
-                labels = sorted(req_docs.get(mv.id, ()), reverse=True)
+                labels = sorted(req_docs.get(mv["id"], ()), reverse=True)
                 action_doc = " / ".join(dict.fromkeys(
                     label for _prio, label in labels))
+            mip = mip_by_move.get(mv["id"], {})
             lines.append({
-                "key": "mv:%s" % mv.id,
-                "move_id": mv.id,
+                "key": "mv:%s" % mv["id"],
+                "move_id": mv["id"],
                 "virtual": False,
-                "mip_id": mip_by_move[mv.id].id,
-                "mip_name": mip_by_move[mv.id].name,
-                "company_id": mv.company_id.id,
-                "warehouse_id": mv.warehouse_id.id,
+                "mip_id": mip.get("id") or False,
+                "mip_name": mip.get("name") or "",
+                "company_id": mv["company_id"],
+                "warehouse_id": mv["warehouse_id"],
                 "need_date": fields.Date.to_string(need_date),
-                "location": mv.location_id.display_name,
+                "location": ctx["loc_name"].get(mv["location_id"], ""),
                 "route": route_abbr,
                 "source": source,
                 "source_type": source_type,
-                "onhand": onhand,
+                "onhand": walk["onhand"],
                 "forecast": info["forecast"],
                 "need_qty": qty,
                 "uncovered_qty": info["uncovered"],
                 "covered_qty": qty - info["uncovered"],
-                "coverage": coverage_map.get(mv.id, []),
-                "pending": pend.get(mv.id, []),
-                "pull_covered": suggest_map[mv.id],
-                "uom": product.uom_id.name,
+                "coverage": walk["coverage_map"].get(mv["id"], []),
+                "pending": pend.get(mv["id"], []),
+                "pull_covered": suggest_map[mv["id"]],
+                "uom": prod["uom_name"],
                 "approve_by": fields.Date.to_string(approve_by),
                 "purchase_start": fields.Date.to_string(purchase_start),
                 "is_late": purchase_start < today,
@@ -641,30 +1090,31 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "requestable_qty": requestable,
                 "action": action,
                 "action_doc": action_doc,
-                "already_requested": req_qty > 0.0 and requestable <= 0.0,
+                "already_requested":
+                    req_qty > 0.0 and requestable <= 0.0,
                 "can_buy": bool(buy_ids & product_routes),
                 "missing_lead_config": lead["missing"],
             })
         return {
-            "product": product,
-            "moves": need_moves,
-            "onhand": onhand,
-            "end_balance": balance,
+            "product": prod,
+            "onhand": walk["onhand"],
+            "end_balance": walk["balance"],
             "route": route_abbr,
             "lines": lines,
             "suggestions": suggestions,
         }
 
+    @api.model
     def _group_payload(self, data):
         product = data["product"]
         lines = data["lines"]
         starts = [ln["purchase_start"] for ln in lines]
         locs = list(dict.fromkeys(ln["location"] for ln in lines))
         return {
-            "product_id": product.id,
-            "name": product.display_name,
-            "code": product.default_code or "",
-            "uom": product.uom_id.name,
+            "product_id": product["id"],
+            "name": product["display_name"],
+            "code": product["default_code"],
+            "uom": product["uom_name"],
             "onhand": data["onhand"],
             "end_forecast": data["end_balance"],
             "location": locs[0] if len(locs) == 1 else self.env._(
@@ -680,40 +1130,46 @@ class MrpPurchaseNeed(models.AbstractModel):
             "has_late": any(
                 ln["is_late"] and ln["requestable_qty"] > 0
                 for ln in lines),
-            "missing_lead_config": any(ln["missing_lead_config"] for ln in lines),
+            "missing_lead_config": any(
+                ln["missing_lead_config"] for ln in lines),
             "requested_count": sum(
                 1 for ln in lines if ln["requested_qty"] > 0),
             "suggestion_count": len(data.get("suggestions") or []),
         }
 
     # ------------------------------------------------------------------
-    # data sources
+    # small helpers working on move dicts
     # ------------------------------------------------------------------
 
     @api.model
-    def _local_date(self, dt):
+    def _local_date(self, dt, ctx=None):
         """User-timezone date of a datetime — plain Date.to_date would
         truncate the UTC value and show the previous day for
         local-midnight dates."""
-        return fields.Datetime.context_timestamp(
-            self, dt).date() if dt else None
+        if not dt:
+            return None
+        dt = fields.Datetime.to_datetime(dt)
+        if ctx is not None:
+            return utc.localize(dt).astimezone(ctx["tz"]).date()
+        return fields.Datetime.context_timestamp(self, dt).date()
 
     @api.model
-    def _supply_chunk(self, move, qty):
+    def _supply_chunk(self, ctx, mv, qty, pid):
         """One consumable supply unit for the FIFO coverage pool — a PO
         receipt, an MO output or any other expected receipt."""
-        po_line = move.purchase_line_id
+        pl = ctx["po_line"].get(mv["purchase_line_id"] or 0)
         kind, name, order_id, partner = "other", "", False, ""
-        if po_line:
-            order = po_line.order_id
-            kind, order_id = "po", order.id
-            name, partner = order.name, order.partner_id.display_name
-        elif move.production_id:
-            kind, name = "mo", move.production_id.name
+        if pl:
+            order = ctx["po"].get(pl["order_id"], {})
+            kind, order_id = "po", pl["order_id"]
+            name = order.get("name", "")
+            partner = ctx["partner_name"].get(order.get("partner_id"), "")
+        elif mv["production_id"]:
+            kind = "mo"
+            name = ctx["mo_name"].get(mv["production_id"], "")
         else:
-            name = move.origin or (
-                move.picking_id.name if move.picking_id
-                else self.env._("Beklenen tedarik"))
+            name = mv["origin"] or ctx["pick_name"].get(
+                mv["picking_id"], self.env._("Beklenen tedarik"))
         labels = {
             "po": self.env._("Satınalma Siparişi"),
             "mo": self.env._("Üretim Emri"),
@@ -725,56 +1181,146 @@ class MrpPurchaseNeed(models.AbstractModel):
             "kind_label": labels[kind],
             "name": name,
             "partner": partner,
-            "date": fields.Date.to_string(self._local_date(move.date)),
+            "date": fields.Date.to_string(
+                self._local_date(mv["date"], ctx)),
             "order_id": order_id,
-            "move_id": move.id,
+            "move_id": mv["id"],
             "orig_qty": qty,
             "qty": qty,
-            "uom": move.product_id.uom_id.name,
+            "uom": ctx["prod"][pid]["uom_name"],
         }
 
     @api.model
-    def _need_dt(self, move):
+    def _need_dt(self, mv):
         """Planning date of a need move — components consume at the
         scheduled date, deliveries by the promised date (falls back to
-        the scheduled date)."""
-        if move.raw_material_production_id:
-            return move.date
-        return move.date_deadline or move.date
+        the scheduled date). Accepts both a move dict (plan path) and a
+        stock.move record (cron/MİP sync path)."""
+        if isinstance(mv, dict):
+            if mv["raw_material_production_id"]:
+                return mv["date"]
+            return mv["date_deadline"] or mv["date"]
+        if mv.raw_material_production_id:
+            return mv.date
+        return mv.date_deadline or mv.date
+
+    # ------------------------------------------------------------------
+    # MİP persistence
+    # ------------------------------------------------------------------
 
     @api.model
-    def _ensure_mip_lines(self, need_moves):
-        """Create/sync the persistent MİP record of every need move
-        (BRD §4.1/§4.3). Returns {move_id: mip.need.line}.
+    def _ensure_mip_lines(self, need_moves, ctx=None):
+        """Create the persistent MİP record of every need move
+        (BRD §4.1/§4.3). Returns {move_id: {id, name, rec}}.
 
         Records are keyed by move and the number is assigned once, so
-        refreshes and re-computations never mint duplicates."""
+        refreshes and re-computations never mint duplicates. Syncing is
+        done once per build in bulk by _sync_mips — not per record."""
+        if ctx is None:
+            ctx = self._load_ctx(need_moves)
         Mip = self.env["mip.need.line"].sudo()
-        existing = Mip.search([("move_id", "in", need_moves.ids)])
-        by_move = {rec.move_id.id: rec for rec in existing}
-        missing = need_moves.filtered(lambda m: m.id not in by_move)
-        if missing:
-            created = Mip.create([{
-                "key": "mv:%s" % mv.id,
-                "move_id": mv.id,
-                "product_id": mv.product_id.id,
-                "company_id": mv.company_id.id,
-                "warehouse_id": mv.warehouse_id.id,
-                "location_id": mv.location_id.id,
-                "need_date": self._local_date(self._need_dt(mv)),
-                "source_type": "mo" if mv.raw_material_production_id
-                    else "so" if mv.location_dest_id.usage == "customer"
-                    else "other",
-                "production_id": mv.raw_material_production_id.id or False,
-                "uom_id": mv.product_id.uom_id.id,
-                "initial_qty": mv.product_uom._compute_quantity(
-                    mv.product_uom_qty, mv.product_id.uom_id, round=False),
-            } for mv in missing])
-            for rec in created:
-                by_move[rec.move_id.id] = rec
-        self.env["mip.need.line"].sudo().browse(
-            [rec.id for rec in by_move.values()])._sync_from_moves()
+        existing = Mip.search_read(
+            [("move_id", "in", need_moves.ids)], ["move_id", "name"],
+            load="_classic_write")
+        by_move = {}
+        missing_ids = set(need_moves.ids)
+        for d in existing:
+            by_move[d["move_id"]] = {
+                "id": d["id"], "name": d["name"],
+                "rec": Mip.browse(d["id"]),
+            }
+            missing_ids.discard(d["move_id"])
+        if missing_ids:
+            vals_list = []
+            for mid in missing_ids:
+                mv = ctx["moves"][mid]
+                prod = ctx["prod"][mv["product_id"]]
+                vals_list.append({
+                    "key": "mv:%s" % mid,
+                    "move_id": mid,
+                    "product_id": mv["product_id"],
+                    "company_id": mv["company_id"],
+                    "warehouse_id": mv["warehouse_id"],
+                    "location_id": mv["location_id"],
+                    "need_date": self._local_date(
+                        self._need_dt(mv), ctx),
+                    "source_type":
+                        "mo" if mv["raw_material_production_id"]
+                        else "so" if ctx["loc_usage"].get(
+                            mv["location_dest_id"]) == "customer"
+                        else "other",
+                    "production_id": mv["raw_material_production_id"]
+                        or False,
+                    "uom_id": prod["uom_id"],
+                    "initial_qty": self._conv(
+                        ctx, mv["product_uom_qty"], mv["product_uom"],
+                        prod["uom_id"]),
+                })
+            vals_list.sort(key=lambda v: v["move_id"])
+            for i in range(0, len(vals_list), _MIP_CHUNK):
+                created = Mip.create(vals_list[i:i + _MIP_CHUNK])
+                for rec in created:
+                    by_move[rec.move_id.id] = {
+                        "id": rec.id, "name": rec.name, "rec": rec,
+                        "new": True}
         return by_move
+
+    @api.model
+    def _sync_mips(self, mip_by_move, ctx):
+        """Bulk MİP refresh computed from the move dicts already in ctx —
+        one pass, writes only changed records (chatter stays meaningful).
+
+        Only realized quantities count as covered: an issued but
+        unfinished purchase order does not fulfil the need (BRD §4.5).
+        """
+        for mid, entry in mip_by_move.items():
+            rec = entry["rec"]
+            mv = ctx["moves"].get(mid)
+            if not mv or mv["state"] == "cancel":
+                vals = {"state": "cancel", "remaining_qty": 0.0}
+            else:
+                prod = ctx["prod"][mv["product_id"]]
+                cur = self._conv(
+                    ctx, mv["product_uom_qty"], mv["product_uom"],
+                    prod["uom_id"])
+                open_qty = self._conv(
+                    ctx, self._open_qty(ctx, mv), mv["product_uom"],
+                    prod["uom_id"])
+                covered = max(0.0, cur - open_qty)
+                if covered <= 0.0:
+                    state = "open"
+                elif covered >= cur:
+                    state = "done"
+                else:
+                    state = "partial"
+                vals = {
+                    "need_date": self._local_date(
+                        self._need_dt(mv), ctx),
+                    "production_id": mv["raw_material_production_id"]
+                        or False,
+                    "current_qty": cur,
+                    "covered_qty": covered,
+                    "remaining_qty": open_qty,
+                    "state": state,
+                }
+            diff = {}
+            for k, v in vals.items():
+                if rec._fields[k].type == "many2one":
+                    if rec[k].id != v:
+                        diff[k] = v
+                elif rec[k] != v:
+                    diff[k] = v
+            if (diff or not rec.doc_no) and not entry.get("new"):
+                # document labels change independently of quantities —
+                # refresh them only when the record is actually touched;
+                # records created seconds ago cannot have documents yet
+                doc_type, doc_no = rec._doc_summary()
+                if rec.doc_type != doc_type:
+                    diff["doc_type"] = doc_type
+                if rec.doc_no != doc_no:
+                    diff["doc_no"] = doc_no
+            if diff:
+                rec.write(diff)
 
     # ------------------------------------------------------------------
     # BoM explosion — virtual (planned) component needs
@@ -785,16 +1331,15 @@ class MrpPurchaseNeed(models.AbstractModel):
         """BoM structure for demanded products.
 
         Returns (bom_map, children, depth, component_products):
-          bom_map   {tmpl_id: mrp.bom} — normal/kit BoM per template
-          depth     {tmpl_id: int}     — level in the explosion tree so
-                                        parents are always processed
-                                        before their components
+          bom_map   {tmpl_id: {qty, lines: [(product_id, qty)]}}
+          depth     {tmpl_id: int} — level in the explosion tree so
+                     parents are always processed before components
           comp_ids  product.product set — every component variant found
-                                        anywhere in the trees
+                    anywhere in the trees
         """
         Bom = self.env["mrp.bom"].sudo()
         manu_ids = self._get_manu_route_ids()
-        bom_map, children, depth = {}, {}, {}
+        bom_map, children = {}, {}
         comp_ids = set()
         need_tmpls = need_products.product_tmpl_id
         depth = {t: 0 for t in need_tmpls.ids}
@@ -810,22 +1355,44 @@ class MrpPurchaseNeed(models.AbstractModel):
                 ("product_tmpl_id", "in", list(cur)),
                 ("type", "in", ("normal", "phantom")),
             ])
+            if not boms:
+                break
+            # batch-read every BoM line found this level, then map the
+            # component products to their templates in one read
+            bl_rows = {
+                d["id"]: d
+                for d in self.env["mrp.bom.line"].sudo().browse(
+                    boms.bom_line_ids.ids).read(
+                    ["product_id", "product_qty"], load="_classic_write")}
+            comp_pids = {d["product_id"] for d in bl_rows.values()
+                         if d["product_id"]}
+            comp_tmpl = {
+                d["id"]: d["product_tmpl_id"]
+                for d in self.env["product.product"].browse(
+                    comp_pids).read(["product_tmpl_id"],
+                                    load="_classic_write")}
             nxt = set()
-            for bom in boms:
-                t = bom.product_tmpl_id.id
+            for d in boms.read(
+                    ["product_tmpl_id", "product_qty", "bom_line_ids"],
+                    load="_classic_write"):
+                t = d["product_tmpl_id"]
                 if t in bom_map:
                     continue
-                bom_map[t] = bom
-                for bl in bom.bom_line_ids:
-                    comp = bl.product_id
-                    if not comp:
+                lines = []
+                for bl_id in d["bom_line_ids"]:
+                    bl = bl_rows.get(bl_id)
+                    if not bl or not bl["product_id"]:
                         continue
-                    comp_ids.add(comp.id)
-                    ct = comp.product_tmpl_id.id
-                    children.setdefault(t, set()).add(ct)
-                    if ct not in seen:
-                        seen.add(ct)
-                        nxt.add(ct)
+                    lines.append((bl["product_id"], bl["product_qty"]))
+                    comp_ids.add(bl["product_id"])
+                    ct = comp_tmpl.get(bl["product_id"])
+                    if ct:
+                        children.setdefault(t, set()).add(ct)
+                        if ct not in seen:
+                            seen.add(ct)
+                            nxt.add(ct)
+                bom_map[t] = {"qty": d["product_qty"] or 1.0,
+                              "lines": lines}
             cur = nxt
         # BFS depth: a component is processed one level below the
         # deepest parent that produces it
@@ -840,7 +1407,7 @@ class MrpPurchaseNeed(models.AbstractModel):
         return bom_map, children, depth, comp_products
 
     @api.model
-    def _explode_bom(self, product, lines, bom_map, manu_route_ids, out):
+    def _explode_bom(self, pid, walk, bom_map, manu_route_ids, ctx, out):
         """Turn the uncovered part of a manufactured product's needs
         into virtual component demands (dependent requirements).
 
@@ -849,71 +1416,100 @@ class MrpPurchaseNeed(models.AbstractModel):
         component need. The component is needed when production must
         start: need date minus the product's manufacturing lead time.
         """
-        bom = bom_map.get(product.product_tmpl_id.id)
-        if not bom or not (manu_route_ids & set(product.route_ids.ids)):
+        prod = ctx["prod"][pid]
+        bom = bom_map.get(prod["tmpl_id"])
+        if not bom or not (manu_route_ids & prod["routes"]):
             return
-        delay_days = product.produce_delay or 0
-        for ln in lines:
-            if ln["uncovered_qty"] <= 0.0:
+        delay_days = prod["produce_delay"] or 0
+        detail = walk["detail"]
+        for kind, entry in walk["needs"]:
+            eid = entry["key"] if kind == "ev" else entry["id"]
+            info = detail.get(eid)
+            if not info or info["uncovered"] <= 0.0:
                 continue
-            prod_date = fields.Date.to_date(
-                ln["need_date"]) - timedelta(days=delay_days)
-            for bl in bom.bom_line_ids:
-                comp = bl.product_id
-                if not comp:
-                    continue
-                qty = (ln["uncovered_qty"] * bl.product_qty
-                       / (bom.product_qty or 1.0))
+            if kind == "ev":
+                need_date = entry["date"]
+                wh_id = entry["warehouse_id"]
+                company_id = entry["company_id"]
+                location = entry["location"]
+            else:
+                need_date = self._local_date(self._need_dt(entry), ctx)
+                wh_id = entry["warehouse_id"]
+                company_id = entry["company_id"]
+                location = ctx["loc_name"].get(entry["location_id"], "")
+            prod_date = need_date - timedelta(days=delay_days)
+            for comp_pid, comp_qty in bom["lines"]:
+                qty = info["uncovered"] * comp_qty / bom["qty"]
                 if qty <= 0.0:
                     continue
                 key = "bom:%s:%s:%s" % (
-                    comp.id, ln["warehouse_id"] or 0,
+                    comp_pid, wh_id or 0,
                     fields.Date.to_string(prod_date))
-                ev = out[comp.id].setdefault(key, {
+                ev = out[comp_pid].setdefault(key, {
                     "key": key,
                     "date": prod_date,
                     "qty": 0.0,
                     "parents": set(),
-                    "company_id": ln["company_id"],
-                    "warehouse_id": ln["warehouse_id"],
-                    "location": ln["location"],
+                    "company_id": company_id,
+                    "warehouse_id": wh_id,
+                    "location": location,
                 })
                 ev["qty"] += qty
-                ev["parents"].add(product.display_name)
+                ev["parents"].add(prod["display_name"])
 
     @api.model
-    def _ensure_virtual_mip(self, product, vevents):
-        """Upsert MİP records for virtual need rows — {key: record}."""
-        if not vevents:
+    def _ensure_virtual_mips(self, all_vevents):
+        """Upsert MİP records for all virtual need rows in one batch —
+        {key: {id, name, rec}}."""
+        if not all_vevents:
             return {}
         Mip = self.env["mip.need.line"].sudo()
-        keys = [ev["key"] for ev in vevents]
-        by_key = {rec.key: rec for rec in Mip.search([("key", "in", keys)])}
-        missing = [ev for ev in vevents if ev["key"] not in by_key]
+        keys = [ev["key"] for ev in all_vevents]
+        by_key = {}
+        existing = Mip.search_read(
+            [("key", "in", keys)], ["key", "name"],
+            load="_classic_write")
+        for d in existing:
+            by_key[d["key"]] = {
+                "id": d["id"], "name": d["name"],
+                "rec": Mip.browse(d["id"]),
+            }
+        missing = [ev for ev in all_vevents if ev["key"] not in by_key]
         if missing:
-            created = Mip.create([{
+            vals_list = [{
                 "key": ev["key"],
-                "product_id": product.id,
+                "product_id": int(ev["key"].split(":")[1]),
                 "company_id": ev["company_id"],
                 "warehouse_id": ev["warehouse_id"],
                 "need_date": ev["date"],
                 "source_type": "vp",
-                "uom_id": product.uom_id.id,
                 "initial_qty": ev["qty"],
-            } for ev in missing])
-            by_key.update({rec.key: rec for rec in created})
+            } for ev in missing]
+            # uom comes from the component product itself
+            prod_uom = {
+                d["id"]: d["uom_id"]
+                for d in self.env["product.product"].browse(
+                    {v["product_id"] for v in vals_list}).read(
+                    ["uom_id"], load="_classic_write")}
+            for v in vals_list:
+                v["uom_id"] = prod_uom.get(v["product_id"])
+            for i in range(0, len(vals_list), _MIP_CHUNK):
+                created = Mip.create(vals_list[i:i + _MIP_CHUNK])
+                for rec in created:
+                    by_key[rec.key] = {
+                        "id": rec.id, "name": rec.name, "rec": rec,
+                        "new": True}
         return by_key
 
     @api.model
-    def _sync_virtual_mips(self, vmips, lines):
+    def _sync_virtual_mips(self, vmips, virt_lines):
         """Write the computed quantities/state onto virtual MİP records
-        (they have no stock move to derive them from)."""
-        for ln in lines:
-            if not ln.get("virtual"):
+        (they have no stock move to derive them from) — diff-only."""
+        for key, rec_info in vmips.items():
+            ln = virt_lines.get(key)
+            if not ln:
                 continue
-            rec = vmips.get(ln["key"])
-            if not rec:
-                continue
+            rec = rec_info["rec"]
             covered = ln["covered_qty"]
             if ln["uncovered_qty"] <= 0.0:
                 state = "done"
@@ -921,20 +1517,26 @@ class MrpPurchaseNeed(models.AbstractModel):
                 state = "partial"
             else:
                 state = "open"
-            doc_type, doc_no = rec._doc_summary()
             vals = {
                 "need_date": fields.Date.to_date(ln["need_date"]),
                 "current_qty": ln["need_qty"],
                 "covered_qty": covered,
                 "remaining_qty": ln["uncovered_qty"],
                 "state": state,
-                "doc_type": doc_type,
-                "doc_no": doc_no,
             }
-            diff = {
-                k: v for k, v in vals.items()
-                if rec._fields[k].type == "many2one" and rec[k].id != v
-                or rec._fields[k].type != "many2one" and rec[k] != v}
+            diff = {}
+            for k, v in vals.items():
+                if rec._fields[k].type == "many2one":
+                    if rec[k].id != v:
+                        diff[k] = v
+                elif rec[k] != v:
+                    diff[k] = v
+            if (diff or not rec.doc_no) and not rec_info.get("new"):
+                doc_type, doc_no = rec._doc_summary()
+                if rec.doc_type != doc_type:
+                    diff["doc_type"] = doc_type
+                if rec.doc_no != doc_no:
+                    diff["doc_no"] = doc_no
             if diff:
                 rec.write(diff)
 
@@ -955,24 +1557,25 @@ class MrpPurchaseNeed(models.AbstractModel):
             "state": "cancel", "remaining_qty": 0.0})
 
     @api.model
-    def _get_virtual_requested(self, vevents, vmips):
+    def _get_virtual_requested(self, demand, vmips, ctx):
         """({key: requested qty}, {key: doc labels}, {key: pending docs})
         for virtual need keys linked through need_mip_ids."""
         if not vmips:
             return {}, {}, {}
         lines = self.env["purchase.request.line"].sudo().search([
-            ("need_mip_ids", "in", [rec.id for rec in vmips.values()]),
+            ("need_mip_ids", "in",
+             [info["id"] for info in vmips.values()]),
             ("cancelled", "=", False),
             ("request_state", "in", list(ACTIVE_REQUEST_STATES)),
         ])
-        demand = {ev["key"]: ev["qty"] for ev in vevents}
-        mip_by_key = {rec.key: rec for rec in vmips.values()}
+        mip_by_id = {info["id"]: info["rec"] for info in vmips.values()}
+        mip_by_key = {k: info["rec"] for k, info in vmips.items()}
         alloc = defaultdict(float)
         docs = defaultdict(set)
         pend = defaultdict(list)
         for rl in lines:
-            mips = [mip_by_key[k] for k in demand
-                    if k in rl.need_mip_ids.mapped("key")]
+            mips = [mip_by_id[i] for i in rl.need_mip_ids.ids
+                    if i in mip_by_id]
             mips.sort(key=lambda m: (m.need_date or fields.Date.today(),
                                      m.id))
             labels = self._request_doc_labels(rl)
@@ -985,7 +1588,7 @@ class MrpPurchaseNeed(models.AbstractModel):
             for mip in mips:
                 if remaining <= 0.0:
                     break
-                take = min(demand[mip.key], remaining)
+                take = min(demand.get(mip.key, 0.0), remaining)
                 takes.append((mip, take))
                 alloc[mip.key] += take
                 remaining -= take
@@ -1044,22 +1647,9 @@ class MrpPurchaseNeed(models.AbstractModel):
                     pend[last_mip.key][-1]["qty"] += left
         return dict(alloc), dict(docs), dict(pend)
 
-    @api.model
-    def _move_open_qty(self, move):
-        """Remaining move demand in the move's UoM.
-
-        Reserved-but-not-done lines keep the full demand (the stock has
-        not left the building yet); already picked/done portions are
-        subtracted so partially consumed component moves only report the
-        still-needed remainder.
-        """
-        picked = sum(
-            line.product_uom_id._compute_quantity(
-                line.quantity, move.product_uom, round=False)
-            for line in move.move_line_ids if line.picked
-        )
-        return move.product_uom_qty - picked
-
+    # ------------------------------------------------------------------
+    # data sources
+    # ------------------------------------------------------------------
 
     @api.model
     def _get_scope_locations(self, warehouse_id):
@@ -1147,19 +1737,14 @@ class MrpPurchaseNeed(models.AbstractModel):
         return result
 
     @api.model
-    def _get_requested_quantities(self, need_moves):
+    def _get_requested_quantities(self, need_moves, ctx):
         """({move_id: requested qty}, {move_id: doc-type labels},
             {move_id: [pending doc entries]}).
 
         A merged request line is attributed to its need moves in
         need-date order — earliest needs are considered served first,
         matching the merge order — so a partially requested need line
-        keeps its remaining quantity requestable (BRD §7.2). The second
-        map describes the live purchasing document(s) behind each move —
-        request or generated quotation/order — so the screen can flag
-        documents that outlived their need. The third map lists those
-        documents per move with the share attributed to the need, for
-        the "Bekleyen" column detail dialog."""
+        keeps its remaining quantity requestable (BRD §7.2)."""
         # sudo: dedup must work even for users who cannot read purchase
         # request lines directly (BRD §10)
         lines = self.env["purchase.request.line"].sudo().search([
@@ -1167,51 +1752,52 @@ class MrpPurchaseNeed(models.AbstractModel):
             ("cancelled", "=", False),
             ("request_state", "in", list(ACTIVE_REQUEST_STATES)),
         ])
-        need_by_id = {mv.id: mv for mv in need_moves}
+        move_data = ctx["moves"]
         alloc = defaultdict(float)
         docs = defaultdict(set)
         pend = defaultdict(list)
         for rl in lines:
-            moves = [need_by_id[i] for i in rl.need_move_ids.ids
-                     if i in need_by_id]
-            moves.sort(key=lambda m: (m.date or fields.Datetime.now(),
-                                      m.id))
+            mids = [i for i in rl.need_move_ids.ids if i in move_data]
+            mids.sort(key=lambda i: (
+                move_data[i]["date"] or fields.Datetime.now(), i))
             labels = self._request_doc_labels(rl)
-            for mv in moves:
-                docs[mv.id] |= labels
+            for mid in mids:
+                docs[mid] |= labels
             remaining = rl.product_uom_id._compute_quantity(
                 rl.product_qty, rl.product_id.uom_id, round=False)
             takes = []
             last = None
-            for mv in moves:
+            for mid in mids:
                 if remaining <= 0.0:
                     break
-                open_need = mv.product_uom._compute_quantity(
-                    self._move_open_qty(mv), mv.product_id.uom_id,
-                    round=False)
+                mv = move_data[mid]
+                open_need = self._conv(
+                    ctx, self._open_qty(ctx, mv), mv["product_uom"],
+                    ctx["prod"][mv["product_id"]]["uom_id"])
                 take = min(open_need, remaining)
-                takes.append((mv, take))
-                alloc[mv.id] += take
+                takes.append((mid, take))
+                alloc[mid] += take
                 remaining -= take
-                last = mv
+                last = mid
             if remaining > 0.0 and last is not None:
                 # planner asked for more than the raw need — attribute
                 # the surplus to the latest need so sums stay truthful
-                alloc[last.id] += remaining
-                mv, take = takes[-1]
-                takes[-1] = (mv, take + remaining)
+                alloc[last] += remaining
+                mid, take = takes[-1]
+                takes[-1] = (mid, take + remaining)
             req_label = self.env._("Onaysız Talep") \
                 if rl.request_state in ("draft", "to_approve") \
                 else self.env._("Onaylı Talep")
-            for mv, take in takes:
+            for mid, take in takes:
                 if take > 0.0:
-                    pend[mv.id].append({
+                    pend[mid].append({
                         "type": req_label,
                         "doc": rl.request_id.name,
                         "model": "purchase.request",
                         "res_id": rl.request_id.id,
                         "qty": take,
-                        "uom": mv.product_id.uom_id.name,
+                        "uom": ctx["prod"][
+                            move_data[mid]["product_id"]]["uom_name"],
                         "date": fields.Date.to_string(rl.date_required)
                             if rl.date_required else "",
                     })
@@ -1231,26 +1817,27 @@ class MrpPurchaseNeed(models.AbstractModel):
                 po_date = fields.Date.to_string(self._local_date(
                     po_line.date_planned or order.date_planned))
                 left = rem
-                last_mv = None
-                for mv, take in takes:
+                last_mid = None
+                for mid, take in takes:
                     if left <= 0.0:
                         break
                     share = min(take, left)
                     if share <= 0.0:
                         continue
-                    pend[mv.id].append({
+                    pend[mid].append({
                         "type": po_label,
                         "doc": order.name,
                         "model": "purchase.order",
                         "res_id": order.id,
                         "qty": share,
-                        "uom": mv.product_id.uom_id.name,
+                        "uom": ctx["prod"][
+                            move_data[mid]["product_id"]]["uom_name"],
                         "date": po_date,
                     })
                     left -= share
-                    last_mv = mv
-                if left > 0.0 and last_mv is not None:
-                    pend[last_mv.id][-1]["qty"] += left
+                    last_mid = mid
+                if left > 0.0 and last_mid is not None:
+                    pend[last_mid][-1]["qty"] += left
         return dict(alloc), dict(docs), dict(pend)
 
     @api.model
@@ -1298,7 +1885,7 @@ class MrpPurchaseNeed(models.AbstractModel):
         return set(routes.ids)
 
     @api.model
-    def _get_lead_info(self, products):
+    def _get_lead_info(self, products, ctx):
         """Purchase-process days per product (BRD §4.3).
 
         Product card wins; otherwise the global default. When neither is
@@ -1310,12 +1897,15 @@ class MrpPurchaseNeed(models.AbstractModel):
         default_set = raw not in (None, "")
         default_days = int(raw) if default_set else 0
         info = {}
-        for product in products:
-            proc = product.x_purchase_process_days
+        for pid in products.ids:
+            proc = ctx["prod"][pid]["proc_days"]
             if proc:
-                info[product.id] = {"proc": proc, "missing": False}
+                info[pid] = {"proc": proc, "missing": False}
             elif default_set:
-                info[product.id] = {"proc": default_days, "missing": False}
+                info[pid] = {"proc": default_days, "missing": False}
             else:
-                info[product.id] = {"proc": 0, "missing": True}
+                info[pid] = {"proc": 0, "missing": True}
         return info
+
+
+

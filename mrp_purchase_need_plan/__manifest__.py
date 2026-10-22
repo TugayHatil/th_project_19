@@ -3,7 +3,7 @@
 {
     "name": "Malzeme İhtiyaç ve Satınalma Planlama",
     "summary": "Ürün bazında gruplanmış malzeme ihtiyaç planlama ekranı ve birleşik satınalma talebi",
-    "version": "19.0.1.2.0",
+    "version": "19.0.1.3.0",
     "category": "Manufacturing/Manufacturing",
     "author": "Projet Solutions",
     "license": "LGPL-3",

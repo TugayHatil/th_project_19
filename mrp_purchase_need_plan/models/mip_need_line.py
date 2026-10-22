@@ -170,7 +170,6 @@ class MipNeedLine(models.Model):
                     state = "done"
                 else:
                     state = "partial"
-                doc_type, doc_no = rec._doc_summary()
                 vals = {
                     "need_date": Need._local_date(Need._need_dt(mv)),
                     "production_id": mv.raw_material_production_id.id or False,
@@ -178,8 +177,6 @@ class MipNeedLine(models.Model):
                     "covered_qty": covered,
                     "remaining_qty": open_qty,
                     "state": state,
-                    "doc_type": doc_type,
-                    "doc_no": doc_no,
                 }
             diff = {}
             for k, v in vals.items():
@@ -188,6 +185,14 @@ class MipNeedLine(models.Model):
                         diff[k] = v
                 elif rec[k] != v:
                     diff[k] = v
+            if diff or not rec.doc_no:
+                # linked-document search is the expensive part of this
+                # sync — run it only for records that actually changed
+                doc_type, doc_no = rec._doc_summary()
+                if rec.doc_type != doc_type:
+                    diff["doc_type"] = doc_type
+                if rec.doc_no != doc_no:
+                    diff["doc_no"] = doc_no
             if diff:
                 rec.write(diff)
 

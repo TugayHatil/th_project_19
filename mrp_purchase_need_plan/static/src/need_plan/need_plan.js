@@ -93,8 +93,16 @@ export class NeedPlan extends Component {
             sortBy: "purchase_start",
             canCreate: false,
             today: "",
+            // server-side paging — the group list itself is paged so the
+            // DOM never holds more than a page of rows at scale (BRD §9)
+            page: 0,
+            pageSize: 50,
+            total: 0,
         });
         this._searchTimer = null;
+        // warehouse/date/query change the underlying plan; page & view
+        // filters don't — selections survive paging but not refiltering
+        this._filterKey = null;
         // need key -> product_id, so a line selection can be pruned when
         // its group disappears or reloads
         this._selOwner = {};
@@ -107,18 +115,13 @@ export class NeedPlan extends Component {
     // -- derived data -----------------------------------------------------
 
     get visibleGroups() {
-        let groups = this.state.groups;
-        if (this.state.uncoveredOnly) {
-            groups = groups.filter((g) => g.total_uncovered > 0);
-        }
-        if (this.state.lateOnly) {
-            groups = groups.filter((g) => g.has_late);
-        }
-        const key = this.state.sortBy === "need_date"
-            ? "earliest_need"
-            : "earliest_start";
-        return [...groups].sort(
-            (a, b) => (a[key] < b[key] ? -1 : a[key] > b[key] ? 1 : 0));
+        // filtering + sorting + paging all happen server-side already
+        return this.state.groups;
+    }
+
+    get totalPages() {
+        return Math.max(
+            1, Math.ceil(this.state.total / this.state.pageSize));
     }
 
     get selectedCount() {
@@ -163,38 +166,43 @@ export class NeedPlan extends Component {
                     date_from: this.state.dateFrom || false,
                     date_to: this.state.dateTo || false,
                     query: this.state.query || "",
+                    limit: this.state.pageSize,
+                    offset: this.state.page * this.state.pageSize,
+                    uncovered_only: this.state.uncoveredOnly,
+                    late_only: this.state.lateOnly,
+                    sort_by: this.state.sortBy,
                 });
             this.state.groups = data.groups || [];
+            this.state.total = data.total || 0;
             this.state.today = data.today || this.state.today;
-            // server may have dropped products -> prune cached detail
-            const alive = new Set(this.state.groups.map((g) => g.product_id));
-            for (const pid of Object.keys(this.state.lines)) {
-                if (!alive.has(parseInt(pid, 10))) {
-                    delete this.state.lines[pid];
-                    delete this.state.suggestions[pid];
-                    delete this.state.expanded[pid];
-                }
+            // warehouse/date/query change the computed plan itself —
+            // prune every cached detail and selection only then; mere
+            // paging/filtering keeps them so selections survive pages
+            const fkey = [
+                this.state.warehouseId, this.state.dateFrom,
+                this.state.dateTo, this.state.query].join("|");
+            if (this._filterKey !== fkey) {
+                this._filterKey = fkey;
+                this.state.lines = {};
+                this.state.suggestions = {};
+                this.state.expanded = {};
+                this.state.selected = {};
+                this._selOwner = {};
+                this.state.requestQty = {};
             }
-            for (const [moveId, ownerPid] of Object.entries(this._selOwner)) {
-                if (!alive.has(ownerPid)) {
-                    delete this.state.selected[moveId];
-                    delete this._selOwner[moveId];
-                    delete this.state.requestQty[moveId];
-                }
-            }
-            // filters may have changed -> refetch detail of groups that
-            // are still expanded so they never render stale lines
+            // refetch detail of groups still expanded on this page so
+            // they never render stale lines
             const reloads = [];
+            const visible = new Set(
+                this.state.groups.map((g) => g.product_id));
             for (const pid of Object.keys(this.state.expanded)) {
                 if (!this.state.expanded[pid]) {
                     continue;
                 }
                 const group = this.state.groups.find(
                     (g) => g.product_id === parseInt(pid, 10));
-                if (group) {
+                if (group && visible.has(group.product_id)) {
                     reloads.push(this.loadLines(group));
-                } else {
-                    delete this.state.expanded[pid];
                 }
             }
             await Promise.all(reloads);
@@ -384,32 +392,39 @@ export class NeedPlan extends Component {
         clearTimeout(this._searchTimer);
         this._searchTimer = setTimeout(async () => {
             this.state.query = query;
+            this.state.page = 0;
             await this.loadGroups();
         }, SEARCH_DELAY);
     }
 
     async onWarehouseChange(ev) {
         this.state.warehouseId = ev.target.value ? parseInt(ev.target.value, 10) : false;
-        this.state.lines = {};
+        this.state.page = 0;
         await this.loadGroups();
     }
 
     async onDateFromChange(ev) {
         this.state.dateFrom = ev.target.value;
+        this.state.page = 0;
         await this.loadGroups();
     }
 
     async onDateToChange(ev) {
         this.state.dateTo = ev.target.value;
+        this.state.page = 0;
         await this.loadGroups();
     }
 
     onUncoveredChange(ev) {
         this.state.uncoveredOnly = ev.target.checked;
+        this.state.page = 0;
+        this.loadGroups();
     }
 
     onLateChange(ev) {
         this.state.lateOnly = ev.target.checked;
+        this.state.page = 0;
+        this.loadGroups();
     }
 
     onSourceToggle(ev) {
@@ -426,6 +441,22 @@ export class NeedPlan extends Component {
 
     onSortChange(ev) {
         this.state.sortBy = ev.target.value;
+        this.state.page = 0;
+        this.loadGroups();
+    }
+
+    prevPage() {
+        if (this.state.page > 0) {
+            this.state.page -= 1;
+            this.loadGroups();
+        }
+    }
+
+    nextPage() {
+        if ((this.state.page + 1) * this.state.pageSize < this.state.total) {
+            this.state.page += 1;
+            this.loadGroups();
+        }
     }
 
     // -- rendering helpers ------------------------------------------------
