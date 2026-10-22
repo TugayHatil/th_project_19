@@ -389,7 +389,9 @@ class MrpPurchaseNeed(models.AbstractModel):
             need_dt = _need_dt(mv)
             if mv.raw_material_production_id:
                 source = mv.raw_material_production_id.name
+                source_type = "MO"
             else:
+                source_type = "SO" if mv.location_dest_id.usage == "customer" else "-"
                 if "sale_line_id" in mv._fields and mv.sale_line_id:
                     source = mv.sale_line_id.order_id.name
                 else:
@@ -412,6 +414,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "location": mv.location_id.display_name,
                 "route": route_abbr,
                 "source": source,
+                "source_type": source_type,
                 "onhand": onhand,
                 "forecast": info["forecast"],
                 "need_qty": qty,

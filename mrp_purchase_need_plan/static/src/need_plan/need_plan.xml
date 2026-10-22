@@ -72,7 +72,16 @@
                             </option>
                         </select>
                     </div>
-                    <button type="button" class="btn btn-sm btn-outline-secondary ms-auto"
+                    <div class="form-check ms-auto">
+                        <input id="o_mnp_src" type="checkbox"
+                               class="form-check-input"
+                               t-att-checked="state.showSource"
+                               t-on-change="onSourceToggle"/>
+                        <label for="o_mnp_src" class="form-check-label text-nowrap">
+                            Kaynak
+                        </label>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary"
                             t-on-click="loadGroups">
                         <i class="fa fa-refresh me-1"/>Yenile
                     </button>
@@ -97,7 +106,8 @@
                         <col class="o_mnp_col_sel"/>
                         <col class="o_mnp_col_exp"/>
                         <col class="o_mnp_col_product"/>
-                        <col class="o_mnp_col_src"/>
+                        <col class="o_mnp_col_type"/>
+                        <col t-if="state.showSource" class="o_mnp_col_src"/>
                         <col class="o_mnp_col_date"/>
                         <col class="o_mnp_col_loc"/>
                         <col class="o_mnp_col_route"/>
@@ -115,7 +125,8 @@
                             <th class="o_mnp_col_sel"></th>
                             <th class="o_mnp_col_exp"></th>
                             <th class="o_mnp_col_product">Ürün</th>
-                            <th>Kaynak</th>
+                            <th>Tür</th>
+                            <th t-if="state.showSource">Kaynak</th>
                             <th>İhtiyaç Tarihi</th>
                             <th>Konum</th>
                             <th>Rota</th>
@@ -153,6 +164,7 @@
                                           t-esc="`· ${group.need_count} satır`"/>
                                 </td>
                                 <td/>
+                                <td t-if="state.showSource"/>
                                 <td class="o_mnp_summary"
                                     t-esc="fmtDate(group.earliest_need)"/>
                                 <td class="o_mnp_summary text-muted"
@@ -210,7 +222,10 @@
                                             <span class="text-muted"
                                                   t-esc="group.name"/>
                                         </td>
-                                        <td class="o_mnp_source text-muted"
+                                        <td class="text-center"
+                                            t-esc="line.source_type"/>
+                                        <td t-if="state.showSource"
+                                            class="o_mnp_source text-muted"
                                             t-esc="line.source"/>
                                         <td t-esc="fmtDate(line.need_date)"/>
                                         <td t-esc="line.location"/>
@@ -263,12 +278,14 @@
                                 </t>
                                 <tr t-if="state.lines[group.product_id] === undefined"
                                     class="o_mnp_line">
-                                    <td colspan="15" class="text-muted text-center">
+                                    <td t-att-colspan="state.showSource ? 16 : 15"
+                                        class="text-muted text-center">
                                         Yükleniyor…
                                     </td>
                                 </tr>
                                 <tr t-elif="!groupLines(group).length" class="o_mnp_line">
-                                    <td colspan="15" class="text-muted text-center">
+                                    <td t-att-colspan="state.showSource ? 16 : 15"
+                                        class="text-muted text-center">
                                         Bu kapsamda ihtiyaç satırı yok.
                                     </td>
                                 </tr>

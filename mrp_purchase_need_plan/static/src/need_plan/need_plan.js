@@ -53,6 +53,7 @@ export class NeedPlan extends Component {
             query: "",
             uncoveredOnly: false,
             lateOnly: false,
+            showSource: false,
             sortBy: "purchase_start",
             canCreate: false,
             today: "",
@@ -373,6 +374,10 @@ export class NeedPlan extends Component {
 
     onLateChange(ev) {
         this.state.lateOnly = ev.target.checked;
+    }
+
+    onSourceToggle(ev) {
+        this.state.showSource = ev.target.checked;
     }
 
     onSortChange(ev) {
