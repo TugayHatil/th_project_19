@@ -244,7 +244,7 @@
                             </tr>
                             <!-- ihtiyaç detay satırları -->
                             <t t-if="isExpanded(group)">
-                                <t t-foreach="groupLines(group)" t-as="line" t-key="line.move_id">
+                                <t t-foreach="groupLines(group)" t-as="line" t-key="line.key">
                                     <tr t-att-class="lineClass(line)">
                                         <td>
                                             <input type="checkbox" class="form-check-input"

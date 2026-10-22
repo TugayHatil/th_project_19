@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from collections import defaultdict
+from collections import defaultdict, deque
 from datetime import timedelta
 
 from odoo import api, fields, models
@@ -76,10 +76,14 @@ class MrpPurchaseNeed(models.AbstractModel):
     @api.model
     def get_need_lines(self, product_id, warehouse_id=False,
                        date_from=None, date_to=None):
-        """Need detail rows for a single product group (BRD §3.2)."""
+        """Need detail rows for a single product group (BRD §3.2).
+
+        The whole plan is computed even for a single product: virtual
+        component rows exist only when the parent demand is part of the
+        same computation."""
         product = self.env["product.product"].browse(int(product_id))
         plan = self._build_plan(
-            warehouse_id, date_from, date_to, "", products=product)
+            warehouse_id, date_from, date_to, "", products=None)
         data = plan.get(product.id)
         if not data:
             return {"lines": [], "group": False, "suggestions": []}
@@ -91,72 +95,79 @@ class MrpPurchaseNeed(models.AbstractModel):
 
     @api.model
     def create_purchase_request(self, product_ids=None, move_ids=None,
-                                move_quantities=None, warehouse_id=False,
+                                line_keys=None, move_quantities=None,
+                                warehouse_id=False,
                                 date_from=None, date_to=None):
         """Merge uncovered needs of the selected need lines into purchase
         requests — one request per (company, warehouse) (BRD §7.1/§7.2).
 
         ``product_ids`` selects every uncovered need of those products;
-        ``move_ids`` selects individual need rows (line-level picking);
+        ``line_keys`` selects individual need rows (line-level picking —
+        "mv:<id>" for real demands, "bom:…" for BoM-exploded ones);
         ``move_quantities`` additionally overrides the requested quantity
-        of a selected row (planner-edited "Talep Miktarı").
+        of a selected row (planner-edited "Planla" input).
 
         Current stock and expected supply are re-evaluated right before
         creating the request (BRD §9 / Test 7). The advisory lock plus the
         already-requested check inside the same transaction prevents
         duplicate requests from concurrent runs (BRD §10 / Test 9).
         """
-        if not product_ids and not move_ids and not move_quantities:
+        if not product_ids and not move_ids and not line_keys \
+                and not move_quantities:
             raise UserError(self.env._("En az bir ihtiyaç satırı seçin."))
         # serialize concurrent request creation for the whole screen
         self.env.cr.execute(
             "SELECT pg_advisory_xact_lock(hashtext('mrp_purchase_need_plan'))")
 
         selected = None
-        qty_map = {}
         if move_ids:
-            selected = {int(i) for i in move_ids}
+            selected = {"mv:%s" % int(i) for i in move_ids}
+        if line_keys:
+            selected = (selected or set()) | {str(k) for k in line_keys}
+        qty_map = {}
         if move_quantities:
-            qty_map = {
-                int(k): float(v) for k, v in move_quantities.items()}
+            for k, v in move_quantities.items():
+                # plain numbers are legacy move ids; need keys already
+                # carry their "mv:"/"bom:" prefix
+                sk = str(k)
+                qty_map[sk if ":" in sk else "mv:%s" % sk] = float(v)
             for qty in qty_map.values():
                 if qty <= 0:
                     raise UserError(self.env._(
                         "Talep miktarı sıfırdan büyük olmalıdır."))
             selected = (selected or set()) | set(qty_map)
-        if product_ids:
-            products = self.env["product.product"].browse(
-                [int(p) for p in product_ids])
-        else:
-            products = self.env["stock.move"].browse(
-                list(selected)).product_id
+        # the full plan is required: virtual component rows exist only
+        # when the parent product's demand is part of the computation
         plan = self._build_plan(
-            warehouse_id, date_from, date_to, "", products=products)
+            warehouse_id, date_from, date_to, "", products=None)
+        product_filter = ({int(p) for p in product_ids}
+                          if product_ids else None)
 
         # gather uncovered, not-yet-requested need lines per
         # (company, warehouse, product) — needs with incompatible
         # destinations must not merge into one request/line (BRD §8)
         grouped = defaultdict(lambda: defaultdict(dict))
         skipped = []
-        for product in products:
-            data = plan.get(product.id)
-            if not data:
+        for pid, data in plan.items():
+            if product_filter is not None and pid not in product_filter:
+                continue
+            product = data["product"]
+            if selected is not None and not any(
+                    ln["key"] in selected for ln in data["lines"]):
+                # none of this product's need rows was selected
                 continue
             fresh = [
                 ln for ln in data["lines"]
                 if ln["requestable_qty"] > 0
-                and (selected is None or ln["move_id"] in selected)
+                and ln.get("can_buy", True)
+                and (selected is None or ln["key"] in selected)
             ]
-            if selected is not None and not any(
-                    ln["move_id"] in selected for ln in data["lines"]):
-                # none of this product's need rows was selected
-                continue
             if not fresh:
                 skipped.append(product.display_name)
                 continue
             for ln in fresh:
                 # planner-entered quantity overrides the remaining qty
-                req_qty = qty_map.get(ln["move_id"], ln["requestable_qty"])
+                req_qty = qty_map.get(ln["key"], ln["requestable_qty"])
                 key = (ln["company_id"], ln["warehouse_id"])
                 entry = grouped[key][product.id]
                 entry.setdefault("product", product)
@@ -177,7 +188,10 @@ class MrpPurchaseNeed(models.AbstractModel):
                 items = entry["items"]
                 qty = sum(q for _ln, q in items)
                 earliest = min(ln["need_date"] for ln, _q in items)
-                move_ids = [ln["move_id"] for ln, _q in items]
+                move_ids = [ln["move_id"] for ln, _q in items
+                            if ln["move_id"]]
+                mip_ids = [ln["mip_id"] for ln, _q in items
+                           if ln["mip_id"]]
                 name = product.display_name
                 line_cmds.append((0, 0, {
                     "product_id": product.id,
@@ -187,6 +201,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                     "date_required": earliest,
                     "estimated_cost": qty * product.standard_price,
                     "need_move_ids": [(6, 0, move_ids)],
+                    "need_mip_ids": [(6, 0, mip_ids)],
                 }))
             if wh_id:
                 picking_type = self.env["stock.warehouse"].browse(
@@ -244,7 +259,13 @@ class MrpPurchaseNeed(models.AbstractModel):
         # durable MİP records are upserted on every plan build so each
         # need row gets a stable number without duplicating on refresh
         mip_by_move = self._ensure_mip_lines(need_moves)
-        products = need_moves.product_id
+        need_products = need_moves.product_id
+        # BoM explosion graph: components of demanded manufactured
+        # products become virtual needs, level by level (depth order so
+        # every parent is processed before its components)
+        bom_map, children, depth, comp_products = self._get_bom_graph(
+            need_products)
+        products = need_products | comp_products
         flow_moves = self._get_flow_moves(products, scope_ids)
         onhand = self._get_onhand(products, scope_ids)
         requested, req_docs, pend = self._get_requested_quantities(
@@ -261,7 +282,17 @@ class MrpPurchaseNeed(models.AbstractModel):
             need_by_product[mv.product_id.id] |= mv
 
         plan = {}
-        for product in products:
+        virtual_events = defaultdict(dict)  # pid -> {key: event dict}
+        seen_keys = set()
+        ordered = products.sorted(
+            key=lambda p: depth.get(p.product_tmpl_id.id, 0))
+        for product in ordered:
+            ev_map = virtual_events.pop(product.id, {})
+            seen_keys.update(ev_map)
+            vevents = list(ev_map.values())
+            vmips = self._ensure_virtual_mip(product, vevents)
+            vreq, vdocs, vpend = self._get_virtual_requested(
+                vevents, vmips)
             data = self._compute_product(
                 product,
                 need_by_product[product.id],
@@ -271,17 +302,30 @@ class MrpPurchaseNeed(models.AbstractModel):
                 requested,
                 req_docs,
                 pend,
+                vevents,
+                vmips,
+                vreq,
+                vdocs,
+                vpend,
                 mip_by_move,
                 lead_info[product.id],
                 today,
                 route_sets,
             )
+            self._sync_virtual_mips(vmips, data["lines"])
             if data["lines"]:
                 plan[product.id] = data
+                self._explode_bom(
+                    product, data["lines"], bom_map, manu_route_ids=
+                    route_sets[1], out=virtual_events)
+        # virtual needs that vanished from the plan close their MİP
+        # records — the history stays queryable (BRD §4.3)
+        self._close_stale_virtual_mips(seen_keys, warehouse_id)
         return plan
 
     def _compute_product(self, product, need_moves, flow_moves, onhand,
-                         scope_ids, requested, req_docs, pend, mip_by_move,
+                         scope_ids, requested, req_docs, pend, vevents,
+                         vmips, vreq, vdocs, vpend, mip_by_move,
                          lead, today, route_sets):
         """Chronological stock walk for one product.
 
@@ -289,9 +333,17 @@ class MrpPurchaseNeed(models.AbstractModel):
         receipts before issues on the same day. Each need line keeps the
         running balance right after its own consumption (the "forecast"
         column) and the incremental shortage it introduces (the
-        "uncovered" quantity, BRD §6.2).
+        "uncovered" quantity, BRD §6.2). ``vevents`` carries virtual
+        (BoM-exploded) component demands — plain dicts keyed by their
+        "bom:…" need key, treated exactly like outgoing demand rows.
         """
         need_set = set(need_moves.ids)
+
+        def eid(mv):
+            """Demand identity — move id for real needs, need key for
+            virtual ones (mixed int/str keys never collide)."""
+            return mv["key"] if isinstance(mv, dict) else mv.id
+        need_keys = need_set | {ev["key"] for ev in vevents}
         events = []
         for mv in flow_moves:
             src_in = mv.location_id.id in scope_ids
@@ -308,8 +360,10 @@ class MrpPurchaseNeed(models.AbstractModel):
             mv_dt = self._need_dt(mv) if mv.id in need_set else mv.date
             events.append((self._local_date(
                 mv_dt or fields.Datetime.now()), not src_in, mv, qty))
+        for ev in vevents:
+            events.append((ev["date"], False, ev, ev["qty"]))
         # receipts are applied before issues on the same date
-        events.sort(key=lambda e: (e[0], 0 if e[1] else 1, e[2].id))
+        events.sort(key=lambda e: (e[0], 0 if e[1] else 1, str(eid(e[2]))))
 
         # route label, SAP BESKZ style: S = Satınal, Ü = Üret, S+Ü = both
         buy_ids, manu_ids = route_sets
@@ -364,23 +418,36 @@ class MrpPurchaseNeed(models.AbstractModel):
                     cover = dict(chunk)
                     cover["qty"] = take
                     covers.append(cover)
-                if mv.id in need_set:
+                if eid(mv) in need_keys:
                     # the part of the new shortage this need is
                     # responsible for
                     uncovered = min(qty, max(0.0, deficit - prev_deficit))
-                    detail[mv.id] = {
+                    detail[eid(mv)] = {
                         "forecast": balance,
                         "uncovered": uncovered,
                     }
-                    coverage_map[mv.id] = covers
+                    coverage_map[eid(mv)] = covers
 
         # Late supply that lands while a shortage exists could still serve
         # earlier uncovered needs if it were pulled forward. For open
         # purchase orders this yields a suggestion — purely informational:
         # until the planner actually reschedules the order, planning keeps
         # using its real delivery date and the need stays uncovered.
-        ordered_needs = need_moves.sorted(
-            key=lambda m: (self._need_dt(m), m.id))
+        ordered_needs = sorted(
+            list(need_moves) + list(vevents),
+            key=lambda e: (
+                e["date"] if isinstance(e, dict)
+                else self._local_date(self._need_dt(e)),
+                str(eid(e))))
+
+        def need_day(entry):
+            return (entry["date"] if isinstance(entry, dict)
+                    else self._local_date(self._need_dt(entry)))
+
+        def req_of(entry):
+            return (vreq.get(entry["key"], 0.0)
+                    if isinstance(entry, dict)
+                    else requested.get(entry.id, 0.0))
         suggest_map = defaultdict(float)
         suggestions = []
         for mv, qty, absorbed in late_supplies:
@@ -390,16 +457,17 @@ class MrpPurchaseNeed(models.AbstractModel):
             for nmv in ordered_needs:
                 if remaining <= 0.0:
                     break
-                need_date = self._local_date(self._need_dt(nmv))
-                if (need_date >= supply_date or nmv.id not in detail):
+                need_date = need_day(nmv)
+                if need_date >= supply_date or eid(nmv) not in detail:
                     continue
                 open_need = (
-                    detail[nmv.id]["uncovered"] - suggest_map[nmv.id]
-                    - requested.get(nmv.id, 0.0))
+                    detail[eid(nmv)]["uncovered"]
+                    - suggest_map[eid(nmv)]
+                    - req_of(nmv))
                 if open_need <= 0.0:
                     continue
                 covered = min(open_need, remaining)
-                suggest_map[nmv.id] += covered
+                suggest_map[eid(nmv)] += covered
                 remaining -= covered
                 covers.append((need_date, covered))
             po_line = mv.purchase_line_id
@@ -448,6 +516,56 @@ class MrpPurchaseNeed(models.AbstractModel):
 
         lines = []
         for mv in ordered_needs:
+            if isinstance(mv, dict):
+                # virtual (BoM-exploded) component need
+                need_date = mv["date"]
+                seller = product._select_seller(
+                    quantity=mv["qty"], date=need_date,
+                    uom_id=product.uom_id)
+                delay = seller.delay if seller else 0
+                approve_by = need_date - timedelta(days=delay)
+                purchase_start = approve_by - timedelta(days=lead["proc"])
+                info = detail.get(
+                    mv["key"], {"forecast": balance, "uncovered": 0.0})
+                req_qty = vreq.get(mv["key"], 0.0)
+                requestable = max(0.0, info["uncovered"] - req_qty)
+                mip = vmips.get(mv["key"], self.env["mip.need.line"])
+                lines.append({
+                    "key": mv["key"],
+                    "move_id": False,
+                    "virtual": True,
+                    "mip_id": mip.id,
+                    "mip_name": mip.name,
+                    "company_id": mv["company_id"],
+                    "warehouse_id": mv["warehouse_id"],
+                    "need_date": fields.Date.to_string(need_date),
+                    "location": mv["location"],
+                    "route": route_abbr,
+                    "source": " / ".join(sorted(mv["parents"]))
+                        or self.env._("Üretim Planı"),
+                    "source_type": "ÜP",
+                    "onhand": onhand,
+                    "forecast": info["forecast"],
+                    "need_qty": mv["qty"],
+                    "uncovered_qty": info["uncovered"],
+                    "covered_qty": mv["qty"] - info["uncovered"],
+                    "coverage": coverage_map.get(mv["key"], []),
+                    "pending": vpend.get(mv["key"], []),
+                    "pull_covered": suggest_map[mv["key"]],
+                    "uom": product.uom_id.name,
+                    "approve_by": fields.Date.to_string(approve_by),
+                    "purchase_start": fields.Date.to_string(purchase_start),
+                    "is_late": purchase_start < today,
+                    "requested_qty": req_qty,
+                    "requestable_qty": requestable,
+                    "action": "",
+                    "action_doc": "",
+                    "already_requested":
+                        req_qty > 0.0 and requestable <= 0.0,
+                    "can_buy": bool(buy_ids & product_routes),
+                    "missing_lead_config": lead["missing"],
+                })
+                continue
             qty = mv.product_uom._compute_quantity(
                 self._move_open_qty(mv), product.uom_id, round=False)
             # MO components are needed when production is scheduled to
@@ -495,7 +613,9 @@ class MrpPurchaseNeed(models.AbstractModel):
                 action_doc = " / ".join(dict.fromkeys(
                     label for _prio, label in labels))
             lines.append({
+                "key": "mv:%s" % mv.id,
                 "move_id": mv.id,
+                "virtual": False,
                 "mip_id": mip_by_move[mv.id].id,
                 "mip_name": mip_by_move[mv.id].name,
                 "company_id": mv.company_id.id,
@@ -522,6 +642,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "action": action,
                 "action_doc": action_doc,
                 "already_requested": req_qty > 0.0 and requestable <= 0.0,
+                "can_buy": bool(buy_ids & product_routes),
                 "missing_lead_config": lead["missing"],
             })
         return {
@@ -634,6 +755,7 @@ class MrpPurchaseNeed(models.AbstractModel):
         missing = need_moves.filtered(lambda m: m.id not in by_move)
         if missing:
             created = Mip.create([{
+                "key": "mv:%s" % mv.id,
                 "move_id": mv.id,
                 "product_id": mv.product_id.id,
                 "company_id": mv.company_id.id,
@@ -653,6 +775,274 @@ class MrpPurchaseNeed(models.AbstractModel):
         self.env["mip.need.line"].sudo().browse(
             [rec.id for rec in by_move.values()])._sync_from_moves()
         return by_move
+
+    # ------------------------------------------------------------------
+    # BoM explosion — virtual (planned) component needs
+    # ------------------------------------------------------------------
+
+    @api.model
+    def _get_bom_graph(self, need_products):
+        """BoM structure for demanded products.
+
+        Returns (bom_map, children, depth, component_products):
+          bom_map   {tmpl_id: mrp.bom} — normal/kit BoM per template
+          depth     {tmpl_id: int}     — level in the explosion tree so
+                                        parents are always processed
+                                        before their components
+          comp_ids  product.product set — every component variant found
+                                        anywhere in the trees
+        """
+        Bom = self.env["mrp.bom"].sudo()
+        manu_ids = self._get_manu_route_ids()
+        bom_map, children, depth = {}, {}, {}
+        comp_ids = set()
+        need_tmpls = need_products.product_tmpl_id
+        depth = {t: 0 for t in need_tmpls.ids}
+        # only products that can actually be manufactured explode demand
+        manu_products = need_products.filtered(
+            lambda p: manu_ids & set(p.route_ids.ids))
+        cur = set(manu_products.product_tmpl_id.ids)
+        seen = set(need_tmpls.ids)
+        guard = 0
+        while cur and guard < 50:
+            guard += 1
+            boms = Bom.search([
+                ("product_tmpl_id", "in", list(cur)),
+                ("type", "in", ("normal", "phantom")),
+            ])
+            nxt = set()
+            for bom in boms:
+                t = bom.product_tmpl_id.id
+                if t in bom_map:
+                    continue
+                bom_map[t] = bom
+                for bl in bom.bom_line_ids:
+                    comp = bl.product_id
+                    if not comp:
+                        continue
+                    comp_ids.add(comp.id)
+                    ct = comp.product_tmpl_id.id
+                    children.setdefault(t, set()).add(ct)
+                    if ct not in seen:
+                        seen.add(ct)
+                        nxt.add(ct)
+            cur = nxt
+        # BFS depth: a component is processed one level below the
+        # deepest parent that produces it
+        work = deque(need_tmpls.ids)
+        while work:
+            t = work.popleft()
+            for ct in children.get(t, ()):
+                if depth.get(ct, -1) <= depth[t]:
+                    depth[ct] = depth[t] + 1
+                    work.append(ct)
+        comp_products = self.env["product.product"].browse(comp_ids)
+        return bom_map, children, depth, comp_products
+
+    @api.model
+    def _explode_bom(self, product, lines, bom_map, manu_route_ids, out):
+        """Turn the uncovered part of a manufactured product's needs
+        into virtual component demands (dependent requirements).
+
+        Only the shortage is exploded — quantities already covered by
+        stock or incoming supply (including open MOs) produce no
+        component need. The component is needed when production must
+        start: need date minus the product's manufacturing lead time.
+        """
+        bom = bom_map.get(product.product_tmpl_id.id)
+        if not bom or not (manu_route_ids & set(product.route_ids.ids)):
+            return
+        delay_days = product.produce_delay or 0
+        for ln in lines:
+            if ln["uncovered_qty"] <= 0.0:
+                continue
+            prod_date = fields.Date.to_date(
+                ln["need_date"]) - timedelta(days=delay_days)
+            for bl in bom.bom_line_ids:
+                comp = bl.product_id
+                if not comp:
+                    continue
+                qty = (ln["uncovered_qty"] * bl.product_qty
+                       / (bom.product_qty or 1.0))
+                if qty <= 0.0:
+                    continue
+                key = "bom:%s:%s:%s" % (
+                    comp.id, ln["warehouse_id"] or 0,
+                    fields.Date.to_string(prod_date))
+                ev = out[comp.id].setdefault(key, {
+                    "key": key,
+                    "date": prod_date,
+                    "qty": 0.0,
+                    "parents": set(),
+                    "company_id": ln["company_id"],
+                    "warehouse_id": ln["warehouse_id"],
+                    "location": ln["location"],
+                })
+                ev["qty"] += qty
+                ev["parents"].add(product.display_name)
+
+    @api.model
+    def _ensure_virtual_mip(self, product, vevents):
+        """Upsert MİP records for virtual need rows — {key: record}."""
+        if not vevents:
+            return {}
+        Mip = self.env["mip.need.line"].sudo()
+        keys = [ev["key"] for ev in vevents]
+        by_key = {rec.key: rec for rec in Mip.search([("key", "in", keys)])}
+        missing = [ev for ev in vevents if ev["key"] not in by_key]
+        if missing:
+            created = Mip.create([{
+                "key": ev["key"],
+                "product_id": product.id,
+                "company_id": ev["company_id"],
+                "warehouse_id": ev["warehouse_id"],
+                "need_date": ev["date"],
+                "source_type": "vp",
+                "uom_id": product.uom_id.id,
+                "initial_qty": ev["qty"],
+            } for ev in missing])
+            by_key.update({rec.key: rec for rec in created})
+        return by_key
+
+    @api.model
+    def _sync_virtual_mips(self, vmips, lines):
+        """Write the computed quantities/state onto virtual MİP records
+        (they have no stock move to derive them from)."""
+        for ln in lines:
+            if not ln.get("virtual"):
+                continue
+            rec = vmips.get(ln["key"])
+            if not rec:
+                continue
+            covered = ln["covered_qty"]
+            if ln["uncovered_qty"] <= 0.0:
+                state = "done"
+            elif covered > 0.0:
+                state = "partial"
+            else:
+                state = "open"
+            doc_type, doc_no = rec._doc_summary()
+            vals = {
+                "need_date": fields.Date.to_date(ln["need_date"]),
+                "current_qty": ln["need_qty"],
+                "covered_qty": covered,
+                "remaining_qty": ln["uncovered_qty"],
+                "state": state,
+                "doc_type": doc_type,
+                "doc_no": doc_no,
+            }
+            diff = {
+                k: v for k, v in vals.items()
+                if rec._fields[k].type == "many2one" and rec[k].id != v
+                or rec._fields[k].type != "many2one" and rec[k] != v}
+            if diff:
+                rec.write(diff)
+
+    @api.model
+    def _close_stale_virtual_mips(self, seen_keys, warehouse_id=False):
+        """Virtual needs that disappeared from the current scope close
+        their MİP record (cancelled) — history rows stay queryable."""
+        domain = [
+            ("key", "like", "bom:%"),
+            ("state", "not in", ("done", "cancel")),
+            ("company_id", "in", self.env.companies.ids),
+        ]
+        if warehouse_id:
+            domain.append(("warehouse_id", "=", int(warehouse_id)))
+        if seen_keys:
+            domain.append(("key", "not in", list(seen_keys)))
+        self.env["mip.need.line"].sudo().search(domain).write({
+            "state": "cancel", "remaining_qty": 0.0})
+
+    @api.model
+    def _get_virtual_requested(self, vevents, vmips):
+        """({key: requested qty}, {key: doc labels}, {key: pending docs})
+        for virtual need keys linked through need_mip_ids."""
+        if not vmips:
+            return {}, {}, {}
+        lines = self.env["purchase.request.line"].sudo().search([
+            ("need_mip_ids", "in", [rec.id for rec in vmips.values()]),
+            ("cancelled", "=", False),
+            ("request_state", "in", list(ACTIVE_REQUEST_STATES)),
+        ])
+        demand = {ev["key"]: ev["qty"] for ev in vevents}
+        mip_by_key = {rec.key: rec for rec in vmips.values()}
+        alloc = defaultdict(float)
+        docs = defaultdict(set)
+        pend = defaultdict(list)
+        for rl in lines:
+            mips = [mip_by_key[k] for k in demand
+                    if k in rl.need_mip_ids.mapped("key")]
+            mips.sort(key=lambda m: (m.need_date or fields.Date.today(),
+                                     m.id))
+            labels = self._request_doc_labels(rl)
+            for mip in mips:
+                docs[mip.key] |= labels
+            remaining = rl.product_uom_id._compute_quantity(
+                rl.product_qty, rl.product_id.uom_id, round=False)
+            takes = []
+            last_key = None
+            for mip in mips:
+                if remaining <= 0.0:
+                    break
+                take = min(demand[mip.key], remaining)
+                takes.append((mip, take))
+                alloc[mip.key] += take
+                remaining -= take
+                last_key = mip.key
+            if remaining > 0.0 and last_key is not None:
+                alloc[last_key] += remaining
+                mip, take = takes[-1]
+                takes[-1] = (mip, take + remaining)
+            req_label = self.env._("Onaysız Talep") \
+                if rl.request_state in ("draft", "to_approve") \
+                else self.env._("Onaylı Talep")
+            for mip, take in takes:
+                if take > 0.0:
+                    pend[mip.key].append({
+                        "type": req_label,
+                        "doc": rl.request_id.name,
+                        "model": "purchase.request",
+                        "res_id": rl.request_id.id,
+                        "qty": take,
+                        "uom": mip.product_id.uom_id.name,
+                        "date": fields.Date.to_string(rl.date_required)
+                            if rl.date_required else "",
+                    })
+            for po_line in rl.purchase_lines:
+                order = po_line.order_id
+                if order.state not in ("draft", "sent"):
+                    continue
+                rem = po_line.product_uom_id._compute_quantity(
+                    po_line.product_qty - po_line.qty_received,
+                    po_line.product_id.uom_id, round=False)
+                if rem <= 0.0:
+                    continue
+                po_label = self.env._("Onaysız Teklif")
+                po_date = fields.Date.to_string(self._local_date(
+                    po_line.date_planned or order.date_planned))
+                left = rem
+                last_mip = None
+                for mip, take in takes:
+                    if left <= 0.0:
+                        break
+                    share = min(take, left)
+                    if share <= 0.0:
+                        continue
+                    pend[mip.key].append({
+                        "type": po_label,
+                        "doc": order.name,
+                        "model": "purchase.order",
+                        "res_id": order.id,
+                        "qty": share,
+                        "uom": mip.product_id.uom_id.name,
+                        "date": po_date,
+                    })
+                    left -= share
+                    last_mip = mip
+                if left > 0.0 and last_mip is not None:
+                    pend[last_mip.key][-1]["qty"] += left
+        return dict(alloc), dict(docs), dict(pend)
 
     @api.model
     def _move_open_qty(self, move):
@@ -693,14 +1083,21 @@ class MrpPurchaseNeed(models.AbstractModel):
         """Open stock demands: manufacturing component moves and customer
         deliveries (BRD §1/§6.2)."""
         # this screen only plans purchasable goods: products must carry a
-        # route containing a "buy" rule (manufacture/MTO handled elsewhere)
+        # route containing a "buy" rule. Manufactured products with a BoM
+        # are also pulled in — their own rows are not purchasable but
+        # their uncovered demand explodes into component needs.
         buy_routes = self._get_buy_route_ids()
+        manu_routes = self._get_manu_route_ids()
         domain = [
             ("state", "in", OPEN_STATES),
             ("product_uom_qty", ">", 0),
             # only inventory-tracked goods belong to material planning
             ("product_id.is_storable", "=", True),
+            "|",
             ("product_id.route_ids", "in", list(buy_routes)),
+            "&",
+            ("product_id.route_ids", "in", list(manu_routes)),
+            ("product_id.product_tmpl_id.bom_ids", "!=", False),
             ("company_id", "in", self.env.companies.ids),
             ("location_id", "in", list(scope_ids)),
             "|",

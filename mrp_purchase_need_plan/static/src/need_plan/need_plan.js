@@ -78,7 +78,7 @@ export class NeedPlan extends Component {
             suggestions: {},
             expanded: {},
             selected: {},
-            // move_id -> planner-edited request quantity
+            // need key -> planner-edited request quantity
             requestQty: {},
             warehouses: [],
             warehouseId: false,
@@ -95,7 +95,7 @@ export class NeedPlan extends Component {
             today: "",
         });
         this._searchTimer = null;
-        // move_id -> product_id, so a line selection can be pruned when
+        // need key -> product_id, so a line selection can be pruned when
         // its group disappears or reloads
         this._selOwner = {};
         onMounted(async () => {
@@ -126,7 +126,7 @@ export class NeedPlan extends Component {
     }
 
     isSelectable(line) {
-        return line.requestable_qty > 0;
+        return line.requestable_qty > 0 && line.can_buy !== false;
     }
 
     get missingConfigGroups() {
@@ -222,17 +222,17 @@ export class NeedPlan extends Component {
             // default the editable request qty to the uncovered qty
             for (const line of this.state.lines[pid]) {
                 if (this.isSelectable(line)
-                        && this.state.requestQty[line.move_id] === undefined) {
-                    this.state.requestQty[line.move_id] = line.uncovered_qty;
+                        && this.state.requestQty[line.key] === undefined) {
+                    this.state.requestQty[line.key] = line.uncovered_qty;
                 }
             }
             // drop selections that no longer point at a visible line
-            const ids = new Set(this.state.lines[pid].map((l) => l.move_id));
-            for (const moveId of Object.keys(this.state.selected)) {
-                if (!ids.has(parseInt(moveId, 10)) && this._selOwner[moveId] === pid) {
-                    delete this.state.selected[moveId];
-                    delete this._selOwner[moveId];
-                    delete this.state.requestQty[moveId];
+            const ids = new Set(this.state.lines[pid].map((l) => l.key));
+            for (const key of Object.keys(this.state.selected)) {
+                if (!ids.has(key) && this._selOwner[key] === pid) {
+                    delete this.state.selected[key];
+                    delete this._selOwner[key];
+                    delete this.state.requestQty[key];
                 }
             }
             if (data.group) {
@@ -258,7 +258,7 @@ export class NeedPlan extends Component {
     }
 
     toggleLine(line, group, ev) {
-        const mid = line.move_id;
+        const mid = line.key;
         if (ev.target.checked) {
             this.state.selected[mid] = true;
             this._selOwner[mid] = group.product_id;
@@ -284,15 +284,15 @@ export class NeedPlan extends Component {
                 continue;
             }
             if (want) {
-                this.state.selected[line.move_id] = true;
-                this._selOwner[line.move_id] = group.product_id;
-                if (this.state.requestQty[line.move_id] === undefined) {
-                    this.state.requestQty[line.move_id] = line.uncovered_qty;
+                this.state.selected[line.key] = true;
+                this._selOwner[line.key] = group.product_id;
+                if (this.state.requestQty[line.key] === undefined) {
+                    this.state.requestQty[line.key] = line.uncovered_qty;
                 }
             } else {
-                delete this.state.selected[line.move_id];
-                delete this._selOwner[line.move_id];
-                delete this.state.requestQty[line.move_id];
+                delete this.state.selected[line.key];
+                delete this._selOwner[line.key];
+                delete this.state.requestQty[line.key];
             }
         }
     }
@@ -301,23 +301,23 @@ export class NeedPlan extends Component {
         const lines = this.state.lines[group.product_id] || [];
         const eligible = lines.filter((l) => this.isSelectable(l));
         return eligible.length > 0
-            && eligible.every((l) => this.state.selected[l.move_id]);
+            && eligible.every((l) => this.state.selected[l.key]);
     }
 
     requestQtyOf(line) {
-        const v = this.state.requestQty[line.move_id];
+        const v = this.state.requestQty[line.key];
         return v === undefined ? line.uncovered_qty : v;
     }
 
     onQtyChange(line, ev) {
         const v = parseFloat(ev.target.value);
-        this.state.requestQty[line.move_id] = Number.isNaN(v) ? 0 : v;
+        this.state.requestQty[line.key] = Number.isNaN(v) ? 0 : v;
     }
 
     groupSelectedQty(group) {
         let total = 0;
         for (const line of this.state.lines[group.product_id] || []) {
-            if (this.state.selected[line.move_id]) {
+            if (this.state.selected[line.key]) {
                 total += this.requestQtyOf(line) || 0;
             }
         }
@@ -325,21 +325,21 @@ export class NeedPlan extends Component {
     }
 
     async onCreateRequest() {
-        const moveIds = Object.keys(this.state.selected)
-            .filter((k) => this.state.selected[k])
-            .map((k) => parseInt(k, 10));
-        if (!moveIds.length) {
+        const lineKeys = Object.keys(this.state.selected)
+            .filter((k) => this.state.selected[k]);
+        if (!lineKeys.length) {
             return;
         }
         const moveQuantities = {};
-        for (const mid of moveIds) {
-            const q = this.state.requestQty[mid];
-            moveQuantities[mid] = q === undefined ? 0 : q;
+        for (const key of lineKeys) {
+            const q = this.state.requestQty[key];
+            moveQuantities[key] = q === undefined ? 0 : q;
         }
         this.state.creating = true;
         try {
             const res = await this.orm.call(
                 "mrp.purchase.need", "create_purchase_request", [], {
+                    line_keys: lineKeys,
                     move_quantities: moveQuantities,
                     warehouse_id: this.state.warehouseId || false,
                     date_from: this.state.dateFrom || false,
@@ -457,7 +457,7 @@ export class NeedPlan extends Component {
     }
 
     isLineSelected(line) {
-        return !!this.state.selected[line.move_id];
+        return !!this.state.selected[line.key];
     }
 
     groupLines(group) {

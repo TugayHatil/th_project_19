@@ -477,3 +477,75 @@ class TestPurchaseNeedPlan(TransactionCase):
         res = self.Need.get_need_lines(self.vida.id)
         self.assertFalse(res["suggestions"])
         self.assertAlmostEqual(res["lines"][0]["uncovered_qty"], 300.0)
+
+    def _make_delivery(self, product, qty, date):
+        """One confirmed customer-delivery move for `product`."""
+        wh = self.env["stock.warehouse"].search(
+            [("company_id", "=", self.env.company.id)], limit=1)
+        customer = self.env.ref("stock.stock_location_customers")
+        picking = self.env["stock.picking"].create({
+            "picking_type_id": wh.out_type_id.id,
+            "location_id": wh.lot_stock_id.id,
+            "location_dest_id": customer.id,
+            "origin": "test delivery",
+        })
+        move = self.env["stock.move"].create({
+            "name": product.name,
+            "picking_id": picking.id,
+            "product_id": product.id,
+            "product_uom": product.uom_id.id,
+            "product_uom_qty": qty,
+            "location_id": wh.lot_stock_id.id,
+            "location_dest_id": customer.id,
+            "date_deadline": fields.Datetime.to_datetime(date),
+        })
+        picking.action_confirm()
+        move.date = fields.Datetime.to_datetime(date)
+        return move
+
+    def test_16_bom_explosion(self):
+        """An open sale of a manufactured product explodes its BoM into
+        virtual component needs — before any MO exists (dependent
+        demand, day-level, only the uncovered part)."""
+        buy = self.env.ref("purchase_stock.route_warehouse0_buy")
+        manu = self.env.ref("mrp.route_warehouse0_manufacture")
+        self.vida.product_tmpl_id.route_ids |= buy
+        self.table.product_tmpl_id.route_ids |= manu
+        self.table.product_tmpl_id.produce_delay = 0
+        self.env["mrp.bom"].create({
+            "product_tmpl_id": self.table.product_tmpl_id.id,
+            "product_qty": 1.0,
+            "bom_line_ids": [(0, 0, {
+                "product_id": self.vida.id,
+                "product_qty": 4.0,
+            })],
+        })
+        delivery = fields.Date.today() + timedelta(days=30)
+        self._make_delivery(self.table, 10000, delivery)
+
+        lines = self._lines(self.vida)
+        vlines = [ln for ln in lines if ln.get("virtual")]
+        self.assertTrue(vlines)
+        self.assertAlmostEqual(
+            sum(ln["need_qty"] for ln in vlines), 40000.0)
+        # need date = production start = delivery - produce_delay
+        self.assertTrue(all(
+            fields.Date.to_date(ln["need_date"]) == delivery
+            for ln in vlines))
+        # virtual needs carry a stable MİP number and are requestable
+        self.assertTrue(all(ln["mip_name"] for ln in vlines))
+        self.assertTrue(all(ln["key"].startswith("bom:") for ln in vlines))
+        self.assertAlmostEqual(
+            sum(ln["uncovered_qty"] for ln in vlines), 40000.0)
+
+        # a real MO for part of the demand nets the exploded qty —
+        # the MO output covers 1 table and its component move becomes
+        # a real need line instead of a virtual one
+        self._make_mo(self.vida, 4.0, delivery)
+        lines = self._lines(self.vida)
+        vlines = [ln for ln in lines if ln.get("virtual")]
+        real = [ln for ln in lines if not ln.get("virtual")]
+        self.assertAlmostEqual(
+            sum(ln["need_qty"] for ln in vlines), 39996.0)
+        self.assertAlmostEqual(
+            sum(ln["need_qty"] for ln in real), 4.0)

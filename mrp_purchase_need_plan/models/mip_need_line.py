@@ -21,9 +21,9 @@ class MipNeedLine(models.Model):
     _check_company_auto = True
 
     _sql_constraints = [(
-        "move_uniq",
-        "unique(move_id)",
-        "Her ihtiyaç hareketi için yalnızca bir MİP kaydı oluşturulabilir.",
+        "key_uniq",
+        "unique(key)",
+        "Her ihtiyaç anahtarı için yalnızca bir MİP kaydı oluşturulabilir.",
     ), (
         "name_uniq",
         "unique(name)",
@@ -34,6 +34,10 @@ class MipNeedLine(models.Model):
         "MİP No", readonly=True, copy=False, index=True,
         default=lambda self: self.env["ir.sequence"].next_by_code(
             "mip.need.line"))
+    # stable identity of the need — "mv:<move id>" for real stock demands,
+    # "bom:<product id>:<date>" for BoM-exploded (planned) component needs
+    key = fields.Char("İhtiyaç Anahtarı", readonly=True, required=True,
+                      index=True)
     move_id = fields.Many2one(
         "stock.move", string="İhtiyaç Hareketi", ondelete="set null",
         readonly=True, index=True)
@@ -48,6 +52,7 @@ class MipNeedLine(models.Model):
     source_type = fields.Selection([
         ("mo", "MO"),
         ("so", "SO"),
+        ("vp", "ÜP"),
         ("other", "-"),
     ], string="Tür", readonly=True)
     production_id = fields.Many2one("mrp.production", string="Üretim Emri",
@@ -85,14 +90,18 @@ class MipNeedLine(models.Model):
     # ------------------------------------------------------------------
 
     def _linked_request_lines(self):
-        """Open purchase.request lines serving this need move."""
-        if not self.move_id:
-            return self.env["purchase.request.line"]
-        return self.env["purchase.request.line"].sudo().search([
-            ("need_move_ids", "in", self.move_id.ids),
-            ("cancelled", "=", False),
-            ("request_state", "in", list(_ACTIVE_REQUEST_STATES)),
-        ])
+        """Open purchase.request lines serving this need — linked via the
+        raw need move or directly via this MİP record (virtual needs)."""
+        domain = [("cancelled", "=", False),
+                  ("request_state", "in", list(_ACTIVE_REQUEST_STATES))]
+        if self.move_id:
+            domain = ["&"] + domain + [
+                "|",
+                ("need_move_ids", "in", self.move_id.ids),
+                ("need_mip_ids", "in", self.ids)]
+        else:
+            domain.append(("need_mip_ids", "in", self.ids))
+        return self.env["purchase.request.line"].sudo().search(domain)
 
     @api.depends("move_id")
     def _compute_doc_links(self):
@@ -142,6 +151,10 @@ class MipNeedLine(models.Model):
         Need = self.env["mrp.purchase.need"]
         for rec in self:
             mv = rec.move_id
+            if not mv and rec.key.startswith("bom:"):
+                # virtual (BoM-exploded) needs are synced by the plan
+                # build itself, not by move states — skip them here
+                continue
             if not mv or mv.state == "cancel":
                 vals = {"state": "cancel", "remaining_qty": 0.0}
             else:
@@ -191,4 +204,5 @@ class MipNeedLine(models.Model):
         Need._ensure_mip_lines(moves)
         self.search([
             ("state", "not in", ("done", "cancel")),
+            ("move_id", "!=", False),
         ])._sync_from_moves()
