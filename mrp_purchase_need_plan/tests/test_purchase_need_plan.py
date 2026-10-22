@@ -384,6 +384,37 @@ class TestPurchaseNeedPlan(TransactionCase):
         # lead 5 + proc 2 -> purchase start is already past -> late risk
         self.assertTrue(line["is_late"])
 
+    def test_13_obsolete_document_flag(self):
+        """Need covered by other means while a draft request is still
+        open -> informational 'İşlemi iptal et' / 'Onaysız Talep'."""
+        d = fields.Date.today() + timedelta(days=30)
+        m1 = self._make_mo(self.vida, 400, d)
+        self.Need.create_purchase_request(
+            move_quantities={str(m1.id): 150.0})
+
+        # a direct receipt covers the whole need — the request is now
+        # obsolete but stays untouched (flag is informational only)
+        self.env["stock.quant"]._update_available_quantity(
+            self.vida, self.env.ref("stock.stock_location_stock"), 400)
+
+        line = self._lines(self.vida)[0]
+        self.assertEqual(line["action"], "İşlemi iptal et")
+        self.assertEqual(line["action_doc"], "Onaysız Talep")
+
+    def test_13b_reduce_document_flag(self):
+        """Partial coverage turns the flag into 'Miktarı azalt'."""
+        d = fields.Date.today() + timedelta(days=30)
+        m1 = self._make_mo(self.ayak, 400, d)
+        self.Need.create_purchase_request(
+            move_quantities={str(m1.id): 300.0})
+        self.env["stock.quant"]._update_available_quantity(
+            self.ayak, self.env.ref("stock.stock_location_stock"), 200)
+
+        line = self._lines(self.ayak)[0]
+        # 200 still uncovered but 300 was requested -> reduce, not cancel
+        self.assertEqual(line["action"], "Miktarı azalt")
+        self.assertEqual(line["action_doc"], "Onaysız Talep")
+
     def test_11b_no_suggestion_when_po_on_time(self):
         """PO arriving before the need covers it directly — no pull
         suggestion is emitted."""

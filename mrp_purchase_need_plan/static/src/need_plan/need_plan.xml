@@ -128,6 +128,8 @@
                         <col class="o_mnp_col_uom"/>
                         <col class="o_mnp_col_date"/>
                         <col class="o_mnp_col_date"/>
+                        <col class="o_mnp_col_act"/>
+                        <col class="o_mnp_col_act"/>
                         <col class="o_mnp_col_status"/>
                     </colgroup>
                     <thead>
@@ -147,6 +149,8 @@
                             <th>Birim</th>
                             <th>Başlangıç</th>
                             <th>Son Onay</th>
+                            <th>Aksiyon</th>
+                            <th>Belge Türü</th>
                             <th>Durum</th>
                         </tr>
                     </thead>
@@ -205,6 +209,8 @@
                                 </td>
                                 <td class="o_mnp_summary"
                                     t-esc="fmtDate(group.earliest_approve)"/>
+                                <td/>
+                                <td/>
                                 <td>
                                     <button t-if="group.suggestion_count"
                                             type="button"
@@ -274,6 +280,16 @@
                                         <td class="text-muted" t-esc="line.uom"/>
                                         <td t-esc="fmtDate(line.purchase_start)"/>
                                         <td t-esc="fmtDate(line.approve_by)"/>
+                                        <td>
+                                            <span t-if="line.action === 'İşlemi iptal et'"
+                                                  class="badge text-bg-danger"
+                                                  t-esc="line.action"/>
+                                            <span t-elif="line.action"
+                                                  class="badge text-bg-warning"
+                                                  t-esc="line.action"/>
+                                        </td>
+                                        <td class="o_mnp_doc text-muted"
+                                            t-esc="line.action_doc"/>
                                         <td class="o_mnp_status">
                                             <span t-if="line.requested_qty > 0 and line.requestable_qty &lt;= 0"
                                                   class="badge text-bg-info">Talep edildi</span>
@@ -290,13 +306,13 @@
                                 </t>
                                 <tr t-if="state.lines[group.product_id] === undefined"
                                     class="o_mnp_line">
-                                    <td t-att-colspan="state.showSource ? 16 : 15"
+                                    <td t-att-colspan="state.showSource ? 18 : 17"
                                         class="text-muted text-center">
                                         Yükleniyor…
                                     </td>
                                 </tr>
                                 <tr t-elif="!groupLines(group).length" class="o_mnp_line">
-                                    <td t-att-colspan="state.showSource ? 16 : 15"
+                                    <td t-att-colspan="state.showSource ? 18 : 17"
                                         class="text-muted text-center">
                                         Bu kapsamda ihtiyaç satırı yok.
                                     </td>

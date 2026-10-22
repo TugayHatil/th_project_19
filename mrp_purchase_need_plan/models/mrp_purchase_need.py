@@ -244,7 +244,7 @@ class MrpPurchaseNeed(models.AbstractModel):
         products = need_moves.product_id
         flow_moves = self._get_flow_moves(products, scope_ids)
         onhand = self._get_onhand(products, scope_ids)
-        requested = self._get_requested_quantities(need_moves)
+        requested, req_docs = self._get_requested_quantities(need_moves)
         lead_info = self._get_lead_info(products)
         route_sets = (self._get_buy_route_ids(), self._get_manu_route_ids())
         today = fields.Date.context_today(self)
@@ -265,6 +265,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                 onhand.get(product.id, 0.0),
                 scope_ids,
                 requested,
+                req_docs,
                 lead_info[product.id],
                 today,
                 route_sets,
@@ -274,7 +275,8 @@ class MrpPurchaseNeed(models.AbstractModel):
         return plan
 
     def _compute_product(self, product, need_moves, flow_moves, onhand,
-                         scope_ids, requested, lead, today, route_sets):
+                         scope_ids, requested, req_docs, lead, today,
+                         route_sets):
         """Chronological stock walk for one product.
 
         Incoming and outgoing pending moves are applied in date order —
@@ -406,6 +408,17 @@ class MrpPurchaseNeed(models.AbstractModel):
             info = detail.get(mv.id, {"forecast": balance, "uncovered": 0.0})
             req_qty = requested.get(mv.id, 0.0)
             requestable = max(0.0, info["uncovered"] - req_qty)
+            # informational exception flag: linked request/RFQ/PO is no
+            # longer (fully) needed — nothing is cancelled automatically
+            action, action_doc = "", ""
+            if req_qty > 0.0 and info["uncovered"] <= 0.0:
+                action = self.env._("İşlemi iptal et")
+            elif req_qty > info["uncovered"]:
+                action = self.env._("Miktarı azalt")
+            if action:
+                labels = sorted(req_docs.get(mv.id, ()), reverse=True)
+                action_doc = " / ".join(dict.fromkeys(
+                    label for _prio, label in labels))
             lines.append({
                 "move_id": mv.id,
                 "company_id": mv.company_id.id,
@@ -426,6 +439,8 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "is_late": purchase_start < today,
                 "requested_qty": req_qty,
                 "requestable_qty": requestable,
+                "action": action,
+                "action_doc": action_doc,
                 "already_requested": req_qty > 0.0 and requestable <= 0.0,
                 "missing_lead_config": lead["missing"],
             })
@@ -570,12 +585,15 @@ class MrpPurchaseNeed(models.AbstractModel):
 
     @api.model
     def _get_requested_quantities(self, need_moves):
-        """{move_id: qty already covered by a live purchase request}.
+        """({move_id: requested qty}, {move_id: doc-type labels}).
 
         A merged request line is attributed to its need moves in
         need-date order — earliest needs are considered served first,
         matching the merge order — so a partially requested need line
-        keeps its remaining quantity requestable (BRD §7.2)."""
+        keeps its remaining quantity requestable (BRD §7.2). The second
+        map describes the live purchasing document(s) behind each move —
+        request or generated quotation/order — so the screen can flag
+        documents that outlived their need."""
         # sudo: dedup must work even for users who cannot read purchase
         # request lines directly (BRD §10)
         lines = self.env["purchase.request.line"].sudo().search([
@@ -585,11 +603,15 @@ class MrpPurchaseNeed(models.AbstractModel):
         ])
         need_by_id = {mv.id: mv for mv in need_moves}
         alloc = defaultdict(float)
+        docs = defaultdict(set)
         for rl in lines:
             moves = [need_by_id[i] for i in rl.need_move_ids.ids
                      if i in need_by_id]
             moves.sort(key=lambda m: (m.date or fields.Datetime.now(),
                                       m.id))
+            labels = self._request_doc_labels(rl)
+            for mv in moves:
+                docs[mv.id] |= labels
             remaining = rl.product_uom_id._compute_quantity(
                 rl.product_qty, rl.product_id.uom_id, round=False)
             last_id = None
@@ -607,7 +629,29 @@ class MrpPurchaseNeed(models.AbstractModel):
                 # planner asked for more than the raw need — attribute
                 # the surplus to the latest need so sums stay truthful
                 alloc[last_id] += remaining
-        return dict(alloc)
+        return dict(alloc), dict(docs)
+
+    @api.model
+    def _request_doc_labels(self, request_line):
+        """{(priority, label)} describing which purchasing document a
+        cancellation/reduce flag would point at — the generated PO/RFQ
+        outranks the request itself."""
+        labels = set()
+        state = request_line.request_state
+        if state in ("draft", "to_approve"):
+            labels.add((1, self.env._("Onaysız Talep")))
+        elif state in ("approved", "in_progress", "done"):
+            labels.add((2, self.env._("Onaylı Talep")))
+        for po_line in request_line.purchase_lines:
+            order = po_line.order_id
+            if order.state == "cancel" \
+                    or po_line.product_qty <= po_line.qty_received:
+                continue
+            if order.state in ("draft", "sent"):
+                labels.add((3, self.env._("Onaysız Teklif")))
+            elif order.state == "purchase":
+                labels.add((4, self.env._("Onaylı Sipariş")))
+        return labels
 
     @api.model
     def _get_buy_route_ids(self):
