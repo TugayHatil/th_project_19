@@ -465,6 +465,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "mo_name": {}, "pick_name": {}, "so_name": {},
                 "sl_order": {}, "partner_name": {},
                 "uom_factor": {}, "uom_name": {}, "uom_cat": {},
+                "uom_all": False,
                 "sellers": defaultdict(list),
                 "tz": timezone(self.env.user.tz or "UTC"),
             }
@@ -662,15 +663,36 @@ class MrpPurchaseNeed(models.AbstractModel):
 
     @api.model
     def _load_uoms(self, ctx, uom_ids):
-        missing = [i for i in uom_ids if i not in ctx["uom_factor"]]
-        if not missing:
+        if ctx["uom_all"]:
             return
-        rows = self.env["uom.uom"].sudo().browse(missing).read(
-            ["factor", "name", "category_id"], load="_classic_write")
+        ctx["uom_all"] = True
+        # Odoo 19 has no uom categories: units link to a reference unit
+        # via relative_uom_id/relative_factor ("contains N reference").
+        # The table is tiny — resolve every unit's base factor and its
+        # chain root (used as the "same family" guard for _conv).
+        rows = self.env["uom.uom"].sudo().search_read(
+            [], ["name", "relative_uom_id", "relative_factor"],
+            load="_classic_write")
+        by_id = {d["id"]: d for d in rows}
         for d in rows:
-            ctx["uom_factor"][d["id"]] = d["factor"]
+            base, root, cur, seen = (
+                d["relative_factor"] or 1.0), d["id"], d, set()
+            while cur["relative_uom_id"] and cur["id"] not in seen:
+                seen.add(cur["id"])
+                cur = by_id.get(cur["relative_uom_id"])
+                if not cur:
+                    break
+                base *= cur["relative_factor"] or 1.0
+                root = cur["id"]
+            # store the inverse so _conv keeps the classic
+            # qty * f[dst] / f[src] form
+            ctx["uom_factor"][d["id"]] = 1.0 / base if base else 1.0
             ctx["uom_name"][d["id"]] = d["name"]
-            ctx["uom_cat"][d["id"]] = d["category_id"]
+            ctx["uom_cat"][d["id"]] = root
+        for i in uom_ids:
+            ctx["uom_factor"].setdefault(i, 1.0)
+            ctx["uom_name"].setdefault(i, str(i))
+            ctx["uom_cat"].setdefault(i, i)
 
     @api.model
     def _load_partners(self, ctx, partner_ids):
