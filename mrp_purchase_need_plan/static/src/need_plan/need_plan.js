@@ -6,6 +6,8 @@ import { _t } from "@web/core/l10n/translation";
 import { useService } from "@web/core/utils/hooks";
 import { formatFloat } from "@web/core/utils/numbers";
 import { Dialog } from "@web/core/dialog/dialog";
+import { Dropdown } from "@web/core/dropdown/dropdown";
+import { DropdownItem } from "@web/core/dropdown/dropdown_item";
 
 const SEARCH_DELAY = 350;
 
@@ -28,6 +30,7 @@ export class SuggestionsDialog extends Component {
 
 export class NeedPlan extends Component {
     static template = "mrp_purchase_need_plan.NeedPlan";
+    static components = { Dropdown, DropdownItem };
     static props = { "*": true };
 
     setup() {

@@ -72,15 +72,26 @@
                             </option>
                         </select>
                     </div>
-                    <div class="form-check ms-auto">
-                        <input id="o_mnp_src" type="checkbox"
-                               class="form-check-input"
-                               t-att-checked="state.showSource"
-                               t-on-change="onSourceToggle"/>
-                        <label for="o_mnp_src" class="form-check-label text-nowrap">
-                            Kaynak
-                        </label>
-                    </div>
+                    <Dropdown position="'bottom-end'">
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary ms-auto">
+                            <i class="fa fa-columns me-1"/>Sütunlar
+                        </button>
+                        <t t-set-slot="dropdown">
+                            <DropdownItem parentClosingMode="'none'">
+                                <div class="form-check">
+                                    <input id="o_mnp_src" type="checkbox"
+                                           class="form-check-input"
+                                           t-att-checked="state.showSource"
+                                           t-on-change="onSourceToggle"/>
+                                    <label for="o_mnp_src"
+                                           class="form-check-label text-nowrap">
+                                        Kaynak
+                                    </label>
+                                </div>
+                            </DropdownItem>
+                        </t>
+                    </Dropdown>
                     <button type="button" class="btn btn-sm btn-outline-secondary"
                             t-on-click="loadGroups">
                         <i class="fa fa-refresh me-1"/>Yenile
