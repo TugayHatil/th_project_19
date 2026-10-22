@@ -251,9 +251,15 @@
                                         </td>
                                     </tr>
                                 </t>
-                                <tr t-if="!groupLines(group).length" class="o_mnp_line">
+                                <tr t-if="state.lines[group.product_id] === undefined"
+                                    class="o_mnp_line">
                                     <td colspan="13" class="text-muted text-center">
                                         Yükleniyor…
+                                    </td>
+                                </tr>
+                                <tr t-elif="!groupLines(group).length" class="o_mnp_line">
+                                    <td colspan="13" class="text-muted text-center">
+                                        Bu kapsamda ihtiyaç satırı yok.
                                     </td>
                                 </tr>
                                 <!-- öne çekme önerileri artık "Öneri" butonu

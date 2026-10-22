@@ -145,6 +145,22 @@ export class NeedPlan extends Component {
                     delete this.state.requestQty[moveId];
                 }
             }
+            // filters may have changed -> refetch detail of groups that
+            // are still expanded so they never render stale lines
+            const reloads = [];
+            for (const pid of Object.keys(this.state.expanded)) {
+                if (!this.state.expanded[pid]) {
+                    continue;
+                }
+                const group = this.state.groups.find(
+                    (g) => g.product_id === parseInt(pid, 10));
+                if (group) {
+                    reloads.push(this.loadLines(group));
+                } else {
+                    delete this.state.expanded[pid];
+                }
+            }
+            await Promise.all(reloads);
         } catch (error) {
             this.notifyError(error, _t("Planlama verisi yüklenemedi."));
         } finally {
@@ -154,6 +170,8 @@ export class NeedPlan extends Component {
 
     async loadLines(group) {
         const pid = group.product_id;
+        // mark as loading so stale detail never renders while refetching
+        delete this.state.lines[pid];
         try {
             const data = await this.orm.call(
                 "mrp.purchase.need", "get_need_lines", [], {
