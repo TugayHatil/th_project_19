@@ -134,6 +134,7 @@
                         <col class="o_mnp_col_qty"/>
                         <col class="o_mnp_col_qty"/>
                         <col class="o_mnp_col_qty"/>
+                        <col class="o_mnp_col_qty"/>
                         <col class="o_mnp_col_uom"/>
                         <col class="o_mnp_col_days"/>
                         <col class="o_mnp_col_date"/>
@@ -155,6 +156,7 @@
                             <th class="o_mnp_num">Öngörülen</th>
                             <th class="o_mnp_num">İhtiyaç Miktarı</th>
                             <th class="o_mnp_num">Karşılanan</th>
+                            <th class="o_mnp_num">Bekleyen</th>
                             <th class="o_mnp_num">Açık</th>
                             <th class="o_mnp_num">Planla</th>
                             <th>Birim</th>
@@ -207,6 +209,9 @@
                                 </td>
                                 <td class="o_mnp_num o_mnp_summary">
                                     <strong t-esc="fmtQty(group.total_need - group.total_uncovered)"/>
+                                </td>
+                                <td class="o_mnp_num o_mnp_summary">
+                                    <strong t-esc="fmtQty(group.total_pending)"/>
                                 </td>
                                 <td t-att-class="'o_mnp_num o_mnp_summary' + (group.total_uncovered > 0 ? ' o_mnp_neg' : '')">
                                     <strong t-esc="fmtQty(group.total_uncovered)"/>
@@ -281,6 +286,15 @@
                                                t-esc="fmtQty(line.covered_qty)"/>
                                             <t t-else=""
                                                t-esc="fmtQty(line.covered_qty)"/>
+                                        </td>
+                                        <td class="o_mnp_num">
+                                            <a t-if="line.requested_qty > 0"
+                                               href="#"
+                                               class="o_mnp_cov_link"
+                                               t-on-click.prevent="() => this.openPending(line)"
+                                               t-esc="fmtQty(line.requested_qty)"/>
+                                            <t t-else=""
+                                               t-esc="fmtQty(line.requested_qty)"/>
                                         </td>
                                         <td t-att-class="'o_mnp_num' + (line.uncovered_qty > 0 ? ' o_mnp_neg' : '')"
                                             t-esc="fmtQty(line.uncovered_qty)"/>
@@ -434,6 +448,38 @@
             </table>
             <div t-else="" class="text-muted">
                 Bu ihtiyacın karşılanmış kısmı yok.
+            </div>
+        </Dialog>
+    </t>
+
+    <t t-name="mrp_purchase_need_plan.PendingDialog">
+        <Dialog title="'Bekleyen Belgeler'" size="md">
+            <table t-if="props.pending.length" class="table table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th>Tür</th>
+                        <th>Belge</th>
+                        <th>Tarih</th>
+                        <th class="text-end">Miktar</th>
+                        <th>Birim</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="props.pending" t-as="item" t-key="item_index">
+                        <td class="text-muted" t-esc="item.type"/>
+                        <td>
+                            <a href="#" class="o_mnp_order_link"
+                               t-on-click.prevent="() => this.onDocClick(item)"
+                               t-esc="item.doc"/>
+                        </td>
+                        <td t-esc="props.fmtDate(item.date)"/>
+                        <td class="text-end" t-esc="props.fmtQty(item.qty)"/>
+                        <td class="text-muted" t-esc="item.uom"/>
+                    </tr>
+                </tbody>
+            </table>
+            <div t-else="" class="text-muted">
+                Bu ihtiyaç için bekleyen belge yok.
             </div>
         </Dialog>
     </t>

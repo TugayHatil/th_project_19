@@ -247,7 +247,8 @@ class MrpPurchaseNeed(models.AbstractModel):
         products = need_moves.product_id
         flow_moves = self._get_flow_moves(products, scope_ids)
         onhand = self._get_onhand(products, scope_ids)
-        requested, req_docs = self._get_requested_quantities(need_moves)
+        requested, req_docs, pend = self._get_requested_quantities(
+            need_moves)
         lead_info = self._get_lead_info(products)
         route_sets = (self._get_buy_route_ids(), self._get_manu_route_ids())
         today = fields.Date.context_today(self)
@@ -269,6 +270,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                 scope_ids,
                 requested,
                 req_docs,
+                pend,
                 mip_by_move,
                 lead_info[product.id],
                 today,
@@ -279,7 +281,7 @@ class MrpPurchaseNeed(models.AbstractModel):
         return plan
 
     def _compute_product(self, product, need_moves, flow_moves, onhand,
-                         scope_ids, requested, req_docs, mip_by_move,
+                         scope_ids, requested, req_docs, pend, mip_by_move,
                          lead, today, route_sets):
         """Chronological stock walk for one product.
 
@@ -480,6 +482,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "uncovered_qty": info["uncovered"],
                 "covered_qty": qty - info["uncovered"],
                 "coverage": coverage_map.get(mv.id, []),
+                "pending": pend.get(mv.id, []),
                 "pull_covered": suggest_map[mv.id],
                 "uom": product.uom_id.name,
                 "approve_by": fields.Date.to_string(approve_by),
@@ -519,6 +522,7 @@ class MrpPurchaseNeed(models.AbstractModel):
             "route": data["route"],
             "total_need": sum(ln["need_qty"] for ln in lines),
             "total_uncovered": sum(ln["uncovered_qty"] for ln in lines),
+            "total_pending": sum(ln["requested_qty"] for ln in lines),
             "need_count": len(lines),
             "earliest_need": min(ln["need_date"] for ln in lines),
             "earliest_approve": min(ln["approve_by"] for ln in lines),
@@ -716,7 +720,8 @@ class MrpPurchaseNeed(models.AbstractModel):
 
     @api.model
     def _get_requested_quantities(self, need_moves):
-        """({move_id: requested qty}, {move_id: doc-type labels}).
+        """({move_id: requested qty}, {move_id: doc-type labels},
+            {move_id: [pending doc entries]}).
 
         A merged request line is attributed to its need moves in
         need-date order — earliest needs are considered served first,
@@ -724,7 +729,9 @@ class MrpPurchaseNeed(models.AbstractModel):
         keeps its remaining quantity requestable (BRD §7.2). The second
         map describes the live purchasing document(s) behind each move —
         request or generated quotation/order — so the screen can flag
-        documents that outlived their need."""
+        documents that outlived their need. The third map lists those
+        documents per move with the share attributed to the need, for
+        the "Bekleyen" column detail dialog."""
         # sudo: dedup must work even for users who cannot read purchase
         # request lines directly (BRD §10)
         lines = self.env["purchase.request.line"].sudo().search([
@@ -735,6 +742,7 @@ class MrpPurchaseNeed(models.AbstractModel):
         need_by_id = {mv.id: mv for mv in need_moves}
         alloc = defaultdict(float)
         docs = defaultdict(set)
+        pend = defaultdict(list)
         for rl in lines:
             moves = [need_by_id[i] for i in rl.need_move_ids.ids
                      if i in need_by_id]
@@ -745,7 +753,8 @@ class MrpPurchaseNeed(models.AbstractModel):
                 docs[mv.id] |= labels
             remaining = rl.product_uom_id._compute_quantity(
                 rl.product_qty, rl.product_id.uom_id, round=False)
-            last_id = None
+            takes = []
+            last = None
             for mv in moves:
                 if remaining <= 0.0:
                     break
@@ -753,14 +762,67 @@ class MrpPurchaseNeed(models.AbstractModel):
                     self._move_open_qty(mv), mv.product_id.uom_id,
                     round=False)
                 take = min(open_need, remaining)
+                takes.append((mv, take))
                 alloc[mv.id] += take
                 remaining -= take
-                last_id = mv.id
-            if remaining > 0.0 and last_id is not None:
+                last = mv
+            if remaining > 0.0 and last is not None:
                 # planner asked for more than the raw need — attribute
                 # the surplus to the latest need so sums stay truthful
-                alloc[last_id] += remaining
-        return dict(alloc), dict(docs)
+                alloc[last.id] += remaining
+                mv, take = takes[-1]
+                takes[-1] = (mv, take + remaining)
+            req_label = self.env._("Onaysız Talep") \
+                if rl.request_state in ("draft", "to_approve") \
+                else self.env._("Onaylı Talep")
+            for mv, take in takes:
+                if take > 0.0:
+                    pend[mv.id].append({
+                        "type": req_label,
+                        "doc": rl.request_id.name,
+                        "model": "purchase.request",
+                        "res_id": rl.request_id.id,
+                        "qty": take,
+                        "uom": mv.product_id.uom_id.name,
+                        "date": fields.Date.to_string(rl.date_required)
+                            if rl.date_required else "",
+                    })
+            # downstream quotations/orders raised from this request —
+            # their open quantity is spread over the same need shares
+            for po_line in rl.purchase_lines:
+                order = po_line.order_id
+                rem = po_line.product_uom._compute_quantity(
+                    po_line.product_qty - po_line.qty_received,
+                    po_line.product_id.uom_id, round=False)
+                if order.state == "cancel" or rem <= 0.0:
+                    continue
+                po_label = self.env._("Onaysız Teklif") \
+                    if order.state in ("draft", "sent") \
+                    else self.env._("Onaylı Sipariş")
+                po_date = fields.Date.to_string(self._local_date(
+                    po_line.date_planned or order.date_planned))
+                left = rem
+                last_mv = None
+                for mv, take in takes:
+                    if left <= 0.0:
+                        break
+                    share = min(take, left)
+                    if share <= 0.0:
+                        continue
+                    pend[mv.id].append({
+                        "type": po_label,
+                        "doc": order.name,
+                        "model": "purchase.order",
+                        "res_id": order.id,
+                        "qty": share,
+                        "uom": mv.product_id.uom_id.name,
+                        "date": po_date,
+                    })
+                    left -= share
+                    last_mv = mv
+                if left > 0.0 and last_mv is not None:
+                    pend[last_mv.id][-1]["qty"] += left
+        return dict(alloc), dict(docs), dict(pend)
 
     @api.model
     def _request_doc_labels(self, request_line):
