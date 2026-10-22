@@ -787,18 +787,19 @@ class MrpPurchaseNeed(models.AbstractModel):
                         "date": fields.Date.to_string(rl.date_required)
                             if rl.date_required else "",
                     })
-            # downstream quotations/orders raised from this request —
-            # their open quantity is spread over the same need shares
+            # downstream quotations raised from this request — confirmed
+            # orders are already supply and show up under Karşılanan,
+            # listing them here too would double-count
             for po_line in rl.purchase_lines:
                 order = po_line.order_id
+                if order.state not in ("draft", "sent"):
+                    continue
                 rem = po_line.product_uom_id._compute_quantity(
                     po_line.product_qty - po_line.qty_received,
                     po_line.product_id.uom_id, round=False)
-                if order.state == "cancel" or rem <= 0.0:
+                if rem <= 0.0:
                     continue
-                po_label = self.env._("Onaysız Teklif") \
-                    if order.state in ("draft", "sent") \
-                    else self.env._("Onaylı Sipariş")
+                po_label = self.env._("Onaysız Teklif")
                 po_date = fields.Date.to_string(self._local_date(
                     po_line.date_planned or order.date_planned))
                 left = rem
