@@ -86,6 +86,12 @@
                                            t-on-change="onSourceToggle"/>
                                     <span>Kaynak</span>
                                 </label>
+                                <label class="o_mnp_cols_item">
+                                    <input type="checkbox" class="form-check-input"
+                                           t-att-checked="state.showMip"
+                                           t-on-change="onMipToggle"/>
+                                    <span>MİP No</span>
+                                </label>
                             </div>
                             <div class="o_mnp_cols_backdrop"
                                  t-on-click="toggleColsMenu"/>
@@ -118,6 +124,7 @@
                         <col class="o_mnp_col_product"/>
                         <col class="o_mnp_col_type"/>
                         <col t-if="state.showSource" class="o_mnp_col_src"/>
+                        <col t-if="state.showMip" class="o_mnp_col_mip"/>
                         <col class="o_mnp_col_date"/>
                         <col class="o_mnp_col_loc"/>
                         <col class="o_mnp_col_route"/>
@@ -139,6 +146,7 @@
                             <th class="o_mnp_col_product">Ürün</th>
                             <th>Tür</th>
                             <th t-if="state.showSource">Kaynak</th>
+                            <th t-if="state.showMip">MİP No</th>
                             <th>İhtiyaç Tarihi</th>
                             <th>Konum</th>
                             <th>Rota</th>
@@ -179,6 +187,7 @@
                                 </td>
                                 <td/>
                                 <td t-if="state.showSource"/>
+                                <td t-if="state.showMip"/>
                                 <td class="o_mnp_summary"
                                     t-esc="fmtDate(group.earliest_need)"/>
                                 <td class="o_mnp_summary text-muted"
@@ -245,6 +254,9 @@
                                         <td t-if="state.showSource"
                                             class="o_mnp_source text-muted"
                                             t-esc="line.source"/>
+                                        <td t-if="state.showMip"
+                                            class="o_mnp_mip text-muted"
+                                            t-esc="line.mip_name"/>
                                         <td t-esc="fmtDate(line.need_date)"/>
                                         <td t-esc="line.location"/>
                                         <td class="text-center"
@@ -306,13 +318,13 @@
                                 </t>
                                 <tr t-if="state.lines[group.product_id] === undefined"
                                     class="o_mnp_line">
-                                    <td t-att-colspan="state.showSource ? 18 : 17"
+                                    <td t-att-colspan="17 + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0)"
                                         class="text-muted text-center">
                                         Yükleniyor…
                                     </td>
                                 </tr>
                                 <tr t-elif="!groupLines(group).length" class="o_mnp_line">
-                                    <td t-att-colspan="state.showSource ? 18 : 17"
+                                    <td t-att-colspan="17 + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0)"
                                         class="text-muted text-center">
                                         Bu kapsamda ihtiyaç satırı yok.
                                     </td>

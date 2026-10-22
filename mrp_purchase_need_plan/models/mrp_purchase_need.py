@@ -241,6 +241,9 @@ class MrpPurchaseNeed(models.AbstractModel):
             scope_ids, date_from, date_to, query, products=products)
         if not need_moves:
             return {}
+        # durable MİP records are upserted on every plan build so each
+        # need row gets a stable number without duplicating on refresh
+        mip_by_move = self._ensure_mip_lines(need_moves)
         products = need_moves.product_id
         flow_moves = self._get_flow_moves(products, scope_ids)
         onhand = self._get_onhand(products, scope_ids)
@@ -266,6 +269,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                 scope_ids,
                 requested,
                 req_docs,
+                mip_by_move,
                 lead_info[product.id],
                 today,
                 route_sets,
@@ -275,8 +279,8 @@ class MrpPurchaseNeed(models.AbstractModel):
         return plan
 
     def _compute_product(self, product, need_moves, flow_moves, onhand,
-                         scope_ids, requested, req_docs, lead, today,
-                         route_sets):
+                         scope_ids, requested, req_docs, mip_by_move,
+                         lead, today, route_sets):
         """Chronological stock walk for one product.
 
         Incoming and outgoing pending moves are applied in date order —
@@ -332,13 +336,8 @@ class MrpPurchaseNeed(models.AbstractModel):
         # purchase orders this yields a suggestion — purely informational:
         # until the planner actually reschedules the order, planning keeps
         # using its real delivery date and the need stays uncovered.
-        def _need_dt(mv):
-            # components: scheduled consumption; deliveries: promised date
-            if mv.raw_material_production_id:
-                return mv.date
-            return mv.date_deadline or mv.date
-
-        ordered_needs = need_moves.sorted(key=lambda m: (_need_dt(m), m.id))
+        ordered_needs = need_moves.sorted(
+            key=lambda m: (self._need_dt(m), m.id))
         suggest_map = defaultdict(float)
         suggestions = []
         for mv, qty, absorbed in late_supplies:
@@ -348,7 +347,7 @@ class MrpPurchaseNeed(models.AbstractModel):
             for nmv in ordered_needs:
                 if remaining <= 0.0:
                     break
-                need_date = fields.Date.to_date(_need_dt(nmv))
+                need_date = fields.Date.to_date(self._need_dt(nmv))
                 if (need_date >= supply_date or nmv.id not in detail):
                     continue
                 open_need = (
@@ -388,7 +387,7 @@ class MrpPurchaseNeed(models.AbstractModel):
             # consume them (move.date); customer deliveries are needed by
             # the promised ship date (date_deadline, falling back to the
             # scheduled date)
-            need_dt = _need_dt(mv)
+            need_dt = self._need_dt(mv)
             if mv.raw_material_production_id:
                 source = mv.raw_material_production_id.name
                 source_type = "MO"
@@ -421,6 +420,8 @@ class MrpPurchaseNeed(models.AbstractModel):
                     label for _prio, label in labels))
             lines.append({
                 "move_id": mv.id,
+                "mip_id": mip_by_move[mv.id].id,
+                "mip_name": mip_by_move[mv.id].name,
                 "company_id": mv.company_id.id,
                 "warehouse_id": mv.warehouse_id.id,
                 "need_date": fields.Date.to_string(need_date),
@@ -487,6 +488,48 @@ class MrpPurchaseNeed(models.AbstractModel):
     # ------------------------------------------------------------------
     # data sources
     # ------------------------------------------------------------------
+
+    @api.model
+    def _need_dt(self, move):
+        """Planning date of a need move — components consume at the
+        scheduled date, deliveries by the promised date (falls back to
+        the scheduled date)."""
+        if move.raw_material_production_id:
+            return move.date
+        return move.date_deadline or move.date
+
+    @api.model
+    def _ensure_mip_lines(self, need_moves):
+        """Create/sync the persistent MİP record of every need move
+        (BRD §4.1/§4.3). Returns {move_id: mip.need.line}.
+
+        Records are keyed by move and the number is assigned once, so
+        refreshes and re-computations never mint duplicates."""
+        Mip = self.env["mip.need.line"].sudo()
+        existing = Mip.search([("move_id", "in", need_moves.ids)])
+        by_move = {rec.move_id.id: rec for rec in existing}
+        missing = need_moves.filtered(lambda m: m.id not in by_move)
+        if missing:
+            created = Mip.create([{
+                "move_id": mv.id,
+                "product_id": mv.product_id.id,
+                "company_id": mv.company_id.id,
+                "warehouse_id": mv.warehouse_id.id,
+                "location_id": mv.location_id.id,
+                "need_date": fields.Date.to_date(self._need_dt(mv)),
+                "source_type": "mo" if mv.raw_material_production_id
+                    else "so" if mv.location_dest_id.usage == "customer"
+                    else "other",
+                "production_id": mv.raw_material_production_id.id or False,
+                "uom_id": mv.product_id.uom_id.id,
+                "initial_qty": mv.product_uom._compute_quantity(
+                    mv.product_uom_qty, mv.product_id.uom_id, round=False),
+            } for mv in missing])
+            for rec in created:
+                by_move[rec.move_id.id] = rec
+        self.env["mip.need.line"].sudo().browse(
+            [rec.id for rec in by_move.values()])._sync_from_moves()
+        return by_move
 
     @api.model
     def _move_open_qty(self, move):

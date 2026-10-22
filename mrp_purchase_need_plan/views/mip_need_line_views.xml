@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="mip_need_line_view_search" model="ir.ui.view">
+        <field name="name">mip.need.line.search</field>
+        <field name="model">mip.need.line</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="product_id"/>
+                <field name="product_code"/>
+                <field name="need_date"/>
+                <field name="warehouse_id"/>
+                <field name="doc_type"/>
+                <field name="doc_no"/>
+                <separator/>
+                <filter name="f_open" string="Açık İhtiyaçlar"
+                        domain="[('state', '=', 'open')]"/>
+                <filter name="f_partial" string="Kısmen Karşılananlar"
+                        domain="[('state', '=', 'partial')]"/>
+                <filter name="f_done" string="Karşılananlar"
+                        domain="[('state', '=', 'done')]"/>
+                <filter name="f_cancel" string="İptal Edilenler"
+                        domain="[('state', '=', 'cancel')]"/>
+                <separator/>
+                <filter name="g_product" string="Ürün"
+                        context="{'group_by': 'product_id'}"/>
+                <filter name="g_warehouse" string="Depo"
+                        context="{'group_by': 'warehouse_id'}"/>
+                <filter name="g_state" string="Durum"
+                        context="{'group_by': 'state'}"/>
+                <filter name="g_month" string="İhtiyaç Ayı"
+                        context="{'group_by': 'need_date:month'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="mip_need_line_view_list" model="ir.ui.view">
+        <field name="name">mip.need.line.list</field>
+        <field name="model">mip.need.line</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="state == 'cancel'"
+                  decoration-success="state == 'done'">
+                <field name="name"/>
+                <field name="product_id"/>
+                <field name="product_code" optional="hide"/>
+                <field name="need_date"/>
+                <field name="warehouse_id"/>
+                <field name="location_id" optional="hide"/>
+                <field name="initial_qty"/>
+                <field name="current_qty" optional="hide"/>
+                <field name="covered_qty"/>
+                <field name="remaining_qty"/>
+                <field name="uom_id" optional="hide"/>
+                <field name="create_date" string="Başlangıç Tarihi"
+                       optional="hide"/>
+                <field name="write_date" string="Son Güncelleme"
+                       optional="hide"/>
+                <field name="doc_type" optional="hide"/>
+                <field name="doc_no" optional="hide"/>
+                <field name="state" widget="badge"
+                       decoration-warning="state == 'open'"
+                       decoration-info="state == 'partial'"
+                       decoration-success="state == 'done'"
+                       decoration-danger="state == 'cancel'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="mip_need_line_view_form" model="ir.ui.view">
+        <field name="name">mip.need.line.form</field>
+        <field name="model">mip.need.line</field>
+        <field name="arch" type="xml">
+            <form create="0" edit="0">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="product_id"/>
+                            <field name="product_code"/>
+                            <field name="need_date"/>
+                            <field name="warehouse_id"/>
+                            <field name="location_id"/>
+                            <field name="source_type"/>
+                        </group>
+                        <group>
+                            <field name="initial_qty"/>
+                            <field name="current_qty"/>
+                            <field name="covered_qty"/>
+                            <field name="remaining_qty"/>
+                            <field name="uom_id"/>
+                            <field name="state"/>
+                        </group>
+                    </group>
+                    <group string="İlişkili Belgeler">
+                        <field name="production_id"/>
+                        <field name="sale_order_id"/>
+                        <field name="request_ids"
+                               widget="many2many_tags"/>
+                        <field name="purchase_order_ids"
+                               widget="many2many_tags"/>
+                        <field name="doc_type"/>
+                        <field name="doc_no"/>
+                    </group>
+                    <group string="Kayıt Bilgileri">
+                        <field name="create_date" readonly="1"/>
+                        <field name="write_date" readonly="1"/>
+                        <field name="move_id"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_mip_need_line" model="ir.actions.act_window">
+        <field name="name">MİP İzleme Listesi</field>
+        <field name="res_model">mip.need.line</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="mip_need_line_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Henüz MİP ihtiyaç kaydı oluşmadı.
+            </p>
+            <p>
+                İhtiyaç kayıtları, Malzeme İhtiyaç Planlama ekranındaki
+                ihtiyaç satırlarından otomatik oluşturulur.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_mip_need_line"
+              name="MİP İzleme Listesi"
+              parent="mrp.mrp_planning_menu_root"
+              action="action_mip_need_line"
+              groups="stock.group_stock_user"
+              sequence="51"/>
+</odoo>

@@ -54,6 +54,7 @@ export class NeedPlan extends Component {
             uncoveredOnly: false,
             lateOnly: false,
             showSource: false,
+            showMip: false,
             colsOpen: false,
             sortBy: "purchase_start",
             canCreate: false,
@@ -379,6 +380,10 @@ export class NeedPlan extends Component {
 
     onSourceToggle(ev) {
         this.state.showSource = ev.target.checked;
+    }
+
+    onMipToggle(ev) {
+        this.state.showMip = ev.target.checked;
     }
 
     toggleColsMenu() {

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- multi-company isolation: users only see their own companies' MİP
+         records (BRD §6) -->
+    <record id="mip_need_line_company_rule" model="ir.rule">
+        <field name="name">MİP İhtiyaç Kaydı: şirket sınırı</field>
+        <field name="model_id" ref="model_mip_need_line"/>
+        <field name="domain_force">
+            [('company_id', 'in', company_ids)]
+        </field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+</odoo>

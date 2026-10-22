@@ -415,6 +415,57 @@ class TestPurchaseNeedPlan(TransactionCase):
         self.assertEqual(line["action"], "Miktarı azalt")
         self.assertEqual(line["action_doc"], "Onaysız Talep")
 
+    def test_14_mip_numbering_and_persistence(self):
+        """Each need row gets a unique, stable MİP number (BRD §4.1/§4.3)."""
+        d = fields.Date.today() + timedelta(days=30)
+        m1 = self._make_mo(self.vida, 400, d)
+        m2 = self._make_mo(self.vida, 200, d + timedelta(days=1))
+
+        lines = self._lines(self.vida)
+        names = {ln["mip_name"] for ln in lines}
+        self.assertEqual(len(names), 2)
+        self.assertTrue(all(n.startswith("MİP-") for n in names))
+
+        # refresh reuses the same numbers — no duplicates (BRD §4.3)
+        self.assertEqual(
+            {ln["mip_name"] for ln in self._lines(self.vida)}, names)
+        self.assertEqual(
+            self.env["mip.need.line"].search_count(
+                [("move_id", "in", (m1 | m2).ids)]), 2)
+
+    def test_15_mip_status_lifecycle(self):
+        """open -> partial -> cancel transitions; the record itself is
+        never deleted (BRD §4.3/§4.5)."""
+        d = fields.Date.today() + timedelta(days=30)
+        m1 = self._make_mo(self.vida, 400, d)
+        self._lines(self.vida)  # triggers the MİP record creation
+        rec = self.env["mip.need.line"].search([("move_id", "=", m1.id)])
+        self.assertEqual(len(rec), 1)
+        self.assertEqual(rec.state, "open")
+        self.assertAlmostEqual(rec.initial_qty, 400.0)
+        self.assertAlmostEqual(rec.remaining_qty, 400.0)
+
+        # a partially picked move line counts as realized coverage
+        self.env["stock.move.line"].create({
+            "move_id": m1.id,
+            "product_id": self.vida.id,
+            "product_uom_id": self.vida.uom_id.id,
+            "quantity": 100,
+            "picked": True,
+            "location_id": m1.location_id.id,
+            "location_dest_id": m1.location_dest_id.id,
+        })
+        rec._sync_from_moves()
+        self.assertEqual(rec.state, "partial")
+        self.assertAlmostEqual(rec.covered_qty, 100.0)
+        self.assertAlmostEqual(rec.remaining_qty, 300.0)
+
+        # cancelled needs stay in the tracking list
+        m1._action_cancel()
+        rec._sync_from_moves()
+        self.assertEqual(rec.state, "cancel")
+        self.assertTrue(rec.exists())
+
     def test_11b_no_suggestion_when_po_on_time(self):
         """PO arriving before the need covers it directly — no pull
         suggestion is emitted."""

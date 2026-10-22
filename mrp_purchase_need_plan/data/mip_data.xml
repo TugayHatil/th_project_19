@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- MİP number sequence: numbers are never reused (BRD §4.1) -->
+    <record id="seq_mip_need_line" model="ir.sequence">
+        <field name="name">MİP İhtiyaç Kaydı</field>
+        <field name="code">mip.need.line</field>
+        <field name="prefix">MİP-</field>
+        <field name="padding">5</field>
+        <field name="company_id" eval="False"/>
+    </record>
+
+    <!-- Nightly sweep: register needs appearing outside the active
+         screen and settle records whose moves finished or were
+         cancelled (BRD §4.3) -->
+    <record id="ir_cron_mip_need_line_sync" model="ir.cron">
+        <field name="name">MİP: ihtiyaç kayıtlarını senkronize et</field>
+        <field name="model_id" ref="model_mip_need_line"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_sync()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

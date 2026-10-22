@@ -7,9 +7,13 @@
     "category": "Manufacturing/Manufacturing",
     "author": "Projet Solutions",
     "license": "LGPL-3",
-    "depends": ["mrp", "purchase_request"],
+    "depends": ["mrp", "purchase_request", "mail"],
 
     "data": [
+        "security/ir.model.access.csv",
+        "security/mip_need_line_rules.xml",
+        "data/mip_data.xml",
+        "views/mip_need_line_views.xml",
         "views/product_template_views.xml",
         "views/res_config_settings_views.xml",
         "views/purchase_request_line_views.xml",
