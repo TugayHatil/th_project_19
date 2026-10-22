@@ -72,26 +72,25 @@
                             </option>
                         </select>
                     </div>
-                    <Dropdown position="'bottom-end'">
+                    <div class="o_mnp_cols ms-auto">
                         <button type="button"
-                                class="btn btn-sm btn-outline-secondary ms-auto">
+                                class="btn btn-sm btn-outline-secondary"
+                                t-on-click.stop="toggleColsMenu">
                             <i class="fa fa-columns me-1"/>Sütunlar
                         </button>
-                        <t t-set-slot="dropdown">
-                            <DropdownItem parentClosingMode="'none'">
-                                <div class="form-check">
-                                    <input id="o_mnp_src" type="checkbox"
-                                           class="form-check-input"
+                        <t t-if="state.colsOpen">
+                            <div class="o_mnp_cols_menu">
+                                <label class="o_mnp_cols_item">
+                                    <input type="checkbox" class="form-check-input"
                                            t-att-checked="state.showSource"
                                            t-on-change="onSourceToggle"/>
-                                    <label for="o_mnp_src"
-                                           class="form-check-label text-nowrap">
-                                        Kaynak
-                                    </label>
-                                </div>
-                            </DropdownItem>
+                                    <span>Kaynak</span>
+                                </label>
+                            </div>
+                            <div class="o_mnp_cols_backdrop"
+                                 t-on-click="toggleColsMenu"/>
                         </t>
-                    </Dropdown>
+                    </div>
                     <button type="button" class="btn btn-sm btn-outline-secondary"
                             t-on-click="loadGroups">
                         <i class="fa fa-refresh me-1"/>Yenile
@@ -233,8 +232,10 @@
                                             <span class="text-muted"
                                                   t-esc="group.name"/>
                                         </td>
-                                        <td class="text-center"
-                                            t-esc="line.source_type"/>
+                                        <td class="text-center">
+                                            <span class="o_mnp_type"
+                                                  t-esc="line.source_type"/>
+                                        </td>
                                         <td t-if="state.showSource"
                                             class="o_mnp_source text-muted"
                                             t-esc="line.source"/>
