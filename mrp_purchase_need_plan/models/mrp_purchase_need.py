@@ -429,8 +429,13 @@ class MrpPurchaseNeed(models.AbstractModel):
             if ln["virtual"]}
         self._sync_virtual_mips(vmips, virt_lines)
         # virtual needs that vanished from the plan close their MİP
-        # records — the history stays queryable (BRD §4.3)
-        self._close_stale_virtual_mips(seen_keys, warehouse_id)
+        # records — the history stays queryable (BRD §4.3). Only the
+        # canonical unfiltered build may close records: a query- or
+        # date-scoped plan legitimately lacks events whose needs still
+        # exist outside the filter window (warehouse filtering is safe
+        # because the close domain itself is warehouse-scoped).
+        if not query and not date_from and not date_to:
+            self._close_stale_virtual_mips(seen_keys, warehouse_id)
         return plan
 
     # ------------------------------------------------------------------
