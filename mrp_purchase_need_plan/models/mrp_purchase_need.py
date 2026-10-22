@@ -246,6 +246,7 @@ class MrpPurchaseNeed(models.AbstractModel):
         onhand = self._get_onhand(products, scope_ids)
         requested = self._get_requested_quantities(need_moves)
         lead_info = self._get_lead_info(products)
+        route_sets = (self._get_buy_route_ids(), self._get_manu_route_ids())
         today = fields.Date.context_today(self)
 
         flow_by_product = defaultdict(lambda: self.env["stock.move"])
@@ -266,13 +267,14 @@ class MrpPurchaseNeed(models.AbstractModel):
                 requested,
                 lead_info[product.id],
                 today,
+                route_sets,
             )
             if data["lines"]:
                 plan[product.id] = data
         return plan
 
     def _compute_product(self, product, need_moves, flow_moves, onhand,
-                         scope_ids, requested, lead, today):
+                         scope_ids, requested, lead, today, route_sets):
         """Chronological stock walk for one product.
 
         Incoming and outgoing pending moves are applied in date order —
@@ -294,6 +296,16 @@ class MrpPurchaseNeed(models.AbstractModel):
             # receipts are applied before issues on the same date
             events.append((mv.date or fields.Datetime.now(), not src_in, mv, qty))
         events.sort(key=lambda e: (e[0], 0 if e[1] else 1, e[2].id))
+
+        # route label, SAP BESKZ style: S = Satınal, Ü = Üret, S+Ü = both
+        buy_ids, manu_ids = route_sets
+        product_routes = set(product.route_ids.ids)
+        parts = []
+        if buy_ids & product_routes:
+            parts.append("S")
+        if manu_ids & product_routes:
+            parts.append("Ü")
+        route_abbr = "+".join(parts) or "-"
 
         need_set = set(need_moves.ids)
         balance = onhand
@@ -398,6 +410,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "warehouse_id": mv.warehouse_id.id,
                 "need_date": fields.Date.to_string(need_date),
                 "location": mv.location_id.display_name,
+                "route": route_abbr,
                 "source": source,
                 "onhand": onhand,
                 "forecast": info["forecast"],
@@ -418,6 +431,7 @@ class MrpPurchaseNeed(models.AbstractModel):
             "moves": need_moves,
             "onhand": onhand,
             "end_balance": balance,
+            "route": route_abbr,
             "lines": lines,
             "suggestions": suggestions,
         }
@@ -436,6 +450,7 @@ class MrpPurchaseNeed(models.AbstractModel):
             "end_forecast": data["end_balance"],
             "location": locs[0] if len(locs) == 1 else self.env._(
                 "%s konum") % len(locs),
+            "route": data["route"],
             "total_need": sum(ln["need_qty"] for ln in lines),
             "total_uncovered": sum(ln["uncovered_qty"] for ln in lines),
             "need_count": len(lines),
@@ -495,19 +510,13 @@ class MrpPurchaseNeed(models.AbstractModel):
         deliveries (BRD §1/§6.2)."""
         # this screen only plans purchasable goods: products must carry a
         # route containing a "buy" rule (manufacture/MTO handled elsewhere)
-        buy_routes = self.env["stock.route"].sudo().search(
-            [("rule_ids.action", "=", "buy")])
-        if not buy_routes:
-            buy_route = self.env.ref(
-                "purchase_stock.route_warehouse0_buy",
-                raise_if_not_found=False)
-            buy_routes = buy_route or self.env["stock.route"]
+        buy_routes = self._get_buy_route_ids()
         domain = [
             ("state", "in", OPEN_STATES),
             ("product_uom_qty", ">", 0),
             # only inventory-tracked goods belong to material planning
             ("product_id.is_storable", "=", True),
-            ("product_id.route_ids", "in", buy_routes.ids),
+            ("product_id.route_ids", "in", list(buy_routes)),
             ("company_id", "in", self.env.companies.ids),
             ("location_id", "in", list(scope_ids)),
             "|",
@@ -596,6 +605,28 @@ class MrpPurchaseNeed(models.AbstractModel):
                 # the surplus to the latest need so sums stay truthful
                 alloc[last_id] += remaining
         return dict(alloc)
+
+    @api.model
+    def _get_buy_route_ids(self):
+        """Route ids that make a product purchasable ('buy' rule)."""
+        routes = self.env["stock.route"].sudo().search(
+            [("rule_ids.action", "=", "buy")])
+        if not routes:
+            routes = self.env.ref(
+                "purchase_stock.route_warehouse0_buy",
+                raise_if_not_found=False) or self.env["stock.route"]
+        return set(routes.ids)
+
+    @api.model
+    def _get_manu_route_ids(self):
+        """Route ids that make a product manufacturable."""
+        routes = self.env["stock.route"].sudo().search(
+            [("rule_ids.picking_type_id.code", "=", "mrp_operation")])
+        if not routes:
+            routes = self.env.ref(
+                "mrp.route_warehouse0_manufacture",
+                raise_if_not_found=False) or self.env["stock.route"]
+        return set(routes.ids)
 
     @api.model
     def _get_lead_info(self, products):

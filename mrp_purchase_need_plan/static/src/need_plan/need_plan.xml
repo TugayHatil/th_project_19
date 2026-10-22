@@ -100,6 +100,7 @@
                         <col class="o_mnp_col_src"/>
                         <col class="o_mnp_col_date"/>
                         <col class="o_mnp_col_loc"/>
+                        <col class="o_mnp_col_route"/>
                         <col class="o_mnp_col_qty"/>
                         <col class="o_mnp_col_qty"/>
                         <col class="o_mnp_col_qty"/>
@@ -116,6 +117,7 @@
                             <th>Kaynak</th>
                             <th>İhtiyaç Tarihi</th>
                             <th>Konum</th>
+                            <th>Rota</th>
                             <th class="o_mnp_num">Stok</th>
                             <th class="o_mnp_num">Öngörülen</th>
                             <th class="o_mnp_num">İhtiyaç Miktarı</th>
@@ -154,6 +156,8 @@
                                     t-esc="fmtDate(group.earliest_need)"/>
                                 <td class="o_mnp_summary text-muted"
                                     t-esc="group.location"/>
+                                <td class="o_mnp_summary text-center"
+                                    t-esc="group.route"/>
                                 <td class="o_mnp_num o_mnp_summary">
                                     <strong t-esc="fmtQty(group.onhand)"/>
                                 </td>
@@ -207,6 +211,8 @@
                                             t-esc="line.source"/>
                                         <td t-esc="fmtDate(line.need_date)"/>
                                         <td t-esc="line.location"/>
+                                        <td class="text-center"
+                                            t-esc="line.route"/>
                                         <td class="o_mnp_num" t-esc="fmtQty(line.onhand)"/>
                                         <td t-att-class="'o_mnp_num' + (line.forecast &lt; 0 ? ' o_mnp_neg' : '')"
                                             t-esc="fmtQty(line.forecast)"/>
@@ -253,12 +259,12 @@
                                 </t>
                                 <tr t-if="state.lines[group.product_id] === undefined"
                                     class="o_mnp_line">
-                                    <td colspan="13" class="text-muted text-center">
+                                    <td colspan="14" class="text-muted text-center">
                                         Yükleniyor…
                                     </td>
                                 </tr>
                                 <tr t-elif="!groupLines(group).length" class="o_mnp_line">
-                                    <td colspan="13" class="text-muted text-center">
+                                    <td colspan="14" class="text-muted text-center">
                                         Bu kapsamda ihtiyaç satırı yok.
                                     </td>
                                 </tr>
