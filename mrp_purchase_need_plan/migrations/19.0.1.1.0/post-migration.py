@@ -17,5 +17,5 @@ def migrate(cr, version):
         next_no = max(next_no, no + 1)
     cr.execute(
         "UPDATE ir_sequence SET prefix = NULL, padding = 10, "
-        "number_next_actual = %s WHERE code = 'mip.need.line'",
+        "number_next = %s WHERE code = 'mip.need.line'",
         (next_no,))
