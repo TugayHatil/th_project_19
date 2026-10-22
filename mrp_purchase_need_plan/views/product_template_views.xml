@@ -8,6 +8,7 @@
             <xpath expr="//page[@name='purchase']/group[@name='purchase']" position="inside">
                 <group string="Malzeme İhtiyaç Planlama" name="purchase_need_plan">
                     <field name="x_purchase_process_days"/>
+                    <field name="produce_delay"/>
                 </group>
             </xpath>
         </field>

@@ -15,6 +15,16 @@ class ProductTemplate(models.Model):
              "sayısı. Boş bırakılırsa Satınalma ayarlarındaki varsayılan "
              "değer kullanılır.",
     )
+    # days production needs from its start until the product is ready —
+    # BoM-exploded component needs are dated this many days before the
+    # parent's own need date (Odoo 19 removed the core produce_delay)
+    produce_delay = fields.Float(
+        string="Üretim Süresi (Gün)",
+        default=0.0,
+        help="Ürünün üretiminin kaç gün sürdüğü. Reçete patlamasında "
+             "bileşen ihtiyaç tarihi, ana ürünün ihtiyaç tarihinden bu "
+             "kadar gün öncesine alınır.",
+    )
 
     @api.constrains("x_purchase_process_days")
     def _check_purchase_process_days(self):
