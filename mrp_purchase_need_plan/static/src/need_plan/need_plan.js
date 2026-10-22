@@ -417,6 +417,14 @@ export class NeedPlan extends Component {
         return formatFloat(value || 0, { digits: [16, 2] });
     }
 
+    daysUntil(value) {
+        if (!value || !this.state.today) {
+            return "";
+        }
+        const diff = new Date(value) - new Date(this.state.today);
+        return Math.round(diff / 86400000);
+    }
+
     fmtDate(value) {
         if (!value) {
             return "";

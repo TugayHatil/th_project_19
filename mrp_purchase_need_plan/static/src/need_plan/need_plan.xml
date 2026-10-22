@@ -135,6 +135,7 @@
                         <col class="o_mnp_col_qty"/>
                         <col class="o_mnp_col_qty"/>
                         <col class="o_mnp_col_uom"/>
+                        <col class="o_mnp_col_days"/>
                         <col class="o_mnp_col_date"/>
                         <col class="o_mnp_col_date"/>
                         <col class="o_mnp_col_status"/>
@@ -154,8 +155,10 @@
                             <th class="o_mnp_num">Öngörülen</th>
                             <th class="o_mnp_num">İhtiyaç Miktarı</th>
                             <th class="o_mnp_num">Karşılanan</th>
+                            <th class="o_mnp_num">Açık</th>
                             <th class="o_mnp_num">Talep Miktarı</th>
                             <th>Birim</th>
+                            <th class="o_mnp_num">Gün</th>
                             <th>Başlangıç</th>
                             <th>Son Onay</th>
                             <th>Durum</th>
@@ -200,12 +203,13 @@
                                     <strong t-esc="fmtQty(group.end_forecast)"/>
                                 </td>
                                 <td class="o_mnp_num o_mnp_summary">
-                                    <strong t-esc="fmtQty(group.total_uncovered)"/>
-                                    <span class="text-muted"
-                                          t-esc="` / ${fmtQty(group.total_need)}`"/>
+                                    <strong t-esc="fmtQty(group.total_need)"/>
                                 </td>
                                 <td class="o_mnp_num o_mnp_summary">
                                     <strong t-esc="fmtQty(group.total_need - group.total_uncovered)"/>
+                                </td>
+                                <td t-att-class="'o_mnp_num o_mnp_summary' + (group.total_uncovered > 0 ? ' o_mnp_neg' : '')">
+                                    <strong t-esc="fmtQty(group.total_uncovered)"/>
                                 </td>
                                 <td class="o_mnp_num o_mnp_summary">
                                     <t t-if="groupSelectedQty(group)">
@@ -215,6 +219,9 @@
                                 </td>
                                 <td class="o_mnp_summary text-muted"
                                     t-esc="group.uom"/>
+                                <td t-att-class="'o_mnp_num o_mnp_summary' + (daysUntil(group.earliest_start) &lt; 0 ? ' o_mnp_neg' : '')">
+                                    <strong t-esc="daysUntil(group.earliest_start)"/>
+                                </td>
                                 <td class="o_mnp_summary">
                                     <strong t-esc="fmtDate(group.earliest_start)"/>
                                 </td>
@@ -275,6 +282,8 @@
                                             <t t-else=""
                                                t-esc="fmtQty(line.covered_qty)"/>
                                         </td>
+                                        <td t-att-class="'o_mnp_num' + (line.uncovered_qty > 0 ? ' o_mnp_neg' : '')"
+                                            t-esc="fmtQty(line.uncovered_qty)"/>
                                         <td class="o_mnp_num">
                                             <input t-if="isSelectable(line)"
                                                    type="number" min="0" step="any"
@@ -285,6 +294,8 @@
                                                    t-on-click.stop="() => {}"/>
                                         </td>
                                         <td class="text-muted" t-esc="line.uom"/>
+                                        <td t-att-class="'o_mnp_num' + (daysUntil(line.purchase_start) &lt; 0 ? ' o_mnp_neg' : '')"
+                                            t-esc="daysUntil(line.purchase_start)"/>
                                         <td t-esc="fmtDate(line.purchase_start)"/>
                                         <td t-esc="fmtDate(line.approve_by)"/>
                                         <td class="o_mnp_status">
@@ -303,13 +314,13 @@
                                 </t>
                                 <tr t-if="state.lines[group.product_id] === undefined"
                                     class="o_mnp_line">
-                                    <td t-att-colspan="16 + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0)"
+                                    <td t-att-colspan="17 + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0)"
                                         class="text-muted text-center">
                                         Yükleniyor…
                                     </td>
                                 </tr>
                                 <tr t-elif="!groupLines(group).length" class="o_mnp_line">
-                                    <td t-att-colspan="16 + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0)"
+                                    <td t-att-colspan="17 + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0)"
                                         class="text-muted text-center">
                                         Bu kapsamda ihtiyaç satırı yok.
                                     </td>
