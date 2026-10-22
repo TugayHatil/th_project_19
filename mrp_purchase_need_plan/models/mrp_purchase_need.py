@@ -421,8 +421,13 @@ class MrpPurchaseNeed(models.AbstractModel):
         # Supply left in the pool after every need consumed its share is
         # no longer needed at all — a PO receipt standing there suggests
         # cancelling (nothing consumed) or reducing it (only part left).
+        # A receipt that could still serve needs when pulled forward keeps
+        # that suggestion exclusively — never both on the same order.
+        pull_move_ids = {
+            sug["move_id"] for sug in suggestions}
         for chunk in pool:
-            if chunk["kind"] != "po" or chunk["qty"] <= 0.0:
+            if chunk["kind"] != "po" or chunk["qty"] <= 0.0 \
+                    or chunk["move_id"] in pull_move_ids:
                 continue
             suggestions.append({
                 "kind": "cancel"
