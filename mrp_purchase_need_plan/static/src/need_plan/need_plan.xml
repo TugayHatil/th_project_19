@@ -400,8 +400,10 @@
                     <tr>
                         <th>Tür</th>
                         <th>Belge</th>
-                        <th>Tarih</th>
+                        <th>Tedarikçi</th>
+                        <th>Beklenen Geliş</th>
                         <th class="text-end">Miktar</th>
+                        <th>Birim</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -413,11 +415,11 @@
                                t-on-click.prevent="() => this.onOrderClick(cov)"
                                t-esc="cov.name"/>
                             <t t-else="" t-esc="cov.name"/>
-                            <span t-if="cov.partner" class="text-muted"
-                                  t-esc="` · ${cov.partner}`"/>
                         </td>
+                        <td class="text-muted" t-esc="cov.partner"/>
                         <td t-esc="props.fmtDate(cov.date)"/>
                         <td class="text-end" t-esc="props.fmtQty(cov.qty)"/>
+                        <td class="text-muted" t-esc="cov.uom"/>
                     </tr>
                 </tbody>
             </table>

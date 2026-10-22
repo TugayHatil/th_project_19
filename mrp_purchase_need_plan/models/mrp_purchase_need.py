@@ -332,6 +332,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "date": "",
                 "order_id": False,
                 "qty": onhand,
+                "uom": product.uom_id.name,
             })
         for _date, incoming, mv, qty in events:
             prev_deficit = deficit
@@ -573,6 +574,7 @@ class MrpPurchaseNeed(models.AbstractModel):
             "date": fields.Date.to_string(self._local_date(move.date)),
             "order_id": order_id,
             "qty": qty,
+            "uom": move.product_id.uom_id.name,
         }
 
     @api.model
