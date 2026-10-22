@@ -18,9 +18,9 @@ class ProductTemplate(models.Model):
     # days production needs from its start until the product is ready —
     # BoM-exploded component needs are dated this many days before the
     # parent's own need date (Odoo 19 removed the core produce_delay)
-    produce_delay = fields.Float(
+    produce_delay = fields.Integer(
         string="Üretim Süresi (Gün)",
-        default=0.0,
+        default=0,
         help="Ürünün üretiminin kaç gün sürdüğü. Reçete patlamasında "
              "bileşen ihtiyaç tarihi, ana ürünün ihtiyaç tarihinden bu "
              "kadar gün öncesine alınır.",
