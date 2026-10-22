@@ -24,6 +24,10 @@ class MipNeedLine(models.Model):
         "move_uniq",
         "unique(move_id)",
         "Her ihtiyaç hareketi için yalnızca bir MİP kaydı oluşturulabilir.",
+    ), (
+        "name_uniq",
+        "unique(name)",
+        "MİP numaraları benzersiz olmalıdır.",
     )]
 
     name = fields.Char(

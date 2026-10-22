@@ -424,7 +424,8 @@ class TestPurchaseNeedPlan(TransactionCase):
         lines = self._lines(self.vida)
         names = {ln["mip_name"] for ln in lines}
         self.assertEqual(len(names), 2)
-        self.assertTrue(all(n.startswith("MİP-") for n in names))
+        self.assertTrue(all(
+            n.isdigit() and len(n) == 10 for n in names))
 
         # refresh reuses the same numbers — no duplicates (BRD §4.3)
         self.assertEqual(
