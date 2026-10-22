@@ -105,6 +105,7 @@
                         <col class="o_mnp_col_qty"/>
                         <col class="o_mnp_col_qty"/>
                         <col class="o_mnp_col_qty"/>
+                        <col class="o_mnp_col_uom"/>
                         <col class="o_mnp_col_date"/>
                         <col class="o_mnp_col_date"/>
                         <col class="o_mnp_col_status"/>
@@ -122,6 +123,7 @@
                             <th class="o_mnp_num">Öngörülen</th>
                             <th class="o_mnp_num">İhtiyaç Miktarı</th>
                             <th class="o_mnp_num">Talep Miktarı</th>
+                            <th>Birim</th>
                             <th>Başlangıç</th>
                             <th>Son Onay</th>
                             <th>Durum</th>
@@ -147,7 +149,6 @@
                                 </td>
                                 <td class="o_mnp_product">
                                     <strong t-esc="group.name"/>
-                                    <span class="text-muted" t-esc="` (${group.uom})`"/>
                                     <span class="text-muted ms-2 o_mnp_rowcount"
                                           t-esc="`· ${group.need_count} satır`"/>
                                 </td>
@@ -175,6 +176,8 @@
                                                 t-esc="fmtQty(groupSelectedQty(group))"/>
                                     </t>
                                 </td>
+                                <td class="o_mnp_summary text-muted"
+                                    t-esc="group.uom"/>
                                 <td class="o_mnp_summary">
                                     <strong t-esc="fmtDate(group.earliest_start)"/>
                                 </td>
@@ -241,6 +244,7 @@
                                                 <t t-esc="fmtQty(line.requested_qty)"/> talep edildi
                                             </div>
                                         </td>
+                                        <td class="text-muted" t-esc="line.uom"/>
                                         <td t-esc="fmtDate(line.purchase_start)"/>
                                         <td t-esc="fmtDate(line.approve_by)"/>
                                         <td class="o_mnp_status">
@@ -259,12 +263,12 @@
                                 </t>
                                 <tr t-if="state.lines[group.product_id] === undefined"
                                     class="o_mnp_line">
-                                    <td colspan="14" class="text-muted text-center">
+                                    <td colspan="15" class="text-muted text-center">
                                         Yükleniyor…
                                     </td>
                                 </tr>
                                 <tr t-elif="!groupLines(group).length" class="o_mnp_line">
-                                    <td colspan="14" class="text-muted text-center">
+                                    <td colspan="15" class="text-muted text-center">
                                         Bu kapsamda ihtiyaç satırı yok.
                                     </td>
                                 </tr>
