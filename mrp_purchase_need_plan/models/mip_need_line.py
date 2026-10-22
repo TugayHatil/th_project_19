@@ -159,7 +159,7 @@ class MipNeedLine(models.Model):
                     state = "partial"
                 doc_type, doc_no = rec._doc_summary()
                 vals = {
-                    "need_date": fields.Date.to_date(Need._need_dt(mv)),
+                    "need_date": Need._local_date(Need._need_dt(mv)),
                     "production_id": mv.raw_material_production_id.id or False,
                     "current_qty": cur,
                     "covered_qty": covered,

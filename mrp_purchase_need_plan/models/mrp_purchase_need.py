@@ -376,13 +376,13 @@ class MrpPurchaseNeed(models.AbstractModel):
         suggest_map = defaultdict(float)
         suggestions = []
         for mv, qty, absorbed in late_supplies:
-            supply_date = fields.Date.to_date(mv.date)
+            supply_date = self._local_date(mv.date)
             remaining = absorbed
             covers = []
             for nmv in ordered_needs:
                 if remaining <= 0.0:
                     break
-                need_date = fields.Date.to_date(self._need_dt(nmv))
+                need_date = self._local_date(self._need_dt(nmv))
                 if (need_date >= supply_date or nmv.id not in detail):
                     continue
                 open_need = (
@@ -433,7 +433,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                 else:
                     source = mv.origin or (
                         mv.picking_id.name if mv.picking_id else "")
-            need_date = fields.Date.to_date(need_dt)
+            need_date = self._local_date(need_dt)
             seller = product._select_seller(
                 quantity=qty, date=need_date, uom_id=product.uom_id)
             delay = seller.delay if seller else 0
@@ -536,6 +536,14 @@ class MrpPurchaseNeed(models.AbstractModel):
     # ------------------------------------------------------------------
 
     @api.model
+    def _local_date(self, dt):
+        """User-timezone date of a datetime — plain Date.to_date would
+        truncate the UTC value and show the previous day for
+        local-midnight dates."""
+        return fields.Datetime.context_timestamp(
+            self, dt).date() if dt else None
+
+    @api.model
     def _supply_chunk(self, move, qty):
         """One consumable supply unit for the FIFO coverage pool — a PO
         receipt, an MO output or any other expected receipt."""
@@ -562,8 +570,7 @@ class MrpPurchaseNeed(models.AbstractModel):
             "kind_label": labels[kind],
             "name": name,
             "partner": partner,
-            "date": fields.Date.to_string(
-                fields.Date.to_date(move.date) if move.date else False),
+            "date": fields.Date.to_string(self._local_date(move.date)),
             "order_id": order_id,
             "qty": qty,
         }
@@ -595,7 +602,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "company_id": mv.company_id.id,
                 "warehouse_id": mv.warehouse_id.id,
                 "location_id": mv.location_id.id,
-                "need_date": fields.Date.to_date(self._need_dt(mv)),
+                "need_date": self._local_date(self._need_dt(mv)),
                 "source_type": "mo" if mv.raw_material_production_id
                     else "so" if mv.location_dest_id.usage == "customer"
                     else "other",
