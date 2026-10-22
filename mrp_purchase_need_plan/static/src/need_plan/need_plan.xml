@@ -156,7 +156,7 @@
                             <th class="o_mnp_num">İhtiyaç Miktarı</th>
                             <th class="o_mnp_num">Karşılanan</th>
                             <th class="o_mnp_num">Açık</th>
-                            <th class="o_mnp_num">Talep Miktarı</th>
+                            <th class="o_mnp_num">Planla</th>
                             <th>Birim</th>
                             <th class="o_mnp_num">Gün</th>
                             <th>Başlangıç</th>
@@ -301,12 +301,6 @@
                                         <td class="o_mnp_status">
                                             <span t-if="line.uncovered_qty &lt;= 0"
                                                   class="badge text-bg-success">Karşılandı</span>
-                                            <span t-elif="line.requested_qty > 0 and line.requestable_qty &lt;= 0"
-                                                  class="badge text-bg-info">Talep edildi</span>
-                                            <span t-elif="line.requested_qty > 0"
-                                                  class="badge text-bg-secondary">Kısmi Talep</span>
-                                            <span t-elif="line.is_late"
-                                                  class="badge text-bg-danger">Gecikmiş</span>
                                             <span t-else=""
                                                   class="badge text-bg-warning">Açık</span>
                                         </td>

@@ -206,7 +206,7 @@ export class NeedPlan extends Component {
             for (const line of this.state.lines[pid]) {
                 if (this.isSelectable(line)
                         && this.state.requestQty[line.move_id] === undefined) {
-                    this.state.requestQty[line.move_id] = line.requestable_qty;
+                    this.state.requestQty[line.move_id] = line.uncovered_qty;
                 }
             }
             // drop selections that no longer point at a visible line
@@ -246,7 +246,7 @@ export class NeedPlan extends Component {
             this.state.selected[mid] = true;
             this._selOwner[mid] = group.product_id;
             if (this.state.requestQty[mid] === undefined) {
-                this.state.requestQty[mid] = line.requestable_qty;
+                this.state.requestQty[mid] = line.uncovered_qty;
             }
         } else {
             delete this.state.selected[mid];
@@ -270,7 +270,7 @@ export class NeedPlan extends Component {
                 this.state.selected[line.move_id] = true;
                 this._selOwner[line.move_id] = group.product_id;
                 if (this.state.requestQty[line.move_id] === undefined) {
-                    this.state.requestQty[line.move_id] = line.requestable_qty;
+                    this.state.requestQty[line.move_id] = line.uncovered_qty;
                 }
             } else {
                 delete this.state.selected[line.move_id];
@@ -289,7 +289,7 @@ export class NeedPlan extends Component {
 
     requestQtyOf(line) {
         const v = this.state.requestQty[line.move_id];
-        return v === undefined ? line.requestable_qty : v;
+        return v === undefined ? line.uncovered_qty : v;
     }
 
     onQtyChange(line, ev) {
@@ -490,10 +490,6 @@ export class NeedPlan extends Component {
         let cls = "o_mnp_line";
         if (line.uncovered_qty <= 0) {
             cls += " o_mnp_covered";
-        } else if (line.requested_qty > 0 && line.requestable_qty <= 0) {
-            cls += " o_mnp_requested";
-        } else if (line.is_late) {
-            cls += " o_mnp_late";
         }
         return cls;
     }
