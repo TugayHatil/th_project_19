@@ -791,7 +791,7 @@ class MrpPurchaseNeed(models.AbstractModel):
             # their open quantity is spread over the same need shares
             for po_line in rl.purchase_lines:
                 order = po_line.order_id
-                rem = po_line.product_uom._compute_quantity(
+                rem = po_line.product_uom_id._compute_quantity(
                     po_line.product_qty - po_line.qty_received,
                     po_line.product_id.uom_id, round=False)
                 if order.state == "cancel" or rem <= 0.0:
