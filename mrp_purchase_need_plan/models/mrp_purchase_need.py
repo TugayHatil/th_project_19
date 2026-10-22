@@ -414,7 +414,12 @@ class MrpPurchaseNeed(models.AbstractModel):
                 action = self.env._("İşlemi iptal et")
             elif req_qty > info["uncovered"]:
                 action = self.env._("Miktarı azalt")
-            if action:
+            elif suggest_map[mv.id] > 0.0:
+                action = self.env._("İşlemi öne al")
+            if action == self.env._("İşlemi öne al"):
+                # a pull-forward always points at a confirmed PO
+                action_doc = self.env._("Onaylı Sipariş")
+            elif action:
                 labels = sorted(req_docs.get(mv.id, ()), reverse=True)
                 action_doc = " / ".join(dict.fromkeys(
                     label for _prio, label in labels))
