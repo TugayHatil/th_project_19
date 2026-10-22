@@ -129,17 +129,16 @@
     // -- ürün grup satırı ----------------------------------------------------
 
     .o_mnp_group td {
-        background: #eef2f7;
+        background: #f8fafc;
         border-top: 1px solid #e5e7eb;
-        border-bottom: 1px solid #d1d5db;
+        border-bottom: 1px solid #e5e7eb;
         font-weight: 500;
-        font-size: 0.82rem;
-        padding-top: 4px;
-        padding-bottom: 4px;
+        padding-top: 7px;
+        padding-bottom: 7px;
     }
 
     .o_mnp_group.o_mnp_late td {
-        background: #f6eaea;
+        background: #fdf2f2;
     }
 
     .o_mnp_product strong {

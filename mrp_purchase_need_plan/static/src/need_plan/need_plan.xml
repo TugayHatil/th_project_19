@@ -152,7 +152,37 @@
                                     <span class="text-muted ms-2 o_mnp_rowcount"
                                           t-esc="`· ${group.need_count} satır`"/>
                                 </td>
-                                <td colspan="11"/>
+                                <td/>
+                                <td class="o_mnp_summary"
+                                    t-esc="fmtDate(group.earliest_need)"/>
+                                <td class="o_mnp_summary text-muted"
+                                    t-esc="group.location"/>
+                                <td class="o_mnp_summary text-center"
+                                    t-esc="group.route"/>
+                                <td class="o_mnp_num o_mnp_summary">
+                                    <strong t-esc="fmtQty(group.onhand)"/>
+                                </td>
+                                <td t-att-class="'o_mnp_num o_mnp_summary' + (group.end_forecast &lt; 0 ? ' o_mnp_neg' : '')">
+                                    <strong t-esc="fmtQty(group.end_forecast)"/>
+                                </td>
+                                <td class="o_mnp_num o_mnp_summary">
+                                    <strong t-esc="fmtQty(group.total_uncovered)"/>
+                                    <span class="text-muted"
+                                          t-esc="` / ${fmtQty(group.total_need)}`"/>
+                                </td>
+                                <td class="o_mnp_num o_mnp_summary">
+                                    <t t-if="groupSelectedQty(group)">
+                                        <strong class="text-primary"
+                                                t-esc="fmtQty(groupSelectedQty(group))"/>
+                                    </t>
+                                </td>
+                                <td class="o_mnp_summary text-muted"
+                                    t-esc="group.uom"/>
+                                <td class="o_mnp_summary">
+                                    <strong t-esc="fmtDate(group.earliest_start)"/>
+                                </td>
+                                <td class="o_mnp_summary"
+                                    t-esc="fmtDate(group.earliest_approve)"/>
                                 <td>
                                     <button t-if="group.suggestion_count"
                                             type="button"
