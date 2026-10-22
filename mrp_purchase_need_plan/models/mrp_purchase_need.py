@@ -291,6 +291,7 @@ class MrpPurchaseNeed(models.AbstractModel):
         column) and the incremental shortage it introduces (the
         "uncovered" quantity, BRD §6.2).
         """
+        need_set = set(need_moves.ids)
         events = []
         for mv in flow_moves:
             src_in = mv.location_id.id in scope_ids
@@ -301,8 +302,13 @@ class MrpPurchaseNeed(models.AbstractModel):
                 continue
             qty = mv.product_uom._compute_quantity(
                 self._move_open_qty(mv), product.uom_id, round=False)
-            # receipts are applied before issues on the same date
-            events.append((mv.date or fields.Datetime.now(), not src_in, mv, qty))
+            # day-level chronology — the time-of-day must not decide
+            # whether a receipt lands "late": a delivery due on the same
+            # day as the need covers it
+            mv_dt = self._need_dt(mv) if mv.id in need_set else mv.date
+            events.append((self._local_date(
+                mv_dt or fields.Datetime.now()), not src_in, mv, qty))
+        # receipts are applied before issues on the same date
         events.sort(key=lambda e: (e[0], 0 if e[1] else 1, e[2].id))
 
         # route label, SAP BESKZ style: S = Satınal, Ü = Üret, S+Ü = both
@@ -315,7 +321,6 @@ class MrpPurchaseNeed(models.AbstractModel):
             parts.append("Ü")
         route_abbr = "+".join(parts) or "-"
 
-        need_set = set(need_moves.ids)
         balance = onhand
         deficit = 0.0
         detail = {}
