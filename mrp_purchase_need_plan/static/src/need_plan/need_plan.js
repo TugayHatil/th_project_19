@@ -26,6 +26,23 @@ export class SuggestionsDialog extends Component {
     }
 }
 
+export class CoverageDialog extends Component {
+    static template = "mrp_purchase_need_plan.CoverageDialog";
+    static components = { Dialog };
+    static props = {
+        coverage: Array,
+        openOrder: Function,
+        fmtDate: Function,
+        fmtQty: Function,
+        close: Function,
+    };
+
+    onOrderClick(item) {
+        this.props.close();
+        this.props.openOrder(item);
+    }
+}
+
 export class NeedPlan extends Component {
     static template = "mrp_purchase_need_plan.NeedPlan";
     static props = { "*": true };
@@ -430,6 +447,15 @@ export class NeedPlan extends Component {
         this.dialog.add(SuggestionsDialog, {
             suggestions: this.groupSuggestions(group),
             openOrder: (sug) => this.openOrder(sug),
+            fmtDate: (d) => this.fmtDate(d),
+            fmtQty: (q) => this.fmtQty(q),
+        });
+    }
+
+    openCoverage(line) {
+        this.dialog.add(CoverageDialog, {
+            coverage: line.coverage || [],
+            openOrder: (item) => this.openOrder({ order_id: item.order_id }),
             fmtDate: (d) => this.fmtDate(d),
             fmtQty: (q) => this.fmtQty(q),
         });

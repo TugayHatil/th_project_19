@@ -317,19 +317,54 @@ class MrpPurchaseNeed(models.AbstractModel):
         balance = onhand
         deficit = 0.0
         detail = {}
+        coverage_map = {}
         late_supplies = []  # incoming moves that land while short
+        # FIFO pool of available supply — on-hand stock first, then every
+        # incoming move in date order; needs consume it in chronology so
+        # each line can report where its coverage came from
+        pool = []
+        if onhand > 0.0:
+            pool.append({
+                "kind": "stock",
+                "kind_label": self.env._("Stok"),
+                "name": self.env._("Mevcut stok"),
+                "partner": "",
+                "date": "",
+                "order_id": False,
+                "qty": onhand,
+            })
         for _date, incoming, mv, qty in events:
             prev_deficit = deficit
             balance = balance + qty if incoming else balance - qty
             deficit = max(0.0, -balance)
             if incoming:
+                pool.append(self._supply_chunk(mv, qty))
                 absorbed = prev_deficit - deficit
                 if absorbed > 0.0:
                     late_supplies.append((mv, qty, absorbed))
-            elif mv.id in need_set:
-                # the part of the new shortage this need is responsible for
-                uncovered = min(qty, max(0.0, deficit - prev_deficit))
-                detail[mv.id] = {"forecast": balance, "uncovered": uncovered}
+            else:
+                remaining_out = qty
+                covers = []
+                for chunk in pool:
+                    if remaining_out <= 0.0:
+                        break
+                    take = min(chunk["qty"], remaining_out)
+                    if take <= 0.0:
+                        continue
+                    chunk["qty"] -= take
+                    remaining_out -= take
+                    cover = dict(chunk)
+                    cover["qty"] = take
+                    covers.append(cover)
+                if mv.id in need_set:
+                    # the part of the new shortage this need is
+                    # responsible for
+                    uncovered = min(qty, max(0.0, deficit - prev_deficit))
+                    detail[mv.id] = {
+                        "forecast": balance,
+                        "uncovered": uncovered,
+                    }
+                    coverage_map[mv.id] = covers
 
         # Late supply that lands while a shortage exists could still serve
         # earlier uncovered needs if it were pulled forward. For open
@@ -442,6 +477,8 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "forecast": info["forecast"],
                 "need_qty": qty,
                 "uncovered_qty": info["uncovered"],
+                "covered_qty": qty - info["uncovered"],
+                "coverage": coverage_map.get(mv.id, []),
                 "pull_covered": suggest_map[mv.id],
                 "uom": product.uom_id.name,
                 "approve_by": fields.Date.to_string(approve_by),
@@ -497,6 +534,39 @@ class MrpPurchaseNeed(models.AbstractModel):
     # ------------------------------------------------------------------
     # data sources
     # ------------------------------------------------------------------
+
+    @api.model
+    def _supply_chunk(self, move, qty):
+        """One consumable supply unit for the FIFO coverage pool — a PO
+        receipt, an MO output or any other expected receipt."""
+        po_line = move.purchase_line_id
+        kind, name, order_id, partner = "other", "", False, ""
+        if po_line:
+            order = po_line.order_id
+            kind, order_id = "po", order.id
+            name, partner = order.name, order.partner_id.display_name
+        elif move.production_id:
+            kind, name = "mo", move.production_id.name
+        else:
+            name = move.origin or (
+                move.picking_id.name if move.picking_id
+                else self.env._("Beklenen tedarik"))
+        labels = {
+            "po": self.env._("Satınalma Siparişi"),
+            "mo": self.env._("Üretim Emri"),
+            "stock": self.env._("Stok"),
+            "other": self.env._("Tedarik"),
+        }
+        return {
+            "kind": kind,
+            "kind_label": labels[kind],
+            "name": name,
+            "partner": partner,
+            "date": fields.Date.to_string(
+                fields.Date.to_date(move.date) if move.date else False),
+            "order_id": order_id,
+            "qty": qty,
+        }
 
     @api.model
     def _need_dt(self, move):

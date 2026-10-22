@@ -132,6 +132,8 @@
                         <col class="o_mnp_col_qty"/>
                         <col class="o_mnp_col_qty"/>
                         <col class="o_mnp_col_qty"/>
+                        <col class="o_mnp_col_qty"/>
+                        <col class="o_mnp_col_qty"/>
                         <col class="o_mnp_col_uom"/>
                         <col class="o_mnp_col_date"/>
                         <col class="o_mnp_col_date"/>
@@ -151,6 +153,7 @@
                             <th class="o_mnp_num">Stok</th>
                             <th class="o_mnp_num">Öngörülen</th>
                             <th class="o_mnp_num">İhtiyaç Miktarı</th>
+                            <th class="o_mnp_num">Karşılanan</th>
                             <th class="o_mnp_num">Talep Miktarı</th>
                             <th>Birim</th>
                             <th>Başlangıç</th>
@@ -200,6 +203,9 @@
                                     <strong t-esc="fmtQty(group.total_uncovered)"/>
                                     <span class="text-muted"
                                           t-esc="` / ${fmtQty(group.total_need)}`"/>
+                                </td>
+                                <td class="o_mnp_num o_mnp_summary">
+                                    <strong t-esc="fmtQty(group.total_need - group.total_uncovered)"/>
                                 </td>
                                 <td class="o_mnp_num o_mnp_summary">
                                     <t t-if="groupSelectedQty(group)">
@@ -258,12 +264,16 @@
                                         <td class="o_mnp_num" t-esc="fmtQty(line.onhand)"/>
                                         <td t-att-class="'o_mnp_num' + (line.forecast &lt; 0 ? ' o_mnp_neg' : '')"
                                             t-esc="fmtQty(line.forecast)"/>
+                                        <td class="o_mnp_num"
+                                            t-esc="fmtQty(line.need_qty)"/>
                                         <td class="o_mnp_num">
-                                            <t t-esc="fmtQty(line.need_qty)"/>
-                                            <t t-if="line.uncovered_qty > 0 and line.uncovered_qty &lt; line.need_qty">
-                                                <span class="text-muted"
-                                                      t-esc="` (${fmtQty(line.uncovered_qty)} açık)`"/>
-                                            </t>
+                                            <a t-if="line.covered_qty > 0"
+                                               href="#"
+                                               class="o_mnp_cov_link"
+                                               t-on-click.prevent="() => this.openCoverage(line)"
+                                               t-esc="fmtQty(line.covered_qty)"/>
+                                            <t t-else=""
+                                               t-esc="fmtQty(line.covered_qty)"/>
                                         </td>
                                         <td class="o_mnp_num">
                                             <input t-if="isSelectable(line)"
@@ -293,13 +303,13 @@
                                 </t>
                                 <tr t-if="state.lines[group.product_id] === undefined"
                                     class="o_mnp_line">
-                                    <td t-att-colspan="15 + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0)"
+                                    <td t-att-colspan="16 + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0)"
                                         class="text-muted text-center">
                                         Yükleniyor…
                                     </td>
                                 </tr>
                                 <tr t-elif="!groupLines(group).length" class="o_mnp_line">
-                                    <td t-att-colspan="15 + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0)"
+                                    <td t-att-colspan="16 + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0)"
                                         class="text-muted text-center">
                                         Bu kapsamda ihtiyaç satırı yok.
                                     </td>
@@ -379,6 +389,40 @@
                     tedarikçi teyidi sonrasında ilgili satınalma siparişi
                     üzerinden güncellenmelidir.
                 </span>
+            </div>
+        </Dialog>
+    </t>
+
+    <t t-name="mrp_purchase_need_plan.CoverageDialog">
+        <Dialog title="'Karşılanma Detayı'" size="md">
+            <table t-if="props.coverage.length" class="table table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th>Tür</th>
+                        <th>Belge</th>
+                        <th>Tarih</th>
+                        <th class="text-end">Miktar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="props.coverage" t-as="cov" t-key="cov_index">
+                        <td class="text-muted" t-esc="cov.kind_label"/>
+                        <td>
+                            <a t-if="cov.order_id" href="#"
+                               class="o_mnp_order_link"
+                               t-on-click.prevent="() => this.onOrderClick(cov)"
+                               t-esc="cov.name"/>
+                            <t t-else="" t-esc="cov.name"/>
+                            <span t-if="cov.partner" class="text-muted"
+                                  t-esc="` · ${cov.partner}`"/>
+                        </td>
+                        <td t-esc="props.fmtDate(cov.date)"/>
+                        <td class="text-end" t-esc="props.fmtQty(cov.qty)"/>
+                    </tr>
+                </tbody>
+            </table>
+            <div t-else="" class="text-muted">
+                Bu ihtiyacın karşılanmış kısmı yok.
             </div>
         </Dialog>
     </t>
