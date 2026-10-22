@@ -1300,8 +1300,19 @@ class MrpPurchaseNeed(models.AbstractModel):
         Only realized quantities count as covered: an issued but
         unfinished purchase order does not fulfil the need (BRD §4.5).
         """
+        if not mip_by_move:
+            return
+        Mip = self.env["mip.need.line"].sudo()
+        # one bulk read for every involved record — per-record attribute
+        # access on singleton browses costs one query per MİP
+        SYNC_FIELDS = ["need_date", "production_id", "current_qty",
+                       "covered_qty", "remaining_qty", "state",
+                       "doc_type", "doc_no"]
+        rows = {d["id"]: d for d in Mip.browse(
+            [e["id"] for e in mip_by_move.values()]).read(
+            SYNC_FIELDS, load="_classic_write")}
         for mid, entry in mip_by_move.items():
-            rec = entry["rec"]
+            row = rows[entry["id"]]
             mv = ctx["moves"].get(mid)
             if not mv or mv["state"] == "cancel":
                 vals = {"state": "cancel", "remaining_qty": 0.0}
@@ -1330,24 +1341,19 @@ class MrpPurchaseNeed(models.AbstractModel):
                     "remaining_qty": open_qty,
                     "state": state,
                 }
-            diff = {}
-            for k, v in vals.items():
-                if rec._fields[k].type == "many2one":
-                    if rec[k].id != v:
-                        diff[k] = v
-                elif rec[k] != v:
-                    diff[k] = v
-            if (diff or not rec.doc_no) and not entry.get("new"):
+            diff = {k: v for k, v in vals.items() if row[k] != v}
+            if (diff or not row["doc_no"]) and not entry.get("new"):
                 # document labels change independently of quantities —
                 # refresh them only when the record is actually touched;
                 # records created seconds ago cannot have documents yet
+                rec = Mip.browse(entry["id"])
                 doc_type, doc_no = rec._doc_summary()
-                if rec.doc_type != doc_type:
+                if row["doc_type"] != doc_type:
                     diff["doc_type"] = doc_type
-                if rec.doc_no != doc_no:
+                if row["doc_no"] != doc_no:
                     diff["doc_no"] = doc_no
             if diff:
-                rec.write(diff)
+                Mip.browse(entry["id"]).write(diff)
 
     # ------------------------------------------------------------------
     # BoM explosion — virtual (planned) component needs
@@ -1532,11 +1538,19 @@ class MrpPurchaseNeed(models.AbstractModel):
     def _sync_virtual_mips(self, vmips, virt_lines):
         """Write the computed quantities/state onto virtual MİP records
         (they have no stock move to derive them from) — diff-only."""
+        if not vmips:
+            return
+        Mip = self.env["mip.need.line"].sudo()
+        SYNC_FIELDS = ["need_date", "current_qty", "covered_qty",
+                       "remaining_qty", "state", "doc_type", "doc_no"]
+        rows = {d["id"]: d for d in Mip.browse(
+            [i["id"] for i in vmips.values()]).read(
+            SYNC_FIELDS, load="_classic_write")}
         for key, rec_info in vmips.items():
             ln = virt_lines.get(key)
             if not ln:
                 continue
-            rec = rec_info["rec"]
+            row = rows[rec_info["id"]]
             covered = ln["covered_qty"]
             if ln["uncovered_qty"] <= 0.0:
                 state = "done"
@@ -1551,21 +1565,16 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "remaining_qty": ln["uncovered_qty"],
                 "state": state,
             }
-            diff = {}
-            for k, v in vals.items():
-                if rec._fields[k].type == "many2one":
-                    if rec[k].id != v:
-                        diff[k] = v
-                elif rec[k] != v:
-                    diff[k] = v
-            if (diff or not rec.doc_no) and not rec_info.get("new"):
+            diff = {k: v for k, v in vals.items() if row[k] != v}
+            if (diff or not row["doc_no"]) and not rec_info.get("new"):
+                rec = Mip.browse(rec_info["id"])
                 doc_type, doc_no = rec._doc_summary()
-                if rec.doc_type != doc_type:
+                if row["doc_type"] != doc_type:
                     diff["doc_type"] = doc_type
-                if rec.doc_no != doc_no:
+                if row["doc_no"] != doc_no:
                     diff["doc_no"] = doc_no
             if diff:
-                rec.write(diff)
+                Mip.browse(rec_info["id"]).write(diff)
 
     @api.model
     def _close_stale_virtual_mips(self, seen_keys, warehouse_id=False):
