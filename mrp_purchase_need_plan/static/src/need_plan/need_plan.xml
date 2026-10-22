@@ -291,12 +291,12 @@
                                         <td class="o_mnp_doc text-muted"
                                             t-esc="line.action_doc"/>
                                         <td class="o_mnp_status">
-                                            <span t-if="line.requested_qty > 0 and line.requestable_qty &lt;= 0"
+                                            <span t-if="line.uncovered_qty &lt;= 0"
+                                                  class="badge text-bg-success">Karşılandı</span>
+                                            <span t-elif="line.requested_qty > 0 and line.requestable_qty &lt;= 0"
                                                   class="badge text-bg-info">Talep edildi</span>
                                             <span t-elif="line.requested_qty > 0"
                                                   class="badge text-bg-secondary">Kısmi Talep</span>
-                                            <span t-elif="line.uncovered_qty &lt;= 0"
-                                                  class="badge text-bg-success">Karşılandı</span>
                                             <span t-elif="line.is_late"
                                                   class="badge text-bg-danger">Gecikmiş</span>
                                             <span t-else=""

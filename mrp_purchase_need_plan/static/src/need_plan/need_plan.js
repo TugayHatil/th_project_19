@@ -449,10 +449,10 @@ export class NeedPlan extends Component {
 
     lineClass(line) {
         let cls = "o_mnp_line";
-        if (line.requested_qty > 0 && line.requestable_qty <= 0) {
-            cls += " o_mnp_requested";
-        } else if (line.requestable_qty <= 0) {
+        if (line.uncovered_qty <= 0) {
             cls += " o_mnp_covered";
+        } else if (line.requested_qty > 0 && line.requestable_qty <= 0) {
+            cls += " o_mnp_requested";
         } else if (line.is_late) {
             cls += " o_mnp_late";
         }
