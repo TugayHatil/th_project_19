@@ -839,7 +839,8 @@ class MrpPurchaseNeed(models.AbstractModel):
             po = self.env["purchase.order"].sudo().browse(order_ids)
             partner_ids = set()
             for d in po.read(["name", "partner_id", "state",
-                              "date_planned"], load="_classic_write"):
+                              "date_planned", "date_approve"],
+                             load="_classic_write"):
                 ctx["po"][d["id"]] = d
                 if d["partner_id"]:
                     partner_ids.add(d["partner_id"])
@@ -1318,6 +1319,11 @@ class MrpPurchaseNeed(models.AbstractModel):
                     "approve_by": fields.Date.to_string(approve_by),
                     "purchase_start": fields.Date.to_string(purchase_start),
                     "is_late": purchase_start < today,
+                    "suggested_termin": fields.Date.to_string(
+                        self._suggested_termin(
+                            ctx, need_date, delay, today,
+                            walk["coverage_map"].get(entry["key"], []),
+                            vpend.get(entry["key"], []), requestable)),
                     "requested_qty": req_qty,
                     "requestable_qty": requestable,
                     "action": "",
@@ -1404,6 +1410,11 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "approve_by": fields.Date.to_string(approve_by),
                 "purchase_start": fields.Date.to_string(purchase_start),
                 "is_late": purchase_start < today,
+                "suggested_termin": fields.Date.to_string(
+                    self._suggested_termin(
+                        ctx, need_date, delay, today,
+                        walk["coverage_map"].get(mv["id"], []),
+                        pend.get(mv["id"], []), requestable)),
                 "requested_qty": req_qty,
                 "requestable_qty": requestable,
                 "action": action,
@@ -1447,6 +1458,9 @@ class MrpPurchaseNeed(models.AbstractModel):
             "earliest_need": min(ln["need_date"] for ln in lines),
             "earliest_approve": min(ln["approve_by"] for ln in lines),
             "earliest_start": min(starts),
+            "earliest_termin": min(
+                (ln["suggested_termin"] for ln in lines
+                 if ln.get("suggested_termin")), default=""),
             "has_late": any(
                 ln["is_late"] and ln["requestable_qty"] > 0
                 for ln in lines),
@@ -1460,6 +1474,35 @@ class MrpPurchaseNeed(models.AbstractModel):
     # ------------------------------------------------------------------
     # small helpers working on move dicts
     # ------------------------------------------------------------------
+
+    @api.model
+    def _suggested_termin(self, ctx, need_date, delay, today, coverage,
+                          pending, requestable):
+        """Realistic delivery date when the need can no longer arrive on
+        its planned date — empty while the plan is still feasible.
+
+        Every still-unapproved source (open remainder, draft/approved
+        requests, unconfirmed RFQs) can at best be approved today; a
+        confirmed PO is bound by its own approval date. The latest
+        feasible arrival is approval_base + supplier lead time, and it
+        only matters when that lands after the need date."""
+        bases = []
+        if requestable > 0.0:
+            bases.append(today)
+        if pending:
+            # listed docs are exactly the unconfirmed ones — their
+            # approval is still ahead, so today is the earliest base
+            bases.append(today)
+        for chunk in coverage or []:
+            if chunk.get("kind") == "po":
+                appr = (ctx["po"].get(chunk.get("order_id") or 0) or {}
+                        ).get("date_approve")
+                if appr:
+                    bases.append(self._local_date(appr, ctx))
+        if not bases:
+            return False
+        sug = max(bases) + timedelta(days=delay)
+        return sug if sug > need_date else False
 
     @api.model
     def _local_date(self, dt, ctx=None):

@@ -142,6 +142,7 @@
                         <col class="o_mnp_col_days"/>
                         <col class="o_mnp_col_date"/>
                         <col class="o_mnp_col_date"/>
+                        <col class="o_mnp_col_date"/>
                         <col class="o_mnp_col_status"/>
                     </colgroup>
                     <thead>
@@ -167,6 +168,7 @@
                             <th class="o_mnp_num">Gün</th>
                             <th>Başlangıç</th>
                             <th>Son Onay</th>
+                            <th>Öneri Termin</th>
                             <th>Durum</th>
                         </tr>
                     </thead>
@@ -237,6 +239,9 @@
                                 </td>
                                 <td class="o_mnp_summary"
                                     t-esc="fmtDate(group.earliest_approve)"/>
+                                <td class="o_mnp_summary text-warning">
+                                    <strong t-esc="fmtDate(group.earliest_termin)"/>
+                                </td>
                                 <td>
                                     <button t-if="group.suggestion_count"
                                             type="button"
@@ -312,6 +317,8 @@
                                             t-esc="daysUntil(line.purchase_start)"/>
                                         <td t-esc="fmtDate(line.purchase_start)"/>
                                         <td t-esc="fmtDate(line.approve_by)"/>
+                                        <td t-att-class="line.suggested_termin ? 'text-warning' : ''"
+                                            t-esc="fmtDate(line.suggested_termin)"/>
                                         <td class="o_mnp_status">
                                             <span t-if="line.uncovered_qty &lt;= 0"
                                                   class="badge text-bg-success">Karşılandı</span>
@@ -326,13 +333,13 @@
                                 </t>
                                 <tr t-if="state.lines[group.product_id] === undefined"
                                     class="o_mnp_line">
-                                    <td t-att-colspan="18 + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0)"
+                                    <td t-att-colspan="19 + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0)"
                                         class="text-muted text-center">
                                         Yükleniyor…
                                     </td>
                                 </tr>
                                 <tr t-elif="!groupLines(group).length" class="o_mnp_line">
-                                    <td t-att-colspan="18 + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0)"
+                                    <td t-att-colspan="19 + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0)"
                                         class="text-muted text-center">
                                         Bu kapsamda ihtiyaç satırı yok.
                                     </td>
