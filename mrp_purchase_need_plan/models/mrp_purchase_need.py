@@ -48,7 +48,7 @@ _MIP_CHUNK = 1000
 # drains in the background via the warm-up cron (flag below tells the
 # cron to keep rebuilding until every need row owns a record)
 _MIP_ENSURE_INLINE = 1500   # request-path builds
-_MIP_ENSURE_CRON = 2000     # warm-up cron builds
+_MIP_ENSURE_CRON = 4000     # warm-up cron builds
 _MIP_BACKLOG_PARAM = "mrp_purchase_need_plan.mip_backlog"
 
 
