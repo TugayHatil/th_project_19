@@ -98,7 +98,7 @@ export class NeedPlan extends Component {
             uncoveredOnly: false,
             lateOnly: false,
             showSource: false,
-            showMip: false,
+            showMip: true,
             colsOpen: false,
             sortBy: "purchase_start",
             canCreate: false,
