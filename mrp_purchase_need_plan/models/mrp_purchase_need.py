@@ -426,7 +426,7 @@ class MrpPurchaseNeed(models.AbstractModel):
 
     @api.model
     def _build_plan(self, warehouse_id, date_from, date_to, query,
-                    products=None):
+                    products=None, _prof=None):
         """Compute per-product need data — pure dicts, no recordsets.
 
         Every heavy read is batched into _load_ctx(): moves, picked
@@ -438,17 +438,28 @@ class MrpPurchaseNeed(models.AbstractModel):
         Returns {product_id: {product, onhand, end_balance, route, lines,
         suggestions}}.
         """
+        _t = [time.monotonic()]
+
+        def _mark(name):
+            if _prof is not None:
+                _prof[name] = _prof.get(name, 0.0) \
+                    + time.monotonic() - _t[0]
+                _t[0] = time.monotonic()
+
         scope_ids = set(self._get_scope_locations(warehouse_id).ids)
         need_moves = self._get_need_moves(
             scope_ids, date_from, date_to, query, products=products)
         if not need_moves:
             return {}
+        _mark("scope+need_moves")
         ctx = self._load_ctx(need_moves)
+        _mark("load_ctx(need)")
         need_products = need_moves.product_id
         need_set = set(need_moves.ids)
         # durable MİP records are upserted on every plan build so each
         # need row gets a stable number without duplicating on refresh
         mip_by_move = self._ensure_mip_lines(need_moves, ctx)
+        _mark("ensure_mips")
         # BoM explosion graph: components of demanded manufactured
         # products become virtual needs, level by level (depth order so
         # every parent is processed before its components)
@@ -459,12 +470,16 @@ class MrpPurchaseNeed(models.AbstractModel):
         # card (uom, routes, sellers, lead days) in ctx — virtual demand
         # is planned for them even without stock flow
         self._load_products(ctx, products)
+        _mark("bom_graph+products")
         flow_moves = self._get_flow_moves(products, scope_ids)
         self._load_ctx(flow_moves, ctx)
+        _mark("flow+load_ctx")
         onhand = self._get_onhand(products, scope_ids)
         requested, req_docs, pend = self._get_requested_quantities(
             need_moves, ctx)
+        _mark("onhand+requested")
         lead_info = self._get_lead_info(products, ctx)
+        _mark("lead_info")
         buy_ids = self._get_buy_route_ids()
         manu_ids = self._get_manu_route_ids()
         route_sets = (buy_ids, manu_ids)
@@ -512,6 +527,8 @@ class MrpPurchaseNeed(models.AbstractModel):
                 for mv in need_by_product[pid])
         }
 
+        _mark("flow_bucket+prepass")
+
         # ---- phase A: per-product chronological walk + BoM explosion --
         walks = {}
         virtual_events = defaultdict(dict)  # pid -> {key: event dict}
@@ -544,6 +561,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                 self._explode_bom(
                     pid, walk, bom_map, manu_ids, ctx,
                     out=virtual_events)
+        _mark("walks+explosion")
 
         # ---- virtual MİP records + live request links, in one batch ---
         all_vevents = [
@@ -552,6 +570,7 @@ class MrpPurchaseNeed(models.AbstractModel):
         demand = {ev["key"]: ev["qty"] for ev in all_vevents}
         vreq, _vdocs, vpend = self._get_virtual_requested(
             demand, vmips, ctx)
+        _mark("virtual_mips")
 
         # ---- phase B: suggestions + serializable lines ----------------
         plan = {}
@@ -565,6 +584,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                 lead_info[pid], today, route_sets)
             if data["lines"]:
                 plan[pid] = data
+        _mark("finalize")
 
         # ---- MİP housekeeping (bulk, diff-only writes) ----------------
         self._sync_mips(mip_by_move, ctx)
@@ -581,7 +601,20 @@ class MrpPurchaseNeed(models.AbstractModel):
         # because the close domain itself is warehouse-scoped).
         if not query and not date_from and not date_to:
             self._close_stale_virtual_mips(seen_keys, warehouse_id)
+        _mark("mip_sync")
         return plan
+
+    @api.model
+    def plan_profile(self):
+        """Diagnostic RPC entrypoint: run a canonical build and return
+        per-phase timings — used to locate hotspots on real data."""
+        prof = {}
+        t = time.monotonic()
+        plan = self._build_plan(False, None, None, "", _prof=prof)
+        prof["total"] = time.monotonic() - t
+        prof["products"] = len(plan)
+        prof["lines"] = sum(len(d["lines"]) for d in plan.values())
+        return prof
 
     # ------------------------------------------------------------------
     # bulk data loading — everything the walk needs, in a handful of
