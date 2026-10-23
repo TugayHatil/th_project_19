@@ -33,3 +33,37 @@ class ProductTemplate(models.Model):
                 raise ValidationError(
                     self.env._("Satınalma için Gerekli Gün negatif olamaz.")
                 )
+
+    # routes, lead days and storable flags feed the plan — any product
+    # master-data change invalidates the cached plan
+    @api.model_create_multi
+    def create(self, vals_list):
+        recs = super().create(vals_list)
+        self.env["mrp.purchase.need"]._bump_plan_version()
+        return recs
+
+    def write(self, vals):
+        res = super().write(vals)
+        self.env["mrp.purchase.need"]._bump_plan_version()
+        return res
+
+
+class ProductSupplierinfo(models.Model):
+    _inherit = "product.supplierinfo"
+
+    # supplier lead times enter the purchase-start calculation
+    @api.model_create_multi
+    def create(self, vals_list):
+        recs = super().create(vals_list)
+        self.env["mrp.purchase.need"]._bump_plan_version()
+        return recs
+
+    def write(self, vals):
+        res = super().write(vals)
+        self.env["mrp.purchase.need"]._bump_plan_version()
+        return res
+
+    def unlink(self):
+        res = super().unlink()
+        self.env["mrp.purchase.need"]._bump_plan_version()
+        return res

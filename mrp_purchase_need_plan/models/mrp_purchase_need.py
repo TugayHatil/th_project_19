@@ -21,7 +21,11 @@ ACTIVE_REQUEST_STATES = ("draft", "to_approve", "approved", "in_progress", "done
 # ------------------------------------------------------------------
 _PLAN_CACHE = {}
 _PLAN_CACHE_LOCK = threading.Lock()
-_PLAN_CACHE_TTL = 120.0  # seconds
+# TTL is only a memory/backstop bound — correctness comes from the
+# shared plan version bumped by stock.move / quant / request / BoM /
+# product write hooks, so a quiet system serves the cache for a long
+# time and any data change rebuilds on the next request.
+_PLAN_CACHE_TTL = 3600.0  # seconds
 _PLAN_CACHE_MAX = 8
 
 # stock.move fields read once per build — plain dicts from here on, the
@@ -281,9 +285,27 @@ class MrpPurchaseNeed(models.AbstractModel):
             self.env.cr.dbname,
             self.env.uid,
             tuple(sorted(self.env.companies.ids)),
+            self._plan_version(),
             int(warehouse_id) if warehouse_id else 0,
             str(date_from or ""), str(date_to or ""), str(query or ""),
         )
+
+    @api.model
+    def _plan_version(self):
+        """Shared plan revision — bumped by write hooks on every model
+        the plan depends on (moves, quants, request lines, BoMs, product
+        lead data). Stored in ir.config_parameter so every worker sees
+        the same version."""
+        return self.env["ir.config_parameter"].sudo().get_param(
+            "mrp_purchase_need_plan.plan_version", "0")
+
+    @api.model
+    def _bump_plan_version(self):
+        P = self.env["ir.config_parameter"].sudo()
+        P.set_param(
+            "mrp_purchase_need_plan.plan_version",
+            str(int(P.get_param(
+                "mrp_purchase_need_plan.plan_version", "0") or "0") + 1))
 
     @api.model
     def _get_plan(self, warehouse_id, date_from, date_to, query,
@@ -372,6 +394,37 @@ class MrpPurchaseNeed(models.AbstractModel):
             mv = ctx["moves"][mid]
             need_by_product[mv["product_id"]].append(mv)
 
+        # ---- cheap coverage pre-pass ----------------------------------
+        # If a product's total open outbound flow can never exceed
+        # onhand + all open inbound supply, it is provably covered in
+        # ANY chronology — its walk would only yield hidden fully-covered
+        # lines, so it is skipped unless a purchase request is already
+        # attached (traceability rows must stay exact).
+        inflow_tot = defaultdict(float)
+        outflow_tot = defaultdict(float)
+        for pid, mvs in flow_by_product.items():
+            for mv in mvs:
+                if mv["location_dest_id"] in scope_ids \
+                        and mv["location_id"] not in scope_ids:
+                    inflow_tot[pid] += self._conv(
+                        ctx, self._open_qty(ctx, mv),
+                        mv["product_uom"],
+                        ctx["prod"][pid]["uom_id"])
+                elif mv["location_id"] in scope_ids \
+                        and mv["location_dest_id"] not in scope_ids:
+                    outflow_tot[pid] += self._conv(
+                        ctx, self._open_qty(ctx, mv),
+                        mv["product_uom"],
+                        ctx["prod"][pid]["uom_id"])
+        skip_pids = {
+            pid for pid in products.ids
+            if outflow_tot[pid]
+            <= onhand.get(pid, 0.0) + inflow_tot[pid] + 1e-9
+            and not any(
+                requested.get(mv["id"]) or pend.get(mv["id"])
+                for mv in need_by_product[pid])
+        }
+
         # ---- phase A: per-product chronological walk + BoM explosion --
         walks = {}
         virtual_events = defaultdict(dict)  # pid -> {key: event dict}
@@ -383,6 +436,11 @@ class MrpPurchaseNeed(models.AbstractModel):
         for pid in ordered:
             ev_map = virtual_events.pop(pid, {})
             seen_keys.update(ev_map)
+            if pid in skip_pids and not ev_map:
+                # provably covered: no line survives the hidden filter,
+                # no BoM explosion needed (uncovered == 0)
+                walks[pid] = {"needs": [], "vevents": []}
+                continue
             vevents = list(ev_map.values())
             walk = self._walk_product(
                 pid,

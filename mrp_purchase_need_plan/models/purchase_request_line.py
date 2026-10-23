@@ -34,3 +34,21 @@ class PurchaseRequestLine(models.Model):
         return self.need_move_ids.filtered(
             lambda m: m.state not in ("done", "cancel")
         )
+
+    # request lines drive the pending/dedup columns of the plan — any
+    # change must refresh the cached plan on the next request
+    @api.model_create_multi
+    def create(self, vals_list):
+        recs = super().create(vals_list)
+        self.env["mrp.purchase.need"]._bump_plan_version()
+        return recs
+
+    def write(self, vals):
+        res = super().write(vals)
+        self.env["mrp.purchase.need"]._bump_plan_version()
+        return res
+
+    def unlink(self):
+        res = super().unlink()
+        self.env["mrp.purchase.need"]._bump_plan_version()
+        return res
