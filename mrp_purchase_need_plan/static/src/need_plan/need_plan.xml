@@ -130,6 +130,7 @@
                         <col t-if="state.showSource" class="o_mnp_col_src"/>
                         <col t-if="state.showMip" class="o_mnp_col_mip"/>
                         <col class="o_mnp_col_date"/>
+                        <col class="o_mnp_col_date"/>
                         <col class="o_mnp_col_loc"/>
                         <col class="o_mnp_col_route"/>
                         <col class="o_mnp_col_qty"/>
@@ -140,7 +141,6 @@
                         <col class="o_mnp_col_qty"/>
                         <col class="o_mnp_col_uom"/>
                         <col class="o_mnp_col_days"/>
-                        <col class="o_mnp_col_date"/>
                         <col class="o_mnp_col_date"/>
                         <col class="o_mnp_col_date"/>
                         <col class="o_mnp_col_status"/>
@@ -156,6 +156,7 @@
                             <th t-if="state.showSource">Kaynak</th>
                             <th t-if="state.showMip">MİP No</th>
                             <th>İhtiyaç Tarihi</th>
+                            <th>Öneri Termin</th>
                             <th>Konum</th>
                             <th>Rota</th>
                             <th class="o_mnp_num">Stok</th>
@@ -168,7 +169,6 @@
                             <th class="o_mnp_num">Gün</th>
                             <th>Başlangıç</th>
                             <th>Son Onay</th>
-                            <th>Öneri Termin</th>
                             <th>Durum</th>
                         </tr>
                     </thead>
@@ -204,6 +204,9 @@
                                 <td t-if="state.showMip"/>
                                 <td class="o_mnp_summary"
                                     t-esc="fmtDate(group.earliest_need)"/>
+                                <td class="o_mnp_summary text-warning">
+                                    <strong t-esc="fmtDate(group.earliest_termin)"/>
+                                </td>
                                 <td class="o_mnp_summary text-muted"
                                     t-esc="group.location"/>
                                 <td class="o_mnp_summary text-center"
@@ -239,9 +242,6 @@
                                 </td>
                                 <td class="o_mnp_summary"
                                     t-esc="fmtDate(group.earliest_approve)"/>
-                                <td class="o_mnp_summary text-warning">
-                                    <strong t-esc="fmtDate(group.earliest_termin)"/>
-                                </td>
                                 <td>
                                     <button t-if="group.suggestion_count"
                                             type="button"
@@ -284,6 +284,8 @@
                                             class="o_mnp_mip text-muted"
                                             t-esc="line.mip_name"/>
                                         <td t-esc="fmtDate(line.need_date)"/>
+                                        <td t-att-class="line.suggested_termin ? 'text-warning' : ''"
+                                            t-esc="fmtDate(line.suggested_termin)"/>
                                         <td t-esc="line.location"/>
                                         <td class="text-center"
                                             t-esc="line.route"/>
@@ -317,8 +319,6 @@
                                             t-esc="daysUntil(line.purchase_start)"/>
                                         <td t-esc="fmtDate(line.purchase_start)"/>
                                         <td t-esc="fmtDate(line.approve_by)"/>
-                                        <td t-att-class="line.suggested_termin ? 'text-warning' : ''"
-                                            t-esc="fmtDate(line.suggested_termin)"/>
                                         <td class="o_mnp_status">
                                             <span t-if="line.uncovered_qty &lt;= 0"
                                                   class="badge text-bg-success">Karşılandı</span>
