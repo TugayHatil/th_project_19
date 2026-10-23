@@ -194,7 +194,9 @@ class MipNeedLine(models.Model):
                 if rec.doc_no != doc_no:
                     diff["doc_no"] = doc_no
             if diff:
-                rec.write(diff)
+                # bulk bookkeeping writes skip chatter tracking — one
+                # message per record would flood both mail and memory
+                rec.with_context(tracking_disable=True).write(diff)
 
     @api.model
     def _cron_sync(self):

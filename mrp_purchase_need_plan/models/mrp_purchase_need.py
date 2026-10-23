@@ -48,7 +48,7 @@ _MIP_CHUNK = 1000
 # drains in the background via the warm-up cron (flag below tells the
 # cron to keep rebuilding until every need row owns a record)
 _MIP_ENSURE_INLINE = 1500   # request-path builds
-_MIP_ENSURE_CRON = 5000     # warm-up cron builds
+_MIP_ENSURE_CRON = 2000     # warm-up cron builds
 _MIP_BACKLOG_PARAM = "mrp_purchase_need_plan.mip_backlog"
 
 
@@ -1530,6 +1530,17 @@ class MrpPurchaseNeed(models.AbstractModel):
             for mid in missing_ids:
                 mv = ctx["moves"][mid]
                 prod = ctx["prod"][mv["product_id"]]
+                cur = self._conv(
+                    ctx, mv["product_uom_qty"], mv["product_uom"],
+                    prod["uom_id"])
+                open_qty = self._conv(
+                    ctx, self._open_qty(ctx, mv), mv["product_uom"],
+                    prod["uom_id"])
+                covered = max(0.0, cur - open_qty)
+                # quantity/state are written at create so _sync_mips
+                # never rewrites freshly minted records — a mass mint
+                # followed by a mass update is what used to crush the
+                # warm-up cron's transaction
                 vals_list.append({
                     "key": "mv:%s" % mid,
                     "move_id": mid,
@@ -1547,9 +1558,13 @@ class MrpPurchaseNeed(models.AbstractModel):
                     "production_id": mv["raw_material_production_id"]
                         or False,
                     "uom_id": prod["uom_id"],
-                    "initial_qty": self._conv(
-                        ctx, mv["product_uom_qty"], mv["product_uom"],
-                        prod["uom_id"]),
+                    "initial_qty": cur,
+                    "current_qty": cur,
+                    "covered_qty": covered,
+                    "remaining_qty": open_qty,
+                    "state": ("open" if covered <= 0.0
+                              else "done" if covered >= cur
+                              else "partial"),
                 })
             vals_list.sort(key=lambda v: v["move_id"])
             for i in range(0, len(vals_list), _MIP_CHUNK):
@@ -1621,7 +1636,10 @@ class MrpPurchaseNeed(models.AbstractModel):
                 if row["doc_no"] != doc_no:
                     diff["doc_no"] = doc_no
             if diff:
-                Mip.browse(entry["id"]).write(diff)
+                # bulk bookkeeping writes skip chatter tracking — one
+                # message per record would flood both mail and memory
+                Mip.browse(entry["id"]).with_context(
+                    tracking_disable=True).write(diff)
 
     # ------------------------------------------------------------------
     # BoM explosion — virtual (planned) component needs
@@ -1847,7 +1865,8 @@ class MrpPurchaseNeed(models.AbstractModel):
                 if row["doc_no"] != doc_no:
                     diff["doc_no"] = doc_no
             if diff:
-                Mip.browse(rec_info["id"]).write(diff)
+                Mip.browse(rec_info["id"]).with_context(
+                    tracking_disable=True).write(diff)
 
     @api.model
     def _close_stale_virtual_mips(self, seen_keys, warehouse_id=False):
@@ -1862,8 +1881,9 @@ class MrpPurchaseNeed(models.AbstractModel):
             domain.append(("warehouse_id", "=", int(warehouse_id)))
         if seen_keys:
             domain.append(("key", "not in", list(seen_keys)))
-        self.env["mip.need.line"].sudo().search(domain).write({
-            "state": "cancel", "remaining_qty": 0.0})
+        self.env["mip.need.line"].sudo().search(domain).with_context(
+            tracking_disable=True).write(
+                {"state": "cancel", "remaining_qty": 0.0})
 
     @api.model
     def _get_virtual_requested(self, demand, vmips, ctx):
