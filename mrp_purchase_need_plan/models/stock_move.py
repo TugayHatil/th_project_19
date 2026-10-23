@@ -36,10 +36,46 @@ class StockMove(models.Model):
         return recs
 
     def write(self, vals):
+        watch = {"date", "date_deadline"} & set(vals)
+        old_dt = {}
+        if watch:
+            old_dt = {m.id: (m.date, m.date_deadline) for m in self}
         res = super().write(vals)
         if self._PLAN_FIELDS & set(vals):
             self.env["mrp.purchase.need"]._bump_plan_version()
+        if old_dt:
+            self._log_reschedules(old_dt)
         return res
+
+    def _log_reschedules(self, old_dt):
+        """Mint one history row per move whose plan-relevant planned
+        date actually changed — the İstisna column's audit trail."""
+        now = fields.Datetime.now()
+        vals_list = []
+        for m in self:
+            od, odd = old_dt[m.id]
+            if m.raw_material_production_id:
+                old_planned, new_planned = od, m.date
+            else:
+                old_planned = odd or od
+                new_planned = m.date_deadline or m.date
+            if not old_planned or not new_planned \
+                    or old_planned == new_planned:
+                continue
+            vals_list.append({
+                "key": "mv:%s" % m.id,
+                "move_id": m.id,
+                "doc_name": (
+                    m.raw_material_production_id.name
+                    or m.production_id.name
+                    or m.picking_id.name or m.origin or ""),
+                "user_id": self.env.uid,
+                "change_date": now,
+                "planned_date": fields.Date.to_date(new_planned),
+                "company_id": m.company_id.id,
+            })
+        if vals_list:
+            self.env["mip.reschedule.log"].sudo().create(vals_list)
 
     def unlink(self):
         res = super().unlink()

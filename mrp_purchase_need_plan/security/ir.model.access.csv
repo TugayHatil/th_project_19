@@ -1,3 +1,5 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_mip_need_line_user,mip.need.line stock user,model_mip_need_line,stock.group_stock_user,1,0,0,0
 access_mip_need_line_system,mip.need.line admin,model_mip_need_line,base.group_system,1,1,1,1
+access_mip_reschedule_log_user,mip.reschedule.log stock user,model_mip_reschedule_log,stock.group_stock_user,1,0,0,0
+access_mip_reschedule_log_system,mip.reschedule.log admin,model_mip_reschedule_log,base.group_system,1,1,1,1

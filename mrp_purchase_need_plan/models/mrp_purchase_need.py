@@ -542,6 +542,7 @@ class MrpPurchaseNeed(models.AbstractModel):
         onhand = self._get_onhand(products, scope_ids)
         requested, req_docs, pend = self._get_requested_quantities(
             need_moves, ctx)
+        exc_map = self._get_reschedule_log(need_moves)
         _mark("onhand+requested")
         lead_info = self._get_lead_info(products, ctx)
         _mark("lead_info")
@@ -646,7 +647,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                 continue
             data = self._finalize_product(
                 pid, walk, ctx, mip_by_move, requested, req_docs, pend,
-                vmips, vreq, vpend,
+                vmips, vreq, vpend, exc_map,
                 lead_info[pid], today, route_sets)
             if data["lines"]:
                 plan[pid] = data
@@ -1183,8 +1184,8 @@ class MrpPurchaseNeed(models.AbstractModel):
 
     @api.model
     def _finalize_product(self, pid, walk, ctx, mip_by_move, requested,
-                          req_docs, pend, vmips, vreq, vpend, lead,
-                          today, route_sets):
+                          req_docs, pend, vmips, vreq, vpend, exc_map,
+                          lead, today, route_sets):
         """Turn a phase-A walk into the screen payload for one product."""
         prod = ctx["prod"][pid]
         detail = walk["detail"]
@@ -1324,6 +1325,8 @@ class MrpPurchaseNeed(models.AbstractModel):
                             ctx, need_date, delay, today,
                             walk["coverage_map"].get(entry["key"], []),
                             vpend.get(entry["key"], []), requestable)),
+                    "exception": False,
+                    "exception_log": [],
                     "requested_qty": req_qty,
                     "requestable_qty": requestable,
                     "action": "",
@@ -1415,6 +1418,8 @@ class MrpPurchaseNeed(models.AbstractModel):
                         ctx, need_date, delay, today,
                         walk["coverage_map"].get(mv["id"], []),
                         pend.get(mv["id"], []), requestable)),
+                "exception": bool(exc_map.get(mv["id"])),
+                "exception_log": exc_map.get(mv["id"], []),
                 "requested_qty": req_qty,
                 "requestable_qty": requestable,
                 "action": action,
@@ -1469,6 +1474,8 @@ class MrpPurchaseNeed(models.AbstractModel):
             "requested_count": sum(
                 1 for ln in lines if ln["requested_qty"] > 0),
             "suggestion_count": len(data.get("suggestions") or []),
+            "exception_count": sum(
+                1 for ln in lines if ln.get("exception")),
         }
 
     # ------------------------------------------------------------------
@@ -2058,6 +2065,24 @@ class MrpPurchaseNeed(models.AbstractModel):
     # ------------------------------------------------------------------
     # data sources
     # ------------------------------------------------------------------
+
+    @api.model
+    def _get_reschedule_log(self, need_moves):
+        """{move_id: [history dicts]} — the İstisna column's data."""
+        rows = self.env["mip.reschedule.log"].sudo().search_read(
+            [("move_id", "in", need_moves.ids)],
+            ["move_id", "doc_name", "user_id", "change_date",
+             "planned_date"],
+            order="change_date, id")
+        out = defaultdict(list)
+        for d in rows:
+            out[d["move_id"]].append({
+                "doc": d["doc_name"] or "",
+                "user": d["user_id"][1] if d["user_id"] else "",
+                "date": fields.Datetime.to_string(d["change_date"]),
+                "planned": fields.Date.to_string(d["planned_date"]),
+            })
+        return out
 
     @api.model
     def _get_scope_locations(self, warehouse_id):

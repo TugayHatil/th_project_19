@@ -5,4 +5,5 @@ from . import stock_move
 from . import purchase_request_line
 from . import mrp_purchase_need
 from . import mip_need_line
+from . import mip_reschedule_log
 from . import mrp_bom

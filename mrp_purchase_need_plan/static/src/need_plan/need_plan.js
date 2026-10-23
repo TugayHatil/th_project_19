@@ -60,6 +60,16 @@ export class PendingDialog extends Component {
     }
 }
 
+export class RescheduleDialog extends Component {
+    static template = "mrp_purchase_need_plan.RescheduleDialog";
+    static components = { Dialog };
+    static props = {
+        logs: Array,
+        fmtDate: Function,
+        close: Function,
+    };
+}
+
 export class NeedPlan extends Component {
     static template = "mrp_purchase_need_plan.NeedPlan";
     static props = { "*": true };
@@ -528,6 +538,13 @@ export class NeedPlan extends Component {
             openDoc: (item) => this.openDoc(item),
             fmtDate: (d) => this.fmtDate(d),
             fmtQty: (q) => this.fmtQty(q),
+        });
+    }
+
+    openExceptions(line) {
+        this.dialog.add(RescheduleDialog, {
+            logs: line.exception_log || [],
+            fmtDate: (d) => this.fmtDate(d),
         });
     }
 
