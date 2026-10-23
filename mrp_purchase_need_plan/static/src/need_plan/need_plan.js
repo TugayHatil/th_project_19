@@ -228,13 +228,6 @@ export class NeedPlan extends Component {
                 });
             this.state.lines[pid] = data.lines || [];
             this.state.suggestions[pid] = data.suggestions || [];
-            // default the editable request qty to the uncovered qty
-            for (const line of this.state.lines[pid]) {
-                if (this.isSelectable(line)
-                        && this.state.requestQty[line.key] === undefined) {
-                    this.state.requestQty[line.key] = line.uncovered_qty;
-                }
-            }
             // drop selections that no longer point at a visible line
             const ids = new Set(this.state.lines[pid].map((l) => l.key));
             for (const key of Object.keys(this.state.selected)) {
@@ -271,9 +264,6 @@ export class NeedPlan extends Component {
         if (ev.target.checked) {
             this.state.selected[mid] = true;
             this._selOwner[mid] = group.product_id;
-            if (this.state.requestQty[mid] === undefined) {
-                this.state.requestQty[mid] = line.uncovered_qty;
-            }
         } else {
             delete this.state.selected[mid];
             delete this._selOwner[mid];
@@ -295,9 +285,6 @@ export class NeedPlan extends Component {
             if (want) {
                 this.state.selected[line.key] = true;
                 this._selOwner[line.key] = group.product_id;
-                if (this.state.requestQty[line.key] === undefined) {
-                    this.state.requestQty[line.key] = line.uncovered_qty;
-                }
             } else {
                 delete this.state.selected[line.key];
                 delete this._selOwner[line.key];
@@ -315,10 +302,22 @@ export class NeedPlan extends Component {
 
     requestQtyOf(line) {
         const v = this.state.requestQty[line.key];
-        return v === undefined ? line.uncovered_qty : v;
+        return v === undefined ? "" : v;
+    }
+
+    effectiveQtyOf(line) {
+        // empty "Planla" input means "request the full remaining qty"
+        const v = this.state.requestQty[line.key];
+        return v === undefined
+            ? (line.requestable_qty || line.uncovered_qty || 0)
+            : v;
     }
 
     onQtyChange(line, ev) {
+        if (ev.target.value === "") {
+            delete this.state.requestQty[line.key];
+            return;
+        }
         const v = parseFloat(ev.target.value);
         this.state.requestQty[line.key] = Number.isNaN(v) ? 0 : v;
     }
@@ -327,7 +326,7 @@ export class NeedPlan extends Component {
         let total = 0;
         for (const line of this.state.lines[group.product_id] || []) {
             if (this.state.selected[line.key]) {
-                total += this.requestQtyOf(line) || 0;
+                total += this.effectiveQtyOf(line);
             }
         }
         return total;
@@ -342,7 +341,9 @@ export class NeedPlan extends Component {
         const moveQuantities = {};
         for (const key of lineKeys) {
             const q = this.state.requestQty[key];
-            moveQuantities[key] = q === undefined ? 0 : q;
+            if (q !== undefined) {
+                moveQuantities[key] = q;
+            }
         }
         this.state.creating = true;
         try {
