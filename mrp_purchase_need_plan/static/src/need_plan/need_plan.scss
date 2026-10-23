@@ -24,7 +24,9 @@
     // -- tablo -------------------------------------------------------------
 
     .o_mnp_grid {
-        padding: 14px 18px;
+        // no top padding — content scrolled into a padded scrollport
+        // region stays visible above the sticky header
+        padding: 0 18px 14px;
     }
 
     .o_mnp_table {
@@ -42,10 +44,13 @@
 
         thead th {
             position: sticky;
-            top: 0;
-            z-index: 1;
+            // -1px overlaps the table's own top border so scrolled rows
+            // can never peek through the 1px seam above the header
+            top: -1px;
+            z-index: 2;
             background: #f9fafb;
             border-bottom: 1px solid #d1d5db;
+            box-shadow: 0 1px 0 #d1d5db;
             padding: 10px 12px;
             font-size: 0.75rem;
             font-weight: 600;
