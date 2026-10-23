@@ -397,7 +397,7 @@ class MrpPurchaseNeed(models.AbstractModel):
     # payload schema — bump whenever the serialized plan shape changes;
     # a snapshot written by older code is rejected outright since its
     # missing keys would silently break new frontend features
-    _PLAN_SCHEMA = 2
+    _PLAN_SCHEMA = 3
 
     def _snapshot_name(self, warehouse_id, date_from, date_to, query):
         """Stable attachment name per filter scope — version is carried
@@ -1405,13 +1405,20 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "virtual": False,
                 "mip_id": mip.get("id") or False,
                 "mip_name": mip.get("name") or "",
+                # the MİP number opens the operational document, never
+                # the mip card: MO > transfer > sale order > the move
                 "doc_model": (
                     "mrp.production"
                     if mv["raw_material_production_id"]
                     else "stock.picking" if mv["picking_id"]
-                    else "mip.need.line" if mip.get("id") else ""),
-                "doc_id": (mv["raw_material_production_id"]
-                           or mv["picking_id"] or mip.get("id") or False),
+                    else "sale.order"
+                    if mv.get("sale_line_id")
+                    and ctx["sl_order"].get(mv["sale_line_id"])
+                    else "stock.move"),
+                "doc_id": (
+                    mv["raw_material_production_id"] or mv["picking_id"]
+                    or ctx["sl_order"].get(mv.get("sale_line_id"))
+                    or mv["id"]),
                 "company_id": mv["company_id"],
                 "warehouse_id": mv["warehouse_id"],
                 "need_date": fields.Date.to_string(need_date),
