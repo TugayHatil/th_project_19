@@ -501,7 +501,10 @@ export class NeedPlan extends Component {
         return this.state.suggestions[group.product_id] || [];
     }
 
-    openSuggestions(group) {
+    async openSuggestions(group) {
+        if (this.state.suggestions[group.product_id] === undefined) {
+            await this.loadLines(group);
+        }
         this.dialog.add(SuggestionsDialog, {
             suggestions: this.groupSuggestions(group),
             openOrder: (sug) => this.openOrder(sug),
