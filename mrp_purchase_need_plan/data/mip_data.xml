@@ -22,4 +22,17 @@
         <field name="interval_type">days</field>
         <field name="active" eval="True"/>
     </record>
+
+    <!-- Plan warm-up: rebuilds the persisted plan snapshot whenever the
+         plan version moved, so user requests are served from the
+         snapshot instead of a synchronous build -->
+    <record id="ir_cron_plan_warmup" model="ir.cron">
+        <field name="name">MİP: plan önbelleğini sıcak tut</field>
+        <field name="model_id" ref="model_mrp_purchase_need"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_plan_warmup()</field>
+        <field name="interval_number">5</field>
+        <field name="interval_type">minutes</field>
+        <field name="active" eval="True"/>
+    </record>
 </odoo>

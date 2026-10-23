@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
+import base64
+import hashlib
+import json
 import threading
+import time
 from collections import defaultdict, deque
 from datetime import timedelta
 
@@ -309,22 +313,105 @@ class MrpPurchaseNeed(models.AbstractModel):
 
     @api.model
     def _get_plan(self, warehouse_id, date_from, date_to, query,
-                  force=False):
+                  force=False, allow_stale=True):
         """Shared plan accessor — a computed plan is pure data, so it can
-        be reused by detail calls and repeated loads for a short TTL."""
+        be reused by detail calls and repeated loads.
+
+        Two cache tiers: the per-process LRU and a persisted JSON
+        snapshot (ir.attachment) so cold workers and restarts stay fast.
+        A snapshot whose stored version differs from the current plan
+        version is served only while it is young — that grace window
+        lets the warm-up cron rebuild after writes instead of making a
+        user request pay the full recompute."""
         key = self._plan_cache_key(warehouse_id, date_from, date_to, query)
         now = fields.Datetime.now().timestamp()
+        name = self._snapshot_name(warehouse_id, date_from, date_to, query)
         if not force:
             with _PLAN_CACHE_LOCK:
                 entry = _PLAN_CACHE.get(key)
                 if entry and now - entry[0] < _PLAN_CACHE_TTL:
                     return entry[1]
+            snap = self._load_snapshot(name, allow_stale=allow_stale)
+            if snap is not None:
+                with _PLAN_CACHE_LOCK:
+                    while len(_PLAN_CACHE) >= _PLAN_CACHE_MAX:
+                        _PLAN_CACHE.pop(next(iter(_PLAN_CACHE)))
+                    _PLAN_CACHE[key] = (now, snap)
+                return snap
         plan = self._build_plan(warehouse_id, date_from, date_to, query)
+        self._store_snapshot(name, plan)
         with _PLAN_CACHE_LOCK:
             while len(_PLAN_CACHE) >= _PLAN_CACHE_MAX:
                 _PLAN_CACHE.pop(next(iter(_PLAN_CACHE)))
             _PLAN_CACHE[key] = (now, plan)
         return plan
+
+    # ---- persisted plan snapshots ------------------------------------
+
+    _PLAN_SNAPSHOT_MAX_AGE = 300.0  # staleness grace after a write
+
+    def _snapshot_name(self, warehouse_id, date_from, date_to, query):
+        """Stable attachment name per filter scope — version is carried
+        inside the payload so a rebuild overwrites the same snapshot."""
+        raw = repr((
+            self.env.cr.dbname,
+            tuple(sorted(self.env.companies.ids)),
+            self.env.user.tz or "UTC",
+            int(warehouse_id) if warehouse_id else 0,
+            str(date_from or ""), str(date_to or ""), str(query or ""),
+        ))
+        return "mnp.plan." + hashlib.sha1(raw.encode()).hexdigest()
+
+    def _load_snapshot(self, name, allow_stale=True):
+        att = self.env["ir.attachment"].sudo().search(
+            [("name", "=", name),
+             ("res_model", "=", "mrp.purchase.need"),
+             ("res_id", "=", 0)], limit=1)
+        if not att:
+            return None
+        try:
+            payload = json.loads(
+                base64.b64decode(att.datas or b"").decode())
+        except Exception:
+            return None
+        plan = payload.get("plan")
+        if not isinstance(plan, dict):
+            return None
+        # json coerces the int product_id keys to strings
+        plan = {int(k): v for k, v in plan.items()}
+        if payload.get("v") == self._plan_version():
+            return plan
+        if allow_stale and time.time() - payload.get("t", 0) \
+                < self._PLAN_SNAPSHOT_MAX_AGE:
+            return plan
+        return None
+
+    def _store_snapshot(self, name, plan):
+        try:
+            payload = base64.b64encode(json.dumps(
+                {"v": self._plan_version(), "t": time.time(),
+                 "plan": plan}, default=str).encode())
+        except Exception:
+            return  # a non-serializable plan must never break requests
+        Att = self.env["ir.attachment"].sudo()
+        att = Att.search(
+            [("name", "=", name),
+             ("res_model", "=", "mrp.purchase.need"),
+             ("res_id", "=", 0)], limit=1)
+        if att:
+            att.write({"datas": payload})
+        else:
+            Att.create({
+                "name": name, "type": "binary",
+                "res_model": "mrp.purchase.need", "res_id": 0,
+                "datas": payload})
+
+    @api.model
+    def _cron_plan_warmup(self):
+        """Keep the canonical (unfiltered) plan snapshot warm so user
+        requests almost never pay the full build — the snapshot serves
+        every worker and survives restarts."""
+        self._get_plan(False, None, None, "", allow_stale=False)
 
     @api.model
     def _invalidate_plan_cache(self):
