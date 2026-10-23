@@ -43,6 +43,14 @@ _MOVE_FIELDS = [
 
 _MIP_CHUNK = 1000
 
+# MİP record creation is bounded per build so a bulk-loaded dataset can
+# never blow the request-time limit on its first refresh: the backlog
+# drains in the background via the warm-up cron (flag below tells the
+# cron to keep rebuilding until every need row owns a record)
+_MIP_ENSURE_INLINE = 1500   # request-path builds
+_MIP_ENSURE_CRON = 5000     # warm-up cron builds
+_MIP_BACKLOG_PARAM = "mrp_purchase_need_plan.mip_backlog"
+
 
 class MrpPurchaseNeed(models.AbstractModel):
     """Stateless service backing the Material Need Planning screen.
@@ -223,6 +231,38 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "Seçilen ürünlerin tüm ihtiyaçları stok, beklenen tedarik "
                 "veya mevcut bir satınalma talebi ile zaten karşılanıyor."
             ))
+
+        # selected rows must own their durable MİP record before the
+        # request links to it (need_mip_ids traceability) — when the
+        # background backlog has not minted them yet, mint just this
+        # selection now
+        missing_moves = {ln["move_id"] for pm in grouped.values()
+                         for e in pm.values() for ln, _q in e["items"]
+                         if ln["move_id"] and not ln["mip_id"]}
+        mip_map = {}
+        if missing_moves:
+            mip_map = {mid: i["id"] for mid, i in self._ensure_mip_lines(
+                self.env["stock.move"].browse(
+                    sorted(missing_moves)))[0].items()}
+        missing_vevs = [
+            {"key": ln["key"], "date": ln["need_date"],
+             "qty": ln["need_qty"], "company_id": ln["company_id"],
+             "warehouse_id": ln["warehouse_id"]}
+            for pm in grouped.values() for e in pm.values()
+            for ln, _q in e["items"]
+            if ln["virtual"] and not ln["mip_id"]]
+        vmip_map = {}
+        if missing_vevs:
+            vmip_map = {k: i["id"] for k, i in
+                        self._ensure_virtual_mips(missing_vevs)[0].items()}
+        if mip_map or vmip_map:
+            for pm in grouped.values():
+                for e in pm.values():
+                    for ln, _q in e["items"]:
+                        if not ln["mip_id"]:
+                            ln["mip_id"] = (
+                                vmip_map.get(ln["key"]) if ln["virtual"]
+                                else mip_map.get(ln["move_id"]))
 
         Request = self.env["purchase.request"]
         created = []
@@ -420,9 +460,14 @@ class MrpPurchaseNeed(models.AbstractModel):
         Rebuilds only when the stored snapshot is missing or
         version-stale; that rebuild also runs the MİP record sync that
         request-path builds skip, keeping mip.need.line bookkeeping
-        fresh in the background."""
+        fresh in the background. It additionally keeps rebuilding while
+        the MİP-creation backlog flag is set — bulk-loaded datasets get
+        their records minted in bounded batches, off the request path."""
         name = self._snapshot_name(False, None, None, "")
-        if self._load_snapshot(name, allow_stale=False) is not None:
+        backlog = self.env["ir.config_parameter"].sudo().get_param(
+            _MIP_BACKLOG_PARAM, "")
+        if not backlog and self._load_snapshot(
+                name, allow_stale=False) is not None:
             return
         plan = self._build_plan(False, None, None, "", run_sync=True)
         self._store_snapshot(name, plan)
@@ -476,7 +521,9 @@ class MrpPurchaseNeed(models.AbstractModel):
         need_set = set(need_moves.ids)
         # durable MİP records are upserted on every plan build so each
         # need row gets a stable number without duplicating on refresh
-        mip_by_move = self._ensure_mip_lines(need_moves, ctx)
+        mip_cap = (_MIP_ENSURE_CRON if run_sync else _MIP_ENSURE_INLINE)
+        mip_by_move, mip_trunc = self._ensure_mip_lines(
+            need_moves, ctx, max_create=mip_cap)
         _mark("ensure_mips")
         # BoM explosion graph: components of demanded manufactured
         # products become virtual needs, level by level (depth order so
@@ -584,7 +631,8 @@ class MrpPurchaseNeed(models.AbstractModel):
         # ---- virtual MİP records + live request links, in one batch ---
         all_vevents = [
             ev for w in walks.values() for ev in w["vevents"]]
-        vmips = self._ensure_virtual_mips(all_vevents)
+        vmips, vmip_trunc = self._ensure_virtual_mips(
+            all_vevents, max_create=mip_cap)
         demand = {ev["key"]: ev["qty"] for ev in all_vevents}
         vreq, _vdocs, vpend = self._get_virtual_requested(
             demand, vmips, ctx)
@@ -624,6 +672,13 @@ class MrpPurchaseNeed(models.AbstractModel):
             # warehouse-scoped).
             if not query and not date_from and not date_to:
                 self._close_stale_virtual_mips(seen_keys, warehouse_id)
+        # only canonical builds own the backlog flag — a capped ensure
+        # tells the warm-up cron to keep rebuilding until every need row
+        # has its durable MİP record (bulk-load cold start)
+        if not query and not date_from and not date_to:
+            self.env["ir.config_parameter"].sudo().set_param(
+                _MIP_BACKLOG_PARAM,
+                "1" if (mip_trunc or vmip_trunc) else "")
         _mark("mip_sync")
         return plan
 
@@ -1438,13 +1493,17 @@ class MrpPurchaseNeed(models.AbstractModel):
     # ------------------------------------------------------------------
 
     @api.model
-    def _ensure_mip_lines(self, need_moves, ctx=None):
+    def _ensure_mip_lines(self, need_moves, ctx=None, max_create=None):
         """Create the persistent MİP record of every need move
-        (BRD §4.1/§4.3). Returns {move_id: {id, name, rec}}.
+        (BRD §4.1/§4.3). Returns ({move_id: {id, name, rec}}, truncated).
 
         Records are keyed by move and the number is assigned once, so
         refreshes and re-computations never mint duplicates. Syncing is
-        done once per build in bulk by _sync_mips — not per record."""
+        done once per build in bulk by _sync_mips — not per record.
+
+        ``max_create`` bounds the records created in one call: bulk
+        loads (migration, mass import) must not blow the request-time
+        limit — the warm-up cron drains the rest in batches."""
         if ctx is None:
             ctx = self._load_ctx(need_moves)
         Mip = self.env["mip.need.line"].sudo()
@@ -1459,6 +1518,13 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "rec": Mip.browse(d["id"]),
             }
             missing_ids.discard(d["move_id"])
+        truncated = False
+        if missing_ids:
+            missing_ids = sorted(missing_ids)
+            if max_create is not None and len(missing_ids) > max_create:
+                missing_ids = missing_ids[:max_create]
+                truncated = True
+            missing_ids = set(missing_ids)
         if missing_ids:
             vals_list = []
             for mid in missing_ids:
@@ -1492,7 +1558,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                     by_move[rec.move_id.id] = {
                         "id": rec.id, "name": rec.name, "rec": rec,
                         "new": True}
-        return by_move
+        return by_move, truncated
 
     @api.model
     def _sync_mips(self, mip_by_move, ctx):
@@ -1693,11 +1759,12 @@ class MrpPurchaseNeed(models.AbstractModel):
                 ev["parents"].add(prod["display_name"])
 
     @api.model
-    def _ensure_virtual_mips(self, all_vevents):
+    def _ensure_virtual_mips(self, all_vevents, max_create=None):
         """Upsert MİP records for all virtual need rows in one batch —
-        {key: {id, name, rec}}."""
+        ({key: {id, name, rec}}, truncated). ``max_create`` bounds the
+        batch the same way as _ensure_mip_lines."""
         if not all_vevents:
-            return {}
+            return {}, False
         Mip = self.env["mip.need.line"].sudo()
         keys = [ev["key"] for ev in all_vevents]
         by_key = {}
@@ -1710,6 +1777,10 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "rec": Mip.browse(d["id"]),
             }
         missing = [ev for ev in all_vevents if ev["key"] not in by_key]
+        truncated = False
+        if max_create is not None and len(missing) > max_create:
+            missing = sorted(missing, key=lambda e: e["key"])[:max_create]
+            truncated = True
         if missing:
             vals_list = [{
                 "key": ev["key"],
@@ -1734,7 +1805,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                     by_key[rec.key] = {
                         "id": rec.id, "name": rec.name, "rec": rec,
                         "new": True}
-        return by_key
+        return by_key, truncated
 
     @api.model
     def _sync_virtual_mips(self, vmips, virt_lines):
