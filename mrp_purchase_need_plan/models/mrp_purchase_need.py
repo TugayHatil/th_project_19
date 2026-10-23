@@ -394,6 +394,10 @@ class MrpPurchaseNeed(models.AbstractModel):
     # ---- persisted plan snapshots ------------------------------------
 
     _PLAN_SNAPSHOT_MAX_AGE = 300.0  # staleness grace after a write
+    # payload schema — bump whenever the serialized plan shape changes;
+    # a snapshot written by older code is rejected outright since its
+    # missing keys would silently break new frontend features
+    _PLAN_SCHEMA = 2
 
     def _snapshot_name(self, warehouse_id, date_from, date_to, query):
         """Stable attachment name per filter scope — version is carried
@@ -419,6 +423,8 @@ class MrpPurchaseNeed(models.AbstractModel):
                 base64.b64decode(att.datas or b"").decode())
         except Exception:
             return None
+        if payload.get("schema") != self._PLAN_SCHEMA:
+            return None
         plan = payload.get("plan")
         if not isinstance(plan, dict):
             return None
@@ -435,6 +441,7 @@ class MrpPurchaseNeed(models.AbstractModel):
         try:
             payload = base64.b64encode(json.dumps(
                 {"v": self._plan_version(), "t": time.time(),
+                 "schema": self._PLAN_SCHEMA,
                  "plan": plan}, default=str).encode())
         except Exception:
             return  # a non-serializable plan must never break requests
