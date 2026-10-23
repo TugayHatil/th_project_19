@@ -67,6 +67,13 @@
             }
         }
 
+        thead th,
+        td {
+            &:not(:last-child) {
+                border-right: 1px solid #e5e7eb;
+            }
+        }
+
         td {
             padding: 1px 12px;
             border-bottom: 1px solid #d1d5db;
