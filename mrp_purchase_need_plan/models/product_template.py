@@ -25,6 +25,16 @@ class ProductTemplate(models.Model):
              "bileşen ihtiyaç tarihi, ana ürünün ihtiyaç tarihinden bu "
              "kadar gün öncesine alınır.",
     )
+    x_mip_responsible_id = fields.Many2one(
+        "res.users",
+        string="MİP Sorumlusu",
+        help="Bu ürünün malzeme ihtiyaç planlamasından sorumlu kullanıcı.",
+    )
+    x_sa_responsible_id = fields.Many2one(
+        "res.users",
+        string="SA Sorumlusu",
+        help="Bu ürünün satınalma sürecinden sorumlu kullanıcı.",
+    )
 
     @api.constrains("x_purchase_process_days")
     def _check_purchase_process_days(self):

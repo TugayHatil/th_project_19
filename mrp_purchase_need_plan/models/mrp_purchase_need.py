@@ -727,7 +727,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "mo_name": {}, "pick_name": {}, "so_name": {},
                 "sl_order": {}, "partner_name": {},
                 "uom_factor": {}, "uom_name": {}, "uom_cat": {},
-                "uom_all": False,
+                "uom_all": False, "user_name": {},
                 "sellers": defaultdict(list),
                 "tz": timezone(self.env.user.tz or "UTC"),
             }
@@ -791,12 +791,18 @@ class MrpPurchaseNeed(models.AbstractModel):
         prod_rows = prods.read([
             "display_name", "default_code", "uom_id", "product_tmpl_id",
             "route_ids", "produce_delay", "x_purchase_process_days",
-            "standard_price",
+            "standard_price", "x_mip_responsible_id",
+            "x_sa_responsible_id",
         ], load="_classic_write")
         tmpl_ids = set()
+        user_ids = set()
         for d in prod_rows:
             uom_ids.add(d["uom_id"])
             tmpl_ids.add(d["product_tmpl_id"])
+            if d["x_mip_responsible_id"]:
+                user_ids.add(d["x_mip_responsible_id"])
+            if d["x_sa_responsible_id"]:
+                user_ids.add(d["x_sa_responsible_id"])
         for d in prod_rows:
             ctx["prod"][d["id"]] = {
                 "id": d["id"],
@@ -809,10 +815,15 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "produce_delay": d["produce_delay"] or 0,
                 "proc_days": d["x_purchase_process_days"] or 0,
                 "standard_price": d["standard_price"] or 0.0,
+                "mip_resp_id": d["x_mip_responsible_id"] or False,
+                "sa_resp_id": d["x_sa_responsible_id"] or False,
             }
         self._load_uoms(ctx, uom_ids)
+        self._load_users(ctx, user_ids)
         for d in ctx["prod"].values():
             d["uom_name"] = ctx["uom_name"].get(d["uom_id"], "")
+            d["mip_resp"] = ctx["user_name"].get(d["mip_resp_id"], "")
+            d["sa_resp"] = ctx["user_name"].get(d["sa_resp_id"], "")
 
         # purchase lines + their orders (supply attribution, suggestions)
         if pl_ids:
@@ -870,11 +881,18 @@ class MrpPurchaseNeed(models.AbstractModel):
         rows = self.env["product.product"].browse(missing).read([
             "display_name", "default_code", "uom_id", "product_tmpl_id",
             "route_ids", "produce_delay", "x_purchase_process_days",
-            "standard_price",
+            "standard_price", "x_mip_responsible_id",
+            "x_sa_responsible_id",
         ], load="_classic_write")
+        user_ids = set()
         for d in rows:
             uom_ids.add(d["uom_id"])
+            if d["x_mip_responsible_id"]:
+                user_ids.add(d["x_mip_responsible_id"])
+            if d["x_sa_responsible_id"]:
+                user_ids.add(d["x_sa_responsible_id"])
         self._load_uoms(ctx, uom_ids)
+        self._load_users(ctx, user_ids)
         tmpl_ids = set()
         for d in rows:
             tmpl_ids.add(d["product_tmpl_id"])
@@ -889,6 +907,12 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "produce_delay": d["produce_delay"] or 0,
                 "proc_days": d["x_purchase_process_days"] or 0,
                 "standard_price": d["standard_price"] or 0.0,
+                "mip_resp_id": d["x_mip_responsible_id"] or False,
+                "sa_resp_id": d["x_sa_responsible_id"] or False,
+                "mip_resp": ctx["user_name"].get(
+                    d["x_mip_responsible_id"], ""),
+                "sa_resp": ctx["user_name"].get(
+                    d["x_sa_responsible_id"], ""),
             }
         self._load_sellers(ctx, missing, tmpl_ids)
 
@@ -955,6 +979,16 @@ class MrpPurchaseNeed(models.AbstractModel):
             ctx["uom_factor"].setdefault(i, 1.0)
             ctx["uom_name"].setdefault(i, str(i))
             ctx["uom_cat"].setdefault(i, i)
+
+    @api.model
+    def _load_users(self, ctx, user_ids):
+        missing = [i for i in user_ids if i not in ctx["user_name"]]
+        if not missing:
+            return
+        rows = self.env["res.users"].sudo().browse(missing).read(
+            ["name"], load="_classic_write")
+        for d in rows:
+            ctx["user_name"][d["id"]] = d["name"]
 
     @api.model
     def _load_partners(self, ctx, partner_ids):
@@ -1399,6 +1433,8 @@ class MrpPurchaseNeed(models.AbstractModel):
             "name": product["display_name"],
             "code": product["default_code"],
             "uom": product["uom_name"],
+            "mip_resp": product.get("mip_resp", ""),
+            "sa_resp": product.get("sa_resp", ""),
             "onhand": data["onhand"],
             "end_forecast": data["end_balance"],
             "location": locs[0] if len(locs) == 1 else self.env._(

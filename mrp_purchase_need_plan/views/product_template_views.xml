@@ -9,6 +9,8 @@
                 <group string="Malzeme İhtiyaç Planlama" name="purchase_need_plan">
                     <field name="x_purchase_process_days"/>
                     <field name="produce_delay"/>
+                    <field name="x_mip_responsible_id"/>
+                    <field name="x_sa_responsible_id"/>
                 </group>
             </xpath>
         </field>

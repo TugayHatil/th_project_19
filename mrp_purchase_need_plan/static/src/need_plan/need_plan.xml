@@ -124,6 +124,8 @@
                         <col class="o_mnp_col_sel"/>
                         <col class="o_mnp_col_exp"/>
                         <col class="o_mnp_col_product"/>
+                        <col class="o_mnp_col_resp"/>
+                        <col class="o_mnp_col_resp"/>
                         <col class="o_mnp_col_type"/>
                         <col t-if="state.showSource" class="o_mnp_col_src"/>
                         <col t-if="state.showMip" class="o_mnp_col_mip"/>
@@ -147,6 +149,8 @@
                             <th class="o_mnp_col_sel"></th>
                             <th class="o_mnp_col_exp"></th>
                             <th class="o_mnp_col_product">Ürün</th>
+                            <th>MİP Sorumlusu</th>
+                            <th>SA Sorumlusu</th>
                             <th>Tür</th>
                             <th t-if="state.showSource">Kaynak</th>
                             <th t-if="state.showMip">MİP No</th>
@@ -189,6 +193,10 @@
                                     <span class="text-muted ms-2 o_mnp_rowcount"
                                           t-esc="`· ${group.need_count} satır`"/>
                                 </td>
+                                <td class="o_mnp_summary text-muted"
+                                    t-esc="group.mip_resp"/>
+                                <td class="o_mnp_summary text-muted"
+                                    t-esc="group.sa_resp"/>
                                 <td/>
                                 <td t-if="state.showSource"/>
                                 <td t-if="state.showMip"/>
@@ -256,6 +264,8 @@
                                             <span class="text-muted"
                                                   t-esc="group.name"/>
                                         </td>
+                                        <td/>
+                                        <td/>
                                         <td class="text-center">
                                             <span class="o_mnp_type"
                                                   t-esc="line.source_type"/>
@@ -314,13 +324,13 @@
                                 </t>
                                 <tr t-if="state.lines[group.product_id] === undefined"
                                     class="o_mnp_line">
-                                    <td t-att-colspan="16 + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0)"
+                                    <td t-att-colspan="18 + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0)"
                                         class="text-muted text-center">
                                         Yükleniyor…
                                     </td>
                                 </tr>
                                 <tr t-elif="!groupLines(group).length" class="o_mnp_line">
-                                    <td t-att-colspan="16 + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0)"
+                                    <td t-att-colspan="18 + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0)"
                                         class="text-muted text-center">
                                         Bu kapsamda ihtiyaç satırı yok.
                                     </td>
