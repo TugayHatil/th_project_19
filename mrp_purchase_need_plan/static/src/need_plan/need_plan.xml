@@ -287,8 +287,13 @@
                                             class="o_mnp_source text-muted"
                                             t-esc="line.source"/>
                                         <td t-if="state.showMip"
-                                            class="o_mnp_mip text-muted"
-                                            t-esc="line.mip_name"/>
+                                            class="o_mnp_mip text-muted">
+                                            <a t-if="line.doc_model" href="#"
+                                               class="o_mnp_cov_link"
+                                               t-on-click.prevent="() => this.openLineDoc(line)"
+                                               t-esc="line.mip_name"/>
+                                            <t t-else="" t-esc="line.mip_name"/>
+                                        </td>
                                         <td t-esc="fmtDate(line.need_date)"/>
                                         <td t-att-class="line.suggested_termin ? 'text-warning' : ''"
                                             t-esc="fmtDate(line.suggested_termin)"/>

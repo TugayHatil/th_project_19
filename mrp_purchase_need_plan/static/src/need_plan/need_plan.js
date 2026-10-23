@@ -541,6 +541,15 @@ export class NeedPlan extends Component {
         });
     }
 
+    async openLineDoc(line) {
+        await this.action.doAction({
+            type: "ir.actions.act_window",
+            res_model: line.doc_model,
+            res_id: line.doc_id,
+            views: [[false, "form"]],
+        });
+    }
+
     openExceptions(line) {
         this.dialog.add(RescheduleDialog, {
             logs: line.exception_log || [],

@@ -1300,6 +1300,10 @@ class MrpPurchaseNeed(models.AbstractModel):
                     "virtual": True,
                     "mip_id": mip["id"] if mip else False,
                     "mip_name": mip["name"] if mip else "",
+                    # virtual needs have no source document — the MİP
+                    # record itself is the deepest reachable card
+                    "doc_model": "mip.need.line" if mip else "",
+                    "doc_id": mip["id"] if mip else False,
                     "company_id": entry["company_id"],
                     "warehouse_id": entry["warehouse_id"],
                     "need_date": fields.Date.to_string(need_date),
@@ -1394,6 +1398,13 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "virtual": False,
                 "mip_id": mip.get("id") or False,
                 "mip_name": mip.get("name") or "",
+                "doc_model": (
+                    "mrp.production"
+                    if mv["raw_material_production_id"]
+                    else "stock.picking" if mv["picking_id"]
+                    else "mip.need.line" if mip.get("id") else ""),
+                "doc_id": (mv["raw_material_production_id"]
+                           or mv["picking_id"] or mip.get("id") or False),
                 "company_id": mv["company_id"],
                 "warehouse_id": mv["warehouse_id"],
                 "need_date": fields.Date.to_string(need_date),
