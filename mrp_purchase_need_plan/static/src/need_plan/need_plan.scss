@@ -36,7 +36,8 @@
         background: #fff;
         border: 1px solid #e5e7eb;
         border-radius: 8px;
-        overflow: hidden;
+        // no overflow:hidden here — it makes the table the sticky
+        // containing block and the header scrolls away with the page
         box-shadow: 0 1px 3px rgba(16, 24, 40, .07);
 
         thead th {
@@ -51,6 +52,14 @@
             letter-spacing: 0.02em;
             color: #6b7280;
             white-space: nowrap;
+
+            &:first-child {
+                border-top-left-radius: 7px;
+            }
+
+            &:last-child {
+                border-top-right-radius: 7px;
+            }
         }
 
         td {
