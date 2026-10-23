@@ -98,8 +98,10 @@
                         </t>
                     </div>
                     <button type="button" class="btn btn-sm btn-outline-secondary"
-                            t-on-click="loadGroups">
-                        <i class="fa fa-refresh me-1"/>Yenile
+                            t-att-disabled="state.loading"
+                            t-on-click="() => this.loadGroups(true)">
+                        <i class="fa fa-refresh me-1"
+                           t-att-class="{'fa-spin': state.loading}"/>Yenile
                     </button>
                 </div>
 

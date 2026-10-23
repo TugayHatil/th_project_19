@@ -84,7 +84,7 @@ class MrpPurchaseNeed(models.AbstractModel):
     def get_need_groups(self, warehouse_id=False, date_from=None,
                         date_to=None, query="", limit=None, offset=0,
                         uncovered_only=False, late_only=False,
-                        sort_by="purchase_start"):
+                        sort_by="purchase_start", force=False):
         """Product-grouped need summaries (BRD §3.1), server-paged.
 
         Need lines are intentionally not serialized; they are fetched
@@ -92,7 +92,8 @@ class MrpPurchaseNeed(models.AbstractModel):
         group (BRD §9). Pagination, the uncovered/late filters and the
         sort all happen on the already-computed plan so the payload stays
         small regardless of how many products exist (BRD §9)."""
-        plan = self._get_plan(warehouse_id, date_from, date_to, query)
+        plan = self._get_plan(
+            warehouse_id, date_from, date_to, query, force=force)
         groups = []
         for p in plan.values():
             payload = self._group_payload(p)
@@ -338,7 +339,11 @@ class MrpPurchaseNeed(models.AbstractModel):
                         _PLAN_CACHE.pop(next(iter(_PLAN_CACHE)))
                     _PLAN_CACHE[key] = (now, snap)
                 return snap
-        plan = self._build_plan(warehouse_id, date_from, date_to, query)
+        # MİP record sync is bookkeeping for the MİP list, not part of
+        # the plan payload — it stays off the request path (the warm-up
+        # cron runs it) so a forced refresh only pays the compute
+        plan = self._build_plan(
+            warehouse_id, date_from, date_to, query, run_sync=False)
         self._store_snapshot(name, plan)
         with _PLAN_CACHE_LOCK:
             while len(_PLAN_CACHE) >= _PLAN_CACHE_MAX:
@@ -410,8 +415,21 @@ class MrpPurchaseNeed(models.AbstractModel):
     def _cron_plan_warmup(self):
         """Keep the canonical (unfiltered) plan snapshot warm so user
         requests almost never pay the full build — the snapshot serves
-        every worker and survives restarts."""
-        self._get_plan(False, None, None, "", allow_stale=False)
+        every worker and survives restarts.
+
+        Rebuilds only when the stored snapshot is missing or
+        version-stale; that rebuild also runs the MİP record sync that
+        request-path builds skip, keeping mip.need.line bookkeeping
+        fresh in the background."""
+        name = self._snapshot_name(False, None, None, "")
+        if self._load_snapshot(name, allow_stale=False) is not None:
+            return
+        plan = self._build_plan(False, None, None, "", run_sync=True)
+        self._store_snapshot(name, plan)
+        with _PLAN_CACHE_LOCK:
+            _PLAN_CACHE[self._plan_cache_key(
+                False, None, None, "")] = (
+                    fields.Datetime.now().timestamp(), plan)
 
     @api.model
     def _invalidate_plan_cache(self):
@@ -426,7 +444,7 @@ class MrpPurchaseNeed(models.AbstractModel):
 
     @api.model
     def _build_plan(self, warehouse_id, date_from, date_to, query,
-                    products=None, _prof=None):
+                    products=None, _prof=None, run_sync=True):
         """Compute per-product need data — pure dicts, no recordsets.
 
         Every heavy read is batched into _load_ctx(): moves, picked
@@ -586,21 +604,26 @@ class MrpPurchaseNeed(models.AbstractModel):
                 plan[pid] = data
         _mark("finalize")
 
-        # ---- MİP housekeeping (bulk, diff-only writes) ----------------
-        self._sync_mips(mip_by_move, ctx)
-        virt_lines = {
-            ln["key"]: ln
-            for data in plan.values() for ln in data["lines"]
-            if ln["virtual"]}
-        self._sync_virtual_mips(vmips, virt_lines)
-        # virtual needs that vanished from the plan close their MİP
-        # records — the history stays queryable (BRD §4.3). Only the
-        # canonical unfiltered build may close records: a query- or
-        # date-scoped plan legitimately lacks events whose needs still
-        # exist outside the filter window (warehouse filtering is safe
-        # because the close domain itself is warehouse-scoped).
-        if not query and not date_from and not date_to:
-            self._close_stale_virtual_mips(seen_keys, warehouse_id)
+        # ---- MİP bookkeeping (bulk, diff-only writes) ----------------
+        # skipped on the request path (run_sync=False) — mip.need.line
+        # history rows are refreshed by the warm-up cron; the plan
+        # payload itself is complete without them
+        if run_sync:
+            self._sync_mips(mip_by_move, ctx)
+            virt_lines = {
+                ln["key"]: ln
+                for data in plan.values() for ln in data["lines"]
+                if ln["virtual"]}
+            self._sync_virtual_mips(vmips, virt_lines)
+            # virtual needs that vanished from the plan close their MİP
+            # records — the history stays queryable (BRD §4.3). Only the
+            # canonical unfiltered build may close records: a query- or
+            # date-scoped plan legitimately lacks events whose needs
+            # still exist outside the filter window (warehouse filtering
+            # is safe because the close domain itself is
+            # warehouse-scoped).
+            if not query and not date_from and not date_to:
+                self._close_stale_virtual_mips(seen_keys, warehouse_id)
         _mark("mip_sync")
         return plan
 
@@ -610,7 +633,8 @@ class MrpPurchaseNeed(models.AbstractModel):
         per-phase timings — used to locate hotspots on real data."""
         prof = {}
         t = time.monotonic()
-        plan = self._build_plan(False, None, None, "", _prof=prof)
+        plan = self._build_plan(
+            False, None, None, "", _prof=prof, run_sync=False)
         prof["total"] = time.monotonic() - t
         prof["products"] = len(plan)
         prof["lines"] = sum(len(d["lines"]) for d in plan.values())

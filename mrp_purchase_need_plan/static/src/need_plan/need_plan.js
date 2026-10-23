@@ -157,11 +157,12 @@ export class NeedPlan extends Component {
         }
     }
 
-    async loadGroups() {
+    async loadGroups(force) {
         this.state.loading = true;
         try {
             const data = await this.orm.call(
                 "mrp.purchase.need", "get_need_groups", [], {
+                    force: Boolean(force),
                     warehouse_id: this.state.warehouseId || false,
                     date_from: this.state.dateFrom || false,
                     date_to: this.state.dateTo || false,
