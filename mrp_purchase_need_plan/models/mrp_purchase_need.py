@@ -2110,7 +2110,11 @@ class MrpPurchaseNeed(models.AbstractModel):
             out[mid].append({
                 "doc": d["doc_name"] or "",
                 "user": d["user_id"][1] if d["user_id"] else "",
-                "date": fields.Datetime.to_string(d["change_date"]),
+                # change_date is UTC — emit the user-local value so the
+                # dialog shows the day the change actually happened
+                "date": fields.Datetime.to_string(
+                    fields.Datetime.context_timestamp(
+                        self, d["change_date"])),
                 "planned": fields.Date.to_string(d["planned_date"]),
             })
         return out

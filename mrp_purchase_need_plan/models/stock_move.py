@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from datetime import datetime
+
 from odoo import api, fields, models
 
 
@@ -65,6 +67,12 @@ class StockMove(models.Model):
             new_planned = m.date_deadline if deadline_changed else m.date
             if not new_planned:
                 continue
+            # move dates are UTC datetimes — a 23:42 UTC write is the
+            # next local day; the log must show the user's day
+            planned = new_planned
+            if isinstance(planned, datetime):
+                planned = fields.Datetime.context_timestamp(
+                    self, planned).date()
             vals_list.append({
                 "key": "mv:%s" % m.id,
                 "move_id": m.id,
@@ -74,7 +82,7 @@ class StockMove(models.Model):
                     or m.picking_id.name or m.origin or ""),
                 "user_id": self.env.uid,
                 "change_date": now,
-                "planned_date": fields.Date.to_date(new_planned),
+                "planned_date": planned,
                 "company_id": m.company_id.id,
             })
         if vals_list:
