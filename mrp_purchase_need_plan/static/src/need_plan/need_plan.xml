@@ -264,8 +264,10 @@
                                             <span class="text-muted"
                                                   t-esc="group.name"/>
                                         </td>
-                                        <td/>
-                                        <td/>
+                                        <td class="text-muted"
+                                            t-esc="group.mip_resp"/>
+                                        <td class="text-muted"
+                                            t-esc="group.sa_resp"/>
                                         <td class="text-center">
                                             <span class="o_mnp_type"
                                                   t-esc="line.source_type"/>
