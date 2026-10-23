@@ -2103,7 +2103,11 @@ class MrpPurchaseNeed(models.AbstractModel):
             order="change_date, id")
         out = defaultdict(list)
         for d in rows:
-            out[d["move_id"]].append({
+            # search_read yields m2o as (id, name) — key by the bare id
+            mid = d["move_id"][0] if d["move_id"] else False
+            if not mid:
+                continue
+            out[mid].append({
                 "doc": d["doc_name"] or "",
                 "user": d["user_id"][1] if d["user_id"] else "",
                 "date": fields.Datetime.to_string(d["change_date"]),
