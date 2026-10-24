@@ -183,9 +183,13 @@ class MrpPurchaseNeed(models.AbstractModel):
 
         ``focus_product_id`` narrows the view to one product's BoM tree:
         the plan is still computed in full, then groups outside the
-        component scope are dropped."""
+        component scope are dropped. The text ``query`` is likewise a
+        display filter — filtering need moves by name would hide parent
+        demands, so BoM-exploded component needs of the searched product
+        would silently vanish. The plan is therefore always the full
+        canonical build and matching happens on the group payload."""
         plan = self._get_plan(
-            warehouse_id, date_from, date_to, query, force=force)
+            warehouse_id, date_from, date_to, "", force=force)
         if focus_product_id:
             # one id or a list — every focus product contributes its own
             # BoM tree; scopes union so several focus facets stack
