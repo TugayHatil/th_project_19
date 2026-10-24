@@ -101,8 +101,8 @@ export class NeedPlan extends Component {
             saExpanded: false,
             whExpanded: false,
             userResults: [],
-            focusProductId: false,
-            focusProductName: "",
+            // focus facets — one per BoM product; scopes union
+            focusProducts: [],
             mipRespId: false,
             mipRespName: "",
             saRespId: false,
@@ -190,7 +190,9 @@ export class NeedPlan extends Component {
                     uncovered_only: this.state.uncoveredOnly,
                     late_only: this.state.lateOnly,
                     sort_by: this.state.sortBy,
-                    focus_product_id: this.state.focusProductId || false,
+                    focus_product_id: this.state.focusProducts.length
+                        ? this.state.focusProducts.map((p) => p.id)
+                        : false,
                     mip_resp_id: this.state.mipRespId || false,
                     sa_resp_id: this.state.saRespId || false,
                 });
@@ -203,7 +205,7 @@ export class NeedPlan extends Component {
             const fkey = [
                 this.state.warehouseId, this.state.dateFrom,
                 this.state.dateTo, this.state.queries.join(","),
-                this.state.focusProductId,
+                this.state.focusProducts.map((p) => p.id).join(","),
                 this.state.mipRespId, this.state.saRespId].join("|");
             if (this._filterKey !== fkey) {
                 this._filterKey = fkey;
@@ -575,8 +577,8 @@ export class NeedPlan extends Component {
                 this.clearSaResp();
             } else if (this.state.mipRespId) {
                 this.clearMipResp();
-            } else if (this.state.focusProductId) {
-                this.clearFocus();
+            } else if (this.state.focusProducts.length) {
+                this.clearFocus(this.state.focusProducts.length - 1);
             } else if (this.state.queries.length) {
                 this.state.queries.pop();
                 this.state.page = 0;
@@ -612,8 +614,9 @@ export class NeedPlan extends Component {
             return this.applyProductSearch(it.prod.term);
         }
         if (it.type === "focusHeader") {
-            this.state.focusExpanded = true;
-            return;
+            // Enter applies the search: every BoM product matching the
+            // term becomes a focus facet — the → arrow is for browsing
+            return this.applyFocusSearch();
         }
         if (it.type === "mipHeader") {
             this.state.mipExpanded = true;
@@ -681,19 +684,30 @@ export class NeedPlan extends Component {
     }
 
     async selectFocus(product) {
-        this.state.focusProductId = product.id;
-        this.state.focusProductName = product.name;
+        if (!this.state.focusProducts.some((p) => p.id === product.id)) {
+            this.state.focusProducts.push(
+                { id: product.id, name: product.name });
+        }
         this.state.searchText = "";
         this.state.searchOpen = false;
         this.state.page = 0;
         await this.loadGroups();
     }
 
-    async clearFocus() {
-        this.state.focusProductId = false;
-        this.state.focusProductName = "";
-        this.state.focusResults = [];
+    async applyFocusSearch() {
+        for (const p of this.state.focusResults) {
+            if (!this.state.focusProducts.some((f) => f.id === p.id)) {
+                this.state.focusProducts.push({ id: p.id, name: p.name });
+            }
+        }
+        this.state.searchText = "";
         this.state.searchOpen = false;
+        this.state.page = 0;
+        await this.loadGroups();
+    }
+
+    async clearFocus(index) {
+        this.state.focusProducts.splice(index, 1);
         this.state.page = 0;
         await this.loadGroups();
     }

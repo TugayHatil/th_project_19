@@ -62,14 +62,15 @@
                                     </button>
                                 </span>
                             </t>
-                            <t t-if="state.focusProductId">
+                            <t t-foreach="state.focusProducts" t-as="fp"
+                               t-key="fp.id">
                                 <span class="o_mnp_facet o_mnp_facet_focus"
                                       title="Sadece bu ürünün reçetesindeki komponentler gösteriliyor">
                                     <i class="fa fa-sitemap me-1"/>
-                                    Odak: <t t-esc="state.focusProductName"/>
+                                    Odak: <t t-esc="fp.name"/>
                                     <button type="button" class="o_mnp_facet_clear"
                                             title="Odağı kaldır"
-                                            t-on-click="clearFocus">
+                                            t-on-click="() => this.clearFocus(fp_index)">
                                         <i class="fa fa-times"/>
                                     </button>
                                 </span>

@@ -187,7 +187,14 @@ class MrpPurchaseNeed(models.AbstractModel):
         plan = self._get_plan(
             warehouse_id, date_from, date_to, query, force=force)
         if focus_product_id:
-            scope = self._get_bom_descendants(int(focus_product_id))
+            # one id or a list — every focus product contributes its own
+            # BoM tree; scopes union so several focus facets stack
+            raw = (focus_product_id
+                   if isinstance(focus_product_id, (list, tuple))
+                   else [focus_product_id])
+            scope = set()
+            for fid in raw:
+                scope |= self._get_bom_descendants(int(fid))
             plan = {pid: p for pid, p in plan.items() if pid in scope}
         if mip_resp_id:
             plan = {pid: p for pid, p in plan.items()
