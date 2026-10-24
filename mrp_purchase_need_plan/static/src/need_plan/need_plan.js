@@ -603,6 +603,8 @@ export class NeedPlan extends Component {
         if (!it) {
             return;
         }
+        // Enter on a header expands it — the matching records are
+        // listed underneath; Enter never collapses (use ← or the caret)
         if (it.type === "product") {
             return this.applyProductSearch();
         }
@@ -610,35 +612,54 @@ export class NeedPlan extends Component {
             return this.applyProductSearch(it.prod.term);
         }
         if (it.type === "focusHeader") {
-            this.state.focusExpanded = !this.state.focusExpanded;
-            return;
-        }
-        if (it.type === "focus") {
-            this.selectFocus(it.prod);
+            this.state.focusExpanded = true;
             return;
         }
         if (it.type === "mipHeader") {
-            this.state.mipExpanded = !this.state.mipExpanded;
+            this.state.mipExpanded = true;
             return;
         }
         if (it.type === "saHeader") {
-            this.state.saExpanded = !this.state.saExpanded;
-            return;
-        }
-        if (it.type === "mip") {
-            this.selectMipResp(it.user);
-            return;
-        }
-        if (it.type === "sa") {
-            this.selectSaResp(it.user);
+            this.state.saExpanded = true;
             return;
         }
         if (it.type === "whHeader") {
-            this.state.whExpanded = !this.state.whExpanded;
+            this.state.whExpanded = true;
             return;
         }
+        this.activateItem(it);
+    }
+
+    activateItem(it) {
+        if (it.type === "prod") {
+            return this.applyProductSearch(it.prod.term);
+        }
+        if (it.type === "focusHeader") {
+            return this.toggleFocusGroup();
+        }
+        if (it.type === "mipHeader") {
+            return this.toggleMipGroup();
+        }
+        if (it.type === "saHeader") {
+            return this.toggleSaGroup();
+        }
+        if (it.type === "whHeader") {
+            return this.toggleWhGroup();
+        }
+        if (it.type === "focus") {
+            return this.selectFocus(it.prod);
+        }
+        if (it.type === "mip") {
+            return this.selectMipResp(it.user);
+        }
+        if (it.type === "sa") {
+            return this.selectSaResp(it.user);
+        }
         if (it.type === "wh") {
-            this.selectWarehouse(it.wh);
+            return this.selectWarehouse(it.wh);
+        }
+        if (it.type === "product") {
+            return this.applyProductSearch();
         }
     }
 
