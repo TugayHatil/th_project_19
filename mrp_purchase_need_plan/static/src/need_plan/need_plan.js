@@ -99,6 +99,7 @@ export class NeedPlan extends Component {
             focusResults: [],
             mipExpanded: false,
             saExpanded: false,
+            whExpanded: false,
             userResults: [],
             focusProductId: false,
             focusProductName: "",
@@ -457,7 +458,37 @@ export class NeedPlan extends Component {
                 items.push({ type: "empty" });
             }
         }
+        items.push({ type: "whHeader" });
+        if (this.state.whExpanded) {
+            const whs = this.whResults;
+            if (whs.length) {
+                for (const w of whs) {
+                    items.push({ type: "wh", wh: w });
+                }
+            } else {
+                items.push({ type: "empty" });
+            }
+        }
         return items;
+    }
+
+    get whResults() {
+        // warehouses are already loaded for the toolbar — filter the
+        // small list client-side instead of an extra RPC
+        const q = this.state.searchText.trim().toLowerCase();
+        const list = this.state.warehouses || [];
+        if (!q) {
+            return list;
+        }
+        return list.filter(
+            (w) => (w.name || "").toLowerCase().includes(q)
+                || (w.code || "").toLowerCase().includes(q));
+    }
+
+    get warehouseName() {
+        const wh = (this.state.warehouses || []).find(
+            (w) => w.id === this.state.warehouseId);
+        return wh ? `${wh.name} (${wh.code})` : "";
     }
 
     onSearchbarInput(ev) {
@@ -469,6 +500,7 @@ export class NeedPlan extends Component {
         this.state.focusExpanded = false;
         this.state.mipExpanded = false;
         this.state.saExpanded = false;
+        this.state.whExpanded = false;
         clearTimeout(this._searchTimer);
         this._searchTimer = setTimeout(async () => {
             if (!text.trim()) {
@@ -511,6 +543,10 @@ export class NeedPlan extends Component {
         this.state.saExpanded = !this.state.saExpanded;
     }
 
+    toggleWhGroup() {
+        this.state.whExpanded = !this.state.whExpanded;
+    }
+
     onSearchKeydown(ev) {
         const items = this.searchItems;
         const item = items[this.state.activeIndex];
@@ -533,7 +569,9 @@ export class NeedPlan extends Component {
         } else if (ev.key === "Backspace" && !ev.target.value) {
             // empty input + Backspace pops the last facet — the Odoo
             // search-view convention
-            if (this.state.saRespId) {
+            if (this.state.warehouseId) {
+                this.clearWarehouse();
+            } else if (this.state.saRespId) {
                 this.clearSaResp();
             } else if (this.state.mipRespId) {
                 this.clearMipResp();
@@ -553,6 +591,7 @@ export class NeedPlan extends Component {
             focusHeader: "focusExpanded",
             mipHeader: "mipExpanded",
             saHeader: "saExpanded",
+            whHeader: "whExpanded",
         }[item.type];
         if (flag) {
             this.state[flag] = open;
@@ -592,6 +631,14 @@ export class NeedPlan extends Component {
         }
         if (it.type === "sa") {
             this.selectSaResp(it.user);
+            return;
+        }
+        if (it.type === "whHeader") {
+            this.state.whExpanded = !this.state.whExpanded;
+            return;
+        }
+        if (it.type === "wh") {
+            this.selectWarehouse(it.wh);
         }
     }
 
@@ -662,14 +709,22 @@ export class NeedPlan extends Component {
         await this.loadGroups();
     }
 
-    closeSearchMenu() {
+    async selectWarehouse(wh) {
+        this.state.warehouseId = wh.id;
+        this.state.searchText = "";
         this.state.searchOpen = false;
-    }
-
-    async onWarehouseChange(ev) {
-        this.state.warehouseId = ev.target.value ? parseInt(ev.target.value, 10) : false;
         this.state.page = 0;
         await this.loadGroups();
+    }
+
+    async clearWarehouse() {
+        this.state.warehouseId = false;
+        this.state.page = 0;
+        await this.loadGroups();
+    }
+
+    closeSearchMenu() {
+        this.state.searchOpen = false;
     }
 
     async onDateFromChange(ev) {

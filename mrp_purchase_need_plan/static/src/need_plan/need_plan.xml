@@ -51,6 +51,17 @@
                                     </button>
                                 </span>
                             </t>
+                            <t t-if="state.warehouseId">
+                                <span class="o_mnp_facet">
+                                    <i class="fa fa-warehouse me-1"/>
+                                    Depo: <t t-esc="warehouseName"/>
+                                    <button type="button" class="o_mnp_facet_clear"
+                                            title="Filtreyi kaldır"
+                                            t-on-click="clearWarehouse">
+                                        <i class="fa fa-times"/>
+                                    </button>
+                                </span>
+                            </t>
                             <t t-if="state.focusProductId">
                                 <span class="o_mnp_facet o_mnp_facet_focus"
                                       title="Sadece bu ürünün reçetesindeki komponentler gösteriliyor">
@@ -75,7 +86,7 @@
                                 <div t-foreach="searchItems" t-as="it"
                                      t-key="it_index"
                                      t-att-class="'o_mnp_searchitem'
-                                         + ((it.type === 'prod' or it.type === 'focus' or it.type === 'mip' or it.type === 'sa' or it.type === 'empty') ? ' o_mnp_searchsub' : '')
+                                         + (it.type === 'prod' or it.type === 'focus' or it.type === 'mip' or it.type === 'sa' or it.type === 'wh' or it.type === 'empty' ? ' o_mnp_searchsub' : '')
                                          + (state.activeIndex === it_index ? ' o_mnp_active' : '')">
                                     <t t-if="it.type === 'product'"
                                        t-on-click="() => this.applyProductSearch()">
@@ -114,6 +125,15 @@
                                     <t t-elif="it.type === 'sa'"
                                        t-on-click="() => this.selectSaResp(it.user)"
                                        t-esc="it.user.name"/>
+                                    <t t-elif="it.type === 'whHeader'"
+                                       t-on-click="toggleWhGroup">
+                                        <i t-att-class="'fa me-1 ' + (state.whExpanded ? 'fa-caret-down' : 'fa-caret-right')"/>
+                                        Arama <b>Depo</b> için:
+                                        <t t-esc="state.searchText"/>
+                                    </t>
+                                    <t t-elif="it.type === 'wh'"
+                                       t-on-click="() => this.selectWarehouse(it.wh)"
+                                       t-esc="`${it.wh.name} (${it.wh.code})`"/>
                                     <span t-elif="it.type === 'empty'"
                                        class="text-muted">(sonuç yok)</span>
                                 </div>
@@ -121,18 +141,6 @@
                             <div class="o_mnp_focus_backdrop"
                                  t-on-click="closeSearchMenu"/>
                         </t>
-                    </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <label class="form-label mb-0 text-nowrap">Depo</label>
-                        <select class="form-select form-select-sm w-auto"
-                                t-on-change="onWarehouseChange">
-                            <option value="">Tümü</option>
-                            <t t-foreach="state.warehouses" t-as="wh" t-key="wh.id">
-                                <option t-att-value="wh.id"
-                                        t-att-selected="wh.id === state.warehouseId"
-                                        t-esc="`${wh.name} (${wh.code})`"/>
-                            </t>
-                        </select>
                     </div>
                     <div class="d-flex align-items-center gap-2">
                         <label class="form-label mb-0 text-nowrap">İhtiyaç tarihi</label>
