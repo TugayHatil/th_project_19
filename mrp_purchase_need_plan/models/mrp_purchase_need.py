@@ -161,9 +161,16 @@ class MrpPurchaseNeed(models.AbstractModel):
         if focus_product_id:
             scope = self._get_bom_descendants(int(focus_product_id))
             plan = {pid: p for pid, p in plan.items() if pid in scope}
+        q = (query or "").strip().lower()
         groups = []
         for p in plan.values():
             payload = self._group_payload(p)
+            # the move-level query also lets the matched product's BoM
+            # explode into component groups; the search box is a product
+            # filter, so keep only name/code matches in the output
+            if q and q not in (payload["name"] or "").lower() \
+                    and q not in (payload["code"] or "").lower():
+                continue
             # a fully covered product has nothing to plan; hide it unless
             # some need is already attached to a request (traceability)
             if payload["total_uncovered"] <= 0 \
