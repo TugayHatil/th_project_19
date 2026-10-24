@@ -43,23 +43,6 @@ export class CoverageDialog extends Component {
     }
 }
 
-export class PendingDialog extends Component {
-    static template = "mrp_purchase_need_plan.PendingDialog";
-    static components = { Dialog };
-    static props = {
-        pending: Array,
-        openDoc: Function,
-        fmtDate: Function,
-        fmtQty: Function,
-        close: Function,
-    };
-
-    onDocClick(item) {
-        this.props.close();
-        this.props.openDoc(item);
-    }
-}
-
 export class RescheduleDialog extends Component {
     static template = "mrp_purchase_need_plan.RescheduleDialog";
     static components = { Dialog };
@@ -532,15 +515,6 @@ export class NeedPlan extends Component {
         });
     }
 
-    openPending(line) {
-        this.dialog.add(PendingDialog, {
-            pending: line.pending || [],
-            openDoc: (item) => this.openDoc(item),
-            fmtDate: (d) => this.fmtDate(d),
-            fmtQty: (q) => this.fmtQty(q),
-        });
-    }
-
     async openLineDoc(line) {
         await this.action.doAction({
             type: "ir.actions.act_window",
@@ -554,15 +528,6 @@ export class NeedPlan extends Component {
         this.dialog.add(RescheduleDialog, {
             logs: line.exception_log || [],
             fmtDate: (d) => this.fmtDate(d),
-        });
-    }
-
-    async openDoc(item) {
-        await this.action.doAction({
-            type: "ir.actions.act_window",
-            res_model: item.model,
-            res_id: item.res_id,
-            views: [[false, "form"]],
         });
     }
 

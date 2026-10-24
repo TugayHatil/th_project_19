@@ -503,38 +503,6 @@
         </Dialog>
     </t>
 
-    <t t-name="mrp_purchase_need_plan.PendingDialog">
-        <Dialog title="'Bekleyen Belgeler'" size="md">
-            <table t-if="props.pending.length" class="table table-sm mb-0">
-                <thead>
-                    <tr>
-                        <th>Tür</th>
-                        <th>Belge</th>
-                        <th>Tarih</th>
-                        <th class="text-end">Miktar</th>
-                        <th>Birim</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr t-foreach="props.pending" t-as="item" t-key="item_index">
-                        <td class="text-muted" t-esc="item.type"/>
-                        <td>
-                            <a href="#" class="o_mnp_order_link"
-                               t-on-click.prevent="() => this.onDocClick(item)"
-                               t-esc="item.doc"/>
-                        </td>
-                        <td t-esc="props.fmtDate(item.date)"/>
-                        <td class="text-end" t-esc="props.fmtQty(item.qty)"/>
-                        <td class="text-muted" t-esc="item.uom"/>
-                    </tr>
-                </tbody>
-            </table>
-            <div t-else="" class="text-muted">
-                Bu ihtiyaç için bekleyen belge yok.
-            </div>
-        </Dialog>
-    </t>
-
     <t t-name="mrp_purchase_need_plan.RescheduleDialog">
         <Dialog title="'Termin Geçmişi'" size="md">
             <table t-if="props.logs.length" class="table table-sm mb-0">

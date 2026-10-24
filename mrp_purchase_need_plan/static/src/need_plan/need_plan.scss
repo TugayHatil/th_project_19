@@ -205,10 +205,6 @@
         min-width: 95px;
     }
 
-    .o_mnp_col_act {
-        width: 115px;
-    }
-
     .o_mnp_col_status {
         width: 150px;
     }
@@ -243,11 +239,6 @@
         font-weight: 500;
     }
 
-    .o_mnp_product .o_mnp_code {
-        color: #9ca3af;
-        font-weight: 400;
-    }
-
     .o_mnp_summary {
         color: #374151;
         font-size: 0.85rem;
@@ -279,11 +270,6 @@
 
     .o_mnp_line.o_mnp_late:hover td {
         background: #fdf4f4;
-    }
-
-    .o_mnp_line.o_mnp_requested td {
-        color: #9ca3af;
-        background: #fafafa;
     }
 
     .o_mnp_line.o_mnp_covered td {
@@ -353,18 +339,6 @@
         }
         -moz-appearance: textfield;
         appearance: textfield;
-    }
-
-    .o_mnp_requested_qty {
-        font-size: 0.72rem;
-        margin-top: 2px;
-        color: #6b7280;
-    }
-
-    .o_mnp_pull {
-        font-size: 0.72rem;
-        margin-top: 2px;
-        color: #0d6efd;
     }
 
     // durum rozetleri: sabit genişlik + hap şekli
