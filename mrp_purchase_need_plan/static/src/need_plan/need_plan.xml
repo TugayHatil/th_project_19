@@ -17,13 +17,14 @@
                 <div class="d-flex align-items-center gap-3 mt-2 flex-wrap">
                     <div class="o_mnp_searchbar">
                         <div class="o_mnp_searchbox">
-                            <t t-if="state.query">
+                            <t t-foreach="state.queries" t-as="term"
+                               t-key="term_index">
                                 <span class="o_mnp_facet">
                                     <i class="fa fa-search me-1"/>
-                                    Ürün: <t t-esc="state.query"/>
+                                    Ürün: <t t-esc="term"/>
                                     <button type="button" class="o_mnp_facet_clear"
                                             title="Aramayı kaldır"
-                                            t-on-click="clearQuery">
+                                            t-on-click="() => this.removeQuery(term_index)">
                                         <i class="fa fa-times"/>
                                     </button>
                                 </span>

@@ -161,15 +161,18 @@ class MrpPurchaseNeed(models.AbstractModel):
         if focus_product_id:
             scope = self._get_bom_descendants(int(focus_product_id))
             plan = {pid: p for pid, p in plan.items() if pid in scope}
-        q = (query or "").strip().lower()
+        terms = [t.lower() for t in self._query_terms(query)]
         groups = []
         for p in plan.values():
             payload = self._group_payload(p)
             # the move-level query also lets the matched product's BoM
             # explode into component groups; the search box is a product
-            # filter, so keep only name/code matches in the output
-            if q and q not in (payload["name"] or "").lower() \
-                    and q not in (payload["code"] or "").lower():
+            # filter, so keep only name/code matches in the output —
+            # multiple facets OR together
+            if terms and not any(
+                    t in (payload["name"] or "").lower()
+                    or t in (payload["code"] or "").lower()
+                    for t in terms):
                 continue
             # a fully covered product has nothing to plan; hide it unless
             # some need is already attached to a request (traceability)
@@ -2231,10 +2234,22 @@ class MrpPurchaseNeed(models.AbstractModel):
             domain.append(("date", ">=", f"{date_from} 00:00:00"))
         if date_to:
             domain.append(("date", "<=", f"{date_to} 23:59:59"))
-        if query:
-            domain += ["|", ("product_id.name", "ilike", query),
-                       ("product_id.default_code", "ilike", query)]
+        terms = self._query_terms(query)
+        if terms:
+            # every facet ORs: each term matches either name or code
+            leaves = []
+            for t in terms:
+                leaves += [("product_id.name", "ilike", t),
+                           ("product_id.default_code", "ilike", t)]
+            domain += ["|"] * (len(leaves) - 1) + leaves
         return self.env["stock.move"].search(domain)
+
+    @staticmethod
+    def _query_terms(query):
+        """Normalize the search box input — a single string or a list of
+        applied facets — into a clean list of terms."""
+        raw = query if isinstance(query, (list, tuple)) else [query]
+        return [str(t).strip() for t in raw if t and str(t).strip()]
 
     @api.model
     def _get_flow_moves(self, products, scope_ids):

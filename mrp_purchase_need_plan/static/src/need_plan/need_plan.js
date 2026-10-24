@@ -77,7 +77,9 @@ export class NeedPlan extends Component {
             warehouseId: false,
             dateFrom: "",
             dateTo: "",
-            query: "",
+            // applied product-search terms — each Enter adds a facet,
+            // facets OR together, Backspace on empty input pops the last
+            queries: [],
             uncoveredOnly: false,
             lateOnly: false,
             showSource: false,
@@ -171,7 +173,8 @@ export class NeedPlan extends Component {
                     warehouse_id: this.state.warehouseId || false,
                     date_from: this.state.dateFrom || false,
                     date_to: this.state.dateTo || false,
-                    query: this.state.query || "",
+                    query: this.state.queries.length
+                        ? this.state.queries : "",
                     limit: this.state.pageSize,
                     offset: this.state.page * this.state.pageSize,
                     uncovered_only: this.state.uncoveredOnly,
@@ -187,7 +190,7 @@ export class NeedPlan extends Component {
             // paging/filtering keeps them so selections survive pages
             const fkey = [
                 this.state.warehouseId, this.state.dateFrom,
-                this.state.dateTo, this.state.query,
+                this.state.dateTo, this.state.queries.join(","),
                 this.state.focusProductId].join("|");
             if (this._filterKey !== fkey) {
                 this._filterKey = fkey;
@@ -451,6 +454,16 @@ export class NeedPlan extends Component {
             this.activateSearchItem();
         } else if (ev.key === "Escape") {
             this.closeSearchMenu();
+        } else if (ev.key === "Backspace" && !ev.target.value) {
+            // empty input + Backspace pops the last facet — the Odoo
+            // search-view convention
+            if (this.state.queries.length) {
+                this.state.queries.pop();
+                this.state.page = 0;
+                this.loadGroups();
+            } else if (this.state.focusProductId) {
+                this.clearFocus();
+            }
         }
     }
 
@@ -470,17 +483,18 @@ export class NeedPlan extends Component {
     }
 
     async applyProductSearch() {
-        this.state.query = this.state.searchText.trim();
+        const term = this.state.searchText.trim();
         this.state.searchText = "";
         this.state.searchOpen = false;
+        if (term && !this.state.queries.includes(term)) {
+            this.state.queries.push(term);
+        }
         this.state.page = 0;
         await this.loadGroups();
     }
 
-    async clearQuery() {
-        this.state.query = "";
-        this.state.searchText = "";
-        this.state.searchOpen = false;
+    async removeQuery(index) {
+        this.state.queries.splice(index, 1);
         this.state.page = 0;
         await this.loadGroups();
     }
