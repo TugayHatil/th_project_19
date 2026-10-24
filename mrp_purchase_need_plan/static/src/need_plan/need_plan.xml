@@ -15,39 +15,61 @@
                     </button>
                 </div>
                 <div class="d-flex align-items-center gap-3 mt-2 flex-wrap">
-                    <input type="text" class="form-control form-control-sm o_mnp_search"
-                           placeholder="Ürün adı veya kodu ara…"
-                           t-on-input="onSearchInput"/>
-                    <div class="o_mnp_focus">
-                        <t t-if="state.focusProductId">
-                            <span class="o_mnp_focus_chip"
-                                  title="Sadece bu ürünün reçetesindeki komponentler gösteriliyor">
-                                <i class="fa fa-sitemap me-1"/>
-                                <t t-esc="state.focusProductName"/>
-                                <button type="button" class="o_mnp_focus_clear"
-                                        title="Odağı kaldır"
-                                        t-on-click="clearFocus">
-                                    <i class="fa fa-times"/>
-                                </button>
-                            </span>
-                        </t>
-                        <t t-else="">
-                            <input type="text" class="form-control form-control-sm o_mnp_search"
-                                   placeholder="Odak: reçeteli ürün ara…"
-                                   t-att-value="state.focusQuery"
-                                   t-on-input="onFocusInput"
-                                   t-on-focus="onFocusInput"/>
-                            <t t-if="state.focusOpen and state.focusResults.length">
-                                <div class="o_mnp_focus_menu">
-                                    <div t-foreach="state.focusResults" t-as="prod"
-                                         t-key="prod.id"
-                                         class="o_mnp_focus_item"
-                                         t-on-click="() => this.selectFocus(prod)"
-                                         t-esc="prod.name"/>
-                                </div>
-                                <div class="o_mnp_focus_backdrop"
-                                     t-on-click="closeFocusMenu"/>
+                    <div class="o_mnp_searchbar">
+                        <div class="o_mnp_searchbox">
+                            <t t-if="state.query">
+                                <span class="o_mnp_facet">
+                                    <i class="fa fa-search me-1"/>
+                                    Ürün: <t t-esc="state.query"/>
+                                    <button type="button" class="o_mnp_facet_clear"
+                                            title="Aramayı kaldır"
+                                            t-on-click="clearQuery">
+                                        <i class="fa fa-times"/>
+                                    </button>
+                                </span>
                             </t>
+                            <t t-if="state.focusProductId">
+                                <span class="o_mnp_facet o_mnp_facet_focus"
+                                      title="Sadece bu ürünün reçetesindeki komponentler gösteriliyor">
+                                    <i class="fa fa-sitemap me-1"/>
+                                    Odak: <t t-esc="state.focusProductName"/>
+                                    <button type="button" class="o_mnp_facet_clear"
+                                            title="Odağı kaldır"
+                                            t-on-click="clearFocus">
+                                        <i class="fa fa-times"/>
+                                    </button>
+                                </span>
+                            </t>
+                            <input type="text" class="o_mnp_searchinput"
+                                   placeholder="Ara…"
+                                   t-att-value="state.searchText"
+                                   t-on-input="onSearchbarInput"
+                                   t-on-keydown="onSearchKeydown"/>
+                            <i class="fa fa-search o_mnp_searchicon"/>
+                        </div>
+                        <t t-if="state.searchOpen and state.searchText">
+                            <div class="o_mnp_searchmenu">
+                                <div class="o_mnp_searchitem"
+                                     t-on-click="applyProductSearch">
+                                    Arama <b>Ürün</b> için:
+                                    <t t-esc="state.searchText"/>
+                                </div>
+                                <div class="o_mnp_searchgroup">
+                                    Odak — <b>Reçetesi</b> için:
+                                    <t t-esc="state.searchText"/>
+                                </div>
+                                <div t-foreach="state.focusResults" t-as="prod"
+                                     t-key="prod.id"
+                                     class="o_mnp_searchitem o_mnp_searchsub"
+                                     t-on-click="() => this.selectFocus(prod)"
+                                     t-esc="prod.name"/>
+                                <div t-if="!state.focusResults.length"
+                                     class="o_mnp_searchitem o_mnp_searchsub text-muted">
+                                    Eşleşen reçeteli ürün yok
+                                </div>
+                            </div>
+                            <div class="o_mnp_focus_backdrop"
+                                 t-on-click="closeSearchMenu"/>
                         </t>
                     </div>
                     <div class="d-flex align-items-center gap-2">

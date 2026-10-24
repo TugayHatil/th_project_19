@@ -86,10 +86,11 @@ export class NeedPlan extends Component {
             showExc: false,
             showRoute: false,
             colsOpen: false,
-            // focus product: show only the needs of its BoM components
-            focusQuery: "",
+            // unified search bar: one input, option menu underneath —
+            // "Ürün" applies the text filter, "Odak" picks a BoM product
+            searchText: "",
+            searchOpen: false,
             focusResults: [],
-            focusOpen: false,
             focusProductId: false,
             focusProductName: "",
             sortBy: "purchase_start",
@@ -393,39 +394,58 @@ export class NeedPlan extends Component {
 
     // -- toolbar handlers -------------------------------------------------
 
-    onSearchInput(ev) {
-        const query = ev.target.value;
+    // -- unified search bar -------------------------------------------------
+
+    onSearchbarInput(ev) {
+        const text = ev.target.value;
+        this.state.searchText = text;
         clearTimeout(this._searchTimer);
         this._searchTimer = setTimeout(async () => {
-            this.state.query = query;
-            this.state.page = 0;
-            await this.loadGroups();
-        }, SEARCH_DELAY);
-    }
-
-    // -- focus product (BoM scope) ------------------------------------------
-
-    onFocusInput(ev) {
-        const query = ev.target.value;
-        this.state.focusQuery = query;
-        clearTimeout(this._focusTimer);
-        this._focusTimer = setTimeout(async () => {
+            if (!text.trim()) {
+                this.state.searchOpen = false;
+                this.state.focusResults = [];
+                return;
+            }
             try {
                 this.state.focusResults = await this.orm.call(
                     "mrp.purchase.need", "search_focus_products",
-                    [query]);
-                this.state.focusOpen = true;
+                    [text]);
+                this.state.searchOpen = true;
             } catch (error) {
                 this.notifyError(error, _t("Ürün araması yapılamadı."));
             }
         }, SEARCH_DELAY);
     }
 
+    onSearchKeydown(ev) {
+        if (ev.key === "Enter") {
+            this.applyProductSearch();
+        } else if (ev.key === "Escape") {
+            this.closeSearchMenu();
+        }
+    }
+
+    async applyProductSearch() {
+        this.state.query = this.state.searchText.trim();
+        this.state.searchText = "";
+        this.state.searchOpen = false;
+        this.state.page = 0;
+        await this.loadGroups();
+    }
+
+    async clearQuery() {
+        this.state.query = "";
+        this.state.searchText = "";
+        this.state.searchOpen = false;
+        this.state.page = 0;
+        await this.loadGroups();
+    }
+
     async selectFocus(product) {
         this.state.focusProductId = product.id;
         this.state.focusProductName = product.name;
-        this.state.focusQuery = product.name;
-        this.state.focusOpen = false;
+        this.state.searchText = "";
+        this.state.searchOpen = false;
         this.state.page = 0;
         await this.loadGroups();
     }
@@ -433,15 +453,14 @@ export class NeedPlan extends Component {
     async clearFocus() {
         this.state.focusProductId = false;
         this.state.focusProductName = "";
-        this.state.focusQuery = "";
         this.state.focusResults = [];
-        this.state.focusOpen = false;
+        this.state.searchOpen = false;
         this.state.page = 0;
         await this.loadGroups();
     }
 
-    closeFocusMenu() {
-        this.state.focusOpen = false;
+    closeSearchMenu() {
+        this.state.searchOpen = false;
     }
 
     async onWarehouseChange(ev) {

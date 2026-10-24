@@ -17,10 +17,6 @@
         }
     }
 
-    .o_mnp_search {
-        width: 260px;
-    }
-
     // -- tablo -------------------------------------------------------------
 
     .o_mnp_grid {
@@ -170,30 +166,63 @@
         z-index: 9;
     }
 
-    .o_mnp_focus {
+    // -- birleşik arama çubuğu (Odoo standart arama deseni) ----------------
+
+    .o_mnp_searchbar {
         position: relative;
+        min-width: 320px;
     }
 
-    .o_mnp_focus_chip {
+    .o_mnp_searchbox {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        background: #fff;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+    }
+
+    .o_mnp_searchinput {
+        flex: 1;
+        min-width: 120px;
+        border: 0;
+        outline: 0;
+        font-size: 0.85rem;
+        padding: 3px 4px;
+    }
+
+    .o_mnp_searchicon {
+        color: #9ca3af;
+        font-size: 0.8rem;
+    }
+
+    .o_mnp_facet {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        padding: 4px 10px;
-        font-size: 0.82rem;
+        gap: 4px;
+        padding: 2px 8px;
+        font-size: 0.78rem;
         font-weight: 500;
-        color: #1d4ed8;
-        background: #eff6ff;
-        border: 1px solid #bfdbfe;
-        border-radius: 999px;
+        color: #374151;
+        background: #f3f4f6;
+        border: 1px solid #e5e7eb;
+        border-radius: 4px;
         white-space: nowrap;
     }
 
-    .o_mnp_focus_clear {
+    .o_mnp_facet_focus {
+        color: #1d4ed8;
+        background: #eff6ff;
+        border-color: #bfdbfe;
+    }
+
+    .o_mnp_facet_clear {
         border: 0;
         background: transparent;
-        color: #1d4ed8;
+        color: inherit;
         padding: 0 2px;
-        font-size: 0.85rem;
+        font-size: 0.8rem;
         cursor: pointer;
 
         &:hover {
@@ -201,14 +230,14 @@
         }
     }
 
-    .o_mnp_focus_menu {
+    .o_mnp_searchmenu {
         position: absolute;
         top: calc(100% + 4px);
         left: 0;
         z-index: 10;
         min-width: 100%;
-        max-width: 360px;
-        max-height: 260px;
+        max-width: 420px;
+        max-height: 300px;
         overflow-y: auto;
         padding: 4px 0;
         background: #fff;
@@ -217,7 +246,7 @@
         box-shadow: 0 4px 12px rgba(16, 24, 40, .12);
     }
 
-    .o_mnp_focus_item {
+    .o_mnp_searchitem {
         padding: 6px 12px;
         font-size: 0.85rem;
         white-space: nowrap;
@@ -228,6 +257,17 @@
         &:hover {
             background: #f3f4f6;
         }
+    }
+
+    .o_mnp_searchgroup {
+        padding: 6px 12px 2px;
+        font-size: 0.78rem;
+        color: #6b7280;
+        border-top: 1px solid #f3f4f6;
+    }
+
+    .o_mnp_searchsub {
+        padding-left: 24px;
     }
 
     .o_mnp_focus_backdrop {
