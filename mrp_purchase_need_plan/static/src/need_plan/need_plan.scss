@@ -174,6 +174,33 @@
         position: relative;
     }
 
+    .o_mnp_focus_chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        font-size: 0.82rem;
+        font-weight: 500;
+        color: #1d4ed8;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 999px;
+        white-space: nowrap;
+    }
+
+    .o_mnp_focus_clear {
+        border: 0;
+        background: transparent;
+        color: #1d4ed8;
+        padding: 0 2px;
+        font-size: 0.85rem;
+        cursor: pointer;
+
+        &:hover {
+            color: #dc2626;
+        }
+    }
+
     .o_mnp_focus_menu {
         position: absolute;
         top: calc(100% + 4px);

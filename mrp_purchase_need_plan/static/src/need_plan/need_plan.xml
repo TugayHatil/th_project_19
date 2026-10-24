@@ -19,33 +19,35 @@
                            placeholder="Ürün adı veya kodu ara…"
                            t-on-input="onSearchInput"/>
                     <div class="o_mnp_focus">
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text text-nowrap"
-                                  title="Seçilen ürünün reçetesindeki (ve alt reçetelerindeki) tüm komponentlerin ihtiyaçlarını gösterir">
-                                <i class="fa fa-sitemap me-1"/>Odak
+                        <t t-if="state.focusProductId">
+                            <span class="o_mnp_focus_chip"
+                                  title="Sadece bu ürünün reçetesindeki komponentler gösteriliyor">
+                                <i class="fa fa-sitemap me-1"/>
+                                <t t-esc="state.focusProductName"/>
+                                <button type="button" class="o_mnp_focus_clear"
+                                        title="Odağı kaldır"
+                                        t-on-click="clearFocus">
+                                    <i class="fa fa-times"/>
+                                </button>
                             </span>
+                        </t>
+                        <t t-else="">
                             <input type="text" class="form-control form-control-sm o_mnp_search"
-                                   placeholder="Reçeteli ürün ara…"
+                                   placeholder="Odak: reçeteli ürün ara…"
                                    t-att-value="state.focusQuery"
                                    t-on-input="onFocusInput"
                                    t-on-focus="onFocusInput"/>
-                            <button t-if="state.focusProductId" type="button"
-                                    class="btn btn-outline-secondary"
-                                    title="Odağı kaldır"
-                                    t-on-click="clearFocus">
-                                <i class="fa fa-times"/>
-                            </button>
-                        </div>
-                        <t t-if="state.focusOpen and state.focusResults.length">
-                            <div class="o_mnp_focus_menu">
-                                <div t-foreach="state.focusResults" t-as="prod"
-                                     t-key="prod.id"
-                                     class="o_mnp_focus_item"
-                                     t-on-click="() => this.selectFocus(prod)"
-                                     t-esc="prod.name"/>
-                            </div>
-                            <div class="o_mnp_focus_backdrop"
-                                 t-on-click="closeFocusMenu"/>
+                            <t t-if="state.focusOpen and state.focusResults.length">
+                                <div class="o_mnp_focus_menu">
+                                    <div t-foreach="state.focusResults" t-as="prod"
+                                         t-key="prod.id"
+                                         class="o_mnp_focus_item"
+                                         t-on-click="() => this.selectFocus(prod)"
+                                         t-esc="prod.name"/>
+                                </div>
+                                <div class="o_mnp_focus_backdrop"
+                                     t-on-click="closeFocusMenu"/>
+                            </t>
                         </t>
                     </div>
                     <div class="d-flex align-items-center gap-2">
