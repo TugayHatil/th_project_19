@@ -87,6 +87,8 @@ export class NeedPlan extends Component {
             showType: false,
             showExc: false,
             showRoute: false,
+            showMipResp: false,
+            showSaResp: false,
             colsOpen: false,
             // unified search bar: one input, option menu underneath —
             // "Ürün" applies the text filter, "Odak" picks a BoM product
@@ -804,6 +806,14 @@ export class NeedPlan extends Component {
 
     onRouteToggle(ev) {
         this.state.showRoute = ev.target.checked;
+    }
+
+    onMipRespToggle(ev) {
+        this.state.showMipResp = ev.target.checked;
+    }
+
+    onSaRespToggle(ev) {
+        this.state.showSaResp = ev.target.checked;
     }
 
     toggleColsMenu() {
