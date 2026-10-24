@@ -89,19 +89,78 @@ class MrpPurchaseNeed(models.AbstractModel):
         }
 
     @api.model
+    def search_focus_products(self, query=""):
+        """Autocomplete for the focus filter — only products that own a
+        BoM produce a useful component scope, so the list is limited to
+        them."""
+        bom_tmpls = {
+            r["product_tmpl_id"]
+            for r in self.env["mrp.bom"].sudo().search_read(
+                [("type", "in", ("normal", "phantom"))],
+                ["product_tmpl_id"], load="_classic_write")
+            if r["product_tmpl_id"]}
+        if not bom_tmpls:
+            return []
+        domain = [("product_tmpl_id", "in", list(bom_tmpls))]
+        if query:
+            domain += ["|", ("name", "ilike", query),
+                       ("default_code", "ilike", query)]
+        rows = self.env["product.product"].sudo().search_read(
+            domain, ["display_name", "default_code"], limit=10,
+            order="default_code")
+        return [{"id": r["id"], "name": r["display_name"]} for r in rows]
+
+    @api.model
+    def _get_bom_descendants(self, product_id):
+        """Product ids covered by the focus product's BoM tree — the
+        product itself plus every component at every depth below it.
+        """
+        tmpl_id = self.env["product.product"].browse(
+            int(product_id)).product_tmpl_id.id
+        scope = {int(product_id)}
+        tmpl_seen = {tmpl_id}
+        cur = {tmpl_id}
+        Bom = self.env["mrp.bom"].sudo()
+        while cur:
+            boms = Bom.search([
+                ("product_tmpl_id", "in", list(cur)),
+                ("type", "in", ("normal", "phantom")),
+            ])
+            if not boms:
+                break
+            rows = self.env["mrp.bom.line"].sudo().browse(
+                boms.bom_line_ids.ids).read(
+                ["product_id"], load="_classic_write")
+            comp_pids = {r["product_id"] for r in rows if r["product_id"]}
+            scope |= comp_pids
+            comp_tmpls = set(self.env["product.product"].browse(
+                comp_pids).product_tmpl_id.ids)
+            cur = comp_tmpls - tmpl_seen
+            tmpl_seen |= comp_tmpls
+        return scope
+
+    @api.model
     def get_need_groups(self, warehouse_id=False, date_from=None,
                         date_to=None, query="", limit=None, offset=0,
                         uncovered_only=False, late_only=False,
-                        sort_by="purchase_start", force=False):
+                        sort_by="purchase_start", force=False,
+                        focus_product_id=False):
         """Product-grouped need summaries (BRD §3.1), server-paged.
 
         Need lines are intentionally not serialized; they are fetched
         lazily per product via get_need_lines() when the user expands a
         group (BRD §9). Pagination, the uncovered/late filters and the
         sort all happen on the already-computed plan so the payload stays
-        small regardless of how many products exist (BRD §9)."""
+        small regardless of how many products exist (BRD §9).
+
+        ``focus_product_id`` narrows the view to one product's BoM tree:
+        the plan is still computed in full, then groups outside the
+        component scope are dropped."""
         plan = self._get_plan(
             warehouse_id, date_from, date_to, query, force=force)
+        if focus_product_id:
+            scope = self._get_bom_descendants(int(focus_product_id))
+            plan = {pid: p for pid, p in plan.items() if pid in scope}
         groups = []
         for p in plan.values():
             payload = self._group_payload(p)

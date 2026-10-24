@@ -83,6 +83,12 @@ export class NeedPlan extends Component {
             showSource: false,
             showMip: true,
             colsOpen: false,
+            // focus product: show only the needs of its BoM components
+            focusQuery: "",
+            focusResults: [],
+            focusOpen: false,
+            focusProductId: false,
+            focusProductName: "",
             sortBy: "purchase_start",
             canCreate: false,
             today: "",
@@ -165,6 +171,7 @@ export class NeedPlan extends Component {
                     uncovered_only: this.state.uncoveredOnly,
                     late_only: this.state.lateOnly,
                     sort_by: this.state.sortBy,
+                    focus_product_id: this.state.focusProductId || false,
                 });
             this.state.groups = data.groups || [];
             this.state.total = data.total || 0;
@@ -174,7 +181,8 @@ export class NeedPlan extends Component {
             // paging/filtering keeps them so selections survive pages
             const fkey = [
                 this.state.warehouseId, this.state.dateFrom,
-                this.state.dateTo, this.state.query].join("|");
+                this.state.dateTo, this.state.query,
+                this.state.focusProductId].join("|");
             if (this._filterKey !== fkey) {
                 this._filterKey = fkey;
                 this.state.lines = {};
@@ -390,6 +398,47 @@ export class NeedPlan extends Component {
             this.state.page = 0;
             await this.loadGroups();
         }, SEARCH_DELAY);
+    }
+
+    // -- focus product (BoM scope) ------------------------------------------
+
+    onFocusInput(ev) {
+        const query = ev.target.value;
+        this.state.focusQuery = query;
+        clearTimeout(this._focusTimer);
+        this._focusTimer = setTimeout(async () => {
+            try {
+                this.state.focusResults = await this.orm.call(
+                    "mrp.purchase.need", "search_focus_products",
+                    [query]);
+                this.state.focusOpen = true;
+            } catch (error) {
+                this.notifyError(error, _t("Ürün araması yapılamadı."));
+            }
+        }, SEARCH_DELAY);
+    }
+
+    async selectFocus(product) {
+        this.state.focusProductId = product.id;
+        this.state.focusProductName = product.name;
+        this.state.focusQuery = product.name;
+        this.state.focusOpen = false;
+        this.state.page = 0;
+        await this.loadGroups();
+    }
+
+    async clearFocus() {
+        this.state.focusProductId = false;
+        this.state.focusProductName = "";
+        this.state.focusQuery = "";
+        this.state.focusResults = [];
+        this.state.focusOpen = false;
+        this.state.page = 0;
+        await this.loadGroups();
+    }
+
+    closeFocusMenu() {
+        this.state.focusOpen = false;
     }
 
     async onWarehouseChange(ev) {
