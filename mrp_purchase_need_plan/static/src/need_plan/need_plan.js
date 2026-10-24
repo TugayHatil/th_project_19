@@ -93,6 +93,8 @@ export class NeedPlan extends Component {
             searchText: "",
             searchOpen: false,
             activeIndex: 0,
+            prodExpanded: false,
+            prodResults: [],
             focusExpanded: false,
             focusResults: [],
             focusProductId: false,
@@ -401,10 +403,31 @@ export class NeedPlan extends Component {
 
     // -- unified search bar -------------------------------------------------
 
-    get searchItemCount() {
-        // Ürün row + Odak header + expanded focus matches (or "(sonuç yok)")
-        return 2 + (this.state.focusExpanded
-            ? Math.max(1, this.state.focusResults.length) : 0);
+    get searchItems() {
+        // flattened menu rows so keyboard navigation works across the
+        // headers and their expandable suggestion lists — the Odoo
+        // search-view pattern
+        const items = [{ type: "product" }];
+        if (this.state.prodExpanded) {
+            if (this.state.prodResults.length) {
+                for (const p of this.state.prodResults) {
+                    items.push({ type: "prod", prod: p });
+                }
+            } else {
+                items.push({ type: "empty" });
+            }
+        }
+        items.push({ type: "focusHeader" });
+        if (this.state.focusExpanded) {
+            if (this.state.focusResults.length) {
+                for (const p of this.state.focusResults) {
+                    items.push({ type: "focus", prod: p });
+                }
+            } else {
+                items.push({ type: "empty" });
+            }
+        }
+        return items;
     }
 
     onSearchbarInput(ev) {
@@ -412,17 +435,25 @@ export class NeedPlan extends Component {
         this.state.searchText = text;
         this.state.searchOpen = Boolean(text.trim());
         this.state.activeIndex = 0;
+        this.state.prodExpanded = false;
         this.state.focusExpanded = false;
         clearTimeout(this._searchTimer);
         this._searchTimer = setTimeout(async () => {
             if (!text.trim()) {
+                this.state.prodResults = [];
                 this.state.focusResults = [];
                 return;
             }
             try {
-                this.state.focusResults = await this.orm.call(
-                    "mrp.purchase.need", "search_focus_products",
-                    [text]);
+                const [prods, focus] = await Promise.all([
+                    this.orm.call(
+                        "mrp.purchase.need", "search_products", [text]),
+                    this.orm.call(
+                        "mrp.purchase.need", "search_focus_products",
+                        [text]),
+                ]);
+                this.state.prodResults = prods;
+                this.state.focusResults = focus;
             } catch (error) {
                 this.notifyError(error, _t("Ürün araması yapılamadı."));
             }
@@ -433,20 +464,30 @@ export class NeedPlan extends Component {
         this.state.focusExpanded = !this.state.focusExpanded;
     }
 
+    toggleProdGroup() {
+        this.state.prodExpanded = !this.state.prodExpanded;
+    }
+
     onSearchKeydown(ev) {
+        const items = this.searchItems;
+        const item = items[this.state.activeIndex];
         if (ev.key === "ArrowDown") {
             ev.preventDefault();
             this.state.activeIndex = Math.min(
-                this.state.activeIndex + 1, this.searchItemCount - 1);
+                this.state.activeIndex + 1, items.length - 1);
         } else if (ev.key === "ArrowUp") {
             ev.preventDefault();
             this.state.activeIndex = Math.max(this.state.activeIndex - 1, 0);
         } else if (ev.key === "ArrowRight") {
-            if (this.state.activeIndex === 1) {
+            if (item.type === "product") {
+                this.state.prodExpanded = true;
+            } else if (item.type === "focusHeader") {
                 this.state.focusExpanded = true;
             }
         } else if (ev.key === "ArrowLeft") {
-            if (this.state.activeIndex === 1) {
+            if (item.type === "product") {
+                this.state.prodExpanded = false;
+            } else if (item.type === "focusHeader") {
                 this.state.focusExpanded = false;
             }
         } else if (ev.key === "Enter") {
@@ -468,26 +509,31 @@ export class NeedPlan extends Component {
     }
 
     activateSearchItem() {
-        const i = this.state.activeIndex;
-        if (i === 0) {
+        const it = this.searchItems[this.state.activeIndex];
+        if (!it) {
+            return;
+        }
+        if (it.type === "product") {
             return this.applyProductSearch();
         }
-        if (i === 1) {
+        if (it.type === "prod") {
+            return this.applyProductSearch(it.prod.term);
+        }
+        if (it.type === "focusHeader") {
             this.state.focusExpanded = !this.state.focusExpanded;
             return;
         }
-        const prod = this.state.focusResults[i - 2];
-        if (prod) {
-            this.selectFocus(prod);
+        if (it.type === "focus") {
+            this.selectFocus(it.prod);
         }
     }
 
-    async applyProductSearch() {
-        const term = this.state.searchText.trim();
+    async applyProductSearch(term) {
+        const t = (term || this.state.searchText).trim();
         this.state.searchText = "";
         this.state.searchOpen = false;
-        if (term && !this.state.queries.includes(term)) {
-            this.state.queries.push(term);
+        if (t && !this.state.queries.includes(t)) {
+            this.state.queries.push(t);
         }
         this.state.page = 0;
         await this.loadGroups();

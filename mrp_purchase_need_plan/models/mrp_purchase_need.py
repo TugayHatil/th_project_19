@@ -89,6 +89,23 @@ class MrpPurchaseNeed(models.AbstractModel):
         }
 
     @api.model
+    def search_products(self, query=""):
+        """Autocomplete under the "Ürün" search option — all storable
+        products matching the text."""
+        domain = [("is_storable", "=", True)]
+        if query:
+            domain += ["|", ("name", "ilike", query),
+                       ("default_code", "ilike", query)]
+        rows = self.env["product.product"].sudo().search_read(
+            domain, ["name", "default_code"], limit=10,
+            order="default_code")
+        return [{"id": r["id"],
+                 "name": r["default_code"] and
+                         "[%s] %s" % (r["default_code"], r["name"])
+                         or r["name"],
+                 "term": r["default_code"] or r["name"]} for r in rows]
+
+    @api.model
     def search_focus_products(self, query=""):
         """Autocomplete for the focus filter — only products that own a
         BoM produce a useful component scope, so the list is limited to

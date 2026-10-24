@@ -50,28 +50,33 @@
                         </div>
                         <t t-if="state.searchOpen and state.searchText">
                             <div class="o_mnp_searchmenu">
-                                <div t-att-class="'o_mnp_searchitem' + (state.activeIndex === 0 ? ' o_mnp_active' : '')"
-                                     t-on-click="applyProductSearch">
-                                    Arama <b>Ürün</b> için:
-                                    <t t-esc="state.searchText"/>
+                                <div t-foreach="searchItems" t-as="it"
+                                     t-key="it_index"
+                                     t-att-class="'o_mnp_searchitem'
+                                         + ((it.type === 'prod' or it.type === 'focus' or it.type === 'empty') ? ' o_mnp_searchsub' : '')
+                                         + (state.activeIndex === it_index ? ' o_mnp_active' : '')">
+                                    <t t-if="it.type === 'product'"
+                                       t-on-click="() => this.applyProductSearch()">
+                                        <i t-att-class="'fa me-1 ' + (state.prodExpanded ? 'fa-caret-down' : 'fa-caret-right')"
+                                           t-on-click.stop="toggleProdGroup"/>
+                                        Arama <b>Ürün</b> için:
+                                        <t t-esc="state.searchText"/>
+                                    </t>
+                                    <t t-elif="it.type === 'prod'"
+                                       t-on-click="() => this.applyProductSearch(it.prod.term)"
+                                       t-esc="it.prod.name"/>
+                                    <t t-elif="it.type === 'focusHeader'"
+                                       t-on-click="toggleFocusGroup">
+                                        <i t-att-class="'fa me-1 ' + (state.focusExpanded ? 'fa-caret-down' : 'fa-caret-right')"/>
+                                        Arama <b>Odak (Reçete)</b> için:
+                                        <t t-esc="state.searchText"/>
+                                    </t>
+                                    <t t-elif="it.type === 'focus'"
+                                       t-on-click="() => this.selectFocus(it.prod)"
+                                       t-esc="it.prod.name"/>
+                                    <span t-elif="it.type === 'empty'"
+                                       class="text-muted">(sonuç yok)</span>
                                 </div>
-                                <div t-att-class="'o_mnp_searchitem o_mnp_searchgroup' + (state.activeIndex === 1 ? ' o_mnp_active' : '')"
-                                     t-on-click="toggleFocusGroup">
-                                    <i t-att-class="'fa me-1 ' + (state.focusExpanded ? 'fa-caret-down' : 'fa-caret-right')"/>
-                                    Arama <b>Odak (Reçete)</b> için:
-                                    <t t-esc="state.searchText"/>
-                                </div>
-                                <t t-if="state.focusExpanded">
-                                    <div t-foreach="state.focusResults" t-as="prod"
-                                         t-key="prod.id"
-                                         t-att-class="'o_mnp_searchitem o_mnp_searchsub' + (state.activeIndex === prod_index + 2 ? ' o_mnp_active' : '')"
-                                         t-on-click="() => this.selectFocus(prod)"
-                                         t-esc="prod.name"/>
-                                    <div t-if="!state.focusResults.length"
-                                         class="o_mnp_searchitem o_mnp_searchsub text-muted">
-                                        (sonuç yok)
-                                    </div>
-                                </t>
                             </div>
                             <div class="o_mnp_focus_backdrop"
                                  t-on-click="closeSearchMenu"/>
