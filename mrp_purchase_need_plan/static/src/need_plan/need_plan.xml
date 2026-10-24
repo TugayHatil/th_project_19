@@ -124,6 +124,24 @@
                                            t-on-change="onMipToggle"/>
                                     <span>MİP No</span>
                                 </label>
+                                <label class="o_mnp_cols_item">
+                                    <input type="checkbox" class="form-check-input"
+                                           t-att-checked="state.showType"
+                                           t-on-change="onTypeToggle"/>
+                                    <span>Tür</span>
+                                </label>
+                                <label class="o_mnp_cols_item">
+                                    <input type="checkbox" class="form-check-input"
+                                           t-att-checked="state.showExc"
+                                           t-on-change="onExcToggle"/>
+                                    <span>İstisna</span>
+                                </label>
+                                <label class="o_mnp_cols_item">
+                                    <input type="checkbox" class="form-check-input"
+                                           t-att-checked="state.showRoute"
+                                           t-on-change="onRouteToggle"/>
+                                    <span>Rota</span>
+                                </label>
                             </div>
                             <div class="o_mnp_cols_backdrop"
                                  t-on-click="toggleColsMenu"/>
@@ -158,14 +176,14 @@
                         <col class="o_mnp_col_product"/>
                         <col class="o_mnp_col_resp"/>
                         <col class="o_mnp_col_resp"/>
-                        <col class="o_mnp_col_type"/>
+                        <col t-if="state.showType" class="o_mnp_col_type"/>
                         <col t-if="state.showSource" class="o_mnp_col_src"/>
                         <col t-if="state.showMip" class="o_mnp_col_mip"/>
                         <col class="o_mnp_col_date"/>
                         <col class="o_mnp_col_date"/>
-                        <col class="o_mnp_col_exc"/>
+                        <col t-if="state.showExc" class="o_mnp_col_exc"/>
                         <col class="o_mnp_col_loc"/>
-                        <col class="o_mnp_col_route"/>
+                        <col t-if="state.showRoute" class="o_mnp_col_route"/>
                         <col class="o_mnp_col_qty"/>
                         <col class="o_mnp_col_qty"/>
                         <col class="o_mnp_col_qty"/>
@@ -185,14 +203,14 @@
                             <th class="o_mnp_col_product">Ürün</th>
                             <th>MİP Sorumlusu</th>
                             <th>SA Sorumlusu</th>
-                            <th>Tür</th>
+                            <th t-if="state.showType">Tür</th>
                             <th t-if="state.showSource">Kaynak</th>
                             <th t-if="state.showMip">MİP No</th>
                             <th>İhtiyaç Tarihi</th>
                             <th>Öneri Termin</th>
-                            <th>İstisna</th>
+                            <th t-if="state.showExc">İstisna</th>
                             <th>Konum</th>
-                            <th>Rota</th>
+                            <th t-if="state.showRoute">Rota</th>
                             <th class="o_mnp_num">Stok</th>
                             <th class="o_mnp_num">Öngörülen</th>
                             <th class="o_mnp_num">İhtiyaç Miktarı</th>
@@ -233,7 +251,7 @@
                                     t-esc="group.mip_resp"/>
                                 <td class="o_mnp_summary text-muted"
                                     t-esc="group.sa_resp"/>
-                                <td/>
+                                <td t-if="state.showType"/>
                                 <td t-if="state.showSource"/>
                                 <td t-if="state.showMip"/>
                                 <td class="o_mnp_summary"
@@ -241,13 +259,15 @@
                                 <td class="o_mnp_summary text-warning">
                                     <strong t-esc="fmtDate(group.earliest_termin)"/>
                                 </td>
-                                <td class="o_mnp_summary text-muted">
+                                <td t-if="state.showExc"
+                                    class="o_mnp_summary text-muted">
                                     <t t-if="group.exception_count">Yeniden Termin
                                         (<t t-esc="group.exception_count"/>)</t>
                                 </td>
                                 <td class="o_mnp_summary text-muted"
                                     t-esc="group.location"/>
-                                <td class="o_mnp_summary text-center"
+                                <td t-if="state.showRoute"
+                                    class="o_mnp_summary text-center"
                                     t-esc="group.route"/>
                                 <td class="o_mnp_num o_mnp_summary">
                                     <strong t-esc="fmtQty(group.onhand)"/>
@@ -311,7 +331,8 @@
                                             t-esc="group.mip_resp"/>
                                         <td class="text-muted"
                                             t-esc="group.sa_resp"/>
-                                        <td class="text-center">
+                                        <td t-if="state.showType"
+                                            class="text-center">
                                             <span class="o_mnp_type"
                                                   t-esc="line.source_type"/>
                                         </td>
@@ -329,14 +350,15 @@
                                         <td t-esc="fmtDate(line.need_date)"/>
                                         <td t-att-class="line.suggested_termin ? 'text-warning' : ''"
                                             t-esc="fmtDate(line.suggested_termin)"/>
-                                        <td>
+                                        <td t-if="state.showExc">
                                             <a t-if="line.exception" href="#"
                                                class="o_mnp_cov_link"
                                                t-on-click.prevent="() => this.openExceptions(line)"
                                             >Yeniden Terminlendi</a>
                                         </td>
                                         <td t-esc="line.location"/>
-                                        <td class="text-center"
+                                        <td t-if="state.showRoute"
+                                            class="text-center"
                                             t-esc="line.route"/>
                                         <td class="o_mnp_num" t-esc="fmtQty(line.onhand)"/>
                                         <td t-att-class="'o_mnp_num' + (line.forecast &lt; 0 ? ' o_mnp_neg' : '')"
@@ -382,13 +404,13 @@
                                 </t>
                                 <tr t-if="state.lines[group.product_id] === undefined"
                                     class="o_mnp_line">
-                                    <td t-att-colspan="20 + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0)"
+                                    <td t-att-colspan="17 + (state.showType ? 1 : 0) + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0) + (state.showExc ? 1 : 0) + (state.showRoute ? 1 : 0)"
                                         class="text-muted text-center">
                                         Yükleniyor…
                                     </td>
                                 </tr>
                                 <tr t-elif="!groupLines(group).length" class="o_mnp_line">
-                                    <td t-att-colspan="20 + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0)"
+                                    <td t-att-colspan="17 + (state.showType ? 1 : 0) + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0) + (state.showExc ? 1 : 0) + (state.showRoute ? 1 : 0)"
                                         class="text-muted text-center">
                                         Bu kapsamda ihtiyaç satırı yok.
                                     </td>

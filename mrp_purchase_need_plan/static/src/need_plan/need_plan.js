@@ -81,7 +81,10 @@ export class NeedPlan extends Component {
             uncoveredOnly: false,
             lateOnly: false,
             showSource: false,
-            showMip: true,
+            showMip: false,
+            showType: false,
+            showExc: false,
+            showRoute: false,
             colsOpen: false,
             // focus product: show only the needs of its BoM components
             focusQuery: "",
@@ -477,6 +480,18 @@ export class NeedPlan extends Component {
 
     onMipToggle(ev) {
         this.state.showMip = ev.target.checked;
+    }
+
+    onTypeToggle(ev) {
+        this.state.showType = ev.target.checked;
+    }
+
+    onExcToggle(ev) {
+        this.state.showExc = ev.target.checked;
+    }
+
+    onRouteToggle(ev) {
+        this.state.showRoute = ev.target.checked;
     }
 
     toggleColsMenu() {
