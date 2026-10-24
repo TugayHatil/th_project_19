@@ -128,6 +128,16 @@ class MrpPurchaseNeed(models.AbstractModel):
         return [{"id": r["id"], "name": r["display_name"]} for r in rows]
 
     @api.model
+    def search_users(self, query=""):
+        """Autocomplete under the MİP/SA Sorumlusu search options."""
+        domain = [("active", "=", True), ("share", "=", False)]
+        if query:
+            domain.append(("name", "ilike", query))
+        rows = self.env["res.users"].sudo().search_read(
+            domain, ["name"], limit=10, order="name")
+        return [{"id": r["id"], "name": r["name"]} for r in rows]
+
+    @api.model
     def _get_bom_descendants(self, product_id):
         """Product ids covered by the focus product's BoM tree — the
         product itself plus every component at every depth below it.
@@ -161,7 +171,8 @@ class MrpPurchaseNeed(models.AbstractModel):
                         date_to=None, query="", limit=None, offset=0,
                         uncovered_only=False, late_only=False,
                         sort_by="purchase_start", force=False,
-                        focus_product_id=False):
+                        focus_product_id=False, mip_resp_id=False,
+                        sa_resp_id=False):
         """Product-grouped need summaries (BRD §3.1), server-paged.
 
         Need lines are intentionally not serialized; they are fetched
@@ -178,6 +189,12 @@ class MrpPurchaseNeed(models.AbstractModel):
         if focus_product_id:
             scope = self._get_bom_descendants(int(focus_product_id))
             plan = {pid: p for pid, p in plan.items() if pid in scope}
+        if mip_resp_id:
+            plan = {pid: p for pid, p in plan.items()
+                    if p["product"]["mip_resp_id"] == int(mip_resp_id)}
+        if sa_resp_id:
+            plan = {pid: p for pid, p in plan.items()
+                    if p["product"]["sa_resp_id"] == int(sa_resp_id)}
         terms = [t.lower() for t in self._query_terms(query)]
         groups = []
         for p in plan.values():

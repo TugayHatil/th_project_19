@@ -97,8 +97,15 @@ export class NeedPlan extends Component {
             prodResults: [],
             focusExpanded: false,
             focusResults: [],
+            mipExpanded: false,
+            saExpanded: false,
+            userResults: [],
             focusProductId: false,
             focusProductName: "",
+            mipRespId: false,
+            mipRespName: "",
+            saRespId: false,
+            saRespName: "",
             sortBy: "purchase_start",
             canCreate: false,
             today: "",
@@ -183,6 +190,8 @@ export class NeedPlan extends Component {
                     late_only: this.state.lateOnly,
                     sort_by: this.state.sortBy,
                     focus_product_id: this.state.focusProductId || false,
+                    mip_resp_id: this.state.mipRespId || false,
+                    sa_resp_id: this.state.saRespId || false,
                 });
             this.state.groups = data.groups || [];
             this.state.total = data.total || 0;
@@ -193,7 +202,8 @@ export class NeedPlan extends Component {
             const fkey = [
                 this.state.warehouseId, this.state.dateFrom,
                 this.state.dateTo, this.state.queries.join(","),
-                this.state.focusProductId].join("|");
+                this.state.focusProductId,
+                this.state.mipRespId, this.state.saRespId].join("|");
             if (this._filterKey !== fkey) {
                 this._filterKey = fkey;
                 this.state.lines = {};
@@ -427,6 +437,26 @@ export class NeedPlan extends Component {
                 items.push({ type: "empty" });
             }
         }
+        items.push({ type: "mipHeader" });
+        if (this.state.mipExpanded) {
+            if (this.state.userResults.length) {
+                for (const u of this.state.userResults) {
+                    items.push({ type: "mip", user: u });
+                }
+            } else {
+                items.push({ type: "empty" });
+            }
+        }
+        items.push({ type: "saHeader" });
+        if (this.state.saExpanded) {
+            if (this.state.userResults.length) {
+                for (const u of this.state.userResults) {
+                    items.push({ type: "sa", user: u });
+                }
+            } else {
+                items.push({ type: "empty" });
+            }
+        }
         return items;
     }
 
@@ -437,6 +467,8 @@ export class NeedPlan extends Component {
         this.state.activeIndex = 0;
         this.state.prodExpanded = false;
         this.state.focusExpanded = false;
+        this.state.mipExpanded = false;
+        this.state.saExpanded = false;
         clearTimeout(this._searchTimer);
         this._searchTimer = setTimeout(async () => {
             if (!text.trim()) {
@@ -445,15 +477,18 @@ export class NeedPlan extends Component {
                 return;
             }
             try {
-                const [prods, focus] = await Promise.all([
+                const [prods, focus, users] = await Promise.all([
                     this.orm.call(
                         "mrp.purchase.need", "search_products", [text]),
                     this.orm.call(
                         "mrp.purchase.need", "search_focus_products",
                         [text]),
+                    this.orm.call(
+                        "mrp.purchase.need", "search_users", [text]),
                 ]);
                 this.state.prodResults = prods;
                 this.state.focusResults = focus;
+                this.state.userResults = users;
             } catch (error) {
                 this.notifyError(error, _t("Ürün araması yapılamadı."));
             }
@@ -468,6 +503,14 @@ export class NeedPlan extends Component {
         this.state.prodExpanded = !this.state.prodExpanded;
     }
 
+    toggleMipGroup() {
+        this.state.mipExpanded = !this.state.mipExpanded;
+    }
+
+    toggleSaGroup() {
+        this.state.saExpanded = !this.state.saExpanded;
+    }
+
     onSearchKeydown(ev) {
         const items = this.searchItems;
         const item = items[this.state.activeIndex];
@@ -479,17 +522,9 @@ export class NeedPlan extends Component {
             ev.preventDefault();
             this.state.activeIndex = Math.max(this.state.activeIndex - 1, 0);
         } else if (ev.key === "ArrowRight") {
-            if (item.type === "product") {
-                this.state.prodExpanded = true;
-            } else if (item.type === "focusHeader") {
-                this.state.focusExpanded = true;
-            }
+            this.expandItem(item, true);
         } else if (ev.key === "ArrowLeft") {
-            if (item.type === "product") {
-                this.state.prodExpanded = false;
-            } else if (item.type === "focusHeader") {
-                this.state.focusExpanded = false;
-            }
+            this.expandItem(item, false);
         } else if (ev.key === "Enter") {
             ev.preventDefault();
             this.activateSearchItem();
@@ -498,13 +533,29 @@ export class NeedPlan extends Component {
         } else if (ev.key === "Backspace" && !ev.target.value) {
             // empty input + Backspace pops the last facet — the Odoo
             // search-view convention
-            if (this.state.queries.length) {
+            if (this.state.saRespId) {
+                this.clearSaResp();
+            } else if (this.state.mipRespId) {
+                this.clearMipResp();
+            } else if (this.state.focusProductId) {
+                this.clearFocus();
+            } else if (this.state.queries.length) {
                 this.state.queries.pop();
                 this.state.page = 0;
                 this.loadGroups();
-            } else if (this.state.focusProductId) {
-                this.clearFocus();
             }
+        }
+    }
+
+    expandItem(item, open) {
+        const flag = {
+            product: "prodExpanded",
+            focusHeader: "focusExpanded",
+            mipHeader: "mipExpanded",
+            saHeader: "saExpanded",
+        }[item.type];
+        if (flag) {
+            this.state[flag] = open;
         }
     }
 
@@ -525,6 +576,22 @@ export class NeedPlan extends Component {
         }
         if (it.type === "focus") {
             this.selectFocus(it.prod);
+            return;
+        }
+        if (it.type === "mipHeader") {
+            this.state.mipExpanded = !this.state.mipExpanded;
+            return;
+        }
+        if (it.type === "saHeader") {
+            this.state.saExpanded = !this.state.saExpanded;
+            return;
+        }
+        if (it.type === "mip") {
+            this.selectMipResp(it.user);
+            return;
+        }
+        if (it.type === "sa") {
+            this.selectSaResp(it.user);
         }
     }
 
@@ -559,6 +626,38 @@ export class NeedPlan extends Component {
         this.state.focusProductName = "";
         this.state.focusResults = [];
         this.state.searchOpen = false;
+        this.state.page = 0;
+        await this.loadGroups();
+    }
+
+    async selectMipResp(user) {
+        this.state.mipRespId = user.id;
+        this.state.mipRespName = user.name;
+        this.state.searchText = "";
+        this.state.searchOpen = false;
+        this.state.page = 0;
+        await this.loadGroups();
+    }
+
+    async clearMipResp() {
+        this.state.mipRespId = false;
+        this.state.mipRespName = "";
+        this.state.page = 0;
+        await this.loadGroups();
+    }
+
+    async selectSaResp(user) {
+        this.state.saRespId = user.id;
+        this.state.saRespName = user.name;
+        this.state.searchText = "";
+        this.state.searchOpen = false;
+        this.state.page = 0;
+        await this.loadGroups();
+    }
+
+    async clearSaResp() {
+        this.state.saRespId = false;
+        this.state.saRespName = "";
         this.state.page = 0;
         await this.loadGroups();
     }

@@ -29,6 +29,28 @@
                                     </button>
                                 </span>
                             </t>
+                            <t t-if="state.mipRespId">
+                                <span class="o_mnp_facet">
+                                    <i class="fa fa-user me-1"/>
+                                    MİP: <t t-esc="state.mipRespName"/>
+                                    <button type="button" class="o_mnp_facet_clear"
+                                            title="Filtreyi kaldır"
+                                            t-on-click="clearMipResp">
+                                        <i class="fa fa-times"/>
+                                    </button>
+                                </span>
+                            </t>
+                            <t t-if="state.saRespId">
+                                <span class="o_mnp_facet">
+                                    <i class="fa fa-user me-1"/>
+                                    SA: <t t-esc="state.saRespName"/>
+                                    <button type="button" class="o_mnp_facet_clear"
+                                            title="Filtreyi kaldır"
+                                            t-on-click="clearSaResp">
+                                        <i class="fa fa-times"/>
+                                    </button>
+                                </span>
+                            </t>
                             <t t-if="state.focusProductId">
                                 <span class="o_mnp_facet o_mnp_facet_focus"
                                       title="Sadece bu ürünün reçetesindeki komponentler gösteriliyor">
@@ -53,7 +75,7 @@
                                 <div t-foreach="searchItems" t-as="it"
                                      t-key="it_index"
                                      t-att-class="'o_mnp_searchitem'
-                                         + ((it.type === 'prod' or it.type === 'focus' or it.type === 'empty') ? ' o_mnp_searchsub' : '')
+                                         + ((it.type === 'prod' or it.type === 'focus' or it.type === 'mip' or it.type === 'sa' or it.type === 'empty') ? ' o_mnp_searchsub' : '')
                                          + (state.activeIndex === it_index ? ' o_mnp_active' : '')">
                                     <t t-if="it.type === 'product'"
                                        t-on-click="() => this.applyProductSearch()">
@@ -74,6 +96,24 @@
                                     <t t-elif="it.type === 'focus'"
                                        t-on-click="() => this.selectFocus(it.prod)"
                                        t-esc="it.prod.name"/>
+                                    <t t-elif="it.type === 'mipHeader'"
+                                       t-on-click="toggleMipGroup">
+                                        <i t-att-class="'fa me-1 ' + (state.mipExpanded ? 'fa-caret-down' : 'fa-caret-right')"/>
+                                        Arama <b>MİP Sorumlusu</b> için:
+                                        <t t-esc="state.searchText"/>
+                                    </t>
+                                    <t t-elif="it.type === 'mip'"
+                                       t-on-click="() => this.selectMipResp(it.user)"
+                                       t-esc="it.user.name"/>
+                                    <t t-elif="it.type === 'saHeader'"
+                                       t-on-click="toggleSaGroup">
+                                        <i t-att-class="'fa me-1 ' + (state.saExpanded ? 'fa-caret-down' : 'fa-caret-right')"/>
+                                        Arama <b>SA Sorumlusu</b> için:
+                                        <t t-esc="state.searchText"/>
+                                    </t>
+                                    <t t-elif="it.type === 'sa'"
+                                       t-on-click="() => this.selectSaResp(it.user)"
+                                       t-esc="it.user.name"/>
                                     <span t-elif="it.type === 'empty'"
                                        class="text-muted">(sonuç yok)</span>
                                 </div>
