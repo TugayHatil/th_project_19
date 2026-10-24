@@ -90,6 +90,8 @@ export class NeedPlan extends Component {
             // "Ürün" applies the text filter, "Odak" picks a BoM product
             searchText: "",
             searchOpen: false,
+            activeIndex: 0,
+            focusExpanded: false,
             focusResults: [],
             focusProductId: false,
             focusProductName: "",
@@ -396,13 +398,21 @@ export class NeedPlan extends Component {
 
     // -- unified search bar -------------------------------------------------
 
+    get searchItemCount() {
+        // Ürün row + Odak header + expanded focus matches (or "(sonuç yok)")
+        return 2 + (this.state.focusExpanded
+            ? Math.max(1, this.state.focusResults.length) : 0);
+    }
+
     onSearchbarInput(ev) {
         const text = ev.target.value;
         this.state.searchText = text;
+        this.state.searchOpen = Boolean(text.trim());
+        this.state.activeIndex = 0;
+        this.state.focusExpanded = false;
         clearTimeout(this._searchTimer);
         this._searchTimer = setTimeout(async () => {
             if (!text.trim()) {
-                this.state.searchOpen = false;
                 this.state.focusResults = [];
                 return;
             }
@@ -410,18 +420,52 @@ export class NeedPlan extends Component {
                 this.state.focusResults = await this.orm.call(
                     "mrp.purchase.need", "search_focus_products",
                     [text]);
-                this.state.searchOpen = true;
             } catch (error) {
                 this.notifyError(error, _t("Ürün araması yapılamadı."));
             }
         }, SEARCH_DELAY);
     }
 
+    toggleFocusGroup() {
+        this.state.focusExpanded = !this.state.focusExpanded;
+    }
+
     onSearchKeydown(ev) {
-        if (ev.key === "Enter") {
-            this.applyProductSearch();
+        if (ev.key === "ArrowDown") {
+            ev.preventDefault();
+            this.state.activeIndex = Math.min(
+                this.state.activeIndex + 1, this.searchItemCount - 1);
+        } else if (ev.key === "ArrowUp") {
+            ev.preventDefault();
+            this.state.activeIndex = Math.max(this.state.activeIndex - 1, 0);
+        } else if (ev.key === "ArrowRight") {
+            if (this.state.activeIndex === 1) {
+                this.state.focusExpanded = true;
+            }
+        } else if (ev.key === "ArrowLeft") {
+            if (this.state.activeIndex === 1) {
+                this.state.focusExpanded = false;
+            }
+        } else if (ev.key === "Enter") {
+            ev.preventDefault();
+            this.activateSearchItem();
         } else if (ev.key === "Escape") {
             this.closeSearchMenu();
+        }
+    }
+
+    activateSearchItem() {
+        const i = this.state.activeIndex;
+        if (i === 0) {
+            return this.applyProductSearch();
+        }
+        if (i === 1) {
+            this.state.focusExpanded = !this.state.focusExpanded;
+            return;
+        }
+        const prod = this.state.focusResults[i - 2];
+        if (prod) {
+            this.selectFocus(prod);
         }
     }
 

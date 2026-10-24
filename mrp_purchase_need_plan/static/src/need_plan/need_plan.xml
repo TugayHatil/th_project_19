@@ -49,24 +49,28 @@
                         </div>
                         <t t-if="state.searchOpen and state.searchText">
                             <div class="o_mnp_searchmenu">
-                                <div class="o_mnp_searchitem"
+                                <div t-att-class="'o_mnp_searchitem' + (state.activeIndex === 0 ? ' o_mnp_active' : '')"
                                      t-on-click="applyProductSearch">
                                     Arama <b>Ürün</b> için:
                                     <t t-esc="state.searchText"/>
                                 </div>
-                                <div class="o_mnp_searchgroup">
-                                    Odak — <b>Reçetesi</b> için:
+                                <div t-att-class="'o_mnp_searchitem o_mnp_searchgroup' + (state.activeIndex === 1 ? ' o_mnp_active' : '')"
+                                     t-on-click="toggleFocusGroup">
+                                    <i t-att-class="'fa me-1 ' + (state.focusExpanded ? 'fa-caret-down' : 'fa-caret-right')"/>
+                                    Arama <b>Odak (Reçete)</b> için:
                                     <t t-esc="state.searchText"/>
                                 </div>
-                                <div t-foreach="state.focusResults" t-as="prod"
-                                     t-key="prod.id"
-                                     class="o_mnp_searchitem o_mnp_searchsub"
-                                     t-on-click="() => this.selectFocus(prod)"
-                                     t-esc="prod.name"/>
-                                <div t-if="!state.focusResults.length"
-                                     class="o_mnp_searchitem o_mnp_searchsub text-muted">
-                                    Eşleşen reçeteli ürün yok
-                                </div>
+                                <t t-if="state.focusExpanded">
+                                    <div t-foreach="state.focusResults" t-as="prod"
+                                         t-key="prod.id"
+                                         t-att-class="'o_mnp_searchitem o_mnp_searchsub' + (state.activeIndex === prod_index + 2 ? ' o_mnp_active' : '')"
+                                         t-on-click="() => this.selectFocus(prod)"
+                                         t-esc="prod.name"/>
+                                    <div t-if="!state.focusResults.length"
+                                         class="o_mnp_searchitem o_mnp_searchsub text-muted">
+                                        (sonuç yok)
+                                    </div>
+                                </t>
                             </div>
                             <div class="o_mnp_focus_backdrop"
                                  t-on-click="closeSearchMenu"/>
