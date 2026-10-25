@@ -183,13 +183,14 @@ class MrpPurchaseNeed(models.AbstractModel):
 
         ``focus_product_id`` narrows the view to one product's BoM tree:
         the plan is still computed in full, then groups outside the
-        component scope are dropped. The text ``query`` is likewise a
-        display filter — filtering need moves by name would hide parent
-        demands, so BoM-exploded component needs of the searched product
-        would silently vanish. The plan is therefore always the full
-        canonical build and matching happens on the group payload."""
+        component scope are dropped. The text ``query`` and the date
+        range are likewise display filters — filtering need moves would
+        hide parent demands, so BoM-exploded component needs would
+        silently vanish. The plan is therefore always the full canonical
+        build and matching happens on the computed lines."""
         plan = self._get_plan(
-            warehouse_id, date_from, date_to, "", force=force)
+            warehouse_id, False, False, "", force=force)
+        plan = self._filter_lines(plan, date_from, date_to)
         if focus_product_id:
             # one id or a list — every focus product contributes its own
             # BoM tree; scopes union so several focus facets stack
@@ -240,6 +241,24 @@ class MrpPurchaseNeed(models.AbstractModel):
             "today": fields.Date.to_string(fields.Date.context_today(self)),
         }
 
+    @staticmethod
+    def _filter_lines(plan, date_from, date_to):
+        """Display-level date filter: keep only need lines whose need
+        date falls inside the range. The cached plan is never mutated —
+        products left with no lines drop out of the group list."""
+        if not date_from and not date_to:
+            return plan
+        out = {}
+        for pid, data in plan.items():
+            lines = [ln for ln in data["lines"]
+                     if (not date_from or ln["need_date"] >= date_from)
+                     and (not date_to or ln["need_date"] <= date_to)]
+            if lines:
+                narrowed = dict(data)
+                narrowed["lines"] = lines
+                out[pid] = narrowed
+        return out
+
     @api.model
     def get_need_lines(self, product_id, warehouse_id=False,
                        date_from=None, date_to=None):
@@ -249,7 +268,9 @@ class MrpPurchaseNeed(models.AbstractModel):
         component rows exist only when the parent demand is part of the
         same computation. Served from the shared plan cache, so expanding
         a group right after load does not recompute anything."""
-        plan = self._get_plan(warehouse_id, date_from, date_to, "")
+        plan = self._filter_lines(
+            self._get_plan(warehouse_id, False, False, ""),
+            date_from, date_to)
         data = plan.get(int(product_id))
         if not data:
             return {"lines": [], "group": False, "suggestions": []}
@@ -306,7 +327,7 @@ class MrpPurchaseNeed(models.AbstractModel):
         # when the parent product's demand is part of the computation —
         # and it must be fresh right before creating documents (BRD §9)
         plan = self._get_plan(
-            warehouse_id, date_from, date_to, "", force=True)
+            warehouse_id, False, False, "", force=True)
         product_filter = ({int(p) for p in product_ids}
                           if product_ids else None)
 
