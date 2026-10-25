@@ -84,7 +84,6 @@ export class NeedPlan extends Component {
             // facets OR together, Backspace on empty input pops the last
             queries: [],
             uncoveredOnly: false,
-            lateOnly: false,
             showSource: false,
             showMip: false,
             showType: false,
@@ -193,7 +192,6 @@ export class NeedPlan extends Component {
                     limit: this.state.pageSize,
                     offset: this.state.page * this.state.pageSize,
                     uncovered_only: this.state.uncoveredOnly,
-                    late_only: this.state.lateOnly,
                     sort_by: this.state.sortBy,
                     focus_product_id: this.state.focusProducts.length
                         ? this.state.focusProducts.map((p) => p.id)
@@ -829,12 +827,6 @@ export class NeedPlan extends Component {
 
     onUncoveredChange(ev) {
         this.state.uncoveredOnly = ev.target.checked;
-        this.state.page = 0;
-        this.loadGroups();
-    }
-
-    onLateChange(ev) {
-        this.state.lateOnly = ev.target.checked;
         this.state.page = 0;
         this.loadGroups();
     }

@@ -169,7 +169,7 @@ class MrpPurchaseNeed(models.AbstractModel):
     @api.model
     def get_need_groups(self, warehouse_id=False, date_from=None,
                         date_to=None, query="", limit=None, offset=0,
-                        uncovered_only=False, late_only=False,
+                        uncovered_only=False,
                         sort_by="purchase_start", force=False,
                         focus_product_id=False, mip_resp_id=False,
                         sa_resp_id=False):
@@ -226,8 +226,6 @@ class MrpPurchaseNeed(models.AbstractModel):
                     and not payload["requested_count"]:
                 continue
             if uncovered_only and payload["total_uncovered"] <= 0:
-                continue
-            if late_only and not payload["has_late"]:
                 continue
             groups.append(payload)
         key = "earliest_need" if sort_by == "need_date" else "earliest_start"
