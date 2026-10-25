@@ -211,7 +211,8 @@ export class NeedPlan extends Component {
                 this.state.warehouseId, this.state.dateFrom,
                 this.state.dateTo, this.state.queries.join(","),
                 this.state.focusProducts.map((p) => p.id).join(","),
-                this.state.mipRespId, this.state.saRespId].join("|");
+                this.state.mipRespId, this.state.saRespId,
+                this.state.uncoveredOnly, this.state.showCovered].join("|");
             if (this._filterKey !== fkey) {
                 this._filterKey = fkey;
                 this.state.lines = {};
@@ -256,7 +257,8 @@ export class NeedPlan extends Component {
                     date_from: this.state.dateFrom || false,
                     date_to: this.state.dateTo || false,
                     include_covered: this.state.showCovered
-                        || this.state.focusIds.length > 0,
+                        || this.state.focusProducts.length > 0,
+                    uncovered_only: this.state.uncoveredOnly,
                 });
             this.state.lines[pid] = data.lines || [];
             this.state.suggestions[pid] = data.suggestions || [];

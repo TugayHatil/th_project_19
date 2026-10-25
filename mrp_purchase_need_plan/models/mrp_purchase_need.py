@@ -275,7 +275,7 @@ class MrpPurchaseNeed(models.AbstractModel):
     @api.model
     def get_need_lines(self, product_id, warehouse_id=False,
                        date_from=None, date_to=None,
-                       include_covered=False):
+                       include_covered=False, uncovered_only=False):
         """Need detail rows for a single product group (BRD §3.2).
 
         The whole plan is computed even for a single product: virtual
@@ -289,8 +289,11 @@ class MrpPurchaseNeed(models.AbstractModel):
         data = plan.get(int(product_id))
         if not data:
             return {"lines": [], "group": False, "suggestions": []}
+        lines = data["lines"]
+        if uncovered_only:
+            lines = [ln for ln in lines if ln["uncovered_qty"] > 0]
         return {
-            "lines": data["lines"],
+            "lines": lines,
             "group": self._group_payload(data),
             "suggestions": data["suggestions"],
         }
