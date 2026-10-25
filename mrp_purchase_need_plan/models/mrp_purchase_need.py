@@ -50,6 +50,7 @@ _MIP_CHUNK = 1000
 _MIP_ENSURE_INLINE = 1500   # request-path builds
 _MIP_ENSURE_CRON = 4000     # warm-up cron builds
 _MIP_BACKLOG_PARAM = "mrp_purchase_need_plan.mip_backlog"
+_PLAN_VERSION_PARAM = "mrp_purchase_need_plan.plan_version"
 
 
 class MrpPurchaseNeed(models.AbstractModel):
@@ -172,8 +173,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                         uncovered_only=False,
                         sort_by="purchase_start", force=False,
                         focus_product_id=False, mip_resp_id=False,
-                        sa_resp_id=False, show_covered=False,
-                        strict_fresh=False):
+                        sa_resp_id=False, show_covered=False):
         """Product-grouped need summaries (BRD §3.1), server-paged.
 
         Need lines are intentionally not serialized; they are fetched
@@ -193,12 +193,13 @@ class MrpPurchaseNeed(models.AbstractModel):
         # coverage pre-pass so "ready" products exist in the output —
         # cached separately, the fast canonical plan is untouched
         include_covered = bool(show_covered or focus_product_id)
-        # strict_fresh (first page load) rejects the staleness grace — a
-        # snapshot older than the latest write triggers a rebuild so the
-        # screen never opens on data the user knows is outdated
+        # group loads never serve the staleness grace — every
+        # user-triggered refresh must reflect the latest writes; when
+        # nothing changed the version-fresh snapshot/cache still serves
+        # instantly, so the strict check is free
         plan = self._get_plan(
             warehouse_id, False, False, "", force=force,
-            allow_stale=not strict_fresh,
+            allow_stale=False,
             include_covered=include_covered)
         plan = self._filter_lines(plan, date_from, date_to)
         if focus_product_id:
@@ -490,18 +491,29 @@ class MrpPurchaseNeed(models.AbstractModel):
     def _plan_version(self):
         """Shared plan revision — bumped by write hooks on every model
         the plan depends on (moves, quants, request lines, BoMs, product
-        lead data). Stored in ir.config_parameter so every worker sees
-        the same version."""
-        return self.env["ir.config_parameter"].sudo().get_param(
-            "mrp_purchase_need_plan.plan_version", "0")
+        lead data).
+
+        Raw SQL on purpose: ir.config_parameter.get_param goes through a
+        per-worker @ormcache, so a bump committed by another worker can
+        read stale here until cache signaling lands — a strict_fresh
+        request would then trust an outdated snapshot."""
+        self.env.cr.execute(
+            "SELECT value FROM ir_config_parameter WHERE key = %s",
+            (_PLAN_VERSION_PARAM,))
+        row = self.env.cr.fetchone()
+        return row[0] if row else "0"
 
     @api.model
     def _bump_plan_version(self):
-        P = self.env["ir.config_parameter"].sudo()
-        P.set_param(
-            "mrp_purchase_need_plan.plan_version",
-            str(int(P.get_param(
-                "mrp_purchase_need_plan.plan_version", "0") or "0") + 1))
+        # atomic row-level increment — a get_param read could be stale
+        # on a busy worker and collapse two bumps into one
+        self.env.cr.execute(
+            "UPDATE ir_config_parameter"
+            " SET value = (value::bigint + 1)::text WHERE key = %s",
+            (_PLAN_VERSION_PARAM,))
+        if not self.env.cr.rowcount:
+            self.env["ir.config_parameter"].sudo().set_param(
+                _PLAN_VERSION_PARAM, "1")
 
     @api.model
     def _get_plan(self, warehouse_id, date_from, date_to, query,

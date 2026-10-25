@@ -130,9 +130,7 @@ export class NeedPlan extends Component {
         this._selOwner = {};
         onMounted(async () => {
             await this.loadFilters();
-            // first open: reject the stale-snapshot grace so the screen
-            // reflects writes made since the last plan build
-            await this.loadGroups(false, true);
+            await this.loadGroups();
         });
     }
 
@@ -181,13 +179,12 @@ export class NeedPlan extends Component {
         }
     }
 
-    async loadGroups(force, strict) {
+    async loadGroups(force) {
         this.state.loading = true;
         try {
             const data = await this.orm.call(
                 "mrp.purchase.need", "get_need_groups", [], {
                     force: Boolean(force),
-                    strict_fresh: Boolean(strict),
                     warehouse_id: this.state.warehouseId || false,
                     date_from: this.state.dateFrom || false,
                     date_to: this.state.dateTo || false,

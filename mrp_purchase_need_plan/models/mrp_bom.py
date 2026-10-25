@@ -22,3 +22,14 @@ class MrpBom(models.Model):
         res = super().unlink()
         self.env["mrp.purchase.need"]._bump_plan_version()
         return res
+
+
+class MrpProduction(models.Model):
+    _inherit = "mrp.production"
+
+    # completing an MO consumes component moves — bump the plan version
+    # here too in case a completion path bypasses stock.move.write
+    def button_mark_done(self):
+        res = super().button_mark_done()
+        self.env["mrp.purchase.need"]._bump_plan_version()
+        return res

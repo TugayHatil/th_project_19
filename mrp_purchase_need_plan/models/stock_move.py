@@ -94,6 +94,18 @@ class StockMove(models.Model):
         return res
 
 
+class StockPicking(models.Model):
+    _inherit = "stock.picking"
+
+    # belt & suspenders: if a completion path ever bypasses
+    # stock.move.write (low-level _write fast paths), the plan version
+    # still bumps when a picking is validated
+    def _action_done(self):
+        res = super()._action_done()
+        self.env["mrp.purchase.need"]._bump_plan_version()
+        return res
+
+
 class StockQuant(models.Model):
     _inherit = "stock.quant"
 
