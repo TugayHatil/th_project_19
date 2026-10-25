@@ -77,6 +77,9 @@ export class NeedPlan extends Component {
             warehouseId: false,
             dateFrom: "",
             dateTo: "",
+            // need-date period preset — "" = Tümü
+            period: "",
+            periodOpen: false,
             // applied product-search terms — each Enter adds a facet,
             // facets OR together, Backspace on empty input pops the last
             queries: [],
@@ -764,14 +767,62 @@ export class NeedPlan extends Component {
         this.state.searchOpen = false;
     }
 
-    async onDateFromChange(ev) {
-        this.state.dateFrom = ev.target.value;
-        this.state.page = 0;
-        await this.loadGroups();
+    // -- need-date period presets -------------------------------------------
+
+    get periodLabel() {
+        return {
+            late: "Geciken",
+            today: "Bugün",
+            week: "Bu Hafta",
+            month: "Bu Ay",
+            year: "Bu Yıl",
+        }[this.state.period] || "";
     }
 
-    async onDateToChange(ev) {
-        this.state.dateTo = ev.target.value;
+    togglePeriodMenu() {
+        this.state.periodOpen = !this.state.periodOpen;
+    }
+
+    _iso(d) {
+        return d.toISOString().slice(0, 10);
+    }
+
+    async setPeriod(period) {
+        // date bounds are computed from the server "today" the toolbar
+        // already carries, so no clock/locale drift affects the ranges
+        const base = this.state.today
+            ? new Date(`${this.state.today}T12:00:00`)
+            : new Date();
+        let from = "";
+        let to = "";
+        if (period === "late") {
+            to = this._iso(new Date(
+                base.getFullYear(), base.getMonth(), base.getDate() - 1));
+        } else if (period === "today") {
+            from = to = this._iso(base);
+        } else if (period === "week") {
+            const dow = (base.getDay() + 6) % 7;   // Monday = 0
+            const mon = new Date(
+                base.getFullYear(), base.getMonth(),
+                base.getDate() - dow);
+            const sun = new Date(
+                base.getFullYear(), base.getMonth(),
+                base.getDate() - dow + 6);
+            from = this._iso(mon);
+            to = this._iso(sun);
+        } else if (period === "month") {
+            from = this._iso(new Date(
+                base.getFullYear(), base.getMonth(), 1));
+            to = this._iso(new Date(
+                base.getFullYear(), base.getMonth() + 1, 0));
+        } else if (period === "year") {
+            from = this._iso(new Date(base.getFullYear(), 0, 1));
+            to = this._iso(new Date(base.getFullYear(), 11, 31));
+        }
+        this.state.period = period;
+        this.state.dateFrom = from;
+        this.state.dateTo = to;
+        this.state.periodOpen = false;
         this.state.page = 0;
         await this.loadGroups();
     }

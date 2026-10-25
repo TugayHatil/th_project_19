@@ -138,15 +138,30 @@
                                  t-on-click="closeSearchMenu"/>
                         </t>
                     </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <label class="form-label mb-0 text-nowrap">İhtiyaç tarihi</label>
-                        <input type="date" class="form-control form-control-sm w-auto"
-                               t-att-value="state.dateFrom"
-                               t-on-change="onDateFromChange"/>
-                        <span class="text-muted">–</span>
-                        <input type="date" class="form-control form-control-sm w-auto"
-                               t-att-value="state.dateTo"
-                               t-on-change="onDateToChange"/>
+                    <div class="o_mnp_cols">
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary"
+                                t-on-click.stop="togglePeriodMenu">
+                            <i class="fa fa-calendar me-1"/>İhtiyaç<t t-if="periodLabel">: <t t-esc="periodLabel"/></t>
+                        </button>
+                        <t t-if="state.periodOpen">
+                            <div class="o_mnp_cols_menu">
+                                <div t-att-class="'o_mnp_cols_item' + (state.period === 'late' ? ' fw-bold' : '')"
+                                     t-on-click="() => this.setPeriod('late')">Geciken</div>
+                                <div t-att-class="'o_mnp_cols_item' + (state.period === 'today' ? ' fw-bold' : '')"
+                                     t-on-click="() => this.setPeriod('today')">Bugün</div>
+                                <div t-att-class="'o_mnp_cols_item' + (state.period === 'week' ? ' fw-bold' : '')"
+                                     t-on-click="() => this.setPeriod('week')">Bu Hafta</div>
+                                <div t-att-class="'o_mnp_cols_item' + (state.period === 'month' ? ' fw-bold' : '')"
+                                     t-on-click="() => this.setPeriod('month')">Bu Ay</div>
+                                <div t-att-class="'o_mnp_cols_item' + (state.period === 'year' ? ' fw-bold' : '')"
+                                     t-on-click="() => this.setPeriod('year')">Bu Yıl</div>
+                                <div class="o_mnp_cols_item border-top text-muted"
+                                     t-on-click="() => this.setPeriod('')">Tümü</div>
+                            </div>
+                            <div class="o_mnp_cols_backdrop"
+                                 t-on-click="togglePeriodMenu"/>
+                        </t>
                     </div>
                     <div class="form-check">
                         <input id="o_mnp_uncovered" type="checkbox"
