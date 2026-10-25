@@ -974,6 +974,9 @@ export class NeedPlan extends Component {
         if (group.has_late) {
             cls += " o_mnp_late";
         }
+        if (group.total_uncovered <= 0) {
+            cls += " o_mnp_covered";
+        }
         return cls;
     }
 

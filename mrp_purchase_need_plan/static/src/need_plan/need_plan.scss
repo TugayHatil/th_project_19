@@ -337,6 +337,16 @@
         background: #fdf2f2;
     }
 
+    .o_mnp_group.o_mnp_covered td {
+        color: #9ca3af;
+        background: #fbfdfb;
+    }
+
+    .o_mnp_group.o_mnp_covered .o_mnp_product strong,
+    .o_mnp_group.o_mnp_covered .o_mnp_summary {
+        color: #9ca3af;
+    }
+
     .o_mnp_product strong {
         color: #111827;
         font-weight: 500;

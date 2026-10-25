@@ -221,9 +221,11 @@ class MrpPurchaseNeed(models.AbstractModel):
                     for t in terms):
                 continue
             # a fully covered product has nothing to plan; hide it unless
-            # some need is already attached to a request (traceability)
+            # some need is already attached to a request (traceability) —
+            # under a BoM focus it still belongs in the readiness view
             if payload["total_uncovered"] <= 0 \
-                    and not payload["requested_count"]:
+                    and not payload["requested_count"] \
+                    and not focus_product_id:
                 continue
             if uncovered_only and payload["total_uncovered"] <= 0:
                 continue
