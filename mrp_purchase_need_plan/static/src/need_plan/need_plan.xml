@@ -201,6 +201,27 @@
                         <i class="fa fa-refresh me-1"
                            t-att-class="{'fa-spin': state.loading}"/>Yenile
                     </button>
+                    <div t-if="state.total"
+                         class="o_mnp_pager d-flex align-items-center gap-2">
+                        <span class="text-muted text-nowrap">
+                            <t t-esc="Math.min(state.page * state.pageSize + 1, state.total)"/>-<t t-esc="Math.min((state.page + 1) * state.pageSize, state.total)"/>
+                            / <t t-esc="state.total"/>
+                        </span>
+                        <div class="btn-group">
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-secondary"
+                                    t-att-disabled="state.page &lt;= 0"
+                                    t-on-click="prevPage">
+                                <i class="fa fa-chevron-left"/>
+                            </button>
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-secondary"
+                                    t-att-disabled="(state.page + 1) * state.pageSize >= state.total"
+                                    t-on-click="nextPage">
+                                <i class="fa fa-chevron-right"/>
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <div t-if="missingConfigGroups.length"
@@ -536,19 +557,6 @@
                     </tbody>
                 </table>
 
-                <div t-if="state.total &gt; state.pageSize"
-                     class="o_mnp_pager d-flex align-items-center justify-content-end gap-2 px-3 py-2 border-top">
-                    <span class="text-muted small">
-                        Toplam <t t-esc="state.total"/> ürün — Sayfa
-                        <t t-esc="state.page + 1"/> / <t t-esc="totalPages"/>
-                    </span>
-                    <button type="button" class="btn btn-sm btn-outline-secondary"
-                            t-att-disabled="state.page &lt;= 0"
-                            t-on-click="prevPage">‹ Önceki</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary"
-                            t-att-disabled="(state.page + 1) * state.pageSize >= state.total"
-                            t-on-click="nextPage">Sonraki ›</button>
-                </div>
                 <div t-if="state.loading"
                      class="o_mnp_overlay d-flex align-items-center justify-content-center">
                     <i class="fa fa-spinner fa-spin fa-2x text-muted"/>

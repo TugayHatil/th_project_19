@@ -141,11 +141,6 @@ export class NeedPlan extends Component {
         return this.state.groups;
     }
 
-    get totalPages() {
-        return Math.max(
-            1, Math.ceil(this.state.total / this.state.pageSize));
-    }
-
     get selectedCount() {
         return Object.values(this.state.selected).filter(Boolean).length;
     }
