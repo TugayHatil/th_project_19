@@ -129,8 +129,29 @@
 
     // -- sütun görünürlük menüsü -------------------------------------------
 
-    .o_mnp_cols {
-        position: relative;
+    .o_mnp_col_cols {
+        width: 32px;
+    }
+
+    // Odoo standart opsiyonel-sütun deseni: tablo başlığının son hücresi
+    // (sticky pozisyon zaten menüyü konumlandırmak için yeterli)
+    .o_mnp_cols_th {
+        width: 32px;
+        padding: 2px 4px !important;
+        text-align: right;
+    }
+
+    .o_mnp_cols_btn {
+        border: none;
+        background: transparent;
+        color: #6b7280;
+        padding: 2px 4px;
+        line-height: 1;
+        cursor: pointer;
+
+        &:hover {
+            color: #111827;
+        }
     }
 
     .o_mnp_cols_menu {

@@ -195,62 +195,7 @@
                             </option>
                         </select>
                     </div>
-                    <div class="o_mnp_cols ms-auto">
-                        <button type="button"
-                                class="btn btn-sm btn-outline-secondary"
-                                t-on-click.stop="toggleColsMenu">
-                            <i class="fa fa-columns me-1"/>Sütunlar
-                        </button>
-                        <t t-if="state.colsOpen">
-                            <div class="o_mnp_cols_menu">
-                                <label class="o_mnp_cols_item">
-                                    <input type="checkbox" class="form-check-input"
-                                           t-att-checked="state.showSource"
-                                           t-on-change="onSourceToggle"/>
-                                    <span>Kaynak</span>
-                                </label>
-                                <label class="o_mnp_cols_item">
-                                    <input type="checkbox" class="form-check-input"
-                                           t-att-checked="state.showMip"
-                                           t-on-change="onMipToggle"/>
-                                    <span>MİP No</span>
-                                </label>
-                                <label class="o_mnp_cols_item">
-                                    <input type="checkbox" class="form-check-input"
-                                           t-att-checked="state.showType"
-                                           t-on-change="onTypeToggle"/>
-                                    <span>Tür</span>
-                                </label>
-                                <label class="o_mnp_cols_item">
-                                    <input type="checkbox" class="form-check-input"
-                                           t-att-checked="state.showExc"
-                                           t-on-change="onExcToggle"/>
-                                    <span>İstisna</span>
-                                </label>
-                                <label class="o_mnp_cols_item">
-                                    <input type="checkbox" class="form-check-input"
-                                           t-att-checked="state.showRoute"
-                                           t-on-change="onRouteToggle"/>
-                                    <span>Rota</span>
-                                </label>
-                                <label class="o_mnp_cols_item">
-                                    <input type="checkbox" class="form-check-input"
-                                           t-att-checked="state.showMipResp"
-                                           t-on-change="onMipRespToggle"/>
-                                    <span>MİP Sorumlusu</span>
-                                </label>
-                                <label class="o_mnp_cols_item">
-                                    <input type="checkbox" class="form-check-input"
-                                           t-att-checked="state.showSaResp"
-                                           t-on-change="onSaRespToggle"/>
-                                    <span>SA Sorumlusu</span>
-                                </label>
-                            </div>
-                            <div class="o_mnp_cols_backdrop"
-                                 t-on-click="toggleColsMenu"/>
-                        </t>
-                    </div>
-                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                    <button type="button" class="btn btn-sm btn-outline-secondary ms-auto"
                             t-att-disabled="state.loading"
                             t-on-click="() => this.loadGroups(true)">
                         <i class="fa fa-refresh me-1"
@@ -298,6 +243,7 @@
                         <col class="o_mnp_col_date"/>
                         <col class="o_mnp_col_date"/>
                         <col class="o_mnp_col_status"/>
+                        <col class="o_mnp_col_cols"/>
                     </colgroup>
                     <thead>
                         <tr>
@@ -325,6 +271,62 @@
                             <th>Başlangıç</th>
                             <th>Son Onay</th>
                             <th>Durum</th>
+                            <th class="o_mnp_cols_th">
+                                <button type="button"
+                                        class="o_mnp_cols_btn"
+                                        title="Sütunlar"
+                                        t-on-click.stop="toggleColsMenu">
+                                    <i class="fa fa-sliders"/>
+                                </button>
+                                <t t-if="state.colsOpen">
+                                    <div class="o_mnp_cols_menu">
+                                        <label class="o_mnp_cols_item">
+                                            <input type="checkbox" class="form-check-input"
+                                                   t-att-checked="state.showSource"
+                                                   t-on-change="onSourceToggle"/>
+                                            <span>Kaynak</span>
+                                        </label>
+                                        <label class="o_mnp_cols_item">
+                                            <input type="checkbox" class="form-check-input"
+                                                   t-att-checked="state.showMip"
+                                                   t-on-change="onMipToggle"/>
+                                            <span>MİP No</span>
+                                        </label>
+                                        <label class="o_mnp_cols_item">
+                                            <input type="checkbox" class="form-check-input"
+                                                   t-att-checked="state.showType"
+                                                   t-on-change="onTypeToggle"/>
+                                            <span>Tür</span>
+                                        </label>
+                                        <label class="o_mnp_cols_item">
+                                            <input type="checkbox" class="form-check-input"
+                                                   t-att-checked="state.showExc"
+                                                   t-on-change="onExcToggle"/>
+                                            <span>İstisna</span>
+                                        </label>
+                                        <label class="o_mnp_cols_item">
+                                            <input type="checkbox" class="form-check-input"
+                                                   t-att-checked="state.showRoute"
+                                                   t-on-change="onRouteToggle"/>
+                                            <span>Rota</span>
+                                        </label>
+                                        <label class="o_mnp_cols_item">
+                                            <input type="checkbox" class="form-check-input"
+                                                   t-att-checked="state.showMipResp"
+                                                   t-on-change="onMipRespToggle"/>
+                                            <span>MİP Sorumlusu</span>
+                                        </label>
+                                        <label class="o_mnp_cols_item">
+                                            <input type="checkbox" class="form-check-input"
+                                                   t-att-checked="state.showSaResp"
+                                                   t-on-change="onSaRespToggle"/>
+                                            <span>SA Sorumlusu</span>
+                                        </label>
+                                    </div>
+                                    <div class="o_mnp_cols_backdrop"
+                                         t-on-click="toggleColsMenu"/>
+                                </t>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -417,6 +419,7 @@
                                         (<t t-esc="group.suggestion_count"/>)
                                     </button>
                                 </td>
+                                <td class="o_mnp_col_cols"/>
                             </tr>
                             <!-- ihtiyaç detay satırları -->
                             <t t-if="isExpanded(group)">
@@ -510,17 +513,18 @@
                                             <span t-else=""
                                                   class="badge text-bg-warning">Açık</span>
                                         </td>
+                                        <td class="o_mnp_col_cols"/>
                                     </tr>
                                 </t>
                                 <tr t-if="state.lines[group.product_id] === undefined"
                                     class="o_mnp_line">
-                                    <td t-att-colspan="15 + (state.showMipResp ? 1 : 0) + (state.showSaResp ? 1 : 0) + (state.showType ? 1 : 0) + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0) + (state.showExc ? 1 : 0) + (state.showRoute ? 1 : 0)"
+                                    <td t-att-colspan="16 + (state.showMipResp ? 1 : 0) + (state.showSaResp ? 1 : 0) + (state.showType ? 1 : 0) + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0) + (state.showExc ? 1 : 0) + (state.showRoute ? 1 : 0)"
                                         class="text-muted text-center">
                                         Yükleniyor…
                                     </td>
                                 </tr>
                                 <tr t-elif="!groupLines(group).length" class="o_mnp_line">
-                                    <td t-att-colspan="15 + (state.showMipResp ? 1 : 0) + (state.showSaResp ? 1 : 0) + (state.showType ? 1 : 0) + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0) + (state.showExc ? 1 : 0) + (state.showRoute ? 1 : 0)"
+                                    <td t-att-colspan="16 + (state.showMipResp ? 1 : 0) + (state.showSaResp ? 1 : 0) + (state.showType ? 1 : 0) + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0) + (state.showExc ? 1 : 0) + (state.showRoute ? 1 : 0)"
                                         class="text-muted text-center">
                                         Bu kapsamda ihtiyaç satırı yok.
                                     </td>
