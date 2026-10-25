@@ -172,6 +172,15 @@
                             Sadece karşılanmamış
                         </label>
                     </div>
+                    <div class="form-check">
+                        <input id="o_mnp_covered" type="checkbox"
+                               class="form-check-input"
+                               t-att-checked="state.showCovered"
+                               t-on-change="onShowCoveredChange"/>
+                        <label for="o_mnp_covered" class="form-check-label text-nowrap">
+                            Hazır olanları da göster
+                        </label>
+                    </div>
                     <div class="d-flex align-items-center gap-2">
                         <label class="form-label mb-0 text-nowrap">Sırala</label>
                         <select class="form-select form-select-sm w-auto"

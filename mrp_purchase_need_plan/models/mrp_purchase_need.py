@@ -172,7 +172,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                         uncovered_only=False,
                         sort_by="purchase_start", force=False,
                         focus_product_id=False, mip_resp_id=False,
-                        sa_resp_id=False):
+                        sa_resp_id=False, show_covered=False):
         """Product-grouped need summaries (BRD §3.1), server-paged.
 
         Need lines are intentionally not serialized; they are fetched
@@ -222,10 +222,12 @@ class MrpPurchaseNeed(models.AbstractModel):
                 continue
             # a fully covered product has nothing to plan; hide it unless
             # some need is already attached to a request (traceability) —
-            # under a BoM focus it still belongs in the readiness view
+            # under a BoM focus or the explicit toggle it still belongs in
+            # the readiness view
             if payload["total_uncovered"] <= 0 \
                     and not payload["requested_count"] \
-                    and not focus_product_id:
+                    and not focus_product_id \
+                    and not show_covered:
                 continue
             if uncovered_only and payload["total_uncovered"] <= 0:
                 continue
