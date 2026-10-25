@@ -347,8 +347,9 @@
                                 </td>
                                 <td class="o_mnp_product">
                                     <strong t-esc="group.name"/>
-                                    <span t-if="group.total_uncovered &lt;= 0"
-                                          class="badge text-bg-success ms-2">Hazır</span>
+                                    <i t-if="group.total_uncovered &lt;= 0"
+                                       class="fa fa-check-circle text-success ms-2"
+                                       title="Hazır — tüm ihtiyaçlar karşılandı"/>
                                     <span class="text-muted ms-2 o_mnp_rowcount"
                                           t-esc="`· ${group.need_count} satır`"/>
                                 </td>
