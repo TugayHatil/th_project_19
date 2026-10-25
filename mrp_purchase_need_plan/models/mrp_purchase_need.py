@@ -188,8 +188,13 @@ class MrpPurchaseNeed(models.AbstractModel):
         hide parent demands, so BoM-exploded component needs would
         silently vanish. The plan is therefore always the full canonical
         build and matching happens on the computed lines."""
+        # the covered-variant plan runs the full walk without the
+        # coverage pre-pass so "ready" products exist in the output —
+        # cached separately, the fast canonical plan is untouched
+        include_covered = bool(show_covered or focus_product_id)
         plan = self._get_plan(
-            warehouse_id, False, False, "", force=force)
+            warehouse_id, False, False, "", force=force,
+            include_covered=include_covered)
         plan = self._filter_lines(plan, date_from, date_to)
         if focus_product_id:
             # one id or a list — every focus product contributes its own
@@ -263,7 +268,8 @@ class MrpPurchaseNeed(models.AbstractModel):
 
     @api.model
     def get_need_lines(self, product_id, warehouse_id=False,
-                       date_from=None, date_to=None):
+                       date_from=None, date_to=None,
+                       include_covered=False):
         """Need detail rows for a single product group (BRD §3.2).
 
         The whole plan is computed even for a single product: virtual
@@ -271,7 +277,8 @@ class MrpPurchaseNeed(models.AbstractModel):
         same computation. Served from the shared plan cache, so expanding
         a group right after load does not recompute anything."""
         plan = self._filter_lines(
-            self._get_plan(warehouse_id, False, False, ""),
+            self._get_plan(warehouse_id, False, False, "",
+                           include_covered=include_covered),
             date_from, date_to)
         data = plan.get(int(product_id))
         if not data:
@@ -462,7 +469,8 @@ class MrpPurchaseNeed(models.AbstractModel):
     # ------------------------------------------------------------------
 
     @api.model
-    def _plan_cache_key(self, warehouse_id, date_from, date_to, query):
+    def _plan_cache_key(self, warehouse_id, date_from, date_to, query,
+                        include_covered=False):
         return (
             self.env.cr.dbname,
             self.env.uid,
@@ -470,6 +478,7 @@ class MrpPurchaseNeed(models.AbstractModel):
             self._plan_version(),
             int(warehouse_id) if warehouse_id else 0,
             str(date_from or ""), str(date_to or ""), str(query or ""),
+            bool(include_covered),
         )
 
     @api.model
@@ -491,7 +500,7 @@ class MrpPurchaseNeed(models.AbstractModel):
 
     @api.model
     def _get_plan(self, warehouse_id, date_from, date_to, query,
-                  force=False, allow_stale=True):
+                  force=False, allow_stale=True, include_covered=False):
         """Shared plan accessor — a computed plan is pure data, so it can
         be reused by detail calls and repeated loads.
 
@@ -501,9 +510,11 @@ class MrpPurchaseNeed(models.AbstractModel):
         version is served only while it is young — that grace window
         lets the warm-up cron rebuild after writes instead of making a
         user request pay the full recompute."""
-        key = self._plan_cache_key(warehouse_id, date_from, date_to, query)
+        key = self._plan_cache_key(
+            warehouse_id, date_from, date_to, query, include_covered)
         now = fields.Datetime.now().timestamp()
-        name = self._snapshot_name(warehouse_id, date_from, date_to, query)
+        name = self._snapshot_name(
+            warehouse_id, date_from, date_to, query, include_covered)
         if not force:
             with _PLAN_CACHE_LOCK:
                 entry = _PLAN_CACHE.get(key)
@@ -520,7 +531,8 @@ class MrpPurchaseNeed(models.AbstractModel):
         # the plan payload — it stays off the request path (the warm-up
         # cron runs it) so a forced refresh only pays the compute
         plan = self._build_plan(
-            warehouse_id, date_from, date_to, query, run_sync=False)
+            warehouse_id, date_from, date_to, query, run_sync=False,
+            include_covered=include_covered)
         self._store_snapshot(name, plan)
         with _PLAN_CACHE_LOCK:
             while len(_PLAN_CACHE) >= _PLAN_CACHE_MAX:
@@ -536,7 +548,8 @@ class MrpPurchaseNeed(models.AbstractModel):
     # missing keys would silently break new frontend features
     _PLAN_SCHEMA = 5
 
-    def _snapshot_name(self, warehouse_id, date_from, date_to, query):
+    def _snapshot_name(self, warehouse_id, date_from, date_to, query,
+                       include_covered=False):
         """Stable attachment name per filter scope — version is carried
         inside the payload so a rebuild overwrites the same snapshot."""
         raw = repr((
@@ -545,6 +558,7 @@ class MrpPurchaseNeed(models.AbstractModel):
             self.env.user.tz or "UTC",
             int(warehouse_id) if warehouse_id else 0,
             str(date_from or ""), str(date_to or ""), str(query or ""),
+            bool(include_covered),
         ))
         return "mnp.plan." + hashlib.sha1(raw.encode()).hexdigest()
 
@@ -633,7 +647,8 @@ class MrpPurchaseNeed(models.AbstractModel):
 
     @api.model
     def _build_plan(self, warehouse_id, date_from, date_to, query,
-                    products=None, _prof=None, run_sync=True):
+                    products=None, _prof=None, run_sync=True,
+                    include_covered=False):
         """Compute per-product need data — pure dicts, no recordsets.
 
         Every heavy read is batched into _load_ctx(): moves, picked
@@ -728,7 +743,10 @@ class MrpPurchaseNeed(models.AbstractModel):
                         ctx, self._open_qty(ctx, mv),
                         mv["product_uom"],
                         ctx["prod"][pid]["uom_id"])
-        skip_pids = {
+        # include_covered keeps every product in the walk so the
+        # readiness view (BoM focus / show-covered toggle) can render
+        # provably covered needs too — the canonical plan keeps the skip
+        skip_pids = set() if include_covered else {
             pid for pid in products.ids
             if outflow_tot[pid]
             <= onhand.get(pid, 0.0) + inflow_tot[pid] + 1e-9

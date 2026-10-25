@@ -255,6 +255,8 @@ export class NeedPlan extends Component {
                     warehouse_id: this.state.warehouseId || false,
                     date_from: this.state.dateFrom || false,
                     date_to: this.state.dateTo || false,
+                    include_covered: this.state.showCovered
+                        || this.state.focusIds.length > 0,
                 });
             this.state.lines[pid] = data.lines || [];
             this.state.suggestions[pid] = data.suggestions || [];
