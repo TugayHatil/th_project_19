@@ -172,7 +172,8 @@ class MrpPurchaseNeed(models.AbstractModel):
                         uncovered_only=False,
                         sort_by="purchase_start", force=False,
                         focus_product_id=False, mip_resp_id=False,
-                        sa_resp_id=False, show_covered=False):
+                        sa_resp_id=False, show_covered=False,
+                        strict_fresh=False):
         """Product-grouped need summaries (BRD §3.1), server-paged.
 
         Need lines are intentionally not serialized; they are fetched
@@ -192,8 +193,12 @@ class MrpPurchaseNeed(models.AbstractModel):
         # coverage pre-pass so "ready" products exist in the output —
         # cached separately, the fast canonical plan is untouched
         include_covered = bool(show_covered or focus_product_id)
+        # strict_fresh (first page load) rejects the staleness grace — a
+        # snapshot older than the latest write triggers a rebuild so the
+        # screen never opens on data the user knows is outdated
         plan = self._get_plan(
             warehouse_id, False, False, "", force=force,
+            allow_stale=not strict_fresh,
             include_covered=include_covered)
         plan = self._filter_lines(plan, date_from, date_to)
         if focus_product_id:
