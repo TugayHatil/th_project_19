@@ -133,6 +133,22 @@
         width: 32px;
     }
 
+    .o_mnp_sortable {
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+
+        &:hover {
+            color: #111827;
+        }
+
+        .fa {
+            font-size: 0.7rem;
+            margin-left: 2px;
+            color: #6b7280;
+        }
+    }
+
     // Odoo standart opsiyonel-sütun deseni: tablo başlığının son hücresi
     // (sticky pozisyon zaten menüyü konumlandırmak için yeterli)
     .o_mnp_cols_th {

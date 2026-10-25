@@ -52,6 +52,21 @@ _MIP_ENSURE_CRON = 4000     # warm-up cron builds
 _MIP_BACKLOG_PARAM = "mrp_purchase_need_plan.mip_backlog"
 _PLAN_VERSION_PARAM = "mrp_purchase_need_plan.plan_version"
 
+# group sort: UI sort key -> payload field ("covered" is computed)
+_GROUP_SORT_KEYS = {
+    "name": "name",
+    "need_date": "earliest_need",
+    "earliest_termin": "earliest_termin",
+    "location": "location",
+    "onhand": "onhand",
+    "end_forecast": "end_forecast",
+    "total_need": "total_need",
+    "covered": "covered",
+    "total_uncovered": "total_uncovered",
+    "purchase_start": "earliest_start",
+    "earliest_approve": "earliest_approve",
+}
+
 
 class MrpPurchaseNeed(models.AbstractModel):
     """Stateless service backing the Material Need Planning screen.
@@ -171,7 +186,8 @@ class MrpPurchaseNeed(models.AbstractModel):
     def get_need_groups(self, warehouse_id=False, date_from=None,
                         date_to=None, query="", limit=None, offset=0,
                         uncovered_only=False,
-                        sort_by="purchase_start", force=False,
+                        sort_by="purchase_start", sort_desc=False,
+                        force=False,
                         focus_product_id=False, mip_resp_id=False,
                         sa_resp_id=False, show_covered=False):
         """Product-grouped need summaries (BRD §3.1), server-paged.
@@ -243,8 +259,18 @@ class MrpPurchaseNeed(models.AbstractModel):
             if uncovered_only and payload["total_uncovered"] <= 0:
                 continue
             groups.append(payload)
-        key = "earliest_need" if sort_by == "need_date" else "earliest_start"
-        groups.sort(key=lambda g: (g[key], g["name"]))
+        key = _GROUP_SORT_KEYS.get(sort_by, "earliest_start")
+        if key == "covered":
+            groups.sort(
+                key=lambda g: (g["total_need"] - g["total_uncovered"],
+                               g["name"]),
+                reverse=bool(sort_desc))
+        else:
+            groups.sort(
+                key=lambda g: (
+                    g[key] is False or g[key] is None or g[key] == "",
+                    g[key], g["name"]),
+                reverse=bool(sort_desc))
         total = len(groups)
         if limit:
             groups = groups[int(offset or 0):int(offset or 0) + int(limit)]

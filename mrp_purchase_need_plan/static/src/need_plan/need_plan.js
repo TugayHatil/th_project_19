@@ -113,6 +113,7 @@ export class NeedPlan extends Component {
             saRespId: false,
             saRespName: "",
             sortBy: "purchase_start",
+            sortDesc: false,
             canCreate: false,
             today: "",
             // server-side paging — the group list itself is paged so the
@@ -190,6 +191,7 @@ export class NeedPlan extends Component {
                     uncovered_only: this.state.uncoveredOnly,
                     show_covered: this.state.showCovered,
                     sort_by: this.state.sortBy,
+                    sort_desc: this.state.sortDesc,
                     focus_product_id: this.state.focusProducts.length
                         ? this.state.focusProducts.map((p) => p.id)
                         : false,
@@ -876,10 +878,22 @@ export class NeedPlan extends Component {
         this.state.colsOpen = !this.state.colsOpen;
     }
 
-    onSortChange(ev) {
-        this.state.sortBy = ev.target.value;
+    toggleSort(key) {
+        if (this.state.sortBy === key) {
+            this.state.sortDesc = !this.state.sortDesc;
+        } else {
+            this.state.sortBy = key;
+            this.state.sortDesc = false;
+        }
         this.state.page = 0;
         this.loadGroups();
+    }
+
+    sortIcon(key) {
+        if (this.state.sortBy !== key) {
+            return "";
+        }
+        return this.state.sortDesc ? "fa-arrow-down" : "fa-arrow-up";
     }
 
     prevPage() {

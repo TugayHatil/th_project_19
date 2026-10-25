@@ -181,20 +181,6 @@
                             Hazır olanları da göster
                         </label>
                     </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <label class="form-label mb-0 text-nowrap">Sırala</label>
-                        <select class="form-select form-select-sm w-auto"
-                                t-on-change="onSortChange">
-                            <option value="purchase_start"
-                                    t-att-selected="state.sortBy === 'purchase_start'">
-                                Satınalma başlangıcı
-                            </option>
-                            <option value="need_date"
-                                    t-att-selected="state.sortBy === 'need_date'">
-                                İhtiyaç tarihi
-                            </option>
-                        </select>
-                    </div>
                     <button type="button" class="btn btn-sm btn-outline-secondary ms-auto"
                             t-att-disabled="state.loading"
                             t-on-click="() => this.loadGroups(true)">
@@ -270,27 +256,63 @@
                         <tr>
                             <th class="o_mnp_col_sel"></th>
                             <th class="o_mnp_col_exp"></th>
-                            <th class="o_mnp_col_product">Ürün</th>
+                            <th class="o_mnp_col_product o_mnp_sortable"
+                                t-on-click="() => this.toggleSort('name')">
+                                Ürün <i t-attf-class="fa {{sortIcon('name')}}"/>
+                            </th>
                             <th t-if="state.showMipResp">MİP Sorumlusu</th>
                             <th t-if="state.showSaResp">SA Sorumlusu</th>
                             <th t-if="state.showType">Tür</th>
                             <th t-if="state.showSource">Kaynak</th>
                             <th t-if="state.showMip">MİP No</th>
-                            <th>İhtiyaç Tarihi</th>
-                            <th>Öneri Termin</th>
+                            <th class="o_mnp_sortable"
+                                t-on-click="() => this.toggleSort('need_date')">
+                                İhtiyaç Tarihi <i t-attf-class="fa {{sortIcon('need_date')}}"/>
+                            </th>
+                            <th class="o_mnp_sortable"
+                                t-on-click="() => this.toggleSort('earliest_termin')">
+                                Öneri Termin <i t-attf-class="fa {{sortIcon('earliest_termin')}}"/>
+                            </th>
                             <th t-if="state.showExc">İstisna</th>
-                            <th>Konum</th>
+                            <th class="o_mnp_sortable"
+                                t-on-click="() => this.toggleSort('location')">
+                                Konum <i t-attf-class="fa {{sortIcon('location')}}"/>
+                            </th>
                             <th t-if="state.showRoute">Rota</th>
-                            <th class="o_mnp_num">Stok</th>
-                            <th class="o_mnp_num">Öngörülen</th>
-                            <th class="o_mnp_num">İhtiyaç Miktarı</th>
-                            <th class="o_mnp_num">Karşılanan</th>
-                            <th class="o_mnp_num">Açık</th>
+                            <th class="o_mnp_num o_mnp_sortable"
+                                t-on-click="() => this.toggleSort('onhand')">
+                                Stok <i t-attf-class="fa {{sortIcon('onhand')}}"/>
+                            </th>
+                            <th class="o_mnp_num o_mnp_sortable"
+                                t-on-click="() => this.toggleSort('end_forecast')">
+                                Öngörülen <i t-attf-class="fa {{sortIcon('end_forecast')}}"/>
+                            </th>
+                            <th class="o_mnp_num o_mnp_sortable"
+                                t-on-click="() => this.toggleSort('total_need')">
+                                İhtiyaç Miktarı <i t-attf-class="fa {{sortIcon('total_need')}}"/>
+                            </th>
+                            <th class="o_mnp_num o_mnp_sortable"
+                                t-on-click="() => this.toggleSort('covered')">
+                                Karşılanan <i t-attf-class="fa {{sortIcon('covered')}}"/>
+                            </th>
+                            <th class="o_mnp_num o_mnp_sortable"
+                                t-on-click="() => this.toggleSort('total_uncovered')">
+                                Açık <i t-attf-class="fa {{sortIcon('total_uncovered')}}"/>
+                            </th>
                             <th class="o_mnp_num">Planla</th>
                             <th>Birim</th>
-                            <th class="o_mnp_num">Gün</th>
-                            <th>Başlangıç</th>
-                            <th>Son Onay</th>
+                            <th class="o_mnp_num o_mnp_sortable"
+                                t-on-click="() => this.toggleSort('purchase_start')">
+                                Gün <i t-attf-class="fa {{sortIcon('purchase_start')}}"/>
+                            </th>
+                            <th class="o_mnp_sortable"
+                                t-on-click="() => this.toggleSort('purchase_start')">
+                                Başlangıç <i t-attf-class="fa {{sortIcon('purchase_start')}}"/>
+                            </th>
+                            <th class="o_mnp_sortable"
+                                t-on-click="() => this.toggleSort('earliest_approve')">
+                                Son Onay <i t-attf-class="fa {{sortIcon('earliest_approve')}}"/>
+                            </th>
                             <th>Durum</th>
                             <th class="o_mnp_cols_th">
                                 <button type="button"
