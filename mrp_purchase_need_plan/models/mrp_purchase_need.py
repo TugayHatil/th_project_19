@@ -525,13 +525,18 @@ class MrpPurchaseNeed(models.AbstractModel):
                 entry = _PLAN_CACHE.get(key)
                 if entry and now - entry[0] < _PLAN_CACHE_TTL:
                     return entry[1]
-            snap = self._load_snapshot(name, allow_stale=allow_stale)
-            if snap is not None:
-                with _PLAN_CACHE_LOCK:
-                    while len(_PLAN_CACHE) >= _PLAN_CACHE_MAX:
-                        _PLAN_CACHE.pop(next(iter(_PLAN_CACHE)))
-                    _PLAN_CACHE[key] = (now, snap)
-                return snap
+            res = self._load_snapshot(name, allow_stale=allow_stale)
+            if res is not None:
+                plan, fresh = res
+                # only a version-fresh snapshot may enter the process
+                # cache — caching a grace-period plan under the current
+                # version key would poison later strict_fresh requests
+                if fresh:
+                    with _PLAN_CACHE_LOCK:
+                        while len(_PLAN_CACHE) >= _PLAN_CACHE_MAX:
+                            _PLAN_CACHE.pop(next(iter(_PLAN_CACHE)))
+                        _PLAN_CACHE[key] = (now, plan)
+                return plan
         # MİP record sync is bookkeeping for the MİP list, not part of
         # the plan payload — it stays off the request path (the warm-up
         # cron runs it) so a forced refresh only pays the compute
@@ -586,11 +591,13 @@ class MrpPurchaseNeed(models.AbstractModel):
             return None
         # json coerces the int product_id keys to strings
         plan = {int(k): v for k, v in plan.items()}
+        # (plan, is_version_fresh) — callers may serve a grace-period
+        # snapshot but must not treat it as current-version data
         if payload.get("v") == self._plan_version():
-            return plan
+            return plan, True
         if allow_stale and time.time() - payload.get("t", 0) \
                 < self._PLAN_SNAPSHOT_MAX_AGE:
-            return plan
+            return plan, False
         return None
 
     def _store_snapshot(self, name, plan):
