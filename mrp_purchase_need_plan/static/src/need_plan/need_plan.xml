@@ -248,7 +248,6 @@
                         <col class="o_mnp_col_uom"/>
                         <col class="o_mnp_col_days"/>
                         <col class="o_mnp_col_date"/>
-                        <col class="o_mnp_col_date"/>
                         <col class="o_mnp_col_status"/>
                         <col class="o_mnp_col_cols"/>
                     </colgroup>
@@ -302,12 +301,8 @@
                             <th class="o_mnp_num">Planla</th>
                             <th>Birim</th>
                             <th class="o_mnp_num o_mnp_sortable"
-                                t-on-click="() => this.toggleSort('purchase_start')">
-                                Gün <i t-attf-class="fa {{sortIcon('purchase_start')}}"/>
-                            </th>
-                            <th class="o_mnp_sortable"
-                                t-on-click="() => this.toggleSort('purchase_start')">
-                                Başlangıç <i t-attf-class="fa {{sortIcon('purchase_start')}}"/>
+                                t-on-click="() => this.toggleSort('earliest_approve')">
+                                Gün <i t-attf-class="fa {{sortIcon('earliest_approve')}}"/>
                             </th>
                             <th class="o_mnp_sortable"
                                 t-on-click="() => this.toggleSort('earliest_approve')">
@@ -445,11 +440,8 @@
                                 </td>
                                 <td class="o_mnp_summary text-muted"
                                     t-esc="group.uom"/>
-                                <td t-att-class="'o_mnp_num o_mnp_summary' + (daysUntil(group.earliest_start) &lt; 0 ? ' o_mnp_neg' : '')">
-                                    <strong t-esc="daysUntil(group.earliest_start)"/>
-                                </td>
-                                <td class="o_mnp_summary">
-                                    <strong t-esc="fmtDate(group.earliest_start)"/>
+                                <td t-att-class="'o_mnp_num o_mnp_summary' + (daysUntil(group.earliest_approve) &lt; 0 ? ' o_mnp_neg' : '')">
+                                    <strong t-esc="daysUntil(group.earliest_approve)"/>
                                 </td>
                                 <td class="o_mnp_summary"
                                     t-esc="fmtDate(group.earliest_approve)"/>
@@ -542,17 +534,14 @@
                                                    t-on-click.stop="() => {}"/>
                                         </td>
                                         <td class="text-muted" t-esc="line.uom"/>
-                                        <td t-att-class="'o_mnp_num' + (daysUntil(line.purchase_start) &lt; 0 ? ' o_mnp_neg' : '')"
-                                            t-esc="daysUntil(line.purchase_start)"/>
-                                        <td t-esc="fmtDate(line.purchase_start)"/>
+                                        <td t-att-class="'o_mnp_num' + (daysUntil(line.approve_by) &lt; 0 ? ' o_mnp_neg' : '')"
+                                            t-esc="daysUntil(line.approve_by)"/>
                                         <td t-esc="fmtDate(line.approve_by)"/>
                                         <td class="o_mnp_status">
                                             <span t-if="line.uncovered_qty &lt;= 0"
                                                   class="badge text-bg-success">Karşılandı</span>
                                             <span t-elif="daysUntil(line.approve_by) &lt; 0"
                                                   class="badge text-bg-danger">Geciken</span>
-                                            <span t-elif="daysUntil(line.purchase_start) > 0"
-                                                  class="badge text-bg-secondary">Bekleyen</span>
                                             <span t-else=""
                                                   class="badge text-bg-warning">Açık</span>
                                         </td>
@@ -561,13 +550,13 @@
                                 </t>
                                 <tr t-if="state.lines[group.product_id] === undefined"
                                     class="o_mnp_line">
-                                    <td t-att-colspan="16 + (state.showMipResp ? 1 : 0) + (state.showSaResp ? 1 : 0) + (state.showType ? 1 : 0) + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0) + (state.showExc ? 1 : 0) + (state.showRoute ? 1 : 0)"
+                                    <td t-att-colspan="15 + (state.showMipResp ? 1 : 0) + (state.showSaResp ? 1 : 0) + (state.showType ? 1 : 0) + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0) + (state.showExc ? 1 : 0) + (state.showRoute ? 1 : 0)"
                                         class="text-muted text-center">
                                         Yükleniyor…
                                     </td>
                                 </tr>
                                 <tr t-elif="!groupLines(group).length" class="o_mnp_line">
-                                    <td t-att-colspan="16 + (state.showMipResp ? 1 : 0) + (state.showSaResp ? 1 : 0) + (state.showType ? 1 : 0) + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0) + (state.showExc ? 1 : 0) + (state.showRoute ? 1 : 0)"
+                                    <td t-att-colspan="15 + (state.showMipResp ? 1 : 0) + (state.showSaResp ? 1 : 0) + (state.showType ? 1 : 0) + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0) + (state.showExc ? 1 : 0) + (state.showRoute ? 1 : 0)"
                                         class="text-muted text-center">
                                         Bu kapsamda ihtiyaç satırı yok.
                                     </td>

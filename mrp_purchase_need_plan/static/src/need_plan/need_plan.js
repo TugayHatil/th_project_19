@@ -112,7 +112,7 @@ export class NeedPlan extends Component {
             mipRespName: "",
             saRespId: false,
             saRespName: "",
-            sortBy: "purchase_start",
+            sortBy: "earliest_approve",
             sortDesc: false,
             canCreate: false,
             today: "",

@@ -112,10 +112,10 @@ class TestPurchaseNeedPlan(TransactionCase):
         self._make_mo(self.vida, 10, need)  # proc_days = 2 on the card
 
         line = self._lines(self.vida)[0]
-        # approve_by = need - 5 lead, start = approve_by - 2 card days
+        # Son Onay = need - 2 card process days
         self.assertEqual(
-            fields.Date.to_date(line["purchase_start"]),
-            need - timedelta(days=7),
+            fields.Date.to_date(line["approve_by"]),
+            need - timedelta(days=2),
         )
 
     def test_03_default_days_fallback(self):
@@ -127,8 +127,8 @@ class TestPurchaseNeedPlan(TransactionCase):
 
         line = self._lines(self.vida)[0]
         self.assertEqual(
-            fields.Date.to_date(line["purchase_start"]),
-            need - timedelta(days=8),  # 5 lead + 3 default days
+            fields.Date.to_date(line["approve_by"]),
+            need - timedelta(days=3),  # 3 default days
         )
         self.assertFalse(line["missing_lead_config"])
 
@@ -141,17 +141,14 @@ class TestPurchaseNeedPlan(TransactionCase):
         self.assertTrue(line["missing_lead_config"])
 
     def test_04_date_calculation(self):
-        """need - lead = approve_by; approve_by - proc days = start (Test 4)."""
+        """approve_by = need - proc days (Test 4)."""
         need = fields.Date(2026, 10, 29)
-        self._make_mo(self.ayak, 10, need)  # lead 5, proc 3
+        self._make_mo(self.ayak, 10, need)  # proc 3
 
         line = self._lines(self.ayak)[0]
         self.assertEqual(
             fields.Date.to_date(line["approve_by"]),
-            fields.Date(2026, 10, 24))
-        self.assertEqual(
-            fields.Date.to_date(line["purchase_start"]),
-            fields.Date(2026, 10, 21))
+            fields.Date(2026, 10, 26))
 
     def test_05_forecast_running_balance(self):
         """0 stock, needs 400 then 200 -> forecast -400 then -600 (Test 5)."""

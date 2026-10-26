@@ -63,7 +63,6 @@ _GROUP_SORT_KEYS = {
     "total_need": "total_need",
     "covered": "covered",
     "total_uncovered": "total_uncovered",
-    "purchase_start": "earliest_start",
     "earliest_approve": "earliest_approve",
 }
 
@@ -186,7 +185,7 @@ class MrpPurchaseNeed(models.AbstractModel):
     def get_need_groups(self, warehouse_id=False, date_from=None,
                         date_to=None, query="", limit=None, offset=0,
                         uncovered_only=False,
-                        sort_by="purchase_start", sort_desc=False,
+                        sort_by="earliest_approve", sort_desc=False,
                         force=False,
                         focus_product_id=False, mip_resp_id=False,
                         sa_resp_id=False, show_covered=False):
@@ -259,7 +258,7 @@ class MrpPurchaseNeed(models.AbstractModel):
             if uncovered_only and payload["total_uncovered"] <= 0:
                 continue
             groups.append(payload)
-        key = _GROUP_SORT_KEYS.get(sort_by, "earliest_start")
+        key = _GROUP_SORT_KEYS.get(sort_by, "earliest_approve")
         if key == "covered":
             groups.sort(
                 key=lambda g: (g["total_need"] - g["total_uncovered"],
@@ -597,7 +596,7 @@ class MrpPurchaseNeed(models.AbstractModel):
     # payload schema — bump whenever the serialized plan shape changes;
     # a snapshot written by older code is rejected outright since its
     # missing keys would silently break new frontend features
-    _PLAN_SCHEMA = 5
+    _PLAN_SCHEMA = 6
 
     def _snapshot_name(self, warehouse_id, date_from, date_to, query,
                        include_covered=False):
@@ -1416,9 +1415,11 @@ class MrpPurchaseNeed(models.AbstractModel):
 
         # any product with a manufacture route is produced, not bought:
         # its lead time is the production delay on the card (Üretim
-        # Süresi), so start/approve dates mean "production must begin
-        # by" instead of a purchasing horizon
+        # Süresi). For buyable products the "Son Onay" deadline is the
+        # need date minus the internal purchase-process days.
         has_manu = bool(manu_ids & product_routes)
+        approve_days = (prod["produce_delay"] or 0) if has_manu \
+            else lead["proc"]
 
         def line_delay(qty, date):
             if has_manu:
@@ -1511,8 +1512,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                 # virtual (BoM-exploded) component need
                 need_date = entry["date"]
                 delay = line_delay(entry["qty"], need_date)
-                approve_by = need_date - timedelta(days=delay)
-                purchase_start = approve_by - timedelta(days=lead["proc"])
+                approve_by = need_date - timedelta(days=approve_days)
                 info = detail.get(
                     entry["key"], {"forecast": walk["balance"],
                                    "uncovered": 0.0})
@@ -1546,8 +1546,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                     "pull_covered": suggest_map[entry["key"]],
                     "uom": prod["uom_name"],
                     "approve_by": fields.Date.to_string(approve_by),
-                    "purchase_start": fields.Date.to_string(purchase_start),
-                    "is_late": purchase_start < today,
+                    "is_late": approve_by < today,
                     "suggested_termin": fields.Date.to_string(
                         self._suggested_termin(
                             ctx, need_date, delay, today,
@@ -1589,8 +1588,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                         mv["picking_id"], "")
             need_date = self._local_date(need_dt, ctx)
             delay = line_delay(qty, need_date)
-            approve_by = need_date - timedelta(days=delay)
-            purchase_start = approve_by - timedelta(days=lead["proc"])
+            approve_by = need_date - timedelta(days=approve_days)
             info = detail.get(mv["id"], {"forecast": walk["balance"],
                                          "uncovered": 0.0})
             req_qty = requested.get(mv["id"], 0.0)
@@ -1654,8 +1652,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "pull_covered": suggest_map[mv["id"]],
                 "uom": prod["uom_name"],
                 "approve_by": fields.Date.to_string(approve_by),
-                "purchase_start": fields.Date.to_string(purchase_start),
-                "is_late": purchase_start < today,
+                "is_late": approve_by < today,
                 "suggested_termin": fields.Date.to_string(
                     self._suggested_termin(
                         ctx, need_date, delay, today,
@@ -1685,7 +1682,6 @@ class MrpPurchaseNeed(models.AbstractModel):
     def _group_payload(self, data):
         product = data["product"]
         lines = data["lines"]
-        starts = [ln["purchase_start"] for ln in lines]
         locs = list(dict.fromkeys(ln["location"] for ln in lines))
         return {
             "product_id": product["id"],
@@ -1704,7 +1700,6 @@ class MrpPurchaseNeed(models.AbstractModel):
             "need_count": len(lines),
             "earliest_need": min(ln["need_date"] for ln in lines),
             "earliest_approve": min(ln["approve_by"] for ln in lines),
-            "earliest_start": min(starts),
             "earliest_termin": min(
                 (ln["suggested_termin"] for ln in lines
                  if ln.get("suggested_termin")), default=""),
