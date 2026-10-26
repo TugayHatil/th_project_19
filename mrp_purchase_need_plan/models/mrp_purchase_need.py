@@ -756,11 +756,11 @@ class MrpPurchaseNeed(models.AbstractModel):
             need_moves, ctx)
         exc_map = self._get_reschedule_log(need_moves)
         _mark("onhand+requested")
-        lead_info = self._get_lead_info(products, ctx)
-        _mark("lead_info")
         buy_ids = self._get_buy_route_ids()
         manu_ids = self._get_manu_route_ids()
         route_sets = (buy_ids, manu_ids)
+        lead_info = self._get_lead_info(products, ctx, route_sets)
+        _mark("lead_info")
         today = fields.Date.context_today(self)
 
         # need moves are themselves pending outgoing flow — they appear
@@ -1414,6 +1414,17 @@ class MrpPurchaseNeed(models.AbstractModel):
             parts.append("Ü")
         route_abbr = "+".join(parts) or "-"
 
+        # manufacture-only products aren't purchased: their lead time is
+        # the production delay on the card, so start/approve dates mean
+        # "production must begin by" instead of a purchasing horizon
+        manu_only = bool(manu_ids & product_routes) \
+            and not (buy_ids & product_routes)
+
+        def line_delay(qty, date):
+            if manu_only:
+                return prod["produce_delay"] or 0
+            return self._seller_delay(ctx, pid, qty, date)
+
         def req_of(kind, entry):
             if kind == "ev":
                 return vreq.get(entry["key"], 0.0)
@@ -1499,8 +1510,7 @@ class MrpPurchaseNeed(models.AbstractModel):
             if kind == "ev":
                 # virtual (BoM-exploded) component need
                 need_date = entry["date"]
-                delay = self._seller_delay(
-                    ctx, pid, entry["qty"], need_date)
+                delay = line_delay(entry["qty"], need_date)
                 approve_by = need_date - timedelta(days=delay)
                 purchase_start = approve_by - timedelta(days=lead["proc"])
                 info = detail.get(
@@ -1578,7 +1588,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                     source = mv["origin"] or ctx["pick_name"].get(
                         mv["picking_id"], "")
             need_date = self._local_date(need_dt, ctx)
-            delay = self._seller_delay(ctx, pid, qty, need_date)
+            delay = line_delay(qty, need_date)
             approve_by = need_date - timedelta(days=delay)
             purchase_start = approve_by - timedelta(days=lead["proc"])
             info = detail.get(mv["id"], {"forecast": walk["balance"],
@@ -2570,22 +2580,28 @@ class MrpPurchaseNeed(models.AbstractModel):
         return set(routes.ids)
 
     @api.model
-    def _get_lead_info(self, products, ctx):
+    def _get_lead_info(self, products, ctx, route_sets):
         """Purchase-process days per product (BRD §4.3).
 
         Product card wins; otherwise the global default. When neither is
         configured the product is flagged so the screen can warn instead
-        of silently planning with zero days (BRD §4.3).
-        """
+        of silently planning with zero days (BRD §4.3). Manufacture-only
+        products lead with produce_delay, not purchasing days — they
+        never need the warning."""
+        buy_ids, manu_ids = route_sets
         Param = self.env["ir.config_parameter"].sudo()
         raw = Param.get_param("mrp_purchase_need_plan.default_process_days")
         default_set = raw not in (None, "")
         default_days = int(raw) if default_set else 0
         info = {}
         for pid in products.ids:
-            proc = ctx["prod"][pid]["proc_days"]
-            if proc:
-                info[pid] = {"proc": proc, "missing": False}
+            prod = ctx["prod"][pid]
+            manu_only = bool(manu_ids & prod["routes"]) \
+                and not (buy_ids & prod["routes"])
+            if manu_only:
+                info[pid] = {"proc": 0, "missing": False}
+            elif prod["proc_days"]:
+                info[pid] = {"proc": prod["proc_days"], "missing": False}
             elif default_set:
                 info[pid] = {"proc": default_days, "missing": False}
             else:
