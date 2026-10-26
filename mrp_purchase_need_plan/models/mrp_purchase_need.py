@@ -1414,14 +1414,14 @@ class MrpPurchaseNeed(models.AbstractModel):
             parts.append("Ü")
         route_abbr = "+".join(parts) or "-"
 
-        # manufacture-only products aren't purchased: their lead time is
-        # the production delay on the card, so start/approve dates mean
-        # "production must begin by" instead of a purchasing horizon
-        manu_only = bool(manu_ids & product_routes) \
-            and not (buy_ids & product_routes)
+        # any product with a manufacture route is produced, not bought:
+        # its lead time is the production delay on the card (Üretim
+        # Süresi), so start/approve dates mean "production must begin
+        # by" instead of a purchasing horizon
+        has_manu = bool(manu_ids & product_routes)
 
         def line_delay(qty, date):
-            if manu_only:
+            if has_manu:
                 return prod["produce_delay"] or 0
             return self._seller_delay(ctx, pid, qty, date)
 
@@ -2596,9 +2596,9 @@ class MrpPurchaseNeed(models.AbstractModel):
         info = {}
         for pid in products.ids:
             prod = ctx["prod"][pid]
-            manu_only = bool(manu_ids & prod["routes"]) \
-                and not (buy_ids & prod["routes"])
-            if manu_only:
+            if manu_ids & prod["routes"]:
+                # produced products lead with produce_delay — purchase
+                # process days are irrelevant, never flag them
                 info[pid] = {"proc": 0, "missing": False}
             elif prod["proc_days"]:
                 info[pid] = {"proc": prod["proc_days"], "missing": False}
