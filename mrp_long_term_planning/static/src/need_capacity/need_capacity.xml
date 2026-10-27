@@ -100,7 +100,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <t t-foreach="state.rows" t-as="row" t-key="row.product_id + '-' + row.year + '-' + row.month">
+                        <t t-foreach="state.rows" t-as="row" t-key="row.product_id + '-' + row.key">
                             <tr t-att-class="row.overload ? 'o_nc_row_late' : ''">
                                 <td class="o_nc_product">
                                     <strong t-esc="row.name"/>
