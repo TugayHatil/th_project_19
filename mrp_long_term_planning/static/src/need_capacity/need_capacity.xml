@@ -106,6 +106,9 @@
                                     <strong t-esc="row.name"/>
                                     <span t-if="row.code" class="text-muted ms-1"
                                           t-esc="'[' + row.code + ']'"/>
+                                    <div t-if="row.source"
+                                         class="text-muted o_nc_source"
+                                         t-esc="row.source"/>
                                 </td>
                                 <td class="text-nowrap" t-esc="row.period"/>
                                 <td t-esc="fmtDate(row.deadline)"/>

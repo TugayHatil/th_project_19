@@ -12,7 +12,7 @@ WO_CLOSED_STATES = ("done", "cancel")
 
 
 class MrpLtpNeedSchedule(models.Model):
-    """Planner-confirmed production window for one product/month need.
+    """Planner-confirmed production window for one need line.
 
     Only the confirmed decision is persisted; the system suggestion is
     recomputed on every load from demand, calendar and load data, so it
@@ -22,22 +22,21 @@ class MrpLtpNeedSchedule(models.Model):
 
     _name = "mrp.ltp.need.schedule"
     _description = "Need-Level Planned Production Window"
-    _order = "period, product_id"
+    _order = "product_id, line_key"
 
     product_id = fields.Many2one(
         "product.product", string="Product", required=True, index=True,
         ondelete="cascade",
     )
+    # identifies the need line — the MİP plan key ("mv:123" / virtual)
+    # or "im:<abs_month>" when running without the MİP addon
+    line_key = fields.Char(required=True, index=True)
     warehouse_id = fields.Many2one(
         "stock.warehouse", string="Warehouse", index=True)
     company_id = fields.Many2one(
         "res.company", required=True, index=True,
         default=lambda self: self.env.company,
     )
-    year = fields.Integer(required=True)
-    month = fields.Integer(required=True)
-    # YYYYMM — monotonic key like mrp.ltp.line.
-    period = fields.Integer(compute="_compute_period", store=True, index=True)
     planned_start = fields.Date(required=True)
     planned_end = fields.Date(required=True)
     # snapshot of the need quantity at confirm time — informational only;
@@ -47,29 +46,27 @@ class MrpLtpNeedSchedule(models.Model):
         default=0.0,
     )
 
-    @api.depends("year", "month")
-    def _compute_period(self):
-        for line in self:
-            line.period = line.year * 100 + line.month
-
     def init(self):
         self.env.cr.execute("""
+            DROP INDEX IF EXISTS mrp_ltp_need_sched_uniq;
             CREATE UNIQUE INDEX IF NOT EXISTS mrp_ltp_need_sched_uniq
             ON mrp_ltp_need_schedule
-               (company_id, product_id, COALESCE(warehouse_id, 0), period)
+               (company_id, product_id, COALESCE(warehouse_id, 0), line_key)
         """)
 
 
 class MrpLtpNeed(models.AbstractModel):
     """Read-only bridge between the capacity grid and need lines.
 
-    Each row is one unmet production demand (product x month, the IM of
-    the planning grid). The engine backward-schedules it through the
-    product's BoM operations into daily workcenter capacity — earliest
-    deadline first — and reports the suggested window plus an overload
-    flag when capacity cannot fit it before the month end. Planners may
-    override the window; confirmed windows consume capacity ahead of the
-    suggestion pass. Nothing is rescheduled automatically.
+    Each row is one production need — a manufacture-routed line from the
+    MİP plan when the mrp_purchase_need_plan addon is installed, else the
+    monthly unmet demand (IM) of the planning grid. The engine
+    backward-schedules every need through the product's BoM operations
+    into daily workcenter capacity — earliest deadline first — and
+    reports the suggested window plus an overload flag when capacity
+    cannot fit it before the deadline. Planners may override the window;
+    confirmed windows consume capacity ahead of the suggestion pass.
+    Nothing is rescheduled automatically.
     """
 
     _name = "mrp.ltp.need"
@@ -117,11 +114,13 @@ class MrpLtpNeed(models.AbstractModel):
         }
 
     @api.model
-    def set_need_schedule(self, product_id, year, month,
+    def set_need_schedule(self, product_id, line_key,
                           planned_start, planned_end, warehouse_id=False):
         """Confirm (or move) the production window of one need line."""
         product_id = int(product_id)
-        year, month = int(year), int(month)
+        line_key = str(line_key or "")
+        if not line_key:
+            raise UserError(_("Missing need line key."))
         try:
             start = fields.Date.from_string(planned_start)
             end = fields.Date.from_string(planned_end)
@@ -133,52 +132,110 @@ class MrpLtpNeed(models.AbstractModel):
         Schedule = self.env["mrp.ltp.need.schedule"]
         rec = Schedule.search([
             ("product_id", "=", product_id),
+            ("line_key", "=", line_key),
             ("warehouse_id", "=", warehouse_id or False),
-            ("year", "=", year),
-            ("month", "=", month),
             ("company_id", "=", self.env.company.id),
         ], limit=1)
-        qty = self._live_need_qty(product_id, year, month)
         vals = {
             "planned_start": start,
             "planned_end": end,
-            "need_qty": qty,
+            "need_qty": self._live_need_qty(product_id, line_key),
         }
         if rec:
             rec.write(vals)
         else:
             vals.update({
                 "product_id": product_id,
+                "line_key": line_key,
                 "warehouse_id": warehouse_id or False,
-                "year": year,
-                "month": month,
             })
             Schedule.create(vals)
         return {"ok": True}
 
     @api.model
-    def clear_need_schedule(self, product_id, year, month,
+    def clear_need_schedule(self, product_id, line_key,
                             warehouse_id=False):
         """Drop the confirmed window — the need returns to suggestion."""
         self.env["mrp.ltp.need.schedule"].search([
             ("product_id", "=", int(product_id)),
+            ("line_key", "=", str(line_key or "")),
             ("warehouse_id", "=", warehouse_id or False),
-            ("year", "=", int(year)),
-            ("month", "=", int(month)),
             ("company_id", "=", self.env.company.id),
         ]).unlink()
         return {"ok": True}
 
     @api.model
-    def _live_need_qty(self, product_id, year, month):
-        """Current unmet demand of one product/month — the quantity a
-        confirmed window still reserves, even if it has drifted since
-        confirm time."""
+    def _live_need_qty(self, product_id, line_key):
+        """Current uncovered quantity of one need line — the amount a
+        confirmed window still reserves, even if it drifted since the
+        confirm."""
+        needs, _products = self._collect_needs()
+        for need in needs:
+            if need["pid"] == product_id and need["line_key"] == line_key:
+                return need["qty"]
+        return 0.0
+
+    # ------------------------------------------------------------------
+    # Need collection — MİP plan when available, monthly IM otherwise
+    # ------------------------------------------------------------------
+
+    @api.model
+    def _collect_needs(self, periods=None):
+        """(needs, products) — need specs.
+
+        With mrp_purchase_need_plan installed the needs are the MİP
+        plan's manufacture-routed lines (dated, uncovered, source-traced).
+        Otherwise the monthly IM of the planning grid is used so the
+        screen stays functional standalone.
+        """
         Line = self.env["mrp.ltp.line"]
-        abs_month = Line._abs_month(year, month)
-        periods = Line._periods(*Line._current_period())
-        req = self.env["mrp.ltp.capacity"]._required_qty_map(periods)
-        return req.get((product_id, abs_month), 0.0)
+        if "mrp.purchase.need" in self.env:
+            plan = self.env["mrp.purchase.need"]._get_plan(
+                False, False, False, "",
+                allow_stale=False, include_covered=True)
+            needs = []
+            for pid, data in plan.items():
+                for ln in data["lines"]:
+                    if "Ü" not in (ln.get("route") or ""):
+                        continue
+                    qty = ln.get("uncovered_qty") or 0.0
+                    if qty <= 0.0:
+                        continue
+                    needs.append({
+                        "pid": pid,
+                        "line_key": ln["key"],
+                        "qty": qty,
+                        "deadline": fields.Date.to_date(ln["need_date"]),
+                        "source": ln.get("source") or "",
+                    })
+            products = self.env["product.product"].browse(
+                {n["pid"] for n in needs})
+            return needs, products
+
+        # standalone mode: one need per (product, month) of unmet demand
+        if periods is None:
+            periods = Line._periods(*Line._current_period())
+        Cap = self.env["mrp.ltp.capacity"]
+        req_map = Cap._required_qty_map(periods)
+        first_idx = Line._abs_month(*periods[0])
+        last_idx = Line._abs_month(*periods[-1])
+        needs = []
+        for (pid, abs_month), qty in req_map.items():
+            if qty <= 0 or not (first_idx <= abs_month <= last_idx):
+                continue
+            nxt = abs_month + 1
+            deadline = (datetime(nxt // 12, nxt % 12 + 1, 1)
+                        - timedelta(days=1)).date()
+            needs.append({
+                "pid": pid,
+                "line_key": "im:%s" % abs_month,
+                "qty": qty,
+                "deadline": deadline,
+                "source": "",
+            })
+        products = self.env["product.product"].browse(
+            {n["pid"] for n in needs})
+        return needs, products
 
     # ------------------------------------------------------------------
     # Engine
@@ -187,33 +244,12 @@ class MrpLtpNeed(models.AbstractModel):
     @api.model
     def _need_rows(self, periods, workcenter_ids=False, query="",
                    overload_only=False):
-        Line = self.env["mrp.ltp.line"]
-        Cap = self.env["mrp.ltp.capacity"]
         today = fields.Date.context_today(self)
-
-        # unmet production demand per (product, month)
-        req_map = Cap._required_qty_map(periods)
-        if not req_map:
+        needs, products = self._collect_needs(periods)
+        if not needs:
             return []
-        first_idx = Line._abs_month(*periods[0])
-        last_idx = Line._abs_month(*periods[-1])
-
-        needs = []
-        product_ids = set()
-        for (pid, abs_month), qty in req_map.items():
-            if qty <= 0 or not (first_idx <= abs_month <= last_idx):
-                continue
-            product_ids.add(pid)
-            # deadline: the last local day of the demand month — output
-            # must exist inside its own period to count as on time
-            nxt = abs_month + 1
-            deadline = (datetime(nxt // 12, nxt % 12 + 1, 1)
-                        - timedelta(days=1)).date()
-            needs.append({"pid": pid, "abs_month": abs_month,
-                          "qty": qty, "deadline": deadline})
-
-        products = self.env["product.product"].browse(product_ids)
         prod_map = {p.id: p for p in products}
+
         boms = self.env["mrp.bom"]._bom_find(products)
         bom_by_pid = {
             getattr(k, "id", k): b for k, b in boms.items()}
@@ -235,23 +271,22 @@ class MrpLtpNeed(models.AbstractModel):
             wc_ids.update(wc for wc, _h in ops)
 
         # confirmed planner windows reserve capacity ahead of suggestions
-        period_min = periods[0][0] * 100 + periods[0][1]
-        period_max = periods[-1][0] * 100 + periods[-1][1]
         schedules = {}
         for s in self.env["mrp.ltp.need.schedule"].search_read([
-                ("period", ">=", period_min),
-                ("period", "<=", period_max),
                 ("company_id", "=", self.env.company.id),
-            ], ["product_id", "year", "month",
+            ], ["product_id", "line_key",
                 "planned_start", "planned_end", "need_qty",
                 "warehouse_id"]):
             s["start_d"] = fields.Date.to_date(s["planned_start"])
             s["end_d"] = fields.Date.to_date(s["planned_end"])
-            schedules[(s["product_id"][0],
-                       Line._abs_month(s["year"], s["month"]))] = s
+            schedules[(s["product_id"][0], s["line_key"])] = s
 
         wcs = self.env["mrp.workcenter"].browse(sorted(wc_ids))
-        cap_map, plan_map = self._daily_load_maps(wcs, periods)
+        # the daily maps must cover the furthest deadline too — a need
+        # landing outside the 12-month window still gets real capacity
+        last_deadline = max(n["deadline"] for n in needs)
+        cap_map, plan_map = self._daily_load_maps(
+            wcs, periods, last_deadline)
         wc_name = {wc.id: wc.name for wc in wcs}
 
         # allocated load: confirmed windows + suggestion placements.
@@ -259,7 +294,7 @@ class MrpLtpNeed(models.AbstractModel):
         # over the window's own working days (proportional to capacity)
         alloc = defaultdict(float)
         for need in needs:
-            key = (need["pid"], need["abs_month"])
+            key = (need["pid"], need["line_key"])
             sch = schedules.get(key)
             if not sch or not need["ops"]:
                 continue
@@ -278,8 +313,7 @@ class MrpLtpNeed(models.AbstractModel):
 
         # EDD placement for unconfirmed needs
         for need in sorted(needs, key=lambda n: (n["deadline"], n["pid"])):
-            key = (need["pid"], need["abs_month"])
-            if key in schedules:
+            if (need["pid"], need["line_key"]) in schedules:
                 continue
             self._place_backward(need, cap_map, plan_map, alloc, today)
 
@@ -291,7 +325,8 @@ class MrpLtpNeed(models.AbstractModel):
             row = self._row_payload(
                 need, prod_map[need["pid"]], schedules, wc_name, today)
             if q and q not in (row["name"] or "").lower() \
-                    and q not in (row["code"] or "").lower():
+                    and q not in (row["code"] or "").lower() \
+                    and q not in (row["source"] or "").lower():
                 continue
             if wc_filter and not (wc_filter & set(row["wc_ids"])):
                 continue
@@ -332,6 +367,10 @@ class MrpLtpNeed(models.AbstractModel):
                     if placed_end is None:
                         placed_end = day
                 day -= timedelta(days=1)
+            # never schedule into the past: the forward pass starts at
+            # today at the earliest
+            if day < today:
+                day = today - timedelta(days=1)
             # forward: leftover could not be produced in time — it lands
             # after the deadline and the row flags overload
             while remaining > 1e-9:
@@ -357,8 +396,7 @@ class MrpLtpNeed(models.AbstractModel):
 
     @api.model
     def _row_payload(self, need, product, schedules, wc_name, today):
-        key = (need["pid"], need["abs_month"])
-        sch = schedules.get(key)
+        sch = schedules.get((need["pid"], need["line_key"]))
         wc_ids = [wc for wc, _h in need["ops"]]
         req_hours = need["qty"] * sum(h for _w, h in need["ops"])
         if not need["ops"]:
@@ -378,12 +416,12 @@ class MrpLtpNeed(models.AbstractModel):
         wc_names = [wc_name[wc] for wc in dict.fromkeys(wc_ids)
                     if wc in wc_name]
         return {
+            "key": need["line_key"],
             "product_id": need["pid"],
             "name": product.display_name,
             "code": product.default_code or "",
             "uom": product.uom_id.name,
-            "year": need["deadline"].year,
-            "month": need["deadline"].month,
+            "source": need["source"],
             "period": "%d-%02d" % (
                 need["deadline"].year, need["deadline"].month),
             "deadline": fields.Date.to_string(need["deadline"]),
@@ -403,19 +441,26 @@ class MrpLtpNeed(models.AbstractModel):
     # ------------------------------------------------------------------
 
     @api.model
-    def _daily_load_maps(self, workcenters, periods):
+    def _daily_load_maps(self, workcenters, periods, last_deadline=None):
         """({wc: {date: cap_hours}}, {wc: {date: plan_hours}}).
 
         Same inputs as the monthly grid — calendar hours x parallel
         capacity x time efficiency x monthly factor, and open workorder
         duration_expected — but bucketed per local day so needs can be
-        placed day-accurately."""
+        placed day-accurately. The range extends to the furthest
+        deadline when needs reach beyond the 12-month window."""
         Cap = self.env["mrp.ltp.capacity"]
         Line = self.env["mrp.ltp.line"]
         tz = Cap._tz()
         first = Cap._month_bounds(*periods[0])[0]
         nxt = Line._abs_month(*periods[-1]) + 1
         last = Cap._month_bounds(nxt // 12, nxt % 12 + 1)[0]
+        if last_deadline:
+            beyond = tz.localize(datetime(
+                last_deadline.year, last_deadline.month,
+                last_deadline.day)) + timedelta(days=1)
+            if beyond > last:
+                last = beyond.astimezone(pytz.UTC)
         factor_map = Cap._factor_map(workcenters, periods)
 
         cap_map = {}

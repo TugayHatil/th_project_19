@@ -46,7 +46,7 @@ export class NeedCapacityPlanning extends Component {
     }
 
     rowKey(row) {
-        return `${row.product_id}-${row.year}-${row.month}`;
+        return `${row.product_id}-${row.key}`;
     }
 
     get pageCount() {
@@ -201,8 +201,7 @@ export class NeedCapacityPlanning extends Component {
         this.state.editRow = {
             key: this.rowKey(row),
             product_id: row.product_id,
-            year: row.year,
-            month: row.month,
+            line_key: row.key,
             start: row.start || "",
             end: row.end || "",
         };
@@ -230,8 +229,7 @@ export class NeedCapacityPlanning extends Component {
             await this.orm.call(
                 "mrp.ltp.need", "set_need_schedule", [], {
                     product_id: edit.product_id,
-                    year: edit.year,
-                    month: edit.month,
+                    line_key: edit.line_key,
                     planned_start: edit.start,
                     planned_end: edit.end,
                 });
@@ -248,8 +246,7 @@ export class NeedCapacityPlanning extends Component {
             await this.orm.call(
                 "mrp.ltp.need", "clear_need_schedule", [], {
                     product_id: row.product_id,
-                    year: row.year,
-                    month: row.month,
+                    line_key: row.key,
                 });
             await this.loadGrid();
         } catch (error) {
