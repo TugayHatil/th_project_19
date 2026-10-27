@@ -25,4 +25,17 @@
               action="action_mrp_ltp_capacity"
               groups="stock.group_stock_user"
               sequence="61"/>
+
+    <record id="action_mrp_ltp_need" model="ir.actions.client">
+        <field name="name">Need-Level Capacity Plan</field>
+        <field name="tag">mrp_long_term_planning.need</field>
+    </record>
+
+    <!-- Manufacturing -> Planning -> Need-Level Capacity Plan -->
+    <menuitem id="menu_mrp_ltp_need"
+              name="Need-Level Capacity Plan"
+              parent="mrp.mrp_planning_menu_root"
+              action="action_mrp_ltp_need"
+              groups="stock.group_stock_user"
+              sequence="62"/>
 </odoo>

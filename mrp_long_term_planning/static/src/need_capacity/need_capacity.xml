@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="mrp_long_term_planning.NeedCapacityPlanning">
+        <div class="o_nc d-flex flex-column h-100 overflow-hidden">
+
+            <!-- Toolbar -->
+            <div class="o_nc_toolbar border-bottom px-3 py-2">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <h4 class="mb-0">Need-Level Capacity Plan</h4>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                t-on-click="loadGrid">
+                            <i class="fa fa-refresh me-1"/>Refresh
+                        </button>
+                        <span class="o_nc_pager">
+                            <span class="me-2" t-esc="pagerText"/>
+                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                    t-att-disabled="state.page === 0"
+                                    t-on-click="prevPage">
+                                <i class="fa fa-chevron-left"/>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                    t-att-disabled="state.page >= pageCount - 1"
+                                    t-on-click="nextPage">
+                                <i class="fa fa-chevron-right"/>
+                            </button>
+                        </span>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-3 mt-2 flex-wrap">
+
+                    <!-- multi-select workcenter filter -->
+                    <div class="dropdown o_nc_dd">
+                        <div class="d-flex align-items-center gap-2">
+                            <label class="form-label mb-0 text-nowrap">Work Center</label>
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-secondary dropdown-toggle o_nc_dd_btn"
+                                    t-on-click="toggleWcMenu">
+                                <span t-esc="workcenterLabel"/>
+                            </button>
+                        </div>
+                        <div class="dropdown-menu show o_nc_dd_menu"
+                             t-if="state.wcMenuOpen">
+                            <div class="form-check px-3 py-1" t-on-click.stop="clearWorkcenters">
+                                <input type="checkbox" class="form-check-input"
+                                       t-att-checked="!state.workcenterIds.length"/>
+                                <label class="form-check-label">All</label>
+                            </div>
+                            <div class="dropdown-divider"/>
+                            <t t-foreach="state.workcenters" t-as="wc" t-key="wc.id">
+                                <div class="form-check px-3 py-1"
+                                     t-on-click.stop="() => this.toggleWorkcenter(wc.id)">
+                                    <input type="checkbox" class="form-check-input"
+                                           t-att-checked="isWorkcenterSelected(wc.id)"/>
+                                    <label class="form-check-label" t-esc="wc.name"/>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+
+                    <div class="form-check">
+                        <input id="o_nc_overload_only" type="checkbox"
+                               class="form-check-input"
+                               t-att-checked="state.overloadOnly"
+                               t-on-change="onOverloadOnlyChange"/>
+                        <label for="o_nc_overload_only" class="form-check-label text-nowrap">
+                            Overload Only
+                        </label>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="form-label mb-0 text-nowrap">Start</label>
+                        <input type="month" class="form-control form-control-sm"
+                               style="width: 140px"
+                               t-att-value="state.startPeriod"
+                               t-on-change="onStartPeriodChange"/>
+                    </div>
+
+                    <input type="text" class="form-control form-control-sm o_nc_search"
+                           placeholder="Search product…"
+                           t-on-input="onSearchInput"/>
+                </div>
+            </div>
+
+            <!-- Grid -->
+            <div class="o_nc_grid flex-grow-1 overflow-auto position-relative">
+                <table class="o_nc_table">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Period</th>
+                            <th>Deadline</th>
+                            <th class="o_nc_num">Qty</th>
+                            <th class="o_nc_num">Req. Hours</th>
+                            <th>Work Centers</th>
+                            <th>Suggested Window</th>
+                            <th>Planned Window</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="state.rows" t-as="row" t-key="row.product_id + '-' + row.year + '-' + row.month">
+                            <tr t-att-class="row.overload ? 'o_nc_row_late' : ''">
+                                <td class="o_nc_product">
+                                    <strong t-esc="row.name"/>
+                                    <span t-if="row.code" class="text-muted ms-1"
+                                          t-esc="'[' + row.code + ']'"/>
+                                </td>
+                                <td class="text-nowrap" t-esc="row.period"/>
+                                <td t-esc="fmtDate(row.deadline)"/>
+                                <td class="o_nc_num"
+                                    t-esc="fmtQty(row.qty) + ' ' + row.uom"/>
+                                <td class="o_nc_num"
+                                    t-esc="fmtHours(row.req_hours) + ' h'"/>
+                                <td class="o_nc_wc text-muted" t-esc="row.workcenters"/>
+                                <td class="text-nowrap">
+                                    <t t-if="!row.planned &amp;&amp; row.start">
+                                        <t t-esc="fmtDate(row.start)"/> → <t t-esc="fmtDate(row.end)"/>
+                                    </t>
+                                    <t t-else=""><span class="text-muted">—</span></t>
+                                </td>
+                                <td class="text-nowrap">
+                                    <t t-if="isEditing(row)">
+                                        <input type="date" class="form-control form-control-sm o_nc_date"
+                                               t-att-value="state.editRow.start"
+                                               t-on-change="(ev) => this.onEditDate('start', ev)"/>
+                                        <input type="date" class="form-control form-control-sm o_nc_date"
+                                               t-att-value="state.editRow.end"
+                                               t-on-change="(ev) => this.onEditDate('end', ev)"/>
+                                    </t>
+                                    <t t-elif="row.planned &amp;&amp; row.start">
+                                        <strong>
+                                            <t t-esc="fmtDate(row.start)"/> → <t t-esc="fmtDate(row.end)"/>
+                                        </strong>
+                                    </t>
+                                    <t t-else=""><span class="text-muted">—</span></t>
+                                </td>
+                                <td>
+                                    <span t-att-class="statusClass(row)"
+                                          t-esc="statusLabel(row)"/>
+                                </td>
+                                <td class="text-nowrap text-end">
+                                    <t t-if="isEditing(row)">
+                                        <button type="button" class="btn btn-sm btn-primary"
+                                                t-on-click="saveEdit">
+                                            <i class="fa fa-check"/>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                t-on-click="cancelEdit">
+                                            <i class="fa fa-times"/>
+                                        </button>
+                                    </t>
+                                    <t t-else="">
+                                        <button type="button" class="btn btn-sm btn-outline-primary"
+                                                title="Plan a production window"
+                                                t-on-click="() => this.startEdit(row)">
+                                            <i class="fa fa-calendar"/>
+                                        </button>
+                                        <button t-if="row.planned"
+                                                type="button" class="btn btn-sm btn-outline-danger"
+                                                title="Clear the confirmed window"
+                                                t-on-click="() => this.clearPlan(row)">
+                                            <i class="fa fa-undo"/>
+                                        </button>
+                                    </t>
+                                </td>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+
+                <div t-if="state.loading"
+                     class="o_nc_overlay d-flex align-items-center justify-content-center">
+                    <i class="fa fa-spinner fa-spin fa-2x text-muted"/>
+                </div>
+                <div t-if="!state.loading &amp;&amp; !state.rows.length"
+                     class="o_nc_empty text-muted text-center py-5">
+                    No unmet production demand for the current filters.
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

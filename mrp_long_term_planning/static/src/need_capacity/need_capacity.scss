@@ -1,0 +1,77 @@
+.o_nc {
+    font-size: 0.875rem;
+}
+
+.o_nc_table {
+    width: 100%;
+    border-collapse: collapse;
+
+    th, td {
+        padding: 4px 10px;
+        border-bottom: 1px solid #e9ecef;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+
+    thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: #f8f9fa;
+        font-weight: 600;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    tbody tr:hover td {
+        background: #f1f5f9;
+    }
+}
+
+.o_nc_num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.o_nc_product {
+    white-space: normal;
+    min-width: 200px;
+}
+
+.o_nc_wc {
+    white-space: normal;
+    min-width: 140px;
+}
+
+.o_nc_row_late td {
+    background: #fff5f5;
+}
+
+.o_nc_date {
+    display: inline-block;
+    width: 140px;
+    margin-right: 4px;
+}
+
+.o_nc_search {
+    width: 220px;
+}
+
+.o_nc_dd_menu {
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.o_nc_pager {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-variant-numeric: tabular-nums;
+    color: #6c757d;
+}
+
+.o_nc_overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.6);
+    z-index: 5;
+}

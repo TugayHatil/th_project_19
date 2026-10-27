@@ -7,3 +7,6 @@ access_mrp_ltp_cap_factor_mrp_manager,mrp.ltp.capacity.factor mrp manager,model_
 access_mrp_ltp_cap_factor_readonly,mrp.ltp.capacity.factor internal read,model_mrp_ltp_capacity_factor,base.group_user,1,0,0,0
 access_mrp_ltp_revision,mrp.ltp.revision users,model_mrp_ltp_revision,base.group_user,1,0,0,0
 access_mrp_ltp_revision_line,mrp.ltp.revision.line users,model_mrp_ltp_revision_line,base.group_user,1,0,0,0
+access_mrp_ltp_need_sched_stock_user,mrp.ltp.need.schedule stock user,model_mrp_ltp_need_schedule,stock.group_stock_user,1,1,1,1
+access_mrp_ltp_need_sched_mrp_manager,mrp.ltp.need.schedule mrp manager,model_mrp_ltp_need_schedule,mrp.group_mrp_manager,1,1,1,1
+access_mrp_ltp_need_sched_readonly,mrp.ltp.need.schedule internal read,model_mrp_ltp_need_schedule,base.group_user,1,0,0,0

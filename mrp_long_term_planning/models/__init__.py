@@ -4,3 +4,4 @@ from . import mrp_ltp_line
 from . import mrp_ltp_revision
 from . import mrp_ltp_capacity_factor
 from . import mrp_ltp_capacity
+from . import mrp_ltp_need
