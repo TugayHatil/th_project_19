@@ -432,3 +432,172 @@ msgstr "Teyitli Toplam Talep"
 #: model:ir.model.fields,field_description:mrp_long_term_planning.field_mrp_ltp_revision_line__planned_qty
 msgid "Confirmed Planned Qty"
 msgstr "Teyitli Planlanan Miktar"
+
+#. module: mrp_long_term_planning
+#: model:ir.actions.client,name:mrp_long_term_planning.action_mrp_ltp_need
+#: model_terms:ir.ui.menu,name:mrp_long_term_planning.menu_mrp_ltp_need
+msgid "Need-Level Capacity Plan"
+msgstr "İhtiyaç Bazlı Kapasite Planı"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/need_capacity/need_capacity.xml:0
+msgid "Need-Level Capacity Plan"
+msgstr "İhtiyaç Bazlı Kapasite Planı"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/need_capacity/need_capacity.xml:0
+msgid "Period"
+msgstr "Dönem"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/need_capacity/need_capacity.xml:0
+msgid "Deadline"
+msgstr "Termin"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/need_capacity/need_capacity.xml:0
+msgid "Qty"
+msgstr "Miktar"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/need_capacity/need_capacity.xml:0
+msgid "Req. Hours"
+msgstr "Gereken Saat"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/need_capacity/need_capacity.xml:0
+msgid "Work Centers"
+msgstr "İş Merkezleri"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/need_capacity/need_capacity.xml:0
+msgid "Suggested Window"
+msgstr "Önerilen Pencere"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/need_capacity/need_capacity.xml:0
+msgid "Planned Window"
+msgstr "Planlanan Pencere"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/need_capacity/need_capacity.xml:0
+msgid "Status"
+msgstr "Durum"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/need_capacity/need_capacity.xml:0
+msgid "Search product…"
+msgstr "Ürün ara…"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/need_capacity/need_capacity.xml:0
+msgid "No unmet production demand for the current filters."
+msgstr "Mevcut filtrelere uygun karşılanmamış üretim ihtiyacı yok."
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/need_capacity/need_capacity.xml:0
+msgid "Plan a production window"
+msgstr "Üretim penceresi planla"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/need_capacity/need_capacity.xml:0
+msgid "Clear the confirmed window"
+msgstr "Onaylı pencereyi temizle"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/need_capacity/need_capacity.js:0
+msgid "Need data could not be loaded."
+msgstr "İhtiyaç verisi yüklenemedi."
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/need_capacity/need_capacity.js:0
+msgid "Enter a valid start/end window."
+msgstr "Geçerli bir başlangıç/bitiş penceresi girin."
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/need_capacity/need_capacity.js:0
+msgid "Planned window saved."
+msgstr "Planlanan pencere kaydedildi."
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/need_capacity/need_capacity.js:0
+msgid "Window could not be saved."
+msgstr "Pencere kaydedilemedi."
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/need_capacity/need_capacity.js:0
+msgid "Window could not be cleared."
+msgstr "Pencere temizlenemedi."
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/need_capacity/need_capacity.js:0
+msgid "On Time"
+msgstr "Zamanında"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/need_capacity/need_capacity.js:0
+msgid "Overload"
+msgstr "Aşım"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/need_capacity/need_capacity.js:0
+msgid "Planned"
+msgstr "Planlandı"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/need_capacity/need_capacity.js:0
+msgid "Planned · Late"
+msgstr "Planlandı · Geç"
+
+#. module: mrp_long_term_planning
+#. odoo-javascript
+#: code:addons/mrp_long_term_planning/static/src/need_capacity/need_capacity.js:0
+msgid "No Operations"
+msgstr "Operasyon Yok"
+
+#. module: mrp_long_term_planning
+#: code:addons/mrp_long_term_planning/models/mrp_ltp_need.py:0
+msgid "Missing need line key."
+msgstr "İhtiyaç satırı anahtarı eksik."
+
+#. module: mrp_long_term_planning
+#: code:addons/mrp_long_term_planning/models/mrp_ltp_need.py:0
+msgid "Invalid date format."
+msgstr "Geçersiz tarih biçimi."
+
+#. module: mrp_long_term_planning
+#: code:addons/mrp_long_term_planning/models/mrp_ltp_need.py:0
+msgid "Planned end must not be earlier than planned start."
+msgstr "Planlanan bitiş, başlangıçtan önce olamaz."
+
+#. module: mrp_long_term_planning
+#: model:ir.model,name:mrp_long_term_planning.model_mrp_ltp_need_schedule
+msgid "Need-Level Planned Production Window"
+msgstr "İhtiyaç Bazlı Planlanan Üretim Penceresi"
+
+#. module: mrp_long_term_planning
+#: model:ir.model.fields,field_description:mrp_long_term_planning.field_mrp_ltp_need_schedule__need_qty
+msgid "Need Quantity"
+msgstr "İhtiyaç Miktarı"
