@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="mrp_cogi_record_view_list" model="ir.ui.view">
+        <field name="name">mrp.cogi.record.list</field>
+        <field name="model">mrp.cogi.record</field>
+        <field name="arch" type="xml">
+            <list string="COGI" create="0"
+                  decoration-success="state == 'done'"
+                  decoration-muted="state == 'closed'"
+                  decoration-danger="state == 'open'">
+                <field name="name"/>
+                <field name="create_date" string="Oluşturulma Tarihi"/>
+                <field name="production_id"/>
+                <field name="finished_product_id" string="Üretilecek Ürün"/>
+                <field name="product_id" string="Bileşen"/>
+                <field name="planned_qty"/>
+                <field name="consumed_qty"/>
+                <field name="remaining_qty" string="Eksik Miktar"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'done'"
+                       decoration-warning="state in ('open', 'reprocessing')"
+                       decoration-info="state == 'closed'"/>
+                <field name="error_message" optional="hide"/>
+                <field name="operator_id" optional="hide"/>
+                <field name="responsible_id" optional="show"/>
+                <field name="last_processed_at" optional="hide"/>
+                <field name="close_reason" optional="hide"/>
+                <field name="last_result_note" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="mrp_cogi_record_view_form" model="ir.ui.view">
+        <field name="name">mrp.cogi.record.form</field>
+        <field name="model">mrp.cogi.record</field>
+        <field name="arch" type="xml">
+            <form string="COGI" create="0" duplicate="0">
+                <header>
+                    <button name="action_reprocess" type="object" string="Yeniden İşle"
+                            class="btn-primary" invisible="state != 'open'"
+                            confirm="Eksik miktar için yeni stok hareketi oluşturulacak. Devam edilsin mi?"/>
+                    <button name="%(mrp_cogi_close_wizard_action)d" type="action"
+                            string="Düzeltmeden Kapat" invisible="state != 'open'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="open,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_correction_moves" type="object"
+                                class="oe_stat_button" icon="fa-truck"
+                                invisible="correction_move_count == 0">
+                            <field name="correction_move_count" widget="statinfo"
+                                   string="Stok Hareketleri"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Genel Bilgiler">
+                            <field name="create_date" string="Oluşturulma Tarihi"/>
+                            <field name="operator_id"/>
+                            <field name="responsible_id"/>
+                            <field name="last_processed_at"/>
+                        </group>
+                        <group string="Üretim ve Malzeme">
+                            <field name="production_id"/>
+                            <field name="production_name" invisible="production_id"/>
+                            <field name="finished_product_id"/>
+                            <field name="product_id"/>
+                            <field name="component_name" invisible="product_id"/>
+                            <field name="source_move_id"/>
+                            <field name="location_id"/>
+                        </group>
+                        <group string="Miktarlar">
+                            <field name="planned_qty"/>
+                            <field name="consumed_qty"/>
+                            <field name="initial_missing_qty"/>
+                            <field name="corrected_qty"/>
+                            <field name="remaining_qty"/>
+                            <field name="product_uom_id"/>
+                        </group>
+                        <group string="Hata Bilgisi">
+                            <field name="original_error_message" nolabel="1"
+                                   placeholder="İlk hata mesajı"/>
+                            <field name="error_message" nolabel="1"
+                                   placeholder="Son hata mesajı"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Yeniden İşleme">
+                            <field name="last_processed_by"/>
+                            <field name="attempt_count"/>
+                            <field name="last_result_note" nolabel="1"/>
+                            <field name="correction_move_ids" invisible="not correction_move_ids"/>
+                        </group>
+                        <group string="Kapatma Bilgileri" invisible="state != 'closed'">
+                            <field name="close_reason"/>
+                            <field name="close_note"/>
+                            <field name="closed_by"/>
+                            <field name="closed_at"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="mrp_cogi_record_view_search" model="ir.ui.view">
+        <field name="name">mrp.cogi.record.search</field>
+        <field name="model">mrp.cogi.record</field>
+        <field name="arch" type="xml">
+            <search string="COGI">
+                <field name="name"/>
+                <field name="production_id"/>
+                <field name="product_id" string="Bileşen"/>
+                <field name="finished_product_id"/>
+                <field name="responsible_id"/>
+                <filter name="open" string="Açık" domain="[('state', '=', 'open')]"/>
+                <filter name="done" string="Başarılı" domain="[('state', '=', 'done')]"/>
+                <filter name="closed" string="Düzeltmeden Kapatıldı"
+                        domain="[('state', '=', 'closed')]"/>
+                <separator/>
+                <filter name="today" string="Bugün" date="create_date"/>
+                <group>
+                    <filter name="by_production" string="Üretim Emri" domain="[]"
+                            context="{'group_by': 'production_id'}"/>
+                    <filter name="by_product" string="Bileşen" domain="[]"
+                            context="{'group_by': 'product_id'}"/>
+                    <filter name="by_state" string="Durum" domain="[]"
+                            context="{'group_by': 'state'}"/>
+                    <filter name="by_responsible" string="COGI Sorumlusu" domain="[]"
+                            context="{'group_by': 'responsible_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="mrp_cogi_record_action" model="ir.actions.act_window">
+        <field name="name">COGI</field>
+        <field name="res_model">mrp.cogi.record</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_open': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Açık COGI kaydı bulunmuyor
+            </p>
+            <p>
+                COGI kayıtları, üretim emirlerinde planlanan ile gerçekleşen
+                bileşen tüketimi arasındaki farklar oluştuğunda otomatik
+                oluşturulur.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_mrp_cogi" name="COGI" action="mrp_cogi_record_action"
+              parent="mrp.menu_mrp_reporting" sequence="15"/>
+
+</odoo>

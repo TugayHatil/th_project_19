@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="mrp_production_form_view_cogi" model="ir.ui.view">
+        <field name="name">mrp.production.form.cogi</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_cogi_records" type="object"
+                        class="oe_stat_button" icon="fa-exclamation-triangle"
+                        invisible="cogi_count == 0">
+                    <field name="cogi_count" widget="statinfo" string="COGI"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

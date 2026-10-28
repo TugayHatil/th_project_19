@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_move_search_cogi" model="ir.ui.view">
+        <field name="name">stock.move.search.cogi</field>
+        <field name="model">stock.move</field>
+        <field name="inherit_id" ref="stock.view_move_search"/>
+        <field name="arch" type="xml">
+            <filter name="inventory" position="after">
+                <filter name="cogi" string="COGI Düzeltme Hareketleri"
+                        domain="[('cogi_record_id', '!=', False)]"
+                        help="COGI kaydı üzerinden oluşturulmuş düzeltme hareketleri"/>
+            </filter>
+        </field>
+    </record>
+
+    <record id="view_move_form_cogi" model="ir.ui.view">
+        <field name="name">stock.move.form.cogi</field>
+        <field name="model">stock.move</field>
+        <field name="inherit_id" ref="stock.view_move_form"/>
+        <field name="arch" type="xml">
+            <field name="reference" position="after">
+                <field name="cogi_record_id" invisible="not cogi_record_id"
+                       readonly="1"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_move_tree_cogi" model="ir.ui.view">
+        <field name="name">stock.move.tree.cogi</field>
+        <field name="model">stock.move</field>
+        <field name="inherit_id" ref="stock.view_move_tree"/>
+        <field name="arch" type="xml">
+            <field name="reference" position="after">
+                <field name="cogi_record_id" optional="hide"/>
+            </field>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="mrp_cogi_close_wizard_view_form" model="ir.ui.view">
+        <field name="name">mrp.cogi.close.wizard.form</field>
+        <field name="model">mrp.cogi.close.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Düzeltmeden Kapat">
+                <group>
+                    <field name="cogi_record_id"/>
+                    <field name="close_reason" widget="radio"/>
+                    <field name="close_note" required="close_reason == 'other'"/>
+                </group>
+                <footer>
+                    <button name="action_close" type="object" string="Kapat"
+                            class="btn-primary"/>
+                    <button string="İptal" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="mrp_cogi_close_wizard_action" model="ir.actions.act_window">
+        <field name="name">Düzeltmeden Kapat</field>
+        <field name="res_model">mrp.cogi.close.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>
