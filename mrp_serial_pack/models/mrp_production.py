@@ -66,10 +66,11 @@ class MrpProduction(models.Model):
 
         Üretim emrini tamamlamadan, hedef miktara ulaşacak kadar seri
         numarası, koli ve palet kaydı hazırlar. Seri numaraları standart
-        ``lot_producing_ids`` üzerinden üretim emrine, üretim hareket
-        satırları (``result_package_id``) üzerinden kolilere, koliler
-        ``package_dest_id`` üzerinden paletlere bağlanır. Standart üretim
-        tamamlama akışı bu hazırlığı envantere dönüştürür.
+        ``lot_producing_ids`` üzerinden üretim emrine bağlanır; üretim
+        hareket satırları ``result_package_id`` ile kolilere, koliler
+        ``package_dest_id`` üzerinden paletlere bağlanır. Üretim
+        tamamlanırken seriler hareket satırlarına standart akışla yazılır
+        ve koli->palet bağı gerçek paket hiyerarşisine dönüşür.
         """
         self.ensure_one()
         self._check_fetch_data_allowed()
@@ -108,22 +109,19 @@ class MrpProduction(models.Model):
             target, self.product_uom_id, rounding_method="HALF-UP")
         self.set_qty_producing()
 
-        # `set_qty_producing` eksik adet kadar yeni hareket satırı oluşturur;
-        # paketlenmiş satırlara dokunmaz. Serisi olmayan tüm satırlara
-        # (yeni + varsa eski lotsuz satırlara) havuzdaki seriler ve koli ata.
-        lot_pool = self.lot_producing_ids.filtered(
-            lambda lot: lot not in finished_move.move_line_ids.lot_id
-        ).sorted("id")
-        fresh_lines = finished_move.move_line_ids.filtered(
+        # `set_qty_producing` eksik adet kadar yeni, paketsiz hareket satırı
+        # oluşturur; paketlenmiş satırlara dokunmaz. Lotsuz satırları kolilere
+        # yerleştir. Seriler satıra bilinçli olarak YAZILMAZ: üretim serisi
+        # bir hareket satırında görünürse standart `_check_sn_uniqueness`
+        # "zaten üretilmiş" hatası verir; seri-satır eşleşmesi üretim
+        # tamamlanırken `move.lot_ids` üzerinden standart akışla yapılır.
+        lines_to_pack = finished_move.move_line_ids.filtered(
             lambda ml: ml.state not in ("done", "cancel")
-            and ml.quantity > 0 and not ml.lot_id and not ml.lot_name
+            and ml.quantity > 0 and not ml.result_package_id
+            and not ml.lot_id and not ml.lot_name
         ).sorted("id")
-        for lot, move_line in zip(lot_pool, fresh_lines):
-            move_line.write({
-                "lot_id": lot.id,
-                "lot_name": lot.name,
-                "result_package_id": self._get_or_create_pack_box().id,
-            })
+        for move_line in lines_to_pack:
+            move_line.result_package_id = self._get_or_create_pack_box()
 
         new_boxes = self._get_pack_packages("box") - previous_boxes
         new_pallets = self._get_pack_packages("pallet") - previous_pallets

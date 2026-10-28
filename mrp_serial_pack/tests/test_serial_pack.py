@@ -209,6 +209,14 @@ class TestSerialPack(TransactionCase):
         mo.action_fetch_data()
         self.assertFalse(mo.state == "done")
 
+        # Hazırlanan seriler satırlara yazılmaz; standart akışta seri-satır
+        # eşleşmesi üretim tamamlanırken yapılır (`_check_sn_uniqueness`
+        # satır üzerinde üretim serisi görürse hata verir).
+        prepared_lines = self._finished_move(mo).move_line_ids
+        self.assertEqual(len(prepared_lines), 6)
+        self.assertFalse(prepared_lines.lot_id)
+        self.assertTrue(all(prepared_lines.mapped("result_package_id")))
+
         mo.button_mark_done()
 
         self.assertEqual(mo.state, "done")
