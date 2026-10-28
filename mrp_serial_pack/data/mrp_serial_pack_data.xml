@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Koli ve palet numarası sayaçları ile paket türleri yalnızca bir kez
+         oluşturulur; modül güncellemelerinde sayaçlar sıfırlanmaz. -->
+    <data noupdate="1">
+        <record id="sequence_pack_box" model="ir.sequence">
+            <field name="name">Koli Numarası</field>
+            <field name="code">BOX</field>
+            <field name="prefix">BOX</field>
+            <field name="padding">10</field>
+            <field name="number_next">1</field>
+            <field name="number_increment">1</field>
+            <field name="company_id" eval="False"/>
+        </record>
+        <record id="sequence_pack_pallet" model="ir.sequence">
+            <field name="name">Palet Numarası</field>
+            <field name="code">PAL</field>
+            <field name="prefix">PAL</field>
+            <field name="padding">10</field>
+            <field name="number_next">1</field>
+            <field name="number_increment">1</field>
+            <field name="company_id" eval="False"/>
+        </record>
+        <record id="package_type_box" model="stock.package.type">
+            <field name="name">Koli</field>
+            <field name="sequence_id" ref="mrp_serial_pack.sequence_pack_box"/>
+            <field name="package_use">disposable</field>
+        </record>
+        <record id="package_type_pallet" model="stock.package.type">
+            <field name="name">Palet</field>
+            <field name="sequence_id" ref="mrp_serial_pack.sequence_pack_pallet"/>
+            <field name="package_use">disposable</field>
+        </record>
+    </data>
+</odoo>
