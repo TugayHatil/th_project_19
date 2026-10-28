@@ -16,9 +16,58 @@ class MrpProduction(models.Model):
             production.cogi_count = len(production.cogi_ids)
 
     def _post_inventory(self, cancel_backorder=False):
+        self._cogi_cap_consumption_to_available()
         res = super()._post_inventory(cancel_backorder=cancel_backorder)
         self._create_cogi_records()
         return res
+
+    def _cogi_cap_consumption_to_available(self):
+        """Reçete bileşen hareket satırlarının miktarını, kaynak konumdaki
+        fiziksel stoğun karşılayabileceği kadara indirir.
+
+        _action_done her satırın miktarını tek quant'tan düşer; stok
+        yetersizse quant negatife gider ve üretim emri bloklanır. Bu metot
+        stoğu olmayan kısmı satırlardan düşürür; fark _create_cogi_records
+        tarafından COGI kaydına dönüştürülür."""
+        Quant = self.env['stock.quant']
+        for production in self:
+            for move in production.move_raw_ids:
+                if not (move.bom_line_id and move.picked
+                        and move.state not in ('done', 'cancel')):
+                    continue
+                product = move.product_id
+                if not product.is_storable or move._should_bypass_reservation():
+                    continue
+                product_uom = product.uom_id
+                budgets = {}
+                for line in move.move_line_ids.filtered(
+                        lambda l: l.picked and l.quantity > 0):
+                    qty = line.product_uom_id._compute_quantity(
+                        line.quantity, product_uom)
+                    if product_uom.compare(qty, 0) <= 0:
+                        continue
+                    if product.tracking != 'none' and not line.lot_id:
+                        # Takip edilen üründe lotsuz satır stoktan düşemez.
+                        allowed = 0.0
+                        key = ('nolot', line.package_id.id, line.owner_id.id)
+                    else:
+                        key = (line.lot_id.id, line.package_id.id,
+                               line.owner_id.id)
+                        if key not in budgets:
+                            quant = Quant._gather(
+                                product, move.location_id,
+                                lot_id=line.lot_id or None,
+                                package_id=line.package_id or None,
+                                owner_id=line.owner_id or None,
+                                strict=True)[:1]
+                            budgets[key] = quant.quantity if quant else 0.0
+                        allowed = budgets[key]
+                    take = min(qty, max(allowed, 0.0))
+                    budgets[key] = allowed - take
+                    if product_uom.compare(take, qty) < 0:
+                        line.quantity = line.product_uom_id._compute_quantity(
+                            take, line.product_uom_id)
+        return True
 
     def _create_cogi_records(self):
         """Tamamlanan üretim emrinde reçete bileşenlerinin planlanan ve
