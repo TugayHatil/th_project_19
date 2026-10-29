@@ -1,5 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+
+    <record id="email_template_cogi_notification" model="mail.template">
+        <field name="name">COGI Bildirimi - Üretim Emri</field>
+        <field name="model_id" ref="mrp.model_mrp_production"/>
+        <field name="subject">COGI: {{ object.name }} üretim emrinde tüketim farkı oluştu</field>
+        <field name="email_from">{{ object.company_id.email or user.email }}</field>
+        <field name="partner_to">{{ object.user_id.partner_id.id }}</field>
+        <field name="lang">{{ object.user_id.lang or user.lang }}</field>
+        <field name="auto_delete" eval="False"/>
+        <field name="body_html" type="html">
+<div style="font-family:Arial,Helvetica,sans-serif;max-width:720px;color:#333;">
+    <p>Merhaba {{ object.user_id.name or 'İlgili Kullanıcı' }},</p>
+    <p>
+        <b>{{ object.name }}</b> üretim emri tamamlanırken reçetede planlanan
+        bileşen tüketimi ile fiilen gerçekleşen tüketim arasında fark oluştu.
+        Eksik miktarlar için aşağıdaki COGI kayıtları açıldı:
+    </p>
+    <table style="border-collapse:collapse;width:100%;font-size:13px;">
+        <thead>
+            <tr style="background:#f1f1f1;text-align:left;">
+                <th style="border:1px solid #ddd;padding:6px 8px;">COGI No</th>
+                <th style="border:1px solid #ddd;padding:6px 8px;">Bileşen</th>
+                <th style="border:1px solid #ddd;padding:6px 8px;">Planlanan</th>
+                <th style="border:1px solid #ddd;padding:6px 8px;">Tüketilen</th>
+                <th style="border:1px solid #ddd;padding:6px 8px;">Eksik</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for cogi in object.cogi_ids %}
+            <tr>
+                <td style="border:1px solid #ddd;padding:6px 8px;">{{ cogi.name }}</td>
+                <td style="border:1px solid #ddd;padding:6px 8px;">{{ cogi.component_name or cogi.product_id.display_name or '' }}</td>
+                <td style="border:1px solid #ddd;padding:6px 8px;">{{ '%.2f' % cogi.planned_qty }} {{ cogi.product_uom_id.name or '' }}</td>
+                <td style="border:1px solid #ddd;padding:6px 8px;">{{ '%.2f' % cogi.consumed_qty }} {{ cogi.product_uom_id.name or '' }}</td>
+                <td style="border:1px solid #ddd;padding:6px 8px;"><b>{{ '%.2f' % cogi.initial_missing_qty }} {{ cogi.product_uom_id.name or '' }}</b></td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <p style="margin:16px 0;">
+        <a href="{{ object.get_base_url() }}/odoo/mrp.production/{{ object.id }}"
+           style="background:#017e84;color:#ffffff;padding:10px 18px;border-radius:4px;
+                  text-decoration:none;display:inline-block;font-weight:bold;">
+            Üretim Emrini Aç
+        </a>
+        <a href="{{ object.get_base_url() }}/odoo/action-mrp_cogi.mrp_cogi_record_action"
+           style="margin-left:8px;padding:10px 18px;border:1px solid #017e84;border-radius:4px;
+                  color:#017e84;text-decoration:none;display:inline-block;">
+            COGI Kayıtları
+        </a>
+    </p>
+    <p style="color:#888;font-size:12px;">
+        Bu e-posta {{ object.name }} üzerindeki COGI kayıtları oluşturulduğunda
+        otomatik gönderilmiştir.
+    </p>
+</div>
+        </field>
+    </record>
+
     <data noupdate="1">
         <record id="seq_mrp_cogi_record" model="ir.sequence">
             <field name="name">COGI Kayıt Numarası</field>

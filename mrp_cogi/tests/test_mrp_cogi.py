@@ -343,6 +343,27 @@ class TestMrpCogi(TransactionCase):
         self.assertEqual(cogi.state, 'done')
         self.assertEqual(cogi.corrected_qty, 70.0)
 
+    def test_cogi_notification_posted_and_sent(self):
+        """COGI oluşunca üretim emri chatter'ına otomatik not yazılır ve
+        sorumlu kullanıcıya mail şablonuyla bildirim gönderilir."""
+        self._set_stock(95.0)
+        mo = self._create_mo()
+        mo.user_id = self.env.user
+        self._produce_with_consumption(mo, 95.0)
+        cogi = self.Cogi.search([('production_id', '=', mo.id)])
+        # Chatter'da COGI ismi geçen otomatik not bulunmalı.
+        notes = mo.message_ids.filtered(
+            lambda m: cogi.name in (m.body or ''))
+        self.assertTrue(notes)
+        # Sorumlu kullanıcının e-postası varsa mail.mail oluşturulmalı.
+        if self.env.user.email:
+            mail = self.env['mail.mail'].search([
+                ('model', '=', 'mrp.production'),
+                ('res_id', '=', mo.id),
+            ], limit=1)
+            self.assertTrue(mail)
+            self.assertIn(cogi.name, mail.body_html or '')
+
     def test_original_values_not_changed_after_reprocess(self):
         """Orijinal planlanan/tüketilen/eksik değerler düzeltme sonrası korunur."""
         self._set_stock(95.0)

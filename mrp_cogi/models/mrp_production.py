@@ -75,6 +75,7 @@ class MrpProduction(models.Model):
         Yalnızca reçeteden gelen hareketler (bom_line_id) değerlendirilir."""
         Cogi = self.env['mrp.cogi.record']
         for production in self:
+            created = Cogi
             for move in production.move_raw_ids.filtered(
                     lambda m: m.bom_line_id and m.state != 'draft'):
                 if move.source_cogi_ids:
@@ -92,7 +93,7 @@ class MrpProduction(models.Model):
                     'Bileşen için planlanan %(planned)s %(uom)s tüketimin '
                     '%(missing)s %(uom)s kadarı gerçekleştirilemedi.',
                     planned=planned, uom=product_uom.display_name, missing=missing)
-                Cogi.create({
+                created |= Cogi.create({
                     'company_id': production.company_id.id,
                     'production_id': production.id,
                     'production_name': production.name,
@@ -110,7 +111,34 @@ class MrpProduction(models.Model):
                     'error_message': error,
                     'original_error_message': error,
                 })
+            if created:
+                production._send_cogi_notification(created)
         return True
+
+    def _send_cogi_notification(self, cogi_records):
+        """Yeni COGI kayıtlarını chatter'a not olarak yazar ve sorumlu
+        kullanıcıya mail şablonuyla bildirim gönderir."""
+        self.ensure_one()
+        lines = ', '.join(
+            '%s (%s: %s %s)' % (
+                c.name, c.component_name or '',
+                c.initial_missing_qty,
+                c.product_uom_id.display_name)
+            for c in cogi_records)
+        self.message_post(
+            body=_('%(count)s COGI kaydı oluşturuldu: %(lines)s',
+                   count=len(cogi_records), lines=lines))
+        template = self.env.ref('mrp_cogi.email_template_cogi_notification',
+                                raise_if_not_found=False)
+        if not template:
+            return
+        partners = (self.user_id.partner_id
+                    | cogi_records.responsible_id.partner_id).filtered('email')
+        if not partners:
+            return
+        template.send_mail(
+            self.id, force_send=True,
+            email_values={'recipient_ids': [(6, 0, partners.ids)]})
 
     def action_view_cogi_records(self):
         self.ensure_one()
