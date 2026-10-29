@@ -138,6 +138,7 @@ class TestMrpCogi(TransactionCase):
         self.assertEqual(move.state, 'done')
         self.assertEqual(move.quantity, 5.0)
         self.assertEqual(move.cogi_record_id, cogi)
+        self.assertEqual(move.cogi_source_move_id, cogi.source_move_id)
         self.assertEqual(move.raw_material_production_id, mo)
         # Üretim emri ve hareket bağlantıları korunur.
         self.assertEqual(cogi.production_id, mo)

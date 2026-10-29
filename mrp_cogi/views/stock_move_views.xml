@@ -22,6 +22,8 @@
             <field name="reference" position="after">
                 <field name="cogi_record_id" invisible="not cogi_record_id"
                        readonly="1"/>
+                <field name="cogi_source_move_id" invisible="not cogi_source_move_id"
+                       readonly="1"/>
             </field>
         </field>
     </record>
@@ -33,6 +35,7 @@
         <field name="arch" type="xml">
             <field name="reference" position="after">
                 <field name="cogi_record_id" optional="hide"/>
+                <field name="cogi_source_move_id" optional="hide"/>
             </field>
         </field>
     </record>

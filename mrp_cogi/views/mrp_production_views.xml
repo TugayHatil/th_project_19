@@ -13,6 +13,25 @@
                     <field name="cogi_count" widget="statinfo" string="COGI"/>
                 </button>
             </xpath>
+            <!-- Bileşen listesinde COGI düzeltme satırlarını mavi ile vurgula -->
+            <xpath expr="//page[@name='components']/field[@name='move_raw_ids']/list"
+                   position="attributes">
+                <attribute name="decoration-info">cogi_record_id</attribute>
+            </xpath>
+            <xpath expr="//page[@name='components']/field[@name='move_raw_ids']/list/field[@name='quantity']"
+                   position="after">
+                <field name="cogi_record_id" string="COGI Düzeltmesi" readonly="1"/>
+                <field name="cogi_source_move_id" string="COGI Kaynak Satırı"
+                       readonly="1" optional="hide"/>
+                <field name="cogi_source_names" string="COGI Kaydı" readonly="1"/>
+                <field name="source_cogi_ids" column_invisible="True"/>
+            </xpath>
+            <xpath expr="//page[@name='components']/field[@name='move_raw_ids']/list/field[@name='lot_ids']"
+                   position="after">
+                <button name="action_view_source_cogi" type="object"
+                        icon="fa-exclamation-triangle" title="COGI kaydını aç"
+                        invisible="not source_cogi_ids"/>
+            </xpath>
         </field>
     </record>
 
