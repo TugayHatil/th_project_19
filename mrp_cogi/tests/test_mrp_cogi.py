@@ -99,6 +99,7 @@ class TestMrpCogi(TransactionCase):
         self.assertEqual(cogi.state, 'open')
         self.assertTrue(cogi.name.startswith('COGI'))
         self.assertEqual(cogi.source_move_id.product_id, self.component)
+        self.assertEqual(cogi.source_move_id.cogi_state, 'open')
         self.assertEqual(mo.cogi_count, 1)
         # Stok yalnızca gerçekten tüketilen 95 kadar düşmüş olmalı.
         self.assertEqual(
@@ -139,6 +140,7 @@ class TestMrpCogi(TransactionCase):
         self.assertEqual(move.quantity, 5.0)
         self.assertEqual(move.cogi_record_id, cogi)
         self.assertEqual(move.cogi_source_move_id, cogi.source_move_id)
+        self.assertEqual(cogi.source_move_id.cogi_state, 'done')
         self.assertEqual(move.raw_material_production_id, mo)
         # Üretim emri ve hareket bağlantıları korunur.
         self.assertEqual(cogi.production_id, mo)
@@ -212,6 +214,7 @@ class TestMrpCogi(TransactionCase):
         wizard.action_close()
 
         self.assertEqual(cogi.state, 'closed')
+        self.assertEqual(cogi.source_move_id.cogi_state, 'closed')
         self.assertEqual(cogi.close_reason, 'planning')
         self.assertTrue(cogi.closed_by)
         self.assertTrue(cogi.closed_at)

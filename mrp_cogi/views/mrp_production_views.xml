@@ -29,8 +29,18 @@
             <xpath expr="//page[@name='components']/field[@name='move_raw_ids']/list/field[@name='lot_ids']"
                    position="after">
                 <button name="action_view_source_cogi" type="object"
-                        icon="fa-exclamation-triangle" title="COGI kaydını aç"
-                        invisible="not source_cogi_ids"/>
+                        icon="fa-exclamation-triangle" class="text-warning"
+                        title="COGI kaydı açık - yeniden işleme bekliyor"
+                        invisible="cogi_state not in ('open', 'reprocessing')"/>
+                <button name="action_view_source_cogi" type="object"
+                        icon="fa-check-circle" class="text-success"
+                        title="COGI başarıyla tamamlandı"
+                        invisible="cogi_state != 'done'"/>
+                <button name="action_view_source_cogi" type="object"
+                        icon="fa-ban" class="text-muted"
+                        title="COGI düzeltmeden kapatıldı"
+                        invisible="cogi_state != 'closed'"/>
+                <field name="cogi_state" column_invisible="True"/>
             </xpath>
         </field>
     </record>
