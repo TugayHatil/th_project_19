@@ -36,4 +36,5 @@ izlenebilir.""",
     'license': 'LGPL-3',
     'installable': True,
     'auto_install': False,
+    'post_init_hook': '_post_init_cogi',
 }

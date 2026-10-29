@@ -13,10 +13,16 @@
                     <field name="cogi_count" widget="statinfo" string="COGI"/>
                 </button>
             </xpath>
-            <!-- Bileşen listesinde COGI düzeltme satırlarını mavi ile vurgula -->
+            <!-- Bileşen listesinde COGI düzeltme satırlarını mavi ile vurgula ve
+                 kaynak satırın hemen altında sırala -->
             <xpath expr="//page[@name='components']/field[@name='move_raw_ids']/list"
                    position="attributes">
                 <attribute name="decoration-info">cogi_record_id</attribute>
+                <attribute name="default_order">cogi_sort_key, id</attribute>
+            </xpath>
+            <xpath expr="//page[@name='components']/field[@name='move_raw_ids']/list/field[@name='product_id']"
+                   position="before">
+                <field name="cogi_indent" readonly="1"/>
             </xpath>
             <xpath expr="//page[@name='components']/field[@name='move_raw_ids']/list/field[@name='quantity']"
                    position="after">

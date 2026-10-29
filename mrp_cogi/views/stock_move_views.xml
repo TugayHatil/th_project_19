@@ -11,6 +11,10 @@
                         domain="[('cogi_record_id', '!=', False)]"
                         help="COGI kaydı üzerinden oluşturulmuş düzeltme hareketleri"/>
             </filter>
+            <filter name="by_product" position="before">
+                <filter name="groupby_cogi_source" string="COGI Kaynak Hareketi" domain="[]"
+                        context="{'group_by': 'cogi_source_move_id'}"/>
+            </filter>
         </field>
     </record>
 

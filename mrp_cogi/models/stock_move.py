@@ -18,12 +18,29 @@ class StockMove(models.Model):
         'stock.move', 'cogi_source_move_id', string='COGI Düzeltme Hareketleri')
     cogi_source_names = fields.Char(compute='_compute_cogi_source_names',
                                     string='COGI Kaydı')
+    # Düzeltme hareketleri kaynak hareketin hemen altında listelensin diye
+    # sıralama anahtarı: düzeltme için kaynak id, diğerleri için kendi id'si.
+    cogi_sort_key = fields.Integer(readonly=True, index=True, copy=False)
+    cogi_indent = fields.Char(compute='_compute_cogi_indent', string=' ')
     cogi_state = fields.Selection([
         ('open', 'Açık'),
         ('reprocessing', 'Yeniden İşleniyor'),
         ('done', 'Başarılı'),
         ('closed', 'Düzeltmeden Kapatıldı'),
     ], compute='_compute_cogi_state', string='COGI Durumu')
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        moves = super().create(vals_list)
+        for move in moves:
+            if not move.cogi_sort_key:
+                move.cogi_sort_key = move.cogi_source_move_id.id or move.id
+        return moves
+
+    @api.depends('cogi_source_move_id')
+    def _compute_cogi_indent(self):
+        for move in self:
+            move.cogi_indent = '↳' if move.cogi_source_move_id else ''
 
     @api.depends('source_cogi_ids', 'source_cogi_ids.name')
     def _compute_cogi_source_names(self):
