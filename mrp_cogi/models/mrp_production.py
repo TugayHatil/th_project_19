@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
+import logging
+
 from odoo import _, api, fields, models
 from odoo.tools import float_is_zero
+
+_logger = logging.getLogger(__name__)
 
 
 class MrpProduction(models.Model):
@@ -112,7 +116,12 @@ class MrpProduction(models.Model):
                     'original_error_message': error,
                 })
             if created:
-                production._send_cogi_notification(created)
+                # Bildirim hatası üretim tamamlamayı engellememeli.
+                try:
+                    production._send_cogi_notification(created)
+                except Exception:
+                    _logger.exception(
+                        'COGI bildirimi gönderilemedi: %s', production.name)
         return True
 
     def _send_cogi_notification(self, cogi_records):
@@ -124,9 +133,9 @@ class MrpProduction(models.Model):
                                 raise_if_not_found=False)
         if template:
             body = template._render_template(
-                'body_html', 'mrp.production', self.id)[self.id]
+                'body_html', 'mrp.production', [self.id])[self.id]
             subject = template._render_template(
-                'subject', 'mrp.production', self.id)[self.id]
+                'subject', 'mrp.production', [self.id])[self.id]
         else:
             lines = ', '.join(
                 '%s (%s: %s %s)' % (
