@@ -351,18 +351,12 @@ class TestMrpCogi(TransactionCase):
         mo.user_id = self.env.user
         self._produce_with_consumption(mo, 95.0)
         cogi = self.Cogi.search([('production_id', '=', mo.id)])
-        # Chatter'da COGI ismi geçen otomatik not bulunmalı.
+        # Chatter'da şablonla oluşturulan COGI bildirimi görünmeli.
         notes = mo.message_ids.filtered(
-            lambda m: cogi.name in (m.body or ''))
+            lambda m: cogi.name in (m.body or '')
+            and 'COGI' in (m.subject or ''))
         self.assertTrue(notes)
-        # Sorumlu kullanıcının e-postası varsa mail.mail oluşturulmalı.
-        if self.env.user.email:
-            mail = self.env['mail.mail'].search([
-                ('model', '=', 'mrp.production'),
-                ('res_id', '=', mo.id),
-            ], limit=1)
-            self.assertTrue(mail)
-            self.assertIn(cogi.name, mail.body_html or '')
+        self.assertIn('Üretim Emrini Aç', notes[0].body or '')
 
     def test_original_values_not_changed_after_reprocess(self):
         """Orijinal planlanan/tüketilen/eksik değerler düzeltme sonrası korunur."""

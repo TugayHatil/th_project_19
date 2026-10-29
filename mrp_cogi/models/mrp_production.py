@@ -116,29 +116,37 @@ class MrpProduction(models.Model):
         return True
 
     def _send_cogi_notification(self, cogi_records):
-        """Yeni COGI kayıtlarını chatter'a not olarak yazar ve sorumlu
-        kullanıcıya mail şablonuyla bildirim gönderir."""
+        """Yeni COGI kayıtlarını mail şablonuyla chatter'a yazar ve
+        sorumlu kullanıcıya e-posta bildirimi gönderir. Gönderilen
+        içerik chatter'da da görünür."""
         self.ensure_one()
-        lines = ', '.join(
-            '%s (%s: %s %s)' % (
-                c.name, c.component_name or '',
-                c.initial_missing_qty,
-                c.product_uom_id.display_name)
-            for c in cogi_records)
-        self.message_post(
-            body=_('%(count)s COGI kaydı oluşturuldu: %(lines)s',
-                   count=len(cogi_records), lines=lines))
         template = self.env.ref('mrp_cogi.email_template_cogi_notification',
                                 raise_if_not_found=False)
-        if not template:
-            return
+        if template:
+            body = template._render_template(
+                'body_html', 'mrp.production', self.id)[self.id]
+            subject = template._render_template(
+                'subject', 'mrp.production', self.id)[self.id]
+        else:
+            lines = ', '.join(
+                '%s (%s: %s %s)' % (
+                    c.name, c.component_name or '',
+                    c.initial_missing_qty,
+                    c.product_uom_id.display_name)
+                for c in cogi_records)
+            body = _('%(count)s COGI kaydı oluşturuldu: %(lines)s',
+                     count=len(cogi_records), lines=lines)
+            subject = _('COGI Bildirimi')
         partners = (self.user_id.partner_id
                     | cogi_records.responsible_id.partner_id).filtered('email')
-        if not partners:
-            return
-        template.send_mail(
-            self.id, force_send=True,
-            email_values={'recipient_ids': [(6, 0, partners.ids)]})
+        self.message_post(
+            body=body,
+            subject=subject,
+            message_type='comment',
+            subtype_xmlid='mail.mt_comment',
+            partner_ids=partners.ids,
+            email_layout_xmlid='mail.mail_notification_light',
+        )
 
     def action_view_cogi_records(self):
         self.ensure_one()
