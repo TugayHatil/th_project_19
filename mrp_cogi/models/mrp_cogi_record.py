@@ -277,7 +277,6 @@ class MrpCogiRecord(models.Model):
             'procure_method': 'make_to_stock',
             'additional': True,
             'cogi_record_id': self.id,
-            'cogi_source_move_id': self.source_move_id.id,
         }
 
     def _component_display_name(self):

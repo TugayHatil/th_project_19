@@ -9,8 +9,8 @@ class StockMove(models.Model):
                                      readonly=True, index=True, copy=False,
                                      ondelete='set null')
     cogi_source_move_id = fields.Many2one(
-        'stock.move', string='COGI Kaynak Hareketi', readonly=True, index=True,
-        copy=False, ondelete='set null',
+        'stock.move', string='COGI Kaynak Hareketi',
+        related='cogi_record_id.source_move_id', store=True, index=True,
         help="Bu düzeltme hareketinin istinaden oluşturulduğu asıl bileşen hareketi.")
     source_cogi_ids = fields.One2many('mrp.cogi.record', 'source_move_id',
                                       string='Kaynak Olunan COGI Kayıtları')
@@ -36,6 +36,16 @@ class StockMove(models.Model):
             if not move.cogi_sort_key:
                 move.cogi_sort_key = move.cogi_source_move_id.id or move.id
         return moves
+
+    def write(self, vals):
+        res = super().write(vals)
+        # related alan yeniden hesaplandığında (örn. modül güncellemesinde
+        # eski düzeltmelerin bağının dolması) sıralama anahtarını güncelle.
+        if 'cogi_source_move_id' in vals:
+            for move in self:
+                if move.cogi_source_move_id:
+                    move.cogi_sort_key = move.cogi_source_move_id.id
+        return res
 
     @api.depends('cogi_source_move_id')
     def _compute_cogi_indent(self):

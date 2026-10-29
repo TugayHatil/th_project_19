@@ -77,6 +77,8 @@ class MrpProduction(models.Model):
         for production in self:
             for move in production.move_raw_ids.filtered(
                     lambda m: m.bom_line_id and m.state != 'draft'):
+                if move.source_cogi_ids:
+                    continue
                 product_uom = move.product_id.uom_id
                 planned = move.product_uom._compute_quantity(
                     move.product_uom_qty, product_uom)
