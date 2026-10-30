@@ -27,3 +27,17 @@ class ProductTemplate(models.Model):
                 variant.manufacturer_ids = template.manufacturer_ids
         # yeni yazılan satırların sonraki okumada görünmesi için
         self.invalidate_recordset(['manufacturer_ids'])
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        # Hesaplanan o2m'nin inverse'i create sırasında çalışmaz; komutları
+        # kaydırdıktan sonra varyantın gerçek o2m alanına uygula.
+        mfr_commands = [vals.pop('manufacturer_ids', None)
+                        for vals in vals_list]
+        templates = super().create(vals_list)
+        for template, commands in zip(templates, mfr_commands):
+            if commands:
+                template.product_variant_id.write(
+                    {'manufacturer_ids': commands})
+                template.invalidate_recordset(['manufacturer_ids'])
+        return templates
