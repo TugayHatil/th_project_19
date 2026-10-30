@@ -2,14 +2,17 @@
 {
     'name': "Product Multi Manufacturer",
 
-    'summary': "Link products to multiple manufacturers and manufacturer codes.",
+    'summary': "Ürünleri birden fazla üretici ve üretici kodu ile ilişkilendirme",
 
-    'description': """Allows a product to be linked with multiple manufacturers, each with its own manufacturer code, note and status. Adds a central Manufacturer Codes menu under Inventory → Products.""",
+    'description': """Ürünün birden fazla üretici ile ilişkilendirilmesini sağlar;
+her üretici için ayrı üretici kodu, not ve durum tutulur. Üretici
+kodları için Stok > Ürünler altında merkezi bir Üretici Kodları
+menüsü ekler.""",
 
-    'author': "RADORP",
-    'website': "https://radorp.com",
+    'author': "Projet Solutions",
+    'website': "https://projet.solutions",
 
-    'category': 'Inventory',
+    'category': 'Inventory/Inventory',
     'version': '19.0.1.0.0',
 
     'depends': [

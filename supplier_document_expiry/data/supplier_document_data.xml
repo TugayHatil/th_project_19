@@ -8,6 +8,7 @@
         <field name="summary">Tedarikçi belgesi geçerlilik uyarısı</field>
     </record>
 
+    <data noupdate="1">
     <!-- Örnek belge türleri; Belge Türleri menüsünden serbestçe
          değiştirilebilir veya silinebilir. -->
     <record id="document_type_license" model="supplier.document.type">
@@ -28,6 +29,7 @@
         <field name="warning_days_yellow">60</field>
         <field name="warning_days_orange">15</field>
     </record>
+    </data>
 
     <!-- Ek satırındaki indir butonu; dosyayı doğrudan indirir. -->
     <record id="action_supplier_document_attachment_download" model="ir.actions.server">

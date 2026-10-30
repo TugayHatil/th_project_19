@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <data noupdate="1">
     <!-- Başlangıç iptal nedenleri; Satınalma Yöneticisi tarafından
          serbestçe değiştirilebilir, eklenebilir veya pasifleştirilebilir. -->
     <record id="cancel_reason_no_need" model="purchase.order.cancel.reason">
@@ -35,4 +36,5 @@
         <field name="name">Diğer</field>
         <field name="is_other" eval="True"/>
     </record>
+    </data>
 </odoo>

@@ -10,10 +10,10 @@ Genel ayar, ürün ve satınalma siparişi satırı seviyesinde tolerans yöneti
 Mal kabul doğrulamasında tolerans kontrolü, tolerans aşımı talebi oluşturma
 ve satınalma yöneticisi onay/red akışı içerir.""",
 
-    'author': "RADORP",
-    'website': "https://radorp.com",
+    'author': "Projet Solutions",
+    'website': "https://projet.solutions",
 
-    'category': 'Inventory',
+    'category': 'Inventory/Purchase',
     'version': '19.0.1.0.0',
 
     'depends': [

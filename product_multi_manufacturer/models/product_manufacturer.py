@@ -31,7 +31,7 @@ class ProductManufacturer(models.Model):
         [
             ('not_for_new_design', 'Not For New Design'),
             ('recommended_for_new_design', 'Recommended For New Design'),
-            ('released_to_production', 'Relased To Production'),
+            ('released_to_production', 'Released To Production'),
             ('prototype', 'Prototype'),
         ],
         string='Durumu',

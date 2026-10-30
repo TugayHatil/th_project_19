@@ -13,8 +13,8 @@ durumu üzerinden yürütülür. Onay geçmişi, zorunlu red nedeni,
 aktivite bildirimleri ve tutar değişikliğinde yeniden onay
 desteği içerir.""",
 
-    'author': "RADORP",
-    'website': "https://radorp.com",
+    'author': "Projet Solutions",
+    'website': "https://projet.solutions",
 
     'category': 'Inventory/Purchase',
     'version': '19.0.1.0.0',

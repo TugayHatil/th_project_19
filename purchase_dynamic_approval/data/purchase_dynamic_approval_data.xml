@@ -8,6 +8,7 @@
         <field name="summary">Satınalma siparişi onayı bekliyor</field>
     </record>
 
+    <data noupdate="1">
     <!-- Örnek red nedenleri; Onay Barem Yöneticisi tarafından
          serbestçe değiştirilebilir veya silinebilir. -->
     <record id="reject_reason_budget" model="purchase.order.reject.reason">
@@ -53,4 +54,5 @@
         <field name="unlimited" eval="True"/>
         <field name="approval_group_id" ref="group_approval_general_manager"/>
     </record>
+    </data>
 </odoo>

@@ -2,17 +2,19 @@
 {
     'name': "Purchase Order Revision Number",
 
-    'summary': "This module adds a Revision number to the Purchase Order.",
+    'summary': "Onaylanan satınalma siparişlerinde revizyon numarası takibi",
 
-    'description': """This module updates the revision number of the purchase orders which have been confirmed and being revised.""",
+    'description': """Onaylanıp sonradan revize edilen satınalma siparişlerinin
+revizyon numarasını otomatik günceller ve sipariş üzerinde
+gösterir.""",
 
-    'author': "RADORP",
-    'website': "https://radorp.com",
-    
-    'category': 'Uncategorized',
+    'author': "Projet Solutions",
+    'website': "https://projet.solutions",
+
+    'category': 'Inventory/Purchase',
     'version': '19.0.1.0.0',
 
-    'depends': ['base', 'purchase'],
+    'depends': ['purchase'],
 
     'data': [
         'views/purchase_order_views.xml',

@@ -15,8 +15,8 @@ sekmesinde gösterilir ve chatter'a yazılır. İptal edilen siparişler
 Satınalma > Raporlama > İptal Analizi altında neden, aşama, kullanıcı
 ve tarih kırılımlarında analiz edilebilir.""",
 
-    'author': "RADORP",
-    'website': "https://radorp.com",
+    'author': "Projet Solutions",
+    'website': "https://projet.solutions",
 
     'category': 'Inventory/Purchase',
     'version': '19.0.1.0.0',

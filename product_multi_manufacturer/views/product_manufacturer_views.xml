@@ -51,7 +51,7 @@
                         domain="[('state', '=', 'not_for_new_design')]"/>
                 <filter name="state_recommended_for_new_design" string="Recommended For New Design"
                         domain="[('state', '=', 'recommended_for_new_design')]"/>
-                <filter name="state_released_to_production" string="Relased To Production"
+                <filter name="state_released_to_production" string="Released To Production"
                         domain="[('state', '=', 'released_to_production')]"/>
                 <filter name="state_prototype" string="Prototype"
                         domain="[('state', '=', 'prototype')]"/>

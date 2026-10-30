@@ -6,6 +6,7 @@
     "version": "19.0.1.3.0",
     "category": "Manufacturing/Manufacturing",
     "author": "Projet Solutions",
+    "website": "https://projet.solutions",
     "license": "LGPL-3",
     "depends": ["mrp", "purchase_request", "mail"],
 

@@ -6,6 +6,7 @@
     "version": "19.0.9.0.0",
     "category": "Project",
     "author": "Projet Solutions",
+    "website": "https://projet.solutions",
     "license": "LGPL-3",
     # Core planner only — resource planning (roles, assignments, Resource
     # Board, Material Plan, stock integration) lives in the optional

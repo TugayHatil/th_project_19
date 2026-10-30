@@ -63,12 +63,22 @@ class PurchaseOrder(models.Model):
         })
 
     def write(self, vals):
-        if 'revision_number' in vals:
-            for order in self:
-                if vals['revision_number'] > order.revision_number:
-                    base_name = order.unrevisioned_name or order.name.split('-Rev')[0]
-                    vals['name'] = f"{base_name}-Rev{vals['revision_number']}"
-        return super().write(vals)
+        if 'revision_number' not in vals or len(self) <= 1:
+            if 'revision_number' in vals:
+                for order in self:
+                    if vals['revision_number'] > order.revision_number:
+                        base_name = order.unrevisioned_name or order.name.split('-Rev')[0]
+                        vals['name'] = f"{base_name}-Rev{vals['revision_number']}"
+            return super().write(vals)
+        # Çoklu kayıt: her sipariş kendi taban adıyla revize edilmeli;
+        # vals üzerinde döngü içinde değişiklik tüm kayıtlara aynı adı yazardı.
+        for order in self:
+            record_vals = dict(vals)
+            if vals['revision_number'] > order.revision_number:
+                base_name = order.unrevisioned_name or order.name.split('-Rev')[0]
+                record_vals['name'] = f"{base_name}-Rev{vals['revision_number']}"
+            super(PurchaseOrder, order).write(record_vals)
+        return True
 
     def action_view_revisions(self):
         self.ensure_one()

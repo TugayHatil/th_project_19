@@ -13,8 +13,8 @@ Seviye değişimlerinde sorumlu kullanıcıya aktivite ile uyarı
 üretilir. Okuma / Kullanıcı / Yönetici olmak üzere üç yetki seviyesi
 içerir; okuma grubu belge dosyalarını indiremez.""",
 
-    'author': "RADORP",
-    'website': "https://radorp.com",
+    'author': "Projet Solutions",
+    'website': "https://projet.solutions",
 
     'category': 'Inventory/Purchase',
     'version': '19.0.1.0.0',

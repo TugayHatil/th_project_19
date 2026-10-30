@@ -6,6 +6,7 @@
     "version": "19.0.1.0.0",
     "category": "Project",
     "author": "Projet Solutions",
+    "website": "https://projet.solutions",
     "license": "LGPL-3",
     # Depends on the core planner: project_critical_path must work without
     # this addon; the dependency arrow never points the other way.
