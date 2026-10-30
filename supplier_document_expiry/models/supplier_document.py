@@ -136,10 +136,12 @@ class SupplierDocument(models.Model):
             status = doc.status or 'green'
             if status == doc.last_notified_status:
                 continue
-            doc.last_notified_status = status
             doc._close_expiry_activities(act_type)
             if status != 'green':
                 doc._schedule_expiry_activities(act_type)
+            # Durum en sona işlenir: aktivite üretimi başarısız olursa
+            # kayıt bir sonraki çalıştırmada yeniden bildirilir.
+            doc.last_notified_status = status
 
     def _notification_users(self):
         """Uyarı öncelikle belge sorumlusuna; sorumlu yoksa Tedarikçi

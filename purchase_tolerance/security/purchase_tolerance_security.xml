@@ -14,4 +14,10 @@
         <field name="groups" eval="[(4, ref('purchase.group_purchase_user'))]"/>
         <field name="domain_force">[(1, '=', 1)]</field>
     </record>
+    <!-- Çoklu şirket: tüm gruplar için global kural (grup kurallarıyla VE'lenir) -->
+    <record id="rule_purchase_tolerance_request_company" model="ir.rule">
+        <field name="name">Tolerans Talebi: şirket sınırı</field>
+        <field name="model_id" ref="model_purchase_tolerance_request"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
 </odoo>

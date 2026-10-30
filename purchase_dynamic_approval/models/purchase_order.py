@@ -117,6 +117,12 @@ class PurchaseOrder(models.Model):
 
     def _check_approval_permission(self):
         self.ensure_one()
+        # Satır kilidi: iki onaylayıcının aynı siparişi eşzamanlı
+        # onaylaması/reddetmesi çift karar yazımını engeller.
+        self.env.cr.execute(
+            "SELECT id FROM purchase_order WHERE id = %s FOR UPDATE",
+            (self.id,))
+        self.invalidate_recordset(['state', 'approval_required'])
         if self.state != 'to approve' or not self.approval_required:
             raise UserError(_('Bu sipariş onay beklemiyor.'))
         group = self.approval_group_id
@@ -257,8 +263,11 @@ class PurchaseOrder(models.Model):
                                 'taslağa alındı.'))
             order.message_post(body=_(
                 'Onay süreci sonlandırıldı, sipariş taslağa alındı.'))
+            # Doğrudan state yazımı yerine standart akış: button_draft
+            # RFQ'nun yeniden başlatılması gibi standart yan etkileri
+            # de çalıştırır.
+            order.button_draft()
             order.write({
-                'state': 'draft',
                 'approval_required': False,
                 'approval_state': 'none',
                 'approval_tier_id': False,
