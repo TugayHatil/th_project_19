@@ -192,6 +192,9 @@ class PurchaseToleranceRequest(models.Model):
                 raise UserError(_(
                     'Yalnızca talebi oluşturan kullanıcı veya Satınalma '
                     'Yöneticisi talebi iptal edebilir.'))
-            request.state = 'cancel'
-            request.activity_ids.action_feedback(feedback=_('Talep iptal edildi.'))
+            # Talep sahibinin request üzerinde write hakkı yok; iptal
+            # geçerliliği yukarıda kontrol edildi, yazma sudo ile yapılır.
+            request.sudo().write({'state': 'cancel'})
+            request.activity_ids.sudo().action_feedback(
+                feedback=_('Talep iptal edildi.'))
         return True

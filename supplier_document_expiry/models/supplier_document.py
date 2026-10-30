@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from datetime import timedelta
+
 from odoo import _, api, fields, models
 
 STATUS_SELECTION = [
@@ -108,9 +110,21 @@ class SupplierDocument(models.Model):
 
     @api.model
     def _cron_check_expiry(self):
-        """Tüm belgelerin durumunu bugüne göre yeniden hesaplar ve
-        seviye değişimlerinde sorumluya aktivite uyarısı üretir."""
-        documents = self.search([('active', '=', True)])
+        """Durumu değişebilecek belgeleri bugüne göre yeniden hesaplar ve
+        seviye değişimlerinde sorumluya aktivite uyarısı üretir.
+
+        En uzak sarı uyarı ufkunun ötesindeki yeşil belgeler bugün
+        durum değiştiremez; yalnızca ufuk içindekiler ile hâlihazırda
+        yeşil olmayanlar (eşik değişimiyle iyileşebilecek olanlar)
+        yeniden hesaplanır."""
+        max_yellow = max(
+            self.env['supplier.document.type'].sudo().search(
+                []).mapped('warning_days_yellow') or [0])
+        limit = fields.Date.context_today(self) + timedelta(days=max_yellow)
+        documents = self.search([
+            ('active', '=', True),
+            '|', ('status', '!=', 'green'), ('validity_date', '<=', limit),
+        ])
         # status store edilmiş computed alan; tarih geçişiyle tetiklenmez
         documents._compute_status()
         documents._notify_status_changes()

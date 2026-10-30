@@ -20,6 +20,7 @@
                     <field name="supplier_document_ids" nolabel="1"
                            context="{'default_partner_id': id}">
                         <list editable="bottom" string="Tedarikçi Belgeleri"
+                              class="o_supplier_documents"
                               decoration-danger="status == 'red'"
                               decoration-warning="status == 'orange'">
                             <field name="name"/>

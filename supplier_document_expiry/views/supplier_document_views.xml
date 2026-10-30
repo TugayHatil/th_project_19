@@ -6,6 +6,7 @@
         <field name="model">supplier.document</field>
         <field name="arch" type="xml">
             <list string="Tedarikçi Belgeleri" sample="1"
+                  class="o_supplier_documents"
                   decoration-danger="status == 'red'"
                   decoration-warning="status == 'orange'">
                 <field name="partner_id"/>

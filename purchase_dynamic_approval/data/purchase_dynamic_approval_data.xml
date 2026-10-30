@@ -28,31 +28,35 @@
         <field name="name">Sipariş revize edilecek</field>
     </record>
 
-    <!-- Örnek onay baremi yapısı; Onay Barem Yöneticisi tarafından
-         serbestçe değiştirilebilir veya silinebilir. -->
+    <!-- Örnek onay baremi yapısı; pasif gelir, Onay Barem Yöneticisi
+         etkinleştirene kadar siparişler onaya düşmez. -->
     <record id="approval_tier_user" model="purchase.approval.tier">
         <field name="sequence">10</field>
         <field name="amount_min">0</field>
         <field name="amount_max">1000</field>
         <field name="approval_group_id" ref="purchase.group_purchase_user"/>
+        <field name="active" eval="False"/>
     </record>
     <record id="approval_tier_specialist" model="purchase.approval.tier">
         <field name="sequence">20</field>
         <field name="amount_min">1000</field>
         <field name="amount_max">10000</field>
         <field name="approval_group_id" ref="group_approval_specialist"/>
+        <field name="active" eval="False"/>
     </record>
     <record id="approval_tier_head" model="purchase.approval.tier">
         <field name="sequence">30</field>
         <field name="amount_min">10000</field>
         <field name="amount_max">100000</field>
         <field name="approval_group_id" ref="group_approval_head"/>
+        <field name="active" eval="False"/>
     </record>
     <record id="approval_tier_general_manager" model="purchase.approval.tier">
         <field name="sequence">40</field>
         <field name="amount_min">100000</field>
         <field name="unlimited" eval="True"/>
         <field name="approval_group_id" ref="group_approval_general_manager"/>
+        <field name="active" eval="False"/>
     </record>
     </data>
 </odoo>
