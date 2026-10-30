@@ -43,9 +43,7 @@ class PurchaseOrder(models.Model):
         'purchase.order.approval.history', 'order_id',
         string='Onay Geçmişi', readonly=True, copy=False)
 
-    # ------------------------------------------------------------
     # Hesaplamalar / yardımcılar
-    # ------------------------------------------------------------
 
     def _compute_can_approve(self):
         user = self.env.user
@@ -141,9 +139,7 @@ class PurchaseOrder(models.Model):
                 'onay/red işlemi yapabilir.',
                 group.display_name if group else ''))
 
-    # ------------------------------------------------------------
     # Standart onay akışına entegrasyon
-    # ------------------------------------------------------------
 
     def _approval_allowed(self):
         """Tutara denk gelen bir onay baremi varsa standart onay
@@ -192,9 +188,7 @@ class PurchaseOrder(models.Model):
             tier=tier.display_name,
             amount=self.currency_id.format(self.amount_total)))
 
-    # ------------------------------------------------------------
     # Onay / red / taslak aksiyonları
-    # ------------------------------------------------------------
 
     def action_dynamic_approve(self):
         for order in self:
@@ -277,9 +271,7 @@ class PurchaseOrder(models.Model):
             })
         return True
 
-    # ------------------------------------------------------------
     # Tutar değişikliği kontrolü
-    # ------------------------------------------------------------
 
     def write(self, vals):
         res = super().write(vals)

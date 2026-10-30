@@ -118,7 +118,7 @@ class PurchaseToleranceRequest(models.Model):
             )
 
     def _get_decision_message(self, decision):
-        """BRD §9: karar bilgisini transfer chatter'ına yazılacak formatta üret."""
+        """Karar bilgisini transfer chatter'ına yazılacak formatta üret."""
         self.ensure_one()
         lines = [
             _('Tolerans talebi %(decision)s. (%(name)s)',

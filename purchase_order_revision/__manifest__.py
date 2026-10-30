@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 {
-    'name': "Purchase Order Revision Number",
+    'name': "Purchase Order Revision",
 
     'summary': "Onaylanan satınalma siparişlerinde revizyon numarası takibi",
 
@@ -19,9 +19,7 @@ gösterir.""",
     'data': [
         'views/purchase_order_views.xml',
     ],
-    'images': ['static/description/banner.png'],
     'license': 'LGPL-3',
     'installable': True,
     'auto_install': False,
-
 }

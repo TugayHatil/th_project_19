@@ -27,9 +27,7 @@ class PurchaseOrder(models.Model):
     cancel_date = fields.Datetime(
         string='İptal Tarihi', readonly=True, copy=False)
 
-    # ------------------------------------------------------------
     # İptal akışı
-    # ------------------------------------------------------------
 
     def action_cancel_orders(self):
         """UI tarafı ortak girişi (formdaki ve listedeki İptal Et

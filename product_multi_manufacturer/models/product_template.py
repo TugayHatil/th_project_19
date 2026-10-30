@@ -5,8 +5,8 @@ from odoo import models, fields, api
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
 
-    # Not a 'related' field on purpose: writing through a related field would
-    # trigger modified() searches on the non-stored product_variant_id and crash.
+    # Bilinçli olarak related değil: related üzerinden yazma, store
+    # olmayan product_variant_id için modified() araması yapar ve patlar.
     manufacturer_ids = fields.One2many(
         'product.manufacturer',
         compute='_compute_manufacturer_ids',
@@ -25,5 +25,5 @@ class ProductTemplate(models.Model):
             variant = template.product_variant_id
             if variant:
                 variant.manufacturer_ids = template.manufacturer_ids
-        # recompute on next read so the freshly written rows show up
+        # yeni yazılan satırların sonraki okumada görünmesi için
         self.invalidate_recordset(['manufacturer_ids'])

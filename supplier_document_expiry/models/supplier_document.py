@@ -49,9 +49,7 @@ class SupplierDocument(models.Model):
         default=lambda self: self.env.company)
     active = fields.Boolean(string='Aktif', default=True)
 
-    # ------------------------------------------------------------
     # Hesaplamalar
-    # ------------------------------------------------------------
 
     @api.depends('validity_date', 'document_type_id',
                  'document_type_id.warning_days_yellow',
@@ -74,9 +72,7 @@ class SupplierDocument(models.Model):
             else:
                 doc.status = 'green'
 
-    # ------------------------------------------------------------
     # Ek dosyalar
-    # ------------------------------------------------------------
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -104,9 +100,7 @@ class SupplierDocument(models.Model):
                     'res_id': doc.id,
                 })
 
-    # ------------------------------------------------------------
     # Cron / uyarılar
-    # ------------------------------------------------------------
 
     @api.model
     def _cron_check_expiry(self):
