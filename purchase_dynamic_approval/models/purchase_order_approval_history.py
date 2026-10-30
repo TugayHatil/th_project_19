@@ -4,7 +4,7 @@ from odoo import fields, models
 
 class PurchaseOrderApprovalHistory(models.Model):
     _name = 'purchase.order.approval.history'
-    _description = 'Purchase Order Approval History'
+    _description = 'Satınalma Siparişi Onay Geçmişi'
     _order = 'date, id'
     _check_company_auto = True
 

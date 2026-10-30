@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="seq_purchase_tolerance_request" model="ir.sequence">
-        <field name="name">Purchase Tolerance Request</field>
+        <field name="name">Satınalma Tolerans Talebi</field>
         <field name="code">purchase.tolerance.request</field>
         <field name="prefix">TOL/%(year)s/</field>
         <field name="padding">4</field>

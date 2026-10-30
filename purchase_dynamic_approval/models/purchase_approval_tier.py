@@ -5,7 +5,7 @@ from odoo.exceptions import ValidationError
 
 class PurchaseApprovalTier(models.Model):
     _name = 'purchase.approval.tier'
-    _description = 'Purchase Approval Tier'
+    _description = 'Satınalma Onay Baremı'
     _order = 'sequence, amount_min, id'
     _check_company_auto = True
 

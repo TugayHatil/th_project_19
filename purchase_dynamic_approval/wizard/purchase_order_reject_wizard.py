@@ -5,7 +5,7 @@ from odoo.exceptions import UserError
 
 class PurchaseOrderRejectWizard(models.TransientModel):
     _name = 'purchase.order.reject.wizard'
-    _description = 'Purchase Order Reject Wizard'
+    _description = 'Satınalma Siparişi Red Sihirbazı'
 
     order_id = fields.Many2one(
         'purchase.order', string='Satınalma Siparişi', required=True,

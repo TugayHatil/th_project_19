@@ -4,7 +4,7 @@ from odoo import _, api, Command, fields, models
 
 class PurchaseToleranceRequestWizard(models.TransientModel):
     _name = 'purchase.tolerance.request.wizard'
-    _description = 'Purchase Tolerance Request Wizard'
+    _description = 'Satınalma Tolerans Talebi Sihirbazı'
 
     picking_ids = fields.Many2many('stock.picking', readonly=True)
     line_ids = fields.One2many(
@@ -96,7 +96,7 @@ class PurchaseToleranceRequestWizard(models.TransientModel):
 
 class PurchaseToleranceRequestWizardLine(models.TransientModel):
     _name = 'purchase.tolerance.request.wizard.line'
-    _description = 'Purchase Tolerance Request Wizard Line'
+    _description = 'Satınalma Tolerans Talebi Sihirbaz Satırı'
 
     wizard_id = fields.Many2one(
         'purchase.tolerance.request.wizard', required=True, ondelete='cascade')

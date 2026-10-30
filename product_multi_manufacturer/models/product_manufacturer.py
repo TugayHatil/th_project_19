@@ -4,7 +4,7 @@ from odoo import models, fields
 
 class ProductManufacturer(models.Model):
     _name = 'product.manufacturer'
-    _description = 'Product Manufacturer'
+    _description = 'Ürün Üreticisi'
     _order = 'product_id, manufacturer_id, manufacturer_code'
 
     product_id = fields.Many2one(
@@ -29,10 +29,10 @@ class ProductManufacturer(models.Model):
     )
     state = fields.Selection(
         [
-            ('not_for_new_design', 'Not For New Design'),
-            ('recommended_for_new_design', 'Recommended For New Design'),
-            ('released_to_production', 'Released To Production'),
-            ('prototype', 'Prototype'),
+            ('not_for_new_design', 'Yeni Tasarım İçin Uygun Değil'),
+            ('recommended_for_new_design', 'Yeni Tasarım İçin Önerilen'),
+            ('released_to_production', 'Seri Üretime Uygun'),
+            ('prototype', 'Prototip'),
         ],
         string='Durumu',
         required=True,

@@ -5,17 +5,17 @@ from odoo import models, fields, api
 class PurchaseOrder(models.Model):
     _inherit = 'purchase.order'
 
-    revision_number = fields.Integer(string='Revision', default=0, copy=False, readonly=True)
-    display_name = fields.Char(string='Reference', compute='_compute_display_name', store=True)
-    was_confirmed = fields.Boolean(string="Was Confirmed", default=False)
-    unrevisioned_name = fields.Char(string='Original Reference', copy=False, readonly=True)
+    revision_number = fields.Integer(string='Revizyon', default=0, copy=False, readonly=True)
+    display_name = fields.Char(string='Referans', compute='_compute_display_name', store=True)
+    was_confirmed = fields.Boolean(string="Önceden Onaylanmış", default=False)
+    unrevisioned_name = fields.Char(string='Orijinal Referans', copy=False, readonly=True)
     current_revision_id = fields.Many2one(
-        'purchase.order', string='Current Revision', copy=False, readonly=True, index=True)
+        'purchase.order', string='Güncel Revizyon', copy=False, readonly=True, index=True)
     old_revision_ids = fields.One2many(
-        'purchase.order', 'current_revision_id', string='Old Revisions', readonly=True,
+        'purchase.order', 'current_revision_id', string='Eski Revizyonlar', readonly=True,
         context={'active_test': False})
-    revision_count = fields.Integer(compute='_compute_revision_count')
-    active = fields.Boolean(default=True)
+    revision_count = fields.Integer(string='Revizyon Sayısı', compute='_compute_revision_count')
+    active = fields.Boolean(string='Aktif', default=True)
 
     @api.depends('name')
     def _compute_display_name(self):
@@ -84,7 +84,7 @@ class PurchaseOrder(models.Model):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': self.env._('Revisions'),
+            'name': self.env._('Revizyonlar'),
             'res_model': 'purchase.order',
             'view_mode': 'list,form',
             'domain': [('id', 'in', self.old_revision_ids.ids)],

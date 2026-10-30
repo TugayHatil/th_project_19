@@ -47,13 +47,13 @@
                 <field name="product_id"/>
                 <field name="state"/>
                 <separator/>
-                <filter name="state_not_for_new_design" string="Not For New Design"
+                <filter name="state_not_for_new_design" string="Yeni Tasarım İçin Uygun Değil"
                         domain="[('state', '=', 'not_for_new_design')]"/>
-                <filter name="state_recommended_for_new_design" string="Recommended For New Design"
+                <filter name="state_recommended_for_new_design" string="Yeni Tasarım İçin Önerilen"
                         domain="[('state', '=', 'recommended_for_new_design')]"/>
-                <filter name="state_released_to_production" string="Released To Production"
+                <filter name="state_released_to_production" string="Seri Üretime Uygun"
                         domain="[('state', '=', 'released_to_production')]"/>
-                <filter name="state_prototype" string="Prototype"
+                <filter name="state_prototype" string="Prototip"
                         domain="[('state', '=', 'prototype')]"/>
                 <group>
                     <filter name="group_manufacturer" string="Üretici"

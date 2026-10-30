@@ -4,7 +4,7 @@ from odoo import fields, models
 
 class PurchaseOrderCancelReason(models.Model):
     _name = 'purchase.order.cancel.reason'
-    _description = 'Purchase Order Cancel Reason'
+    _description = 'Satınalma Siparişi İptal Nedeni'
     _order = 'sequence, id'
 
     sequence = fields.Integer(string='Sıra', default=10)

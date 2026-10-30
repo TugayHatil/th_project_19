@@ -10,7 +10,7 @@ MIN_DESCRIPTION_LENGTH = 10
 
 class PurchaseOrderCancelWizard(models.TransientModel):
     _name = 'purchase.order.cancel.wizard'
-    _description = 'Purchase Order Cancel Wizard'
+    _description = 'Satınalma Siparişi İptal Sihirbazı'
 
     order_ids = fields.Many2many(
         'purchase.order', string='Satınalma Siparişleri',

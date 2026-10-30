@@ -4,7 +4,7 @@ from odoo import fields, models
 
 class PurchaseOrderRejectReason(models.Model):
     _name = 'purchase.order.reject.reason'
-    _description = 'Purchase Order Reject Reason'
+    _description = 'Satınalma Siparişi Red Nedeni'
     _order = 'sequence, id'
 
     sequence = fields.Integer(string='Sıra', default=10)

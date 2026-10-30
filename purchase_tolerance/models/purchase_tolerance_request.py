@@ -5,7 +5,7 @@ from odoo.exceptions import UserError
 
 class PurchaseToleranceRequest(models.Model):
     _name = 'purchase.tolerance.request'
-    _description = 'Purchase Tolerance Over-Delivery Request'
+    _description = 'Satınalma Tolerans Fazla Teslimat Talebi'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'id desc'
     _check_company_auto = True
