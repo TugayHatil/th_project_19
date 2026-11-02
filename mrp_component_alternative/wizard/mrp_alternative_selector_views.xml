@@ -37,7 +37,7 @@
                     </group>
                     <field name="line_ids" nolabel="1">
                         <list editable="bottom" create="0" delete="0"
-                              decoration-muted="not is_original and not can_cover"
+                              decoration-muted="not is_original and not can_cover and not (parent.allow_partial and has_coverage)"
                               decoration-bf="is_original">
                             <field name="sequence" column_invisible="True"/>
                             <field name="move_id" column_invisible="True"/>
