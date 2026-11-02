@@ -421,8 +421,6 @@ class MrpAlternativeSelectorLine(models.TransientModel):
                 parts.append(_("Önerilen"))
             if not line.can_cover:
                 parts.append(_("Yetersiz Stok"))
-            if line.is_original and line.suggested_label:
-                parts.append(_("Önerilen: %s") % line.suggested_label)
             line.status_label = " \u00b7 ".join(parts)
 
     def action_toggle_fold(self):

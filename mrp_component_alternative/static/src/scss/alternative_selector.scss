@@ -9,17 +9,17 @@
 
 .o_mrp_alternative_selector .o_list_renderer {
 
-    // Product name columns get more room and wrap instead of truncating.
+    // Product name columns get room and wrap instead of truncating.
     td[name="component_label"],
     td[name="alternative_product_id"] {
-        min-width: 240px;
+        min-width: 200px;
         white-space: normal;
     }
 
     // Status badges and the Select column must never be truncated.
     th[name="status_label"], td[name="status_label"],
     th[data-name="status_label"], td[data-name="status_label"] {
-        min-width: 190px;
+        min-width: 120px;
         white-space: nowrap;
     }
 
