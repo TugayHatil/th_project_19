@@ -96,8 +96,9 @@ class MrpProduction(models.Model):
                         product, move.location_id, demand, own_reserved):
                     target = product
                     break
+            move_ctx = move.with_context(mrp_alt_allow_locked=True)
             if target:
-                move._apply_alternative_product(target)
+                move_ctx._apply_alternative_product(target)
             else:
                 selector = self.env["mrp.alternative.selector"].new()
                 if selector._partial_allowed():
@@ -108,7 +109,7 @@ class MrpProduction(models.Model):
                     if float_compare(
                             total, demand_main_uom,
                             precision_rounding=main.uom_id.rounding) >= 0:
-                        move._apply_partial_alternative(allocs)
+                        move_ctx._apply_partial_alternative(allocs)
                         continue
                 self.message_post(body=_(
                     "%s: main component stock is insufficient and no "

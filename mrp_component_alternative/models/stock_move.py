@@ -74,10 +74,11 @@ class StockMove(models.Model):
             raise UserError(_(
                 "The component %s has already been consumed; its product "
                 "cannot be changed.", self.product_id.display_name))
-        if production and production.is_locked:
+        if (production and production.is_locked
+                and not self.env.context.get("mrp_alt_allow_locked")):
             raise UserError(_(
-                "The manufacturing order %s is locked; component products "
-                "cannot be changed.", production.display_name))
+                "The manufacturing order %s is locked; unlock it before "
+                "changing component products.", production.display_name))
 
     def _apply_alternative_product(self, new_product, demand=None):
         """Replace the move's product by *new_product* and re-reserve.

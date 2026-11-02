@@ -490,7 +490,9 @@ class MrpAlternativeSelector(models.TransientModel):
                         "%(need).2f %(uom)s).",
                         main=main.display_name, have=total_main,
                         need=demand_main, uom=main.uom_id.name))
-                move._apply_partial_alternative(allocs)
+                move.with_context(
+                    mrp_alt_allow_locked=True)._apply_partial_alternative(
+                        allocs)
                 continue
             if len(selected) > 1:
                 raise UserError(_(
@@ -519,7 +521,8 @@ class MrpAlternativeSelector(models.TransientModel):
                     product=target.display_name, avail=coverage,
                     uom=target.uom_id.name, demand=demand,
                     main=move._alt_main_component().display_name))
-            move._apply_alternative_product(target)
+            move.with_context(
+                mrp_alt_allow_locked=True)._apply_alternative_product(target)
         return {"type": "ir.actions.act_window_close"}
 
 
