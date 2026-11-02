@@ -8,24 +8,24 @@
 }
 
 .o_mrp_alternative_selector .o_list_renderer {
+    // Safety net: if the table still overflows on small screens,
+    // scroll horizontally instead of clipping the last column.
+    overflow-x: auto;
 
-    // Product name columns get room and wrap instead of truncating.
+    // Product name cells wrap instead of truncating.
     td[name="component_label"],
     td[name="alternative_product_id"] {
-        min-width: 200px;
         white-space: normal;
     }
 
-    // Status badges and the Select column must never be truncated.
-    th[name="status_label"], td[name="status_label"],
-    th[data-name="status_label"], td[data-name="status_label"] {
-        min-width: 120px;
+    // Status badges never wrap.
+    td[name="status_label"], td[data-name="status_label"] {
         white-space: nowrap;
     }
 
+    // Center the Select checkbox.
     th[name="selected"], td[name="selected"],
     th[data-name="selected"], td[data-name="selected"] {
-        min-width: 50px;
         text-align: center;
     }
 

@@ -57,29 +57,31 @@
                                     icon="fa-caret-down" title="Alternatifleri Gizle"
                                     invisible="not is_original or not move_id or is_folded or not alt_count"/>
                             <field name="component_label" string="Ana Bileşen"
-                                   readonly="1"/>
+                                   readonly="1" width="170px"/>
                             <field name="priority" string="Öncelik"
-                                   readonly="1"/>
+                                   readonly="1" width="60px"/>
                             <field name="alternative_product_id"
-                                   string="Seçenek" readonly="1"
+                                   string="Seçenek" readonly="1" width="220px"
                                    options="{'no_open': True}"/>
                             <field name="demand_qty" string="İhtiyaç"
-                                   readonly="1"
+                                   readonly="1" width="80px"
                                    invisible="not is_original"/>
                             <field name="available_qty" string="Stok"
-                                   readonly="1"/>
+                                   readonly="1" width="80px"/>
                             <field name="uom_id" string="Birim" readonly="1"
+                                   width="60px"
                                    groups="uom.group_uom"
                                    options="{'no_open': True}"/>
                             <field name="alt_count" string="Alt."
-                                   readonly="1" invisible="not is_original"/>
+                                   readonly="1" width="40px"
+                                   invisible="not is_original"/>
                             <field name="status_label" string="Durum"
-                                   readonly="1" widget="badge"
+                                   readonly="1" widget="badge" width="180px"
                                    decoration-success="is_suggested"
                                    decoration-info="is_current and not is_suggested"
                                    decoration-warning="not can_cover"/>
                             <field name="selected" string="Seç"
-                                   readonly="not can_cover"
+                                   readonly="not can_cover" width="50px"
                                    invisible="not can_cover or parent.mode != 'production'"/>
                         </list>
                     </field>
