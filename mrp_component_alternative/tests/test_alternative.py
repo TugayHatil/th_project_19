@@ -332,6 +332,7 @@ class TestComponentAlternative(TransactionCase):
         for move in moves:
             self.assertTrue(move.is_alternative_component)
             self.assertEqual(move.original_product_id, self.main)
+            self.assertNotEqual(move.state, "draft")
         self.assertEqual(
             sorted(moves.mapped("product_uom_qty")), [4.0, 6.0])
 

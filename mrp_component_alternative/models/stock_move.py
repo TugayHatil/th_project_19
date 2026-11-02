@@ -154,7 +154,11 @@ class StockMove(models.Model):
                 self.write(vals)
                 moves |= self
             else:
-                moves |= self.copy(vals)
+                new_move = self.copy(vals)
+                # move copies are created in 'draft' state; confirm them
+                # so they participate in the reservation cycle below.
+                new_move._action_confirm(merge=False)
+                moves |= new_move
             parts.append(
                 "%s %.2f %s" % (product.display_name, qty, product.uom_id.name))
         for move in moves:
