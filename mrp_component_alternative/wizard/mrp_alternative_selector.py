@@ -411,7 +411,7 @@ class MrpAlternativeSelector(models.TransientModel):
                         "%s: main component stock is insufficient.%s",
                         move._alt_main_component().display_name,
                         _(" Suggested alternative: %s.",
-                          suggested.alternative_product_id.display_name)
+                          suggested[:1].alternative_product_id.display_name)
                         if suggested else ""))
         elif self.mode == "orderpoint":
             if not self.line_ids.filtered("can_cover"):
