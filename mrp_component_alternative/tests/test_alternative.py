@@ -167,12 +167,15 @@ class TestComponentAlternative(TransactionCase):
         mo = self._make_mo()
         wizard = self._open_wizard(mo)
         wizard.action_apply()
-        move = mo.move_raw_ids
+        move = mo.move_raw_ids.filtered("is_alternative_component")
         self.assertEqual(move.product_id, self.alt_high)
-        self.assertTrue(move.is_alternative_component)
         self.assertEqual(move.original_product_id, self.main)
         self.assertEqual(move.alternative_selected_by, self.env.user)
         self.assertTrue(move.alternative_selected_date)
+        # the original component stays as a passive placeholder
+        origin = mo.move_raw_ids.filtered("is_alternative_origin")
+        self.assertEqual(origin.product_id, self.main)
+        self.assertEqual(origin.product_uom_qty, 0.0)
         # reservation is made on the alternative, not on the main product
         self.assertEqual(
             self.Quant._get_available_quantity(self.alt_high, self.stock), 8.0)
@@ -186,15 +189,16 @@ class TestComponentAlternative(TransactionCase):
         mo = self._make_mo()
         move = mo.move_raw_ids
         move._apply_alternative_product(self.alt_high)
-        self.assertEqual(move.product_id, self.alt_high)
-        # reopen the wizard and select the original product again
-        action = move.action_open_alternative_selector()
+        child = mo.move_raw_ids.filtered("is_alternative_component")
+        self.assertEqual(child.product_id, self.alt_high)
+        # reopen the wizard on the child and select the original product
+        action = child.action_open_alternative_selector()
         wizard = self.env["mrp.alternative.selector"].browse(action["res_id"])
         wizard.line_ids.write({"selected": False})
         wizard.line_ids.filtered("is_original").selected = True
         wizard.action_apply()
-        self.assertEqual(move.product_id, self.main)
-        self.assertFalse(move.is_alternative_component)
+        self.assertEqual(child.product_id, self.main)
+        self.assertFalse(child.is_alternative_component)
 
     def test_apply_blocked_when_stock_changed(self):
         self._set_stock(self.alt_high, 10.0)
@@ -265,11 +269,13 @@ class TestComponentAlternative(TransactionCase):
         self._set_stock(self.alt_low, 1.0)
         self._set_stock(self.alt_high, 10.0)
         mo = self._make_mo()  # action_confirm() runs inside
-        move = mo.move_raw_ids
+        move = mo.move_raw_ids.filtered("is_alternative_component")
         # C Jant (priority 20) covers, B (priority 10) does not → C applied
         self.assertEqual(move.product_id, self.alt_high)
-        self.assertTrue(move.is_alternative_component)
         self.assertEqual(move.original_product_id, self.main)
+        self.assertEqual(
+            mo.move_raw_ids.filtered("is_alternative_origin").product_id,
+            self.main)
 
     def test_mode_auto_keeps_main_when_nothing_covers(self):
         """alternative_mode='auto': no covering alternative → move keeps
@@ -325,12 +331,11 @@ class TestComponentAlternative(TransactionCase):
         mo = self._make_mo_qty(5.0)
         wizard = self._open_wizard(mo)
         wizard.action_apply()
-        moves = mo.move_raw_ids
+        moves = mo.move_raw_ids.filtered("is_alternative_component")
         self.assertEqual(len(moves), 2)
         self.assertEqual(
             set(moves.product_id.ids), {self.alt_low.id, self.alt_high.id})
         for move in moves:
-            self.assertTrue(move.is_alternative_component)
             self.assertEqual(move.original_product_id, self.main)
             self.assertNotEqual(move.state, "draft")
         self.assertEqual(
@@ -339,6 +344,11 @@ class TestComponentAlternative(TransactionCase):
         self.assertEqual(labels[self.alt_low], "Alt-1")
         self.assertEqual(labels[self.alt_high], "Alt-2")
         self.assertTrue(all(m.alt_group_id == self.main for m in moves))
+        # original line stays as a passive zero-demand placeholder
+        origin = mo.move_raw_ids.filtered("is_alternative_origin")
+        self.assertEqual(origin.product_id, self.main)
+        self.assertEqual(origin.product_uom_qty, 0.0)
+        self.assertEqual(origin.alt_group_id, self.main)
 
     def test_partial_mode_rejects_short_total(self):
         """Combined stock 9 < demand 10 → apply raises and the move is

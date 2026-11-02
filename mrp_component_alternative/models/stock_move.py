@@ -19,12 +19,19 @@ class StockMove(models.Model):
         readonly=True, copy=False)
     alternative_selected_date = fields.Datetime(
         string="Alternative Selected On", readonly=True, copy=False)
+    is_alternative_origin = fields.Boolean(
+        string="Substituted Origin", readonly=True, copy=False)
+    alternative_original_qty = fields.Float(
+        string="Original Demand", readonly=True, copy=False,
+        digits="Product Unit")
     alt_group_id = fields.Many2one(
         "product.product", compute="_compute_alt_group", store=True,
         compute_sudo=True)
     alternative_rank = fields.Integer(
         compute="_compute_alternative_rank", compute_sudo=True)
     alternative_label = fields.Char(
+        compute="_compute_alternative_rank", compute_sudo=True)
+    alt_marker = fields.Char(
         compute="_compute_alternative_rank", compute_sudo=True)
 
     @api.depends("product_id", "original_product_id")
@@ -34,7 +41,8 @@ class StockMove(models.Model):
         for move in self:
             move.alt_group_id = move.original_product_id or move.product_id
 
-    @api.depends("product_id", "bom_line_id", "is_alternative_component")
+    @api.depends("product_id", "bom_line_id", "is_alternative_component",
+                 "original_product_id")
     def _compute_alternative_rank(self):
         for move in self:
             rank = 0
@@ -46,7 +54,13 @@ class StockMove(models.Model):
                         rank = index
                         break
             move.alternative_rank = rank
-            move.alternative_label = _("Alt-%d") % rank if rank else ""
+            if rank:
+                move.alternative_label = _("Alt-%d") % rank
+            elif move.original_product_id:
+                move.alternative_label = _("Ana")
+            else:
+                move.alternative_label = ""
+            move.alt_marker = "↳" if move.original_product_id else ""
 
     @api.depends("bom_line_id", "bom_line_id.alternative_ids.active")
     def _compute_has_bom_alternatives(self):
@@ -108,17 +122,53 @@ class StockMove(models.Model):
                 "The manufacturing order %s is locked; unlock it before "
                 "changing component products.", production.display_name))
 
+    def _placeholder_vals(self, origin, demand, now):
+        """Values that turn this move into the passive original-component
+        placeholder line (no demand, no reservation, kept for display)."""
+        return {
+            "product_id": origin.id,
+            "name": origin.display_name,
+            "alternative_original_qty":
+                self.alternative_original_qty or demand,
+            "product_uom_qty": 0.0,
+            "is_alternative_component": False,
+            "original_product_id": False,
+            "is_alternative_origin": True,
+            "alternative_selected_by": self.env.user.id,
+            "alternative_selected_date": now,
+        }
+
+    def _spawn_alternative_move(self, product, qty_move_uom, origin, now):
+        """Create a confirmed child move for *product* under this line."""
+        new_move = self.copy({
+            "product_id": product.id,
+            "name": product.display_name,
+            "product_uom_qty": qty_move_uom,
+            "is_alternative_component": product != origin,
+            "original_product_id": origin.id,
+            "alternative_selected_by": self.env.user.id,
+            "alternative_selected_date": now,
+        })
+        new_move._action_confirm(merge=False)
+        if new_move.state not in ("draft", "cancel"):
+            new_move._action_assign()
+        return new_move
+
     def _apply_alternative_product(self, new_product, demand=None):
         """Replace the move's product by *new_product* and re-reserve.
+
+        The original component line is kept as a passive zero-demand
+        placeholder so the substitution stays visible on the order;
+        the alternative is consumed through a new child move.
 
         Stock checks must be done by the caller; this method only performs
         the swap and keeps the traceability fields up to date.
         """
         self.ensure_one()
         self._check_alternative_allowed()
-        if new_product == self.product_id:
-            return
         origin = self._alt_main_component()
+        if new_product == self.product_id and not self.is_alternative_origin:
+            return
         if not origin.uom_id._has_common_reference(new_product.uom_id):
             raise UserError(_(
                 "%(alt)s cannot replace %(main)s: incompatible units of "
@@ -126,32 +176,49 @@ class StockMove(models.Model):
                 main=origin.display_name))
         old_product = self.product_id
         self._do_unreserve()
-        self.write({
-            "product_id": new_product.id,
-            "name": new_product.display_name,
-            "is_alternative_component": new_product != origin,
-            "original_product_id": origin.id,
-            "alternative_selected_by": self.env.user.id,
-            "alternative_selected_date": fields.Datetime.now(),
-        })
-        if self.state not in ("draft", "cancel"):
-            self._action_assign()
+        now = fields.Datetime.now()
         production = self.raw_material_production_id
+        if new_product == origin:
+            # Revert: restore this line to the original component.
+            self.write({
+                "product_id": origin.id,
+                "name": origin.display_name,
+                "product_uom_qty":
+                    self.alternative_original_qty or self.product_uom_qty,
+                "alternative_original_qty": 0.0,
+                "is_alternative_component": False,
+                "original_product_id": False,
+                "is_alternative_origin": False,
+                "alternative_selected_by": self.env.user.id,
+                "alternative_selected_date": now,
+            })
+            if self.state not in ("draft", "cancel"):
+                self._action_assign()
+            if production:
+                production.message_post(body=_(
+                    "Component %s reverted to the original product, "
+                    "selected by %s.", origin.display_name,
+                    self.env.user.name))
+            return
+        qty = demand if demand is not None else (
+            self.alternative_original_qty or self.product_uom_qty)
+        self.write(self._placeholder_vals(origin, qty, now))
+        self._spawn_alternative_move(new_product, qty, origin, now)
         if production:
             production.message_post(body=_(
                 "Alternative component applied: %(old)s replaced by "
                 "%(new)s (demand %(qty)s %(uom)s), selected by %(user)s.",
                 old=old_product.display_name, new=new_product.display_name,
-                qty=self.product_uom_qty, uom=self.product_uom.name,
+                qty=qty, uom=self.product_uom.name,
                 user=self.env.user.name))
 
     def _apply_partial_alternative(self, allocations):
         """Split this move across several products.
 
         *allocations* is a list of ``(product, qty)`` tuples where *qty* is
-        expressed in the product's own uom. The first allocation keeps this
-        move; the rest are created as copies so each product gets its own
-        component line.
+        expressed in the product's own uom. This move is kept as a passive
+        zero-demand placeholder of the original component and every
+        allocation is created as a confirmed child move beneath it.
         """
         self.ensure_one()
         self._check_alternative_allowed()
@@ -163,35 +230,22 @@ class StockMove(models.Model):
                 precision_rounding=product.uom_id.rounding) > 0]
         if not allocations:
             return
+        if len(allocations) == 1 and allocations[0][0] == origin:
+            # Full coverage by the main component itself = revert.
+            self._apply_alternative_product(origin)
+            return
         self._do_unreserve()
-        moves = self.env["stock.move"]
+        now = fields.Datetime.now()
+        self.write(self._placeholder_vals(
+            origin, self.product_uom_qty, now))
         parts = []
-        for index, (product, qty) in enumerate(allocations):
+        for product, qty in allocations:
             qty_move_uom = product.uom_id._compute_quantity(
                 qty, self.product_uom)
-            vals = {
-                "product_id": product.id,
-                "name": product.display_name,
-                "product_uom_qty": qty_move_uom,
-                "is_alternative_component": product != origin,
-                "original_product_id": origin.id,
-                "alternative_selected_by": self.env.user.id,
-                "alternative_selected_date": fields.Datetime.now(),
-            }
-            if index == 0:
-                self.write(vals)
-                moves |= self
-            else:
-                new_move = self.copy(vals)
-                # move copies are created in 'draft' state; confirm them
-                # so they participate in the reservation cycle below.
-                new_move._action_confirm(merge=False)
-                moves |= new_move
+            self._spawn_alternative_move(
+                product, qty_move_uom, origin, now)
             parts.append(
                 "%s %.2f %s" % (product.display_name, qty, product.uom_id.name))
-        for move in moves:
-            if move.state not in ("draft", "cancel"):
-                move._action_assign()
         production = self.raw_material_production_id
         if production:
             production.message_post(body=_(

@@ -18,11 +18,20 @@
             <xpath expr="//field[@name='move_raw_ids']/list"
                    position="attributes">
                 <attribute name="default_order">alt_group_id, id</attribute>
+                <attribute name="decoration-muted">is_alternative_origin</attribute>
+            </xpath>
+            <xpath expr="//field[@name='move_raw_ids']/list/field[@name='product_id']"
+                   position="before">
+                <field name="alt_marker" string=" " readonly="1" width="24px"
+                       decoration-muted="not alt_marker"/>
             </xpath>
             <xpath expr="//field[@name='move_raw_ids']/list" position="inside">
                 <field name="has_bom_alternatives" column_invisible="True"/>
                 <field name="alt_group_id" column_invisible="True"/>
+                <field name="is_alternative_origin" column_invisible="True"/>
                 <field name="original_product_id" string="Original Component"
+                       readonly="1" optional="hide"/>
+                <field name="alternative_original_qty" string="Orijinal İhtiyaç"
                        readonly="1" optional="hide"/>
                 <field name="is_alternative_component" string="Alt."
                        readonly="1" optional="show"/>
