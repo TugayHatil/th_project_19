@@ -172,10 +172,11 @@ class TestComponentAlternative(TransactionCase):
         self.assertEqual(move.original_product_id, self.main)
         self.assertEqual(move.alternative_selected_by, self.env.user)
         self.assertTrue(move.alternative_selected_date)
-        # the original component stays as a passive placeholder
+        # the original component stays as a passive cancelled placeholder
         origin = mo.move_raw_ids.filtered("is_alternative_origin")
         self.assertEqual(origin.product_id, self.main)
         self.assertEqual(origin.product_uom_qty, 0.0)
+        self.assertEqual(origin.state, "cancel")
         # reservation is made on the alternative, not on the main product
         self.assertEqual(
             self.Quant._get_available_quantity(self.alt_high, self.stock), 8.0)

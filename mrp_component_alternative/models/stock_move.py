@@ -138,6 +138,12 @@ class StockMove(models.Model):
             "alternative_selected_date": now,
         }
 
+    def _make_placeholder(self, origin, demand, now):
+        """Turn this move into the passive original-component placeholder:
+        zero demand, cancelled, no reservation/consumption effect."""
+        self.write(self._placeholder_vals(origin, demand, now))
+        self._action_cancel()
+
     def _spawn_alternative_move(self, product, qty_move_uom, origin, now):
         """Create a confirmed child move for *product* under this line."""
         new_move = self.copy({
@@ -202,7 +208,7 @@ class StockMove(models.Model):
             return
         qty = demand if demand is not None else (
             self.alternative_original_qty or self.product_uom_qty)
-        self.write(self._placeholder_vals(origin, qty, now))
+        self._make_placeholder(origin, qty, now)
         self._spawn_alternative_move(new_product, qty, origin, now)
         if production:
             production.message_post(body=_(
@@ -236,8 +242,7 @@ class StockMove(models.Model):
             return
         self._do_unreserve()
         now = fields.Datetime.now()
-        self.write(self._placeholder_vals(
-            origin, self.product_uom_qty, now))
+        self._make_placeholder(origin, self.product_uom_qty, now)
         parts = []
         for product, qty in allocations:
             qty_move_uom = product.uom_id._compute_quantity(

@@ -64,8 +64,7 @@
             <xpath expr="//field[@name='move_raw_ids']/list/field[@name='product_uom_qty'][last()]"
                    position="after">
                 <field name="alternative_original_qty"
-                       string="Orijinal İht." readonly="1" width="90px"
-                       invisible="not is_alternative_origin"/>
+                       column_invisible="True"/>
             </xpath>
         </field>
     </record>
