@@ -31,16 +31,41 @@
                 <field name="is_alternative_origin" column_invisible="True"/>
                 <field name="original_product_id" string="Original Component"
                        readonly="1" optional="hide"/>
-                <field name="alternative_original_qty" string="Orijinal İhtiyaç"
-                       readonly="1" optional="hide"/>
                 <field name="is_alternative_component" string="Alt."
-                       readonly="1" optional="show"/>
+                       readonly="1" optional="show"
+                       invisible="is_alternative_origin"/>
                 <field name="alternative_label" string="Alt. Sıra"
                        readonly="1" optional="show" width="70px"
                        decoration-muted="not alternative_label"/>
                 <button name="action_open_alternative_selector" type="object"
                         icon="fa-random" title="Alternatif Malzemeler"
-                        invisible="not has_bom_alternatives or state in ('done', 'cancel')"/>
+                        invisible="not has_bom_alternatives or is_alternative_origin or state in ('done', 'cancel')"/>
+            </xpath>
+            <xpath expr="//field[@name='move_raw_ids']/list/field[@name='forecast_availability']"
+                   position="attributes">
+                <attribute name="invisible">is_alternative_origin</attribute>
+            </xpath>
+            <xpath expr="//field[@name='move_raw_ids']/list/field[@name='quantity']"
+                   position="attributes">
+                <attribute name="invisible">is_alternative_origin</attribute>
+            </xpath>
+            <xpath expr="//field[@name='move_raw_ids']/list/field[@name='product_uom_qty']"
+                   position="attributes">
+                <attribute name="invisible">is_alternative_origin</attribute>
+            </xpath>
+            <xpath expr="//field[@name='move_raw_ids']/list/button[@name='action_show_details'][not(@class)]"
+                   position="attributes">
+                <attribute name="invisible">not show_details_visible or has_tracking == 'none' or is_alternative_origin</attribute>
+            </xpath>
+            <xpath expr="//field[@name='move_raw_ids']/list/button[@name='action_show_details'][@class]"
+                   position="attributes">
+                <attribute name="invisible">has_tracking != 'none' or not show_details_visible or is_alternative_origin</attribute>
+            </xpath>
+            <xpath expr="//field[@name='move_raw_ids']/list/field[@name='product_uom_qty'][last()]"
+                   position="after">
+                <field name="alternative_original_qty"
+                       string="Orijinal İht." readonly="1" width="90px"
+                       invisible="not is_alternative_origin"/>
             </xpath>
         </field>
     </record>
