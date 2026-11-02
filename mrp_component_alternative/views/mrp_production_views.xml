@@ -53,6 +53,10 @@
                    position="attributes">
                 <attribute name="invisible">is_alternative_origin</attribute>
             </xpath>
+            <xpath expr="//field[@name='move_raw_ids']/list/field[@name='product_uom'][@widget]"
+                   position="attributes">
+                <attribute name="invisible">is_alternative_origin</attribute>
+            </xpath>
             <xpath expr="//field[@name='move_raw_ids']/list/field[@name='location_id']"
                    position="attributes">
                 <attribute name="invisible">is_alternative_origin</attribute>
@@ -74,6 +78,10 @@
                 <attribute name="invisible">is_alternative_origin</attribute>
             </xpath>
             <xpath expr="//field[@name='move_raw_ids']/list/field[@name='product_uom_qty']"
+                   position="attributes">
+                <attribute name="invisible">is_alternative_origin</attribute>
+            </xpath>
+            <xpath expr="//field[@name='move_raw_ids']/list/field[@name='product_uom_qty'][@widget]"
                    position="attributes">
                 <attribute name="invisible">is_alternative_origin</attribute>
             </xpath>
