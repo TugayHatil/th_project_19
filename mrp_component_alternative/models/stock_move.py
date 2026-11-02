@@ -19,6 +19,34 @@ class StockMove(models.Model):
         readonly=True, copy=False)
     alternative_selected_date = fields.Datetime(
         string="Alternative Selected On", readonly=True, copy=False)
+    alt_group_id = fields.Many2one(
+        "product.product", compute="_compute_alt_group", store=True,
+        compute_sudo=True)
+    alternative_rank = fields.Integer(
+        compute="_compute_alternative_rank", compute_sudo=True)
+    alternative_label = fields.Char(
+        compute="_compute_alternative_rank", compute_sudo=True)
+
+    @api.depends("product_id", "original_product_id")
+    def _compute_alt_group(self):
+        """Sort key that keeps every alternative line next to the other
+        lines of the same original component."""
+        for move in self:
+            move.alt_group_id = move.original_product_id or move.product_id
+
+    @api.depends("product_id", "bom_line_id", "is_alternative_component")
+    def _compute_alternative_rank(self):
+        for move in self:
+            rank = 0
+            if move.is_alternative_component and move.bom_line_id:
+                alternatives = move.bom_line_id.alternative_ids.filtered(
+                    "active").sorted("sequence")
+                for index, alternative in enumerate(alternatives, 1):
+                    if alternative.alternative_product_id == move.product_id:
+                        rank = index
+                        break
+            move.alternative_rank = rank
+            move.alternative_label = _("Alt-%d") % rank if rank else ""
 
     @api.depends("bom_line_id", "bom_line_id.alternative_ids.active")
     def _compute_has_bom_alternatives(self):

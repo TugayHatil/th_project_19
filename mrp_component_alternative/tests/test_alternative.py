@@ -335,6 +335,10 @@ class TestComponentAlternative(TransactionCase):
             self.assertNotEqual(move.state, "draft")
         self.assertEqual(
             sorted(moves.mapped("product_uom_qty")), [4.0, 6.0])
+        labels = {m.product_id: m.alternative_label for m in moves}
+        self.assertEqual(labels[self.alt_low], "Alt-1")
+        self.assertEqual(labels[self.alt_high], "Alt-2")
+        self.assertTrue(all(m.alt_group_id == self.main for m in moves))
 
     def test_partial_mode_rejects_short_total(self):
         """Combined stock 9 < demand 10 → apply raises and the move is
