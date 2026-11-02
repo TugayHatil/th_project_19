@@ -99,6 +99,17 @@ class MrpProduction(models.Model):
             if target:
                 move._apply_alternative_product(target)
             else:
+                selector = self.env["mrp.alternative.selector"].new()
+                if selector._partial_allowed():
+                    allocs = selector._suggest_allocations(move)
+                    total = sum(
+                        product.uom_id._compute_quantity(qty, main.uom_id)
+                        for product, qty in allocs)
+                    if float_compare(
+                            total, demand_main_uom,
+                            precision_rounding=main.uom_id.rounding) >= 0:
+                        move._apply_partial_alternative(allocs)
+                        continue
                 self.message_post(body=_(
                     "%s: main component stock is insufficient and no "
                     "alternative can fully cover the demand; the component "

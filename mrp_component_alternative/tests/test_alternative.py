@@ -281,6 +281,72 @@ class TestComponentAlternative(TransactionCase):
         self.assertEqual(move.product_id, self.main)
         self.assertFalse(move.is_alternative_component)
 
+    # ------------------------------------------------------------------
+    # Partial usage mode
+    # ------------------------------------------------------------------
+    def _enable_partial(self):
+        self.env["ir.config_parameter"].sudo().set_param(
+            "mrp_component_alternative.allow_partial_usage", "True")
+
+    def _make_mo_qty(self, qty):
+        mo = self.env["mrp.production"].create({
+            "product_id": self.finished.id,
+            "bom_id": self.bom.id,
+            "product_qty": qty,
+            "location_src_id": self.stock.id,
+        })
+        mo.action_confirm()
+        return mo
+
+    def test_partial_mode_suggests_split_allocation(self):
+        """Partial mode: demand 10, alt_low 6 + alt_high 4 → both rows are
+        preselected with their coverage as the default quantity."""
+        self._enable_partial()
+        self._set_stock(self.alt_low, 6.0)
+        self._set_stock(self.alt_high, 4.0)
+        mo = self._make_mo_qty(5.0)  # component demand 5 x 2 = 10
+        wizard = self._open_wizard(mo)
+        self.assertTrue(wizard.allow_partial)
+        low = wizard.line_ids.filtered(
+            lambda l: l.alternative_product_id == self.alt_low)
+        high = wizard.line_ids.filtered(
+            lambda l: l.alternative_product_id == self.alt_high)
+        self.assertTrue(low.selected)
+        self.assertEqual(low.selected_qty, 6.0)
+        self.assertTrue(high.selected)
+        self.assertEqual(high.selected_qty, 4.0)
+
+    def test_partial_mode_apply_splits_move(self):
+        """Applying a partial allocation splits the component move into
+        per-product lines covering the demand."""
+        self._enable_partial()
+        self._set_stock(self.alt_low, 6.0)
+        self._set_stock(self.alt_high, 4.0)
+        mo = self._make_mo_qty(5.0)
+        wizard = self._open_wizard(mo)
+        wizard.action_apply()
+        moves = mo.move_raw_ids
+        self.assertEqual(len(moves), 2)
+        self.assertEqual(
+            set(moves.product_id.ids), {self.alt_low.id, self.alt_high.id})
+        for move in moves:
+            self.assertTrue(move.is_alternative_component)
+            self.assertEqual(move.original_product_id, self.main)
+        self.assertEqual(
+            sorted(moves.mapped("product_uom_qty")), [4.0, 6.0])
+
+    def test_partial_mode_rejects_short_total(self):
+        """Combined stock 9 < demand 10 → apply raises and the move is
+        left unchanged."""
+        self._enable_partial()
+        self._set_stock(self.alt_low, 6.0)
+        self._set_stock(self.alt_high, 3.0)
+        mo = self._make_mo_qty(5.0)
+        wizard = self._open_wizard(mo)
+        with self.assertRaises(UserError):
+            wizard.action_apply()
+        self.assertEqual(mo.move_raw_ids.product_id, self.main)
+
     def test_mode_manual_does_not_open_popup(self):
         """alternative_mode='manual': confirm returns the standard result,
         no wizard; the user selects via the button."""

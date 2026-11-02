@@ -29,6 +29,7 @@ class MrpAlternativeSelector(models.TransientModel):
         string="Related Manufacturing Orders")
     has_move_lines = fields.Boolean(readonly=True)
     folded_move_ids = fields.Many2many("stock.move", readonly=True)
+    allow_partial = fields.Boolean(readonly=True)
 
     def _compute_user_can_apply(self):
         allowed = self.env.user.has_group(
@@ -42,6 +43,54 @@ class MrpAlternativeSelector(models.TransientModel):
     def _available_qty(self, product, location):
         return self.env["stock.quant"]._get_available_quantity(
             product, location)
+
+    @api.model
+    def _partial_allowed(self):
+        param = self.env["ir.config_parameter"].sudo().get_param(
+            "mrp_component_alternative.allow_partial_usage")
+        return str(param).lower() in ("true", "1")
+
+    def _suggest_allocations(self, move):
+        """Greedy (product, qty-in-product-uom) allocation by priority.
+
+        The demand is covered first from the main component's own stock,
+        then from alternatives in sequence order. The result may fall
+        short of the demand when combined stock is insufficient.
+        """
+        self.ensure_one()
+        main = move._alt_main_component()
+        remaining = move.product_uom._compute_quantity(
+            move.product_uom_qty, main.uom_id)
+        own_reserved = move._alt_own_reserved_qty()
+        allocs = []
+        main_coverage = move._alt_coverage(
+            main, move.location_id, own_reserved)
+        take = min(main_coverage, remaining)
+        if float_compare(
+                take, 0.0,
+                precision_rounding=main.uom_id.rounding) > 0:
+            allocs.append((main, take))
+            remaining -= take
+        for alternative in move.bom_line_id.alternative_ids.filtered(
+                "active").sorted("sequence"):
+            if float_compare(
+                    remaining, 0.0,
+                    precision_rounding=main.uom_id.rounding) <= 0:
+                break
+            product = alternative.alternative_product_id
+            coverage = move._alt_coverage(
+                product, move.location_id, own_reserved)
+            take_main = min(
+                product.uom_id._compute_quantity(coverage, main.uom_id),
+                remaining)
+            if float_compare(
+                    take_main, 0.0,
+                    precision_rounding=main.uom_id.rounding) <= 0:
+                continue
+            allocs.append((product, main.uom_id._compute_quantity(
+                take_main, product.uom_id)))
+            remaining -= take_main
+        return allocs
 
     def _open_action(self, name):
         view = self.env.ref(
@@ -68,6 +117,7 @@ class MrpAlternativeSelector(models.TransientModel):
             "mode": "production",
             "production_id": production.id,
             "location_id": production.location_src_id.id,
+            "allow_partial": self._partial_allowed(),
         })
         wizard.folded_move_ids = [Command.set(moves.ids)]
         line_vals = []
@@ -121,6 +171,13 @@ class MrpAlternativeSelector(models.TransientModel):
             "active").sorted("sequence")
         suggested = False
         suggested_name = ""
+        # Partial mode: pre-allocate the demand greedily by priority.
+        alloc_map = {}
+        if (self.allow_partial and not main_ok
+                and not move.is_alternative_component):
+            alloc_map = {
+                product.id: qty
+                for product, qty in self._suggest_allocations(move)}
         alt_vals = []
         for index, alternative in enumerate(alternatives, start=1):
             product = alternative.alternative_product_id
@@ -138,6 +195,7 @@ class MrpAlternativeSelector(models.TransientModel):
             if is_suggested:
                 suggested_name = product.display_name
             suggested = suggested or is_suggested
+            alloc_qty = alloc_map.get(product.id, 0.0)
             alt_vals.append({
                 "move_id": move.id,
                 "product_id": main.id,
@@ -148,9 +206,14 @@ class MrpAlternativeSelector(models.TransientModel):
                 "demand_qty": demand,
                 "uom_id": product.uom_id.id,
                 "available_qty": coverage,
+                "has_coverage": float_compare(
+                    coverage, 0.0,
+                    precision_rounding=product.uom_id.rounding) > 0,
                 "can_cover": can_cover,
-                "is_suggested": is_suggested,
+                "is_suggested": bool(alloc_qty) if self.allow_partial
+                else is_suggested,
                 "is_current": move.product_id == product,
+                "selected_qty": alloc_qty,
             })
 
         if remembered:
@@ -162,6 +225,7 @@ class MrpAlternativeSelector(models.TransientModel):
             chosen = suggested_val[0]["alternative_product_id"]
         else:
             chosen = main.id
+        main_alloc = alloc_map.get(main.id, 0.0)
         main_vals = {
             "move_id": move.id,
             "product_id": main.id,
@@ -171,6 +235,9 @@ class MrpAlternativeSelector(models.TransientModel):
             "sequence": seq_base,
             "priority": 0,
             "available_qty": main_coverage,
+            "has_coverage": float_compare(
+                main_coverage, 0.0,
+                precision_rounding=main.uom_id.rounding) > 0,
             "can_cover": main_ok,
             "is_suggested": False,
             "is_original": True,
@@ -178,12 +245,33 @@ class MrpAlternativeSelector(models.TransientModel):
             "alt_count": len(alternatives),
             "remembered_selected_id": chosen,
             "suggested_label": suggested_name,
-            "selected": chosen == main.id,
+            "selected_qty": main_alloc if self.allow_partial else 0.0,
+            "selected": (float_compare(
+                main_alloc, 0.0,
+                precision_rounding=main.uom_id.rounding) > 0
+                if self.allow_partial else chosen == main.id),
         }
         if collapsed:
             return [main_vals]
-        for vals in alt_vals:
-            vals["selected"] = vals["alternative_product_id"] == chosen
+        if self.allow_partial:
+            # No pre-allocation (main covers or already substituted):
+            # mark the product currently in use as the selected option.
+            if not alloc_map:
+                if move.is_alternative_component:
+                    for vals in alt_vals:
+                        in_use = vals["alternative_product_id"] == \
+                            move.product_id.id
+                        vals["selected"] = in_use
+                        vals["selected_qty"] = vals["demand_qty"] \
+                            if in_use else 0.0
+                elif main_ok:
+                    main_vals["selected_qty"] = demand_main_uom
+            else:
+                for vals in alt_vals:
+                    vals["selected"] = vals["selected_qty"] > 0
+        else:
+            for vals in alt_vals:
+                vals["selected"] = vals["alternative_product_id"] == chosen
         return [main_vals] + alt_vals
 
     # ------------------------------------------------------------------
@@ -200,6 +288,7 @@ class MrpAlternativeSelector(models.TransientModel):
             "product_id": product.id,
             "location_id": location.id,
             "demand_qty": demand,
+            "allow_partial": self._partial_allowed(),
         })
         alternatives = self.env["mrp.bom.line.alternative"].search([
             ("product_id", "=", product.id),
@@ -291,6 +380,26 @@ class MrpAlternativeSelector(models.TransientModel):
             for move in self.line_ids.move_id:
                 lines = self.line_ids.filtered(lambda l: l.move_id == move)
                 if not lines.filtered("can_cover"):
+                    if self.allow_partial:
+                        main = move._alt_main_component()
+                        covered = sum(
+                            product.uom_id._compute_quantity(
+                                qty, main.uom_id)
+                            for product, qty
+                            in self._suggest_allocations(move))
+                        demand = move.product_uom._compute_quantity(
+                            move.product_uom_qty, main.uom_id)
+                        if float_compare(
+                                covered, demand,
+                                precision_rounding=main.uom_id.rounding) >= 0:
+                            continue
+                        messages.append(_(
+                            "%s: even the combined stock of the main "
+                            "component and its alternatives cannot "
+                            "cover the demand. Plan a purchase or "
+                            "production for this component.",
+                            main.display_name))
+                        continue
                     messages.append(_(
                         "%s: neither the main component nor any alternative "
                         "can fully cover the demand. Plan a purchase or "
@@ -331,6 +440,58 @@ class MrpAlternativeSelector(models.TransientModel):
             per_move[line.move_id] |= line
         for move, lines in per_move.items():
             selected = lines.filtered("selected")
+            if self.allow_partial:
+                allocs = []
+                total_main = 0.0
+                main = move._alt_main_component()
+                demand_main = move.product_uom._compute_quantity(
+                    move.product_uom_qty, main.uom_id)
+                for line in selected:
+                    target = line.alternative_product_id
+                    qty = line.selected_qty
+                    if float_compare(
+                            qty, 0.0,
+                            precision_rounding=target.uom_id.rounding) <= 0:
+                        raise UserError(_(
+                            "Enter a quantity for the selected option %s.",
+                            target.display_name))
+                    coverage = move._alt_coverage(
+                        target, move.location_id,
+                        move._alt_own_reserved_qty())
+                    if float_compare(
+                            coverage, qty,
+                            precision_rounding=target.uom_id.rounding) < 0:
+                        raise UserError(_(
+                            "Stock for %(product)s changed: %(avail)s "
+                            "%(uom)s available but %(demand)s requested. "
+                            "Please re-evaluate the alternatives.",
+                            product=target.display_name, avail=coverage,
+                            uom=target.uom_id.name, demand=qty))
+                    allocs.append((target, qty))
+                    total_main += target.uom_id._compute_quantity(
+                        qty, main.uom_id)
+                if not allocs and move in self.folded_move_ids:
+                    # Folded group: recompute the suggested allocation.
+                    for product, qty in self._suggest_allocations(move):
+                        allocs.append((product, qty))
+                        total_main += product.uom_id._compute_quantity(
+                            qty, main.uom_id)
+                if not allocs:
+                    continue
+                if len(allocs) == 1 and allocs[0][0] == move.product_id:
+                    # current product already selected for the full demand
+                    continue
+                if float_compare(
+                        total_main, demand_main,
+                        precision_rounding=main.uom_id.rounding) < 0:
+                    raise UserError(_(
+                        "The selected quantities do not fully cover the "
+                        "demand for %(main)s (%(have).2f %(uom)s < "
+                        "%(need).2f %(uom)s).",
+                        main=main.display_name, have=total_main,
+                        need=demand_main, uom=main.uom_id.name))
+                move._apply_partial_alternative(allocs)
+                continue
             if len(selected) > 1:
                 raise UserError(_(
                     "Only one option can be selected for component %s.",
@@ -397,7 +558,10 @@ class MrpAlternativeSelectorLine(models.TransientModel):
     remembered_selected_id = fields.Many2one(
         "product.product", readonly=True)
     suggested_label = fields.Char(readonly=True)
+    has_coverage = fields.Boolean(readonly=True)
     selected = fields.Boolean(string="Select")
+    selected_qty = fields.Float(
+        string="Miktar", digits="Product Unit")
 
     @api.depends("selector_id.folded_move_ids", "move_id")
     def _compute_is_folded(self):
@@ -420,7 +584,10 @@ class MrpAlternativeSelectorLine(models.TransientModel):
             if line.is_suggested:
                 parts.append(_("Önerilen"))
             if not line.can_cover:
-                parts.append(_("Yetersiz Stok"))
+                if (line.selector_id.allow_partial and line.has_coverage):
+                    parts.append(_("Kısmi Stok"))
+                else:
+                    parts.append(_("Yetersiz Stok"))
             line.status_label = " \u00b7 ".join(parts)
 
     def action_toggle_fold(self):

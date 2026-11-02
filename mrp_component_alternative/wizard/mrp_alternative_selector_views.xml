@@ -14,6 +14,7 @@
                     <group>
                         <group>
                             <field name="mode" invisible="True"/>
+                            <field name="allow_partial" invisible="True"/>
                             <field name="user_can_apply" invisible="True"/>
                             <field name="has_move_lines" invisible="True"/>
                             <field name="production_id" string="Üretim Emri"
@@ -46,6 +47,7 @@
                             <field name="is_current" column_invisible="True"/>
                             <field name="product_id" column_invisible="True"/>
                             <field name="is_folded" column_invisible="True"/>
+                            <field name="has_coverage" column_invisible="True"/>
                             <field name="remembered_selected_id"
                                    column_invisible="True"/>
                             <field name="suggested_label"
@@ -81,8 +83,13 @@
                                    decoration-info="is_current and not is_suggested"
                                    decoration-warning="not can_cover"/>
                             <field name="selected" string="Seç"
-                                   readonly="not can_cover" width="50px"
-                                   invisible="not can_cover or parent.mode != 'production'"/>
+                                   readonly="not can_cover and not (parent.allow_partial and has_coverage)"
+                                   width="50px"
+                                   invisible="parent.mode != 'production' or (not can_cover and not (parent.allow_partial and has_coverage))"/>
+                            <field name="selected_qty" string="Miktar"
+                                   width="90px"
+                                   readonly="not selected"
+                                   invisible="parent.mode != 'production' or not parent.allow_partial"/>
                         </list>
                     </field>
                     <group string="İlişkili Üretim Emri İhtiyaçları"

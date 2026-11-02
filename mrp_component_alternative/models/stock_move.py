@@ -116,6 +116,57 @@ class StockMove(models.Model):
                 qty=self.product_uom_qty, uom=self.product_uom.name,
                 user=self.env.user.name))
 
+    def _apply_partial_alternative(self, allocations):
+        """Split this move across several products.
+
+        *allocations* is a list of ``(product, qty)`` tuples where *qty* is
+        expressed in the product's own uom. The first allocation keeps this
+        move; the rest are created as copies so each product gets its own
+        component line.
+        """
+        self.ensure_one()
+        self._check_alternative_allowed()
+        origin = self._alt_main_component()
+        allocations = [
+            (product, qty) for product, qty in allocations
+            if float_compare(
+                qty, 0.0,
+                precision_rounding=product.uom_id.rounding) > 0]
+        if not allocations:
+            return
+        self._do_unreserve()
+        moves = self.env["stock.move"]
+        parts = []
+        for index, (product, qty) in enumerate(allocations):
+            qty_move_uom = product.uom_id._compute_quantity(
+                qty, self.product_uom)
+            vals = {
+                "product_id": product.id,
+                "name": product.display_name,
+                "product_uom_qty": qty_move_uom,
+                "is_alternative_component": product != origin,
+                "original_product_id": origin.id,
+                "alternative_selected_by": self.env.user.id,
+                "alternative_selected_date": fields.Datetime.now(),
+            }
+            if index == 0:
+                self.write(vals)
+                moves |= self
+            else:
+                moves |= self.copy(vals)
+            parts.append(
+                "%s %.2f %s" % (product.display_name, qty, product.uom_id.name))
+        for move in moves:
+            if move.state not in ("draft", "cancel"):
+                move._action_assign()
+        production = self.raw_material_production_id
+        if production:
+            production.message_post(body=_(
+                "Alternative components applied: %(old)s split into "
+                "%(parts)s, selected by %(user)s.",
+                old=origin.display_name, parts=" + ".join(parts),
+                user=self.env.user.name))
+
     def action_open_alternative_selector(self):
         self.ensure_one()
         production = self.raw_material_production_id

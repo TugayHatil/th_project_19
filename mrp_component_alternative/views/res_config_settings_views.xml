@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_inherit_alternative" model="ir.ui.view">
+        <field name="name">res.config.settings.form.alternative</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="mrp.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//app[@name='mrp']" position="inside">
+                <block title="Alternatif Bileşenler">
+                    <setting help="Açıkken, yetersiz ana bileşen ihtiyacı birden fazla alternatiften parçalı karşılanabilir; kapalıyken tek ürün tam karşılama beklenir.">
+                        <field name="mrp_alternative_partial"/>
+                        <div>
+                            <label for="mrp_alternative_partial"/>
+                            <div class="text-muted">
+                                İhtiyaç, öncelik sırasıyla birden fazla
+                                alternatif üründen parçalı karşılanabilir ve
+                                bileşen satırı miktarlara göre bölünür.
+                                Kapalıyken yalnızca ihtiyacı tek başına tam
+                                karşılayan ürünler kullanılabilir.
+                            </div>
+                        </div>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>
