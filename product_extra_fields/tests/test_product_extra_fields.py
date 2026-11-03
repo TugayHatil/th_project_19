@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from psycopg2 import IntegrityError
 
-from odoo.exceptions import UserError
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import TransactionCase
 from odoo.tools import mute_logger
 
@@ -104,10 +104,16 @@ class TestProductExtraFields(TransactionCase):
             self.env['production.supervisor'].create({'name': 'D22'})
 
     def test_used_definition_cannot_be_deleted(self):
-        product = self._new_product(mip_no=self.mip.id)
+        product = self._new_product(
+            mip_no=self.mip.id,
+            material_group_id=self.material_group.id,
+        )
         with mute_logger('odoo.sql_db'), self.assertRaises(
                 (UserError, IntegrityError)):
             self.mip.unlink()
+        with mute_logger('odoo.sql_db'), self.assertRaises(
+                (UserError, IntegrityError)):
+            self.material_group.unlink()
         self.assertTrue(product.exists())
 
     def test_unused_definition_can_be_deleted(self):
@@ -134,3 +140,28 @@ class TestProductExtraFields(TransactionCase):
         self.assertEqual(product.purchase_group, 'direct')
         product.purchase_group = 'indirect'
         self.assertEqual(product.purchase_group, 'indirect')
+
+    def test_negative_purchase_rounding_rejected(self):
+        with self.assertRaises(ValidationError):
+            self._new_product(purchase_order_qty_rounding=-2.0)
+
+    def test_definition_name_is_trimmed(self):
+        mip = self.env['mip.definition'].create({'name': '  MIP-009  '})
+        self.assertEqual(mip.name, 'MIP-009')
+        mip.write({'name': '  MIP-010 '})
+        self.assertEqual(mip.name, 'MIP-010')
+
+    def test_definition_access_rights(self):
+        user = self.env['res.users'].create({
+            'name': 'Restricted User',
+            'login': 'pef_restricted_user',
+            'groups_id': [(6, 0, [self.env.ref('base.group_user').id])],
+        })
+        mip_as_user = self.env['mip.definition'].with_user(user)
+        self.assertTrue(mip_as_user.search([]))
+        with self.assertRaises(AccessError):
+            mip_as_user.create({'name': 'MIP-FORBIDDEN'})
+        with self.assertRaises(AccessError):
+            mip_as_user.browse(self.mip.id).write({'responsible': 'X'})
+        with self.assertRaises(AccessError):
+            mip_as_user.browse(self.mip.id).unlink()

@@ -5,10 +5,9 @@ from odoo import fields, models
 class ProductExternalMaterialGroup(models.Model):
     _name = 'product.external.material.group'
     _description = 'Harici Mal Grubu'
-    _order = 'name'
+    _inherit = 'product.extra.definition.mixin'
 
-    name = fields.Char(string='Harici Mal Grubu', required=True)
-    active = fields.Boolean(string='Aktif', default=True)
+    name = fields.Char(string='Harici Mal Grubu')
 
     _name_unique = models.Constraint(
         'unique(name)',

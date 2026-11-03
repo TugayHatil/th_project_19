@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from . import definition_mixin
 from . import product_material_group
 from . import product_external_material_group
 from . import mip_definition

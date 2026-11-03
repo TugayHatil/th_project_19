@@ -5,11 +5,10 @@ from odoo import fields, models
 class MipDefinition(models.Model):
     _name = 'mip.definition'
     _description = 'MİP Tanımı'
-    _order = 'name'
+    _inherit = 'product.extra.definition.mixin'
 
-    name = fields.Char(string='MİP No', required=True)
+    name = fields.Char(string='MİP No')
     responsible = fields.Char(string='MİP Sorumlusu')
-    active = fields.Boolean(string='Aktif', default=True)
 
     _name_unique = models.Constraint(
         'unique(name)',

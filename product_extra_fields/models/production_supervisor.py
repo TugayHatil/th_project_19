@@ -5,11 +5,10 @@ from odoo import fields, models
 class ProductionSupervisor(models.Model):
     _name = 'production.supervisor'
     _description = 'Üretim Sorumlusu'
-    _order = 'name'
+    _inherit = 'product.extra.definition.mixin'
 
-    name = fields.Char(string='Üretim Sorumlusu No', required=True)
+    name = fields.Char(string='Üretim Sorumlusu No')
     responsible = fields.Char(string='Üretim Sorumlusu')
-    active = fields.Boolean(string='Aktif', default=True)
 
     _name_unique = models.Constraint(
         'unique(name)',

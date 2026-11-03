@@ -5,10 +5,9 @@ from odoo import fields, models
 class ProductMaterialGroup(models.Model):
     _name = 'product.material.group'
     _description = 'Mal Grubu'
-    _order = 'name'
+    _inherit = 'product.extra.definition.mixin'
 
-    name = fields.Char(string='Mal Grubu', required=True)
-    active = fields.Boolean(string='Aktif', default=True)
+    name = fields.Char(string='Mal Grubu')
 
     _name_unique = models.Constraint(
         'unique(name)',
