@@ -55,14 +55,14 @@ class TestProductExtraFields(TransactionCase):
 
     def test_mip_responsible_related(self):
         product = self._new_product(mip_no=self.mip.id)
-        self.assertEqual(product.mip_responsible_id, self.responsible_1)
+        self.assertEqual(product.mip_responsible, self.responsible_1)
 
     def test_mip_responsible_change_propagates(self):
         product_1 = self._new_product(name='P1', mip_no=self.mip.id)
         product_2 = self._new_product(name='P2', mip_no=self.mip.id)
         self.mip.responsible = self.responsible_2
-        self.assertEqual(product_1.mip_responsible_id, self.responsible_2)
-        self.assertEqual(product_2.mip_responsible_id, self.responsible_2)
+        self.assertEqual(product_1.mip_responsible, self.responsible_2)
+        self.assertEqual(product_2.mip_responsible, self.responsible_2)
 
     def test_mip_selection_change_updates_responsible(self):
         mip_2 = self.env['mip.definition'].create({
@@ -71,13 +71,13 @@ class TestProductExtraFields(TransactionCase):
         })
         product = self._new_product(mip_no=self.mip.id)
         product.mip_no = mip_2
-        self.assertEqual(product.mip_responsible_id, self.responsible_2)
+        self.assertEqual(product.mip_responsible, self.responsible_2)
         product.mip_no = False
-        self.assertFalse(product.mip_responsible_id)
+        self.assertFalse(product.mip_responsible)
 
     def test_production_supervisor_related(self):
         product = self._new_product(production_supervisor_no=self.supervisor.id)
-        self.assertEqual(product.production_supervisor_id, self.responsible_1)
+        self.assertEqual(product.production_supervisor, self.responsible_1)
 
     def test_production_supervisor_change_propagates(self):
         product_1 = self._new_product(
@@ -85,15 +85,15 @@ class TestProductExtraFields(TransactionCase):
         product_2 = self._new_product(
             name='P2', production_supervisor_no=self.supervisor.id)
         self.supervisor.responsible = self.responsible_2
-        self.assertEqual(product_1.production_supervisor_id, self.responsible_2)
-        self.assertEqual(product_2.production_supervisor_id, self.responsible_2)
+        self.assertEqual(product_1.production_supervisor, self.responsible_2)
+        self.assertEqual(product_2.production_supervisor, self.responsible_2)
 
     def test_related_fields_stored_and_readonly(self):
         fields = self.env['product.template']._fields
-        self.assertTrue(fields['mip_responsible_id'].store)
-        self.assertTrue(fields['mip_responsible_id'].readonly)
-        self.assertTrue(fields['production_supervisor_id'].store)
-        self.assertTrue(fields['production_supervisor_id'].readonly)
+        self.assertTrue(fields['mip_responsible'].store)
+        self.assertTrue(fields['mip_responsible'].readonly)
+        self.assertTrue(fields['production_supervisor'].store)
+        self.assertTrue(fields['production_supervisor'].readonly)
 
     def test_mip_code_unique(self):
         with mute_logger('odoo.sql_db'), self.assertRaises(IntegrityError):

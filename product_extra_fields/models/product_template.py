@@ -14,13 +14,13 @@ class ProductTemplate(models.Model):
     validity_start_date = fields.Date(string='Geçerlilik Başlangıç')
     mip_no = fields.Many2one(
         'mip.definition', string='MİP No', ondelete='restrict')
-    mip_responsible_id = fields.Char(
+    mip_responsible = fields.Char(
         string='MİP Sorumlusu',
         related='mip_no.responsible', store=True, readonly=True)
     production_supervisor_no = fields.Many2one(
         'production.supervisor', string='Üretim Sorumlusu No',
         ondelete='restrict')
-    production_supervisor_id = fields.Char(
+    production_supervisor = fields.Char(
         string='Üretim Sorumlusu',
         related='production_supervisor_no.responsible',
         store=True, readonly=True)
