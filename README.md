@@ -37,5 +37,5 @@ production / external procurement storage locations, production & purchase
 quality-inspection flags, purchase quantity rounding and purchase group
 (Direct/Indirect). Ships four central definition models (Material Groups,
 External Material Groups, MIP Responsibles, Production Supervisors) managed
-under Inventory → Configuration → Products; changing the employee on a
+under Inventory → Configuration → Products; changing the responsible on a
 definition record automatically updates every linked product card.

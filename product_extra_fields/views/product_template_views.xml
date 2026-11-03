@@ -18,9 +18,9 @@
             </field>
             <field name="responsible_id" position="after">
                 <field name="mip_no"/>
-                <field name="mip_responsible_id" widget="many2one_avatar_employee"/>
+                <field name="mip_responsible_id"/>
                 <field name="production_supervisor_no"/>
-                <field name="production_supervisor_id" widget="many2one_avatar_employee"/>
+                <field name="production_supervisor_id"/>
             </field>
             <xpath expr="//page[@name='inventory']//group[@name='stock_property']" position="before">
                 <group name="storage_locations" string="Depo Yerleri">

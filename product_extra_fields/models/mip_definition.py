@@ -8,8 +8,7 @@ class MipDefinition(models.Model):
     _order = 'name'
 
     name = fields.Char(string='MİP No', required=True)
-    responsible_id = fields.Many2one(
-        'hr.employee', string='MİP Sorumlusu', ondelete='restrict')
+    responsible = fields.Char(string='MİP Sorumlusu')
     active = fields.Boolean(string='Aktif', default=True)
 
     _name_unique = models.Constraint(

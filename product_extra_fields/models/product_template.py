@@ -14,15 +14,15 @@ class ProductTemplate(models.Model):
     validity_start_date = fields.Date(string='Geçerlilik Başlangıç')
     mip_no = fields.Many2one(
         'mip.definition', string='MİP No', ondelete='restrict')
-    mip_responsible_id = fields.Many2one(
-        'hr.employee', string='MİP Sorumlusu',
-        related='mip_no.responsible_id', store=True, readonly=True)
+    mip_responsible_id = fields.Char(
+        string='MİP Sorumlusu',
+        related='mip_no.responsible', store=True, readonly=True)
     production_supervisor_no = fields.Many2one(
         'production.supervisor', string='Üretim Sorumlusu No',
         ondelete='restrict')
-    production_supervisor_id = fields.Many2one(
-        'hr.employee', string='Üretim Sorumlusu',
-        related='production_supervisor_no.responsible_id',
+    production_supervisor_id = fields.Char(
+        string='Üretim Sorumlusu',
+        related='production_supervisor_no.responsible',
         store=True, readonly=True)
     production_storage_location = fields.Many2one(
         'stock.location', string='Üretim Depo Yeri',

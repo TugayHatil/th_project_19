@@ -11,8 +11,8 @@ class TestProductExtraFields(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.employee = cls.env['hr.employee'].create({'name': 'Ahmet Yilmaz'})
-        cls.employee_2 = cls.env['hr.employee'].create({'name': 'Mehmet Kaya'})
+        cls.responsible_1 = 'Ahmet Yilmaz'
+        cls.responsible_2 = 'Mehmet Kaya'
         cls.location = cls.env['stock.location'].create({
             'name': 'Test Internal Location',
             'usage': 'internal',
@@ -25,11 +25,11 @@ class TestProductExtraFields(TransactionCase):
         })
         cls.mip = cls.env['mip.definition'].create({
             'name': 'MIP-001',
-            'responsible_id': cls.employee.id,
+            'responsible': cls.responsible_1,
         })
         cls.supervisor = cls.env['production.supervisor'].create({
             'name': 'D22',
-            'responsible_id': cls.employee.id,
+            'responsible': cls.responsible_1,
         })
 
     def _new_product(self, **values):
@@ -55,38 +55,38 @@ class TestProductExtraFields(TransactionCase):
 
     def test_mip_responsible_related(self):
         product = self._new_product(mip_no=self.mip.id)
-        self.assertEqual(product.mip_responsible_id, self.employee)
+        self.assertEqual(product.mip_responsible_id, self.responsible_1)
 
     def test_mip_responsible_change_propagates(self):
         product_1 = self._new_product(name='P1', mip_no=self.mip.id)
         product_2 = self._new_product(name='P2', mip_no=self.mip.id)
-        self.mip.responsible_id = self.employee_2
-        self.assertEqual(product_1.mip_responsible_id, self.employee_2)
-        self.assertEqual(product_2.mip_responsible_id, self.employee_2)
+        self.mip.responsible = self.responsible_2
+        self.assertEqual(product_1.mip_responsible_id, self.responsible_2)
+        self.assertEqual(product_2.mip_responsible_id, self.responsible_2)
 
     def test_mip_selection_change_updates_responsible(self):
         mip_2 = self.env['mip.definition'].create({
             'name': 'MIP-002',
-            'responsible_id': self.employee_2.id,
+            'responsible': self.responsible_2,
         })
         product = self._new_product(mip_no=self.mip.id)
         product.mip_no = mip_2
-        self.assertEqual(product.mip_responsible_id, self.employee_2)
+        self.assertEqual(product.mip_responsible_id, self.responsible_2)
         product.mip_no = False
         self.assertFalse(product.mip_responsible_id)
 
     def test_production_supervisor_related(self):
         product = self._new_product(production_supervisor_no=self.supervisor.id)
-        self.assertEqual(product.production_supervisor_id, self.employee)
+        self.assertEqual(product.production_supervisor_id, self.responsible_1)
 
     def test_production_supervisor_change_propagates(self):
         product_1 = self._new_product(
             name='P1', production_supervisor_no=self.supervisor.id)
         product_2 = self._new_product(
             name='P2', production_supervisor_no=self.supervisor.id)
-        self.supervisor.responsible_id = self.employee_2
-        self.assertEqual(product_1.production_supervisor_id, self.employee_2)
-        self.assertEqual(product_2.production_supervisor_id, self.employee_2)
+        self.supervisor.responsible = self.responsible_2
+        self.assertEqual(product_1.production_supervisor_id, self.responsible_2)
+        self.assertEqual(product_2.production_supervisor_id, self.responsible_2)
 
     def test_related_fields_stored_and_readonly(self):
         fields = self.env['product.template']._fields

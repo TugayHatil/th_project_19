@@ -15,7 +15,7 @@ Katları ve Satınalma Grubu.
 
 Tanım modelleri (Mal Grupları, Harici Mal Grupları, MİP Sorumluları,
 Üretim Sorumluları) Stok / Ayarlar / Ürünler menüsü altında yönetilir.
-Sorumlu koduna bağlı çalışan değiştiğinde ilgili çalışan, kodu kullanan
+Sorumlu koduna bağlı sorumlu bilgisi değiştiğinde bu bilgi, kodu kullanan
 bütün ürün kartlarında otomatik olarak güncellenir.""",
 
     'author': "Projet Solutions",
@@ -28,7 +28,6 @@ bütün ürün kartlarında otomatik olarak güncellenir.""",
         'product',
         'stock',
         'purchase',
-        'hr',
     ],
 
     'data': [
