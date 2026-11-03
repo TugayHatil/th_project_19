@@ -26,3 +26,16 @@ protection.
 
 Calculates every maximum-duration dependency chain in an Odoo Project using
 standard `project.task` dependencies and each task's allocated time.
+
+## `product_extra_fields`
+
+Extends the product card (`product.template`) with extra classification,
+responsibility, storage, quality control and purchasing fields: Old Material
+No, Material Group, External Material Group, Validity Start date, MIP No +
+related MIP responsible, Production Supervisor No + related supervisor,
+production / external procurement storage locations, production & purchase
+quality-inspection flags, purchase quantity rounding and purchase group
+(Direct/Indirect). Ships four central definition models (Material Groups,
+External Material Groups, MIP Responsibles, Production Supervisors) managed
+under Inventory → Configuration → Products; changing the employee on a
+definition record automatically updates every linked product card.

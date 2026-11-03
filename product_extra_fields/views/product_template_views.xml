@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="product_template_form_view_extra_fields" model="ir.ui.view">
+        <field name="name">product.template.form.extra.fields</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml">
+            <field name="default_code" position="after">
+                <field name="old_default_code"/>
+            </field>
+            <field name="categ_id" position="before">
+                <field name="material_group_id"/>
+                <field name="external_material_group_id"/>
+            </field>
+            <field name="barcode" position="after">
+                <field name="validity_start_date"/>
+            </field>
+            <field name="responsible_id" position="after">
+                <field name="mip_no"/>
+                <field name="mip_responsible_id" widget="many2one_avatar_employee"/>
+                <field name="production_supervisor_no"/>
+                <field name="production_supervisor_id" widget="many2one_avatar_employee"/>
+            </field>
+            <xpath expr="//page[@name='inventory']//group[@name='stock_property']" position="before">
+                <group name="storage_locations" string="Depo Yerleri">
+                    <field name="production_storage_location"/>
+                    <field name="external_procurement_storage_location"/>
+                </group>
+            </xpath>
+            <xpath expr="//page[@name='inventory']" position="after">
+                <page name="other" string="Diğer">
+                    <group name="quality_control" string="Kalite Kontrol">
+                        <group>
+                            <field name="quality_inspection_production"/>
+                            <field name="quality_inspection_purchase"/>
+                        </group>
+                        <group/>
+                    </group>
+                </page>
+            </xpath>
+            <xpath expr="//page[@name='purchase']/group[@name='purchase']" position="after">
+                <group name="other" string="Diğer">
+                    <group>
+                        <field name="purchase_order_qty_rounding"/>
+                        <field name="purchase_group"/>
+                    </group>
+                    <group/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
