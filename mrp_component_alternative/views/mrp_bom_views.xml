@@ -5,7 +5,7 @@
         <field name="name">mrp.bom.line.alternative.form</field>
         <field name="model">mrp.bom.line</field>
         <field name="arch" type="xml">
-            <form string="Alternative Components">
+            <form string="Alternatif Bileşenler">
                 <sheet>
                     <group>
                         <group>
@@ -30,6 +30,8 @@
                         </list>
                     </field>
                     <footer>
+                        <button string="Save" special="save"
+                                class="btn-primary"/>
                         <button string="Close" special="cancel"
                                 class="btn-secondary"/>
                     </footer>
