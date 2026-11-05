@@ -172,11 +172,9 @@ class TestComponentAlternative(TransactionCase):
         self.assertEqual(move.original_product_id, self.main)
         self.assertEqual(move.alternative_selected_by, self.env.user)
         self.assertTrue(move.alternative_selected_date)
-        # the original component stays as a passive cancelled placeholder
-        origin = mo.move_raw_ids.filtered("is_alternative_origin")
-        self.assertEqual(origin.product_id, self.main)
-        self.assertEqual(origin.product_uom_qty, 0.0)
-        self.assertEqual(origin.state, "cancel")
+        # the original line itself is switched to the alternative product
+        self.assertEqual(len(mo.move_raw_ids), 1)
+        self.assertEqual(move.alternative_original_qty, 2.0)
         # reservation is made on the alternative, not on the main product
         self.assertEqual(
             self.Quant._get_available_quantity(self.alt_high, self.stock), 8.0)
@@ -191,6 +189,7 @@ class TestComponentAlternative(TransactionCase):
         move = mo.move_raw_ids
         move._apply_alternative_product(self.alt_high)
         child = mo.move_raw_ids.filtered("is_alternative_component")
+        self.assertEqual(child, move)
         self.assertEqual(child.product_id, self.alt_high)
         # reopen the wizard on the child and select the original product
         action = child.action_open_alternative_selector()
@@ -274,9 +273,7 @@ class TestComponentAlternative(TransactionCase):
         # C Jant (priority 20) covers, B (priority 10) does not → C applied
         self.assertEqual(move.product_id, self.alt_high)
         self.assertEqual(move.original_product_id, self.main)
-        self.assertEqual(
-            mo.move_raw_ids.filtered("is_alternative_origin").product_id,
-            self.main)
+        self.assertEqual(len(mo.move_raw_ids), 1)
 
     def test_mode_auto_keeps_main_when_nothing_covers(self):
         """alternative_mode='auto': no covering alternative → move keeps
@@ -345,11 +342,9 @@ class TestComponentAlternative(TransactionCase):
         self.assertEqual(labels[self.alt_low], "Alt-1")
         self.assertEqual(labels[self.alt_high], "Alt-2")
         self.assertTrue(all(m.alt_group_id == self.main for m in moves))
-        # original line stays as a passive zero-demand placeholder
-        origin = mo.move_raw_ids.filtered("is_alternative_origin")
-        self.assertEqual(origin.product_id, self.main)
-        self.assertEqual(origin.product_uom_qty, 0.0)
-        self.assertEqual(origin.alt_group_id, self.main)
+        # the original line is repurposed for the first allocation, so
+        # only rows for products actually consumed exist
+        self.assertEqual(len(mo.move_raw_ids), 2)
 
     def test_partial_mode_rejects_short_total(self):
         """Combined stock 9 < demand 10 → apply raises and the move is

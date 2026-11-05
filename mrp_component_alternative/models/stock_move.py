@@ -19,8 +19,6 @@ class StockMove(models.Model):
         readonly=True, copy=False)
     alternative_selected_date = fields.Datetime(
         string="Alternative Selected On", readonly=True, copy=False)
-    is_alternative_origin = fields.Boolean(
-        string="Substituted Origin", readonly=True, copy=False)
     alternative_original_qty = fields.Float(
         string="Original Demand", readonly=True, copy=False,
         digits="Product Unit")
@@ -122,28 +120,6 @@ class StockMove(models.Model):
                 "The manufacturing order %s is locked; unlock it before "
                 "changing component products.", production.display_name))
 
-    def _placeholder_vals(self, origin, demand, now):
-        """Values that turn this move into the passive original-component
-        placeholder line (no demand, no reservation, kept for display)."""
-        return {
-            "product_id": origin.id,
-            "name": origin.display_name,
-            "alternative_original_qty":
-                self.alternative_original_qty or demand,
-            "product_uom_qty": 0.0,
-            "is_alternative_component": False,
-            "original_product_id": False,
-            "is_alternative_origin": True,
-            "alternative_selected_by": self.env.user.id,
-            "alternative_selected_date": now,
-        }
-
-    def _make_placeholder(self, origin, demand, now):
-        """Turn this move into the passive original-component placeholder:
-        zero demand, cancelled, no reservation/consumption effect."""
-        self.write(self._placeholder_vals(origin, demand, now))
-        self._action_cancel()
-
     def _spawn_alternative_move(self, product, qty_move_uom, origin, now):
         """Create a confirmed child move for *product* under this line."""
         new_move = self.copy({
@@ -163,9 +139,11 @@ class StockMove(models.Model):
     def _apply_alternative_product(self, new_product, demand=None):
         """Replace the move's product by *new_product* and re-reserve.
 
-        The original component line is kept as a passive zero-demand
-        placeholder so the substitution stays visible on the order;
-        the alternative is consumed through a new child move.
+        The component move itself is switched to the alternative product;
+        no extra placeholder row is kept on the order. The original
+        component stays traceable through ``original_product_id`` and the
+        demand that triggered the substitution is stored on
+        ``alternative_original_qty`` so a revert restores it exactly.
 
         Stock checks must be done by the caller; this method only performs
         the swap and keeps the traceability fields up to date.
@@ -173,7 +151,7 @@ class StockMove(models.Model):
         self.ensure_one()
         self._check_alternative_allowed()
         origin = self._alt_main_component()
-        if new_product == self.product_id and not self.is_alternative_origin:
+        if new_product == self.product_id:
             return
         if not origin.uom_id._has_common_reference(new_product.uom_id):
             raise UserError(_(
@@ -194,7 +172,6 @@ class StockMove(models.Model):
                 "alternative_original_qty": 0.0,
                 "is_alternative_component": False,
                 "original_product_id": False,
-                "is_alternative_origin": False,
                 "alternative_selected_by": self.env.user.id,
                 "alternative_selected_date": now,
             })
@@ -208,8 +185,19 @@ class StockMove(models.Model):
             return
         qty = demand if demand is not None else (
             self.alternative_original_qty or self.product_uom_qty)
-        self._make_placeholder(origin, qty, now)
-        self._spawn_alternative_move(new_product, qty, origin, now)
+        self.write({
+            "product_id": new_product.id,
+            "name": new_product.display_name,
+            "product_uom_qty": qty,
+            "alternative_original_qty":
+                self.alternative_original_qty or self.product_uom_qty,
+            "is_alternative_component": True,
+            "original_product_id": origin.id,
+            "alternative_selected_by": self.env.user.id,
+            "alternative_selected_date": now,
+        })
+        if self.state not in ("draft", "cancel"):
+            self._action_assign()
         if production:
             production.message_post(body=_(
                 "Alternative component applied: %(old)s replaced by "
@@ -222,9 +210,10 @@ class StockMove(models.Model):
         """Split this move across several products.
 
         *allocations* is a list of ``(product, qty)`` tuples where *qty* is
-        expressed in the product's own uom. This move is kept as a passive
-        zero-demand placeholder of the original component and every
-        allocation is created as a confirmed child move beneath it.
+        expressed in the product's own uom. This move is repurposed for
+        the first allocation and every remaining allocation is created as
+        a confirmed child move beneath it, so the component list only
+        shows rows for products actually consumed.
         """
         self.ensure_one()
         self._check_alternative_allowed()
@@ -242,9 +231,24 @@ class StockMove(models.Model):
             return
         self._do_unreserve()
         now = fields.Datetime.now()
-        self._make_placeholder(origin, self.product_uom_qty, now)
-        parts = []
-        for product, qty in allocations:
+        first_product, first_qty = allocations[0]
+        self.write({
+            "product_id": first_product.id,
+            "name": first_product.display_name,
+            "product_uom_qty": first_product.uom_id._compute_quantity(
+                first_qty, self.product_uom),
+            "is_alternative_component": first_product != origin,
+            "original_product_id": origin.id,
+            "alternative_selected_by": self.env.user.id,
+            "alternative_selected_date": now,
+        })
+        if self.state not in ("draft", "cancel"):
+            self._action_assign()
+        parts = [
+            "%s %.2f %s" % (
+                first_product.display_name, first_qty,
+                first_product.uom_id.name)]
+        for product, qty in allocations[1:]:
             qty_move_uom = product.uom_id._compute_quantity(
                 qty, self.product_uom)
             self._spawn_alternative_move(
