@@ -23,6 +23,7 @@
                                 class="btn-warning btn-lg w-50 py-4"
                                 title="Henüz kesinleşmemiş, planlama amaçlı sipariş"/>
                     </div>
+                    <footer/>
                 </form>
             </field>
         </record>
