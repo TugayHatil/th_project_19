@@ -14,15 +14,22 @@ export class AlternativeRadioField extends BooleanField {
      */
     async onChange(ev) {
         const newValue = ev.target.checked;
-        await this.props.record.update({ [this.props.name]: newValue });
+        const record = this.props.record;
+        const parent = record.model.root;
+        if (parent.data.allow_partial) {
+            await record.update({ [this.props.name]: newValue });
+            return;
+        }
+        // Non-partial mode: the applied quantity is always the full
+        // demand of the chosen option (in that product's uom).
+        await record.update({
+            [this.props.name]: newValue,
+            selected_qty: newValue ? record.data.demand_qty : 0,
+        });
         if (!newValue) {
             return;
         }
-        const parent = this.props.record.model.root;
-        if (parent.data.allow_partial) {
-            return;
-        }
-        const moveId = this._moveId(this.props.record.data.move_id);
+        const moveId = this._moveId(record.data.move_id);
         for (const line of parent.data.line_ids.records) {
             if (line === this.props.record || !line.data.selected) {
                 continue;
