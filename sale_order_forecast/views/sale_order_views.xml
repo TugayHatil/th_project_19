@@ -30,7 +30,9 @@
             <field name="inherit_id" ref="sale.sale_order_tree"/>
             <field name="arch" type="xml">
                 <xpath expr="//field[@name='partner_id']" position="after">
-                    <field name="order_nature" optional="hide"/>
+                    <field name="order_nature" widget="badge" optional="show"
+                           decoration-success="order_nature == 'normal'"
+                           decoration-warning="order_nature == 'forecast'"/>
                 </xpath>
             </field>
         </record>
