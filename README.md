@@ -39,3 +39,17 @@ quality-inspection flags, purchase quantity rounding and purchase group
 External Material Groups, MIP Responsibles, Production Supervisors) managed
 under Inventory → Configuration → Products; changing the responsible on a
 definition record automatically updates every linked product card.
+
+## `sale_order_forecast`
+
+Adds an Order Nature (Sipariş Niteliği) selection on sale orders: Normal or
+Forecast. Forecast orders confirm to Sales Order without creating delivery
+orders, stock moves or reservations. A confirmed Forecast order can be
+converted in place to Normal from a header button (with confirmation dialog):
+the same order number and lines are kept, the standard stock-rule/delivery
+flow is launched and the conversion is logged to chatter. Conversion is
+one-way and can only happen once (tracked via `forecast_converted`, enforced
+server-side). Forecast orders cannot be invoiced (`qty_to_invoice` forced to
+zero plus a `_create_invoices` guard) until converted. Works independently
+of the Sale Order Type field and does not touch stock forecast, reservation
+or MRP mechanics.

@@ -1,0 +1,52 @@
+<odoo>
+    <data>
+        <record id="view_order_form_inherit_forecast" model="ir.ui.view">
+            <field name="name">sale.order.form.inherit.order.nature</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_order_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//button[@id='create_invoice_percentage']" position="attributes">
+                    <attribute name="invisible">invoice_status != 'no' or state != 'sale' or order_nature == 'forecast'</attribute>
+                </xpath>
+                <xpath expr="//header/button[@name='action_cancel']" position="before">
+                    <button string="Normal Siparişe Dönüştür"
+                            name="action_convert_to_normal"
+                            type="object"
+                            class="btn-primary"
+                            confirm="Bu Forecast siparişini Normal siparişe dönüştürmek istediğinize emin misiniz? Bu işlem sonrasında standart teslimat süreci başlatılacaktır."
+                            invisible="order_nature != 'forecast' or state != 'sale'"/>
+                </xpath>
+                <xpath expr="//group[@name='order_details']/field[@name='payment_term_id']" position="after">
+                    <field name="order_nature"
+                           readonly="state in ['sale', 'cancel'] or locked or forecast_converted"/>
+                    <field name="forecast_converted" invisible="1"/>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="view_order_tree_inherit_forecast" model="ir.ui.view">
+            <field name="name">sale.order.list.inherit.order.nature</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.sale_order_tree"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='partner_id']" position="after">
+                    <field name="order_nature" optional="hide"/>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="view_sales_order_filter_inherit_forecast" model="ir.ui.view">
+            <field name="name">sale.order.search.inherit.order.nature</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_sales_order_filter"/>
+            <field name="arch" type="xml">
+                <xpath expr="//filter[@name='order_month']" position="after">
+                    <filter name="order_nature" string="Sipariş Niteliği" context="{'group_by': 'order_nature'}"/>
+                </xpath>
+                <xpath expr="//filter[@name='my_sale_orders_filter']" position="after">
+                    <filter name="forecast_orders" string="Forecast" domain="[('order_nature', '=', 'forecast')]"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>
