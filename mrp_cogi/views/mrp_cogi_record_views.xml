@@ -48,20 +48,6 @@
                            statusbar_visible="open,reprocessing,done"/>
                 </header>
                 <sheet>
-                    <!-- Durum bandı: açık kayıtta hata, kapalı kayıtta kapatma özeti -->
-                    <div class="alert alert-danger d-flex align-items-center mb-2" role="alert"
-                         invisible="state not in ('open', 'reprocessing') or not error_message">
-                        <i class="fa fa-exclamation-triangle me-2"/>
-                        <field name="error_message" nolabel="1" readonly="1" class="oe_inline"/>
-                    </div>
-                    <div class="alert alert-secondary d-flex align-items-center mb-2" role="alert"
-                         invisible="state != 'closed'">
-                        <i class="fa fa-ban me-2"/>
-                        <span>Kayıt düzeltme yapılmadan kapatıldı:</span>
-                        <field name="close_reason" nolabel="1" readonly="1"
-                               class="oe_inline ms-1 fw-bold"/>
-                    </div>
-
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_correction_moves" type="object"
                                 class="oe_stat_button" icon="fa-truck"
@@ -71,119 +57,192 @@
                         </button>
                     </div>
 
-                    <!-- Başlık: kayıt no + bileşen/üretim + kalan eksik -->
                     <div class="oe_title">
                         <h1><field name="name" readonly="1"/></h1>
                         <div class="text-muted">
-                            <field name="component_name" readonly="1" class="oe_inline fw-bold"/>
+                            <field name="component_name" readonly="1" class="oe_inline"/>
                             <span> · </span>
                             <field name="production_name" readonly="1" class="oe_inline"/>
-                            <span> · Kalan eksik: </span>
-                            <strong>
-                                <field name="remaining_qty" readonly="1" class="oe_inline"/>
-                            </strong>
+                        </div>
+                    </div>
+
+                    <!-- Durum bloğu: açıkta uyarı, başarılıda onay, kapalıda gri bant -->
+                    <div class="alert alert-warning" role="alert"
+                         invisible="state not in ('open', 'reprocessing')">
+                        <div>
+                            <i class="fa fa-exclamation-triangle me-1"/>
+                            <strong>Malzeme yetersizliği</strong>
+                        </div>
+                        <div class="fs-4 fw-bold text-danger">
+                            <field name="remaining_qty" readonly="1" class="oe_inline"/>
                             <field name="product_uom_id" readonly="1" class="oe_inline ms-1"
                                    options="{'no_open': True}"/>
+                            <span> eksik</span>
+                        </div>
+                        <div class="small text-muted" invisible="not error_message">
+                            <field name="error_message" nolabel="1" readonly="1"
+                                   class="oe_inline"/>
                         </div>
                     </div>
+                    <div class="alert alert-success" role="alert" invisible="state != 'done'">
+                        <div>
+                            <i class="fa fa-check-circle me-1"/>
+                            <strong>Düzeltme tamamlandı</strong>
+                        </div>
+                        <div class="small text-muted" invisible="not last_result_note">
+                            <field name="last_result_note" nolabel="1" readonly="1"
+                                   class="oe_inline"/>
+                        </div>
+                    </div>
+                    <div class="alert alert-secondary" role="alert" invisible="state != 'closed'">
+                        <i class="fa fa-ban me-1"/>
+                        <strong>Kayıt düzeltme yapılmadan kapatıldı:</strong>
+                        <field name="close_reason" nolabel="1" readonly="1"
+                               class="oe_inline ms-1"/>
+                    </div>
 
-                    <!-- Miktar özeti: tek bakışta durum -->
+                    <!-- Miktar özeti -->
                     <div class="row g-3 my-2" name="kpi_strip">
-                        <div class="col-6 col-md-auto">
+                        <div class="col">
+                            <div class="fs-4"><field name="planned_qty" readonly="1"
+                                                     class="oe_inline"/></div>
                             <div class="text-muted small">Planlanan</div>
-                            <span class="fs-4"><field name="planned_qty" readonly="1"
-                                                      class="oe_inline"/></span>
                         </div>
-                        <div class="col-6 col-md-auto">
+                        <div class="col">
+                            <div class="fs-4"><field name="consumed_qty" readonly="1"
+                                                     class="oe_inline"/></div>
                             <div class="text-muted small">Tüketilen</div>
-                            <span class="fs-4"><field name="consumed_qty" readonly="1"
-                                                      class="oe_inline"/></span>
                         </div>
-                        <div class="col-6 col-md-auto">
+                        <div class="col">
+                            <div class="fs-4 text-danger">
+                                <field name="initial_missing_qty" readonly="1" class="oe_inline"/>
+                            </div>
                             <div class="text-muted small">İlk Eksik</div>
-                            <span class="fs-4"><field name="initial_missing_qty" readonly="1"
-                                                      class="oe_inline"/></span>
                         </div>
-                        <div class="col-6 col-md-auto">
-                            <div class="text-muted small">Düzeltilen</div>
-                            <span class="fs-4 text-success">
+                        <div class="col">
+                            <div class="fs-4 text-success">
                                 <field name="corrected_qty" readonly="1" class="oe_inline"/>
-                            </span>
+                            </div>
+                            <div class="text-muted small">Düzeltilen</div>
                         </div>
-                        <div class="col-6 col-md-auto">
-                            <div class="text-muted small">Kalan Eksik</div>
-                            <span class="fs-4 fw-bold text-danger">
+                        <div class="col">
+                            <div class="fs-4 fw-bold text-danger">
                                 <field name="remaining_qty" readonly="1" class="oe_inline"/>
-                            </span>
-                            <field name="product_uom_id" readonly="1" class="oe_inline text-muted"
-                                   options="{'no_open': True}"/>
-                        </div>
-                        <div class="col-12 col-md flex-grow-1">
-                            <div class="text-muted small">Düzeltme İlerlemesi</div>
-                            <field name="correction_progress" widget="progressbar" nolabel="1"/>
+                            </div>
+                            <div class="text-muted small">Kalan Eksik</div>
                         </div>
                     </div>
 
-                    <group name="details">
-                        <group string="Üretim ve Malzeme" name="grp_prod">
-                            <field name="production_id"/>
-                            <field name="production_name" invisible="production_id"/>
-                            <field name="finished_product_id"/>
-                            <field name="product_id"/>
-                            <field name="component_name" invisible="product_id"/>
-                            <field name="source_move_id"/>
-                            <field name="location_id"/>
-                            <field name="location_dest_id"/>
-                        </group>
-                        <group string="Sorumluluk ve İşlem" name="grp_audit">
-                            <field name="create_date" string="Oluşturulma Tarihi"/>
-                            <field name="operator_id"/>
-                            <field name="responsible_id"/>
-                            <field name="attempt_count"/>
-                            <field name="last_processed_by"/>
-                            <field name="last_processed_at"/>
-                        </group>
-                    </group>
+                    <!-- Üretim / işlem bilgileri: etiket üstte, değer altta -->
+                    <div class="row" name="info_cols">
+                        <div class="col-12 col-md-6">
+                            <h6 class="text-muted">ÜRETİM BİLGİLERİ</h6>
+                            <div class="mb-2">
+                                <div class="text-muted small">Üretim Emri</div>
+                                <field name="production_id" readonly="1" class="fw-bold"
+                                       invisible="not production_id"/>
+                                <field name="production_name" readonly="1" class="fw-bold"
+                                       invisible="production_id"/>
+                            </div>
+                            <div class="mb-2">
+                                <div class="text-muted small">Üretilecek Ürün</div>
+                                <field name="finished_product_id" readonly="1" class="fw-bold"/>
+                            </div>
+                            <div class="mb-2">
+                                <div class="text-muted small">Bileşen</div>
+                                <field name="product_id" readonly="1" class="fw-bold"
+                                       invisible="not product_id"/>
+                                <field name="component_name" readonly="1" class="fw-bold"
+                                       invisible="product_id"/>
+                            </div>
+                            <div class="mb-2">
+                                <div class="text-muted small">Kaynak Stok Hareketi</div>
+                                <field name="source_move_id" readonly="1"/>
+                            </div>
+                            <div class="mb-2">
+                                <div class="text-muted small">Stok Konumu</div>
+                                <field name="location_id" readonly="1"/>
+                                <span class="oe_inline">→</span>
+                                <field name="location_dest_id" readonly="1" class="oe_inline"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <h6 class="text-muted">İŞLEM BİLGİLERİ</h6>
+                            <div class="mb-2">
+                                <div class="text-muted small">COGI Sorumlusu</div>
+                                <field name="responsible_id" class="fw-bold"/>
+                            </div>
+                            <div class="mb-2">
+                                <div class="text-muted small">İşlemi Yapan</div>
+                                <field name="operator_id" readonly="1"/>
+                            </div>
+                            <div class="mb-2">
+                                <div class="text-muted small">Oluşturulma Tarihi</div>
+                                <field name="create_date" readonly="1"/>
+                            </div>
+                            <div class="mb-2">
+                                <div class="text-muted small">Deneme Sayısı</div>
+                                <field name="attempt_count" readonly="1" class="fw-bold"/>
+                            </div>
+                            <div class="mb-2">
+                                <div class="text-muted small">Son İşlem</div>
+                                <field name="last_processed_at" readonly="1"/>
+                                <span class="oe_inline" invisible="not last_processed_by">·</span>
+                                <field name="last_processed_by" readonly="1" class="oe_inline"/>
+                            </div>
+                        </div>
+                    </div>
 
-                    <group name="process_info" invisible="not original_error_message and not last_result_note">
-                        <group string="İlk Hata Mesajı" name="grp_orig_error"
-                               invisible="not original_error_message">
-                            <field name="original_error_message" nolabel="1"/>
-                        </group>
-                        <group string="Son İşlem Sonucu" name="grp_result"
-                               invisible="not last_result_note">
-                            <field name="last_result_note" nolabel="1"/>
-                        </group>
-                    </group>
-
-                    <group string="Oluşturulan Stok Hareketleri" name="grp_moves"
-                           invisible="not correction_move_ids">
-                        <field name="correction_move_ids" nolabel="1" colspan="2">
-                            <list>
-                                <field name="reference"/>
-                                <field name="date"/>
-                                <field name="location_id"/>
-                                <field name="location_dest_id"/>
-                                <field name="quantity"/>
-                                <field name="product_uom"/>
-                                <field name="state" widget="badge"
-                                       decoration-success="state == 'done'"
-                                       decoration-warning="state in ('confirmed', 'waiting', 'partially_available', 'assigned')"
-                                       decoration-danger="state == 'cancel'"/>
-                            </list>
-                        </field>
-                    </group>
-
-                    <group name="close_info" invisible="state != 'closed'">
-                        <group string="Kapatma Bilgileri">
-                            <field name="close_reason"/>
-                            <field name="close_note"/>
-                        </group>
-                        <group string="Kapatan">
-                            <field name="closed_by"/>
-                            <field name="closed_at"/>
-                        </group>
-                    </group>
+                    <notebook>
+                        <page string="İşlem Geçmişi" name="history">
+                            <group string="Oluşturulan Stok Hareketleri" name="grp_moves"
+                                   invisible="not correction_move_ids">
+                                <field name="correction_move_ids" nolabel="1" colspan="2">
+                                    <list>
+                                        <field name="reference"/>
+                                        <field name="date"/>
+                                        <field name="location_id"/>
+                                        <field name="location_dest_id"/>
+                                        <field name="quantity"/>
+                                        <field name="product_uom"/>
+                                        <field name="state" widget="badge"
+                                               decoration-success="state == 'done'"
+                                               decoration-warning="state in ('confirmed', 'waiting', 'partially_available', 'assigned')"
+                                               decoration-danger="state == 'cancel'"/>
+                                    </list>
+                                </field>
+                            </group>
+                            <group string="Son İşlem Sonucu" invisible="not last_result_note">
+                                <field name="last_result_note" nolabel="1" colspan="2"/>
+                            </group>
+                            <group string="Düzeltme İlerlemesi">
+                                <field name="correction_progress" widget="progressbar"
+                                       nolabel="1" colspan="2"/>
+                            </group>
+                        </page>
+                        <page string="Hata Detayları" name="errors"
+                              invisible="not original_error_message and not error_message">
+                            <group string="İlk Hata Mesajı" invisible="not original_error_message">
+                                <field name="original_error_message" nolabel="1" colspan="2"/>
+                            </group>
+                            <group string="Son Hata Mesajı" invisible="not error_message">
+                                <field name="error_message" nolabel="1" colspan="2"/>
+                            </group>
+                        </page>
+                        <page string="Kapatma Bilgileri" name="close"
+                              invisible="state != 'closed'">
+                            <group>
+                                <group string="Kapatma">
+                                    <field name="close_reason"/>
+                                    <field name="close_note"/>
+                                </group>
+                                <group string="Kapatan">
+                                    <field name="closed_by"/>
+                                    <field name="closed_at"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
                 </sheet>
                 <chatter/>
             </form>
