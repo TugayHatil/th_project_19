@@ -48,7 +48,8 @@
             <xpath expr="//field[@name='bom_line_ids']/list/field[@name='product_id']"
                    position="after">
                 <button name="action_manage_alternatives" type="object"
-                        icon="fa-random" title="Alternatif Malzemeler"/>
+                        icon="fa-random" title="Alternatif Malzemeler"
+                        groups="mrp_component_alternative.group_alternative_manager"/>
                 <field name="alternative_count" string="Alt."
                        optional="show" readonly="1" width="40px"
                        decoration-muted="alternative_count == 0"/>
