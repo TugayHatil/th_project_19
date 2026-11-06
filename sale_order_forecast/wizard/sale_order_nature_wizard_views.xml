@@ -6,22 +6,23 @@
             <field name="arch" type="xml">
                 <form string="Sipariş Niteliğini Seçiniz">
                     <field name="order_id" invisible="1"/>
-                    <p class="mb-0">
+                    <p class="text-center mb-3">
                         Bu siparişin niteliğini belirleyerek onaylama işlemine devam ediniz.
                     </p>
-                    <footer>
+                    <div class="d-flex gap-3 justify-content-center">
                         <button name="action_select_confirmed"
                                 string="Kesin"
                                 type="object"
-                                class="btn-primary"
+                                icon="fa-check"
+                                class="btn-primary btn-lg w-50 py-4"
                                 title="Müşteri tarafından teyit edilmiş sipariş"/>
                         <button name="action_select_forecast"
                                 string="Öngörü"
                                 type="object"
-                                class="btn-warning"
+                                icon="fa-clock-o"
+                                class="btn-warning btn-lg w-50 py-4"
                                 title="Henüz kesinleşmemiş, planlama amaçlı sipariş"/>
-                        <button string="Vazgeç" special="cancel" class="btn-secondary"/>
-                    </footer>
+                    </div>
                 </form>
             </field>
         </record>
