@@ -2,16 +2,16 @@
 {
     'name': "Sale Order Forecast Nature",
 
-    'summary': "Satış siparişlerinde Öngörü niteliği: teslimat emri oluşturmadan onay ve tek tuşla Kesinleşmiş siparişe dönüştürme",
+    'summary': "Satış siparişlerinde Öngörü niteliği: teslimat emri oluşturmadan onay ve tek tuşla Kesin siparişe dönüştürme",
 
-    'description': """Satış siparişlerine Sipariş Niteliği (Kesinleşmiş / Öngörü) alanı ekler.
+    'description': """Satış siparişlerine Sipariş Niteliği (Kesin / Öngörü) alanı ekler.
 
 Öngörü niteliğindeki teklifler standart onay sürecinden geçerek Sales Order
 durumuna gelir ancak teslimat emri, stok rezervasyonu veya stok hareketi
 oluşturulmaz. Sipariş onaylandığında stok kuralları tetiklenmez.
 
-Onaylanmış Öngörü siparişi formundaki "Kesinleşmiş Siparişe Dönüştür" butonu
-ile sipariş aynı numara ve satırlarla Kesinleşmiş niteliğe çevrilir;
+Onaylanmış Öngörü siparişi formundaki "Kesin Siparişe Dönüştür" butonu
+ile sipariş aynı numara ve satırlarla Kesin niteliğe çevrilir;
 dönüştürme anında standart Odoo teslimat süreci başlatılır ve işlem
 chatter'a yazılır. Dönüştürme tek yönlüdür ve her sipariş için yalnızca
 bir kez yapılabilir.

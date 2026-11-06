@@ -9,21 +9,21 @@ class SaleOrder(models.Model):
 
     order_nature = fields.Selection(
         selection=[
-            ('normal', 'Kesinleşmiş'),
+            ('normal', 'Kesin'),
             ('forecast', 'Öngörü'),
         ],
         string='Sipariş Niteliği',
         required=True,
         default='normal',
         tracking=True,
-        help="Kesinleşmiş: standart satış siparişi süreci.\n"
+        help="Kesin: standart satış siparişi süreci.\n"
              "Öngörü: teslimat emri oluşturulmadan onaylanabilen satış siparişi.")
     forecast_converted = fields.Boolean(
         string='Öngörü\'den Dönüştürüldü',
         default=False,
         copy=False,
         readonly=True,
-        help="Bu sipariş Öngörü niteliğinden Kesinleşmiş niteliğe dönüştürülmüştür. "
+        help="Bu sipariş Öngörü niteliğinden Kesin niteliğe dönüştürülmüştür. "
              "Dönüştürme tek yönlüdür ve tekrarlanamaz.")
 
     def write(self, vals):
@@ -37,15 +37,15 @@ class SaleOrder(models.Model):
                 if order.state not in ('draft', 'sent'):
                     raise UserError(_(
                         "Onaylanmış veya iptal edilmiş bir siparişin niteliği değiştirilemez. "
-                        "Öngörü siparişleri yalnızca \"Kesinleşmiş Siparişe Dönüştür\" "
-                        "butonu ile Kesinleşmiş niteliğe çevrilebilir."))
+                        "Öngörü siparişleri yalnızca \"Kesin Siparişe Dönüştür\" "
+                        "butonu ile Kesin niteliğe çevrilebilir."))
         return super().write(vals)
 
     def action_convert_to_normal(self):
         for order in self:
             if order.order_nature != 'forecast':
                 raise UserError(_(
-                    "Yalnızca Öngörü niteliğindeki siparişler Kesinleşmiş siparişe "
+                    "Yalnızca Öngörü niteliğindeki siparişler Kesin siparişe "
                     "dönüştürülebilir."))
             if order.state != 'sale':
                 raise UserError(_(
@@ -55,7 +55,7 @@ class SaleOrder(models.Model):
         return True
 
     def _convert_forecast_to_normal(self):
-        """ Öngörü siparişini Kesinleşmiş niteliğe çevirir ve standart stok/tedarik
+        """ Öngörü siparişini Kesin niteliğe çevirir ve standart stok/tedarik
         kuralı mekanizmasını çalıştırarak teslimat emrini oluşturur.
 
         Tüm işlem tek transaction içinde yürür; herhangi bir adım hata verirse
@@ -85,7 +85,7 @@ class SaleOrder(models.Model):
             if was_locked:
                 self.locked = True
         self.message_post(body=_(
-            "Öngörü siparişi Kesinleşmiş siparişe dönüştürüldü. "
+            "Öngörü siparişi Kesin siparişe dönüştürüldü. "
             "İşlemi yapan: %(user)s – Tarih: %(date)s",
             user=self.env.user.display_name,
             date=format_datetime(self.env, fields.Datetime.now())))
@@ -95,6 +95,6 @@ class SaleOrder(models.Model):
         if forecast_orders:
             raise UserError(_(
                 "Öngörü niteliğindeki siparişlerden fatura oluşturulamaz. "
-                "Önce siparişi Kesinleşmiş niteliğe dönüştürün. (%s)",
+                "Önce siparişi Kesin niteliğe dönüştürün. (%s)",
                 ', '.join(forecast_orders.mapped('name'))))
         return super()._create_invoices(grouped=grouped, final=final, date=date)
