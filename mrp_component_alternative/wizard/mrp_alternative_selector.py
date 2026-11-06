@@ -137,11 +137,23 @@ class MrpAlternativeSelector(models.TransientModel):
         loses the user's selection.
         """
         remembered = {}
-        for line in self.line_ids.filtered("is_original"):
-            if line.remembered_selected_id:
-                remembered[line.move_id.id] = line.remembered_selected_id.id
-        for line in self.line_ids.filtered("selected"):
-            remembered[line.move_id.id] = line.alternative_product_id.id
+        expanded_moves = self.env["stock.move"]
+        for line in self.line_ids:
+            if line.is_original:
+                remembered[line.move_id.id] = \
+                    line.remembered_selected_id.id
+            else:
+                expanded_moves |= line.move_id
+        for move in expanded_moves:
+            selected = self.line_ids.filtered(
+                lambda l: l.move_id == move and l.selected)
+            # A group that was expanded remembers the user's explicit
+            # selection; if the user cleared it entirely, the main
+            # component is remembered instead so the suggestion does not
+            # come back when the group is folded again.
+            remembered[move.id] = (
+                selected[-1].alternative_product_id.id if selected
+                else move._alt_main_component().id)
         moves = self.line_ids.filtered(
             "is_original").sorted("sequence").move_id
         line_vals = []
@@ -503,12 +515,17 @@ class MrpAlternativeSelector(models.TransientModel):
                 raise UserError(_(
                     "Only one option can be selected for component %s.",
                     move._alt_main_component().display_name))
-            target = selected.alternative_product_id
             if not selected:
+                if move not in self.folded_move_ids:
+                    # Group expanded and left with no selection: keep
+                    # the component as is.
+                    continue
                 # Folded group: fall back to the selection remembered on
                 # the always-visible main row.
                 target = lines.filtered(
                     "is_original").remembered_selected_id
+            else:
+                target = selected.alternative_product_id
             if not target or target == move.product_id:
                 continue
             demand = move.product_uom._compute_quantity(

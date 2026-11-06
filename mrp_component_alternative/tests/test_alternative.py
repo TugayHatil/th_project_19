@@ -171,6 +171,22 @@ class TestComponentAlternative(TransactionCase):
         self.assertTrue(high.selected)
         self.assertFalse(low.selected)
 
+    def test_apply_ignores_unchecked_expanded_group(self):
+        """Expanding a group and clearing its selection leaves the
+        component unchanged on apply (no fallback to the suggestion)."""
+        self._set_stock(self.alt_high, 10.0)
+        mo = self._make_mo()
+        wizard = self._open_wizard(mo)
+        main_row = wizard.line_ids.filtered("is_original")
+        main_row.action_toggle_fold()  # expand the group
+        wizard.invalidate_recordset()
+        high = wizard.line_ids.filtered(
+            lambda l: l.alternative_product_id == self.alt_high)
+        self.assertTrue(high.selected)
+        high.selected = False
+        wizard.action_apply()
+        self.assertEqual(mo.move_raw_ids.product_id, self.main)
+
     def test_no_alternative_covers(self):
         self._set_stock(self.alt_low, 1.0)
         mo = self._make_mo()
