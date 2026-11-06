@@ -104,6 +104,18 @@ class SaleOrder(models.Model):
             'target': 'new',
         }
 
+    def action_draft(self):
+        """İptal edilen sipariş teklife döndürüldüğünde sipariş niteliği
+        sıfırlanır; yeniden onayda seçim penceresi tekrar sorar."""
+        cancelled = self.filtered(lambda o: o.state == 'cancel')
+        res = super().action_draft()
+        cancelled.with_context(order_nature_change_allowed=True).write({
+            'order_nature': False,
+            'forecast_converted': False,
+            'was_confirmed': False,
+        })
+        return res
+
     def action_convert_to_normal(self):
         for order in self:
             if order.order_nature != 'forecast':

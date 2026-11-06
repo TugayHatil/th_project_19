@@ -222,14 +222,18 @@ class TestSaleOrderForecast(TransactionCase):
         order.order_nature = "forecast"
         self.assertEqual(order.order_nature, "forecast")
 
-    # İptal → taslak döngüsü onaylanmış siparişin niteliğini kilitler
-    def test_17_nature_locked_after_cancel_redraft(self):
+    # İptal → taslak döngüsünde nitelik sıfırlanır, yeniden seçim yapılabilir
+    def test_17_nature_cleared_after_cancel_redraft(self):
         order = self._create_order("confirmed")
         order.action_confirm()
         order.action_cancel()
         order.action_draft()
-        with self.assertRaises(UserError):
-            order.order_nature = "forecast"
+        self.assertFalse(order.order_nature)
+        self.assertFalse(order.was_confirmed)
+        self.assertFalse(order.forecast_converted)
+        self._confirm_via_wizard(order, "forecast")
+        self.assertEqual(order.order_nature, "forecast")
+        self.assertFalse(order.picking_ids)
 
     # 10) Öngörü siparişinden fatura oluşturulamaz
     def test_18_forecast_invoice_blocked(self):
@@ -279,24 +283,29 @@ class TestSaleOrderForecast(TransactionCase):
             2)
         self.assertTrue(order.picking_ids)
 
-    # Dönüştürülmüş sipariş iptal → taslak sonrası bile Öngörü yapılamaz
-    def test_21_converted_cannot_return_to_forecast(self):
+    # Dönüştürülmüş sipariş de iptal → taslak ile sıfırlanır ve
+    # yeni döngüde tekrar Öngörü seçilip dönüştürülebilir
+    def test_21_converted_order_can_restart_cycle(self):
         order = self._create_order("forecast")
         order.action_confirm()
         order.action_convert_to_normal()
         order.action_cancel()
         order.action_draft()
-        with self.assertRaises(UserError):
-            order.order_nature = "forecast"
+        self.assertFalse(order.order_nature)
+        self.assertFalse(order.forecast_converted)
+        self._confirm_via_wizard(order, "forecast")
+        self.assertEqual(order.order_nature, "forecast")
+        order.action_convert_to_normal()
+        self.assertTrue(order.forecast_converted)
 
-    # İptal edilip tekrar teklife dönen öngörü niteliğini korur
-    def test_22_forecast_survives_draft_cycle(self):
+    # İptal edilip tekrar teklife dönen öngörü boş nitelikle başlar
+    def test_22_forecast_cleared_after_draft_cycle(self):
         order = self._create_order("forecast")
         order.action_confirm()
         order.action_cancel()
         order.action_draft()
-        self.assertEqual(order.order_nature, "forecast")
-        order.action_confirm()
+        self.assertFalse(order.order_nature)
+        self._confirm_via_wizard(order, "forecast")
         self.assertEqual(order.state, "sale")
         self.assertFalse(order.picking_ids)
 

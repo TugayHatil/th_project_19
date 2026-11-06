@@ -29,9 +29,12 @@ Satış siparişlerine **Sipariş Niteliği** (`order_nature`) alanı ekler:
   tek yönlüdür ve her sipariş için bir kez yapılabilir.
 - Kilitli (`locked`) siparişlerde kural çalıştırılırken kilit geçici
   kaldırılıp geri yüklenir.
-- `was_confirmed` bayrağı onaylanmış siparişin niteliğini kilitler; iptal →
-  taslak döngüsüyle bile nitelik değiştirilemez. Onaylı/iptal siparişlerde
-  nitelik `write` ile değiştirilemez (sunucu tarafı kontrol).
+- `was_confirmed` bayrağı onaylanmış siparişin niteliğini kilitler;
+  onaylı/iptal siparişlerde nitelik `write` ile değiştirilemez (sunucu
+  tarafı kontrol).
+- İptal edilen sipariş teklife döndürüldüğünde `order_nature`,
+  `forecast_converted` ve `was_confirmed` sıfırlanır; yeniden onayda
+  seçim penceresi tekrar açılır.
 
 ## Faturalama
 
