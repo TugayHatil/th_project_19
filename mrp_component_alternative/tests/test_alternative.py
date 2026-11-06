@@ -393,6 +393,23 @@ class TestComponentAlternative(TransactionCase):
             wizard.action_apply()
         self.assertEqual(mo.move_raw_ids.product_id, self.main)
 
+    def test_partial_folded_group_uses_suggestion(self):
+        """A folded group applies the suggested allocation; the single
+        collapsed row cannot carry the multi-product split (main 5 +
+        alt_low 5 = demand 10)."""
+        self._enable_partial()
+        self._set_stock(self.main, 5.0)
+        self._set_stock(self.alt_low, 6.0)
+        self._set_stock(self.alt_high, 10.0)
+        mo = self._make_mo_qty(10.0)
+        wizard = self._open_wizard(mo)
+        wizard.action_apply()
+        by_product = {
+            m.product_id.id: m.product_uom_qty
+            for m in mo.move_raw_ids}
+        self.assertEqual(by_product[self.main.id], 5.0)
+        self.assertEqual(by_product[self.alt_low.id], 5.0)
+
     def test_mode_manual_does_not_open_popup(self):
         """alternative_mode='manual': confirm returns the standard result,
         no wizard; the user selects via the button."""

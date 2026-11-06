@@ -490,12 +490,26 @@ class MrpAlternativeSelector(models.TransientModel):
                     allocs.append((target, qty))
                     total_main += target.uom_id._compute_quantity(
                         qty, main.uom_id)
-                if not allocs and move in self.folded_move_ids:
-                    # Folded group: recompute the suggested allocation.
-                    for product, qty in self._suggest_allocations(move):
-                        allocs.append((product, qty))
-                        total_main += product.uom_id._compute_quantity(
-                            qty, main.uom_id)
+                if move in self.folded_move_ids:
+                    # Folded group: the single collapsed row cannot
+                    # represent a multi-product allocation. Honour the
+                    # remembered "keep the main component" choice;
+                    # otherwise recompute the suggested allocation.
+                    remembered = lines.filtered(
+                        "is_original").remembered_selected_id
+                    allocs = []
+                    total_main = 0.0
+                    if remembered == main:
+                        qty_main = move.product_uom._compute_quantity(
+                            move.product_uom_qty, main.uom_id)
+                        allocs.append((main, qty_main))
+                        total_main = move.product_uom_qty
+                    else:
+                        for product, qty in self._suggest_allocations(
+                                move):
+                            allocs.append((product, qty))
+                            total_main += product.uom_id._compute_quantity(
+                                qty, main.uom_id)
                 if not allocs:
                     continue
                 if len(allocs) == 1 and allocs[0][0] == move.product_id:
