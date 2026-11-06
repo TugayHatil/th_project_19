@@ -25,7 +25,7 @@ Mevcut Satış Sipariş Türü (sale_order_type_journal) alanından bağımsız
     'website': "https://projet.solutions",
 
     'category': 'Sales/Sales',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.1.0',
 
     'depends': [
         'sale_stock',
@@ -34,6 +34,11 @@ Mevcut Satış Sipariş Türü (sale_order_type_journal) alanından bağımsız
     'data': [
         'views/sale_order_views.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'sale_order_forecast/static/src/scss/sale_order_forecast.scss',
+        ],
+    },
     'license': 'LGPL-3',
     'installable': True,
     'auto_install': False,

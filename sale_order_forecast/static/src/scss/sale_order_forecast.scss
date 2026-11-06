@@ -1,0 +1,13 @@
+// Sipariş Niteliği sütunundaki badge'leri pastel tona çeker.
+// Standart decoration-* dolgun text-bg-* renklerini kullandığı için
+// yalnızca order_nature hücresi hedeflenir.
+.o_list_renderer td[name="order_nature"] .badge {
+    &.text-bg-success {
+        background-color: #d9f2e4 !important;
+        color: #146c43 !important;
+    }
+    &.text-bg-warning {
+        background-color: #ffe9d1 !important;
+        color: #984c0c !important;
+    }
+}
