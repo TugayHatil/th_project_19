@@ -56,6 +56,7 @@ class MrpProduction(models.Model):
         action = self.env["ir.actions.actions"]._for_xml_id(
             "mrp_component_alternative.action_mrp_alternative_moves")
         action["domain"] = [
+            ("is_alternative_component", "=", True),
             ("raw_material_production_id", "=", self.id)]
         action["context"] = {}
         return action
