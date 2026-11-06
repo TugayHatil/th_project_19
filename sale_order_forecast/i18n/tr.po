@@ -1,0 +1,219 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* sale_order_forecast
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-06 00:00+0000\n"
+"PO-Revision-Date: 2026-11-06 00:00+0300\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: tr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#. module: sale_order_forecast
+#: model:ir.module.module,summary:sale_order_forecast.module_sale_order_forecast
+msgid ""
+"Satış siparişlerinde Kesin/Öngörü niteliği: onayda seçim penceresi, "
+"teslimatsiz öngörü onayı ve Kesin siparişe dönüştürme"
+msgstr ""
+"Satış siparişlerinde Kesin/Öngörü niteliği: onayda seçim penceresi, "
+"teslimatsiz öngörü onayı ve Kesin siparişe dönüştürme"
+
+#. module: sale_order_forecast
+#: model:ir.module.module,name:sale_order_forecast.module_sale_order_forecast
+msgid "Sale Order Forecast Nature"
+msgstr "Satış Siparişi Niteliği (Kesin/Öngörü)"
+
+#. module: sale_order_forecast
+#: model:ir.model,name:sale_order_forecast.model_sale_order_nature_wizard
+msgid "Sipariş Niteliği Seçim Sihirbazı"
+msgstr "Sipariş Niteliği Seçim Sihirbazı"
+
+#. module: sale_order_forecast
+#: model:ir.model.fields,field_description:sale_order_forecast.field_sale_order__order_nature
+msgid "Sipariş Niteliği"
+msgstr "Sipariş Niteliği"
+
+#. module: sale_order_forecast
+#: model_terms:ir.ui.view,arch_db:sale_order_forecast.view_order_tree_inherit_forecast
+#: model_terms:ir.ui.view,arch_db:sale_order_forecast.view_sales_order_filter_inherit_forecast
+msgid "Sipariş Niteliği"
+msgstr "Sipariş Niteliği"
+
+#. module: sale_order_forecast
+#: model:ir.model.fields,field_description:sale_order_forecast.field_sale_order__forecast_converted
+msgid "Öngörü'den Dönüştürüldü"
+msgstr "Öngörü'den Dönüştürüldü"
+
+#. module: sale_order_forecast
+#: model:ir.model.fields,field_description:sale_order_forecast.field_sale_order__was_confirmed
+msgid "Daha Önce Onaylandı"
+msgstr "Daha Önce Onaylandı"
+
+#. module: sale_order_forecast
+#: model:ir.model.fields,field_description:sale_order_forecast.field_sale_order_nature_wizard__order_id
+msgid "Satış Siparişi"
+msgstr "Satış Siparişi"
+
+#. module: sale_order_forecast
+#: model:ir.model.fields.selection,sale_order_forecast.selection__sale_order__order_nature__confirmed
+#: model_terms:ir.ui.view,arch_db:sale_order_forecast.sale_order_nature_wizard_form
+#: model_terms:ir.ui.view,arch_db:sale_order_forecast.view_sales_order_filter_inherit_forecast
+msgid "Kesin"
+msgstr "Kesin"
+
+#. module: sale_order_forecast
+#: model:ir.model.fields.selection,sale_order_forecast.selection__sale_order__order_nature__forecast
+#: model_terms:ir.ui.view,arch_db:sale_order_forecast.sale_order_nature_wizard_form
+#: model_terms:ir.ui.view,arch_db:sale_order_forecast.view_sales_order_filter_inherit_forecast
+msgid "Öngörü"
+msgstr "Öngörü"
+
+#. module: sale_order_forecast
+#: model:ir.model.fields,help:sale_order_forecast.field_sale_order__order_nature
+msgid ""
+"Kesin: standart satış siparişi süreci.\n"
+"Öngörü: teslimat emri oluşturulmadan onaylanabilen satış siparişi."
+msgstr ""
+"Kesin: standart satış siparişi süreci.\n"
+"Öngörü: teslimat emri oluşturulmadan onaylanabilen satış siparişi."
+
+#. module: sale_order_forecast
+#: model:ir.model.fields,help:sale_order_forecast.field_sale_order__forecast_converted
+msgid ""
+"Bu sipariş Öngörü niteliğinden Kesin niteliğe dönüştürülmüştür. "
+"Dönüştürme tek yönlüdür ve tekrarlanamaz."
+msgstr ""
+"Bu sipariş Öngörü niteliğinden Kesin niteliğe dönüştürülmüştür. "
+"Dönüştürme tek yönlüdür ve tekrarlanamaz."
+
+#. module: sale_order_forecast
+#: model:ir.model.fields,help:sale_order_forecast.field_sale_order__was_confirmed
+msgid "Sipariş en az bir kez onaylandı; niteliği artık değiştirilemez."
+msgstr "Sipariş en az bir kez onaylandı; niteliği artık değiştirilemez."
+
+#. module: sale_order_forecast
+#: code:addons/sale_order_forecast/models/sale_order.py:0
+#, python-format
+msgid ""
+"Onaylanmış bir siparişin niteliği değiştirilemez. Öngörü siparişleri "
+"yalnızca \"Kesin Siparişe Dönüştür\" butonu ile Kesin niteliğe çevrilebilir."
+msgstr ""
+"Onaylanmış bir siparişin niteliği değiştirilemez. Öngörü siparişleri "
+"yalnızca \"Kesin Siparişe Dönüştür\" butonu ile Kesin niteliğe çevrilebilir."
+
+#. module: sale_order_forecast
+#: code:addons/sale_order_forecast/models/sale_order.py:0
+#, python-format
+msgid ""
+"Sipariş niteliği seçilmemiş birden fazla teklif var. Lütfen teklifleri "
+"tek tek onaylayarak niteliklerini belirleyin."
+msgstr ""
+"Sipariş niteliği seçilmemiş birden fazla teklif var. Lütfen teklifleri "
+"tek tek onaylayarak niteliklerini belirleyin."
+
+#. module: sale_order_forecast
+#: code:addons/sale_order_forecast/models/sale_order.py:0
+#: model_terms:ir.ui.view,arch_db:sale_order_forecast.sale_order_nature_wizard_form
+#, python-format
+msgid "Sipariş Niteliğini Seçiniz"
+msgstr "Sipariş Niteliğini Seçiniz"
+
+#. module: sale_order_forecast
+#: code:addons/sale_order_forecast/models/sale_order.py:0
+#, python-format
+msgid ""
+"Yalnızca Öngörü niteliğindeki siparişler Kesin siparişe "
+"dönüştürülebilir."
+msgstr ""
+"Yalnızca Öngörü niteliğindeki siparişler Kesin siparişe "
+"dönüştürülebilir."
+
+#. module: sale_order_forecast
+#: code:addons/sale_order_forecast/models/sale_order.py:0
+#, python-format
+msgid ""
+"Yalnızca onaylanmış (Satış Siparişi) Öngörü siparişleri "
+"dönüştürülebilir."
+msgstr ""
+"Yalnızca onaylanmış (Satış Siparişi) Öngörü siparişleri "
+"dönüştürülebilir."
+
+#. module: sale_order_forecast
+#: code:addons/sale_order_forecast/models/sale_order.py:0
+#, python-format
+msgid ""
+"Dönüştürülecek teslimat satırı bulunamadı. Siparişin stok hareketleri "
+"zaten oluşturulmuş olabilir."
+msgstr ""
+"Dönüştürülecek teslimat satırı bulunamadı. Siparişin stok hareketleri "
+"zaten oluşturulmuş olabilir."
+
+#. module: sale_order_forecast
+#: code:addons/sale_order_forecast/models/sale_order.py:0
+#, python-format
+msgid ""
+"Öngörü siparişi Kesin siparişe dönüştürüldü. İşlemi yapan: %(user)s – "
+"Tarih: %(date)s"
+msgstr ""
+"Öngörü siparişi Kesin siparişe dönüştürüldü. İşlemi yapan: %(user)s – "
+"Tarih: %(date)s"
+
+#. module: sale_order_forecast
+#: code:addons/sale_order_forecast/models/sale_order.py:0
+#, python-format
+msgid ""
+"Öngörü niteliğindeki siparişlerden fatura oluşturulamaz. Önce siparişi "
+"Kesin niteliğe dönüştürün. (%s)"
+msgstr ""
+"Öngörü niteliğindeki siparişlerden fatura oluşturulamaz. Önce siparişi "
+"Kesin niteliğe dönüştürün. (%s)"
+
+#. module: sale_order_forecast
+#: code:addons/sale_order_forecast/wizard/sale_order_nature_wizard.py:0
+#, python-format
+msgid "Sipariş artık onaylanabilir durumda değil."
+msgstr "Sipariş artık onaylanabilir durumda değil."
+
+#. module: sale_order_forecast
+#: code:addons/sale_order_forecast/wizard/sale_order_nature_wizard.py:0
+#, python-format
+msgid "Sipariş niteliği zaten belirlenmiş."
+msgstr "Sipariş niteliği zaten belirlenmiş."
+
+#. module: sale_order_forecast
+#: model_terms:ir.ui.view,arch_db:sale_order_forecast.view_order_form_inherit_forecast
+msgid "Kesin Siparişe Dönüştür"
+msgstr "Kesin Siparişe Dönüştür"
+
+#. module: sale_order_forecast
+#: model_terms:ir.ui.view,arch_db:sale_order_forecast.view_order_form_inherit_forecast
+msgid ""
+"Bu Öngörü siparişini Kesin siparişe dönüştürmek istediğinize emin "
+"misiniz? Bu işlem sonrasında standart teslimat süreci başlatılacaktır."
+msgstr ""
+"Bu Öngörü siparişini Kesin siparişe dönüştürmek istediğinize emin "
+"misiniz? Bu işlem sonrasında standart teslimat süreci başlatılacaktır."
+
+#. module: sale_order_forecast
+#: model_terms:ir.ui.view,arch_db:sale_order_forecast.sale_order_nature_wizard_form
+msgid ""
+"Bu siparişin niteliğini belirleyerek onaylama işlemine devam ediniz."
+msgstr ""
+"Bu siparişin niteliğini belirleyerek onaylama işlemine devam ediniz."
+
+#. module: sale_order_forecast
+#: model_terms:ir.ui.view,arch_db:sale_order_forecast.sale_order_nature_wizard_form
+msgid "Müşteri tarafından teyit edilmiş sipariş"
+msgstr "Müşteri tarafından teyit edilmiş sipariş"
+
+#. module: sale_order_forecast
+#: model_terms:ir.ui.view,arch_db:sale_order_forecast.sale_order_nature_wizard_form
+msgid "Henüz kesinleşmemiş, planlama amaçlı sipariş"
+msgstr "Henüz kesinleşmemiş, planlama amaçlı sipariş"

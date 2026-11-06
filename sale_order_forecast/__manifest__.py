@@ -29,7 +29,7 @@ Mevcut Satış Sipariş Türü (sale_order_type_journal) alanından bağımsız
     'website': "https://projet.solutions",
 
     'category': 'Sales/Sales',
-    'version': '19.0.2.0.0',
+    'version': '19.0.2.1.0',
 
     'depends': [
         'sale_stock',
