@@ -152,6 +152,23 @@ class TestComponentAlternative(TransactionCase):
         self.assertTrue(original.can_cover)
         self.assertTrue(original.selected)
 
+    def test_select_option_unchecks_siblings(self):
+        """Non-partial mode acts like a radio group: picking another
+        option deselects the previous one."""
+        self._set_stock(self.alt_low, 10.0)
+        self._set_stock(self.alt_high, 10.0)
+        mo = self._make_mo()
+        wizard = self._open_wizard(mo)
+        low = wizard.line_ids.filtered(
+            lambda l: l.alternative_product_id == self.alt_low)
+        high = wizard.line_ids.filtered(
+            lambda l: l.alternative_product_id == self.alt_high)
+        self.assertTrue(low.selected)  # suggested by priority
+        self.assertFalse(high.selected)
+        high.action_select_option()
+        self.assertTrue(high.selected)
+        self.assertFalse(low.selected)
+
     def test_no_alternative_covers(self):
         self._set_stock(self.alt_low, 1.0)
         mo = self._make_mo()

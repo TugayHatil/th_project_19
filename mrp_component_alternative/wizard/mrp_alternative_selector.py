@@ -593,6 +593,24 @@ class MrpAlternativeSelectorLine(models.TransientModel):
                     parts.append(_("Yetersiz Stok"))
             line.status_label = " \u00b7 ".join(parts)
 
+    def action_select_option(self):
+        """Radio-style selection: in non-partial mode only one option per
+        component can be selected, so picking this row unchecks the other
+        options of the same move."""
+        self.ensure_one()
+        selector = self.selector_id
+        if selector.mode != "production" or selector.allow_partial:
+            return True
+        selector.line_ids.filtered(
+            lambda l: l.move_id == self.move_id
+            and l != self).write({"selected": False})
+        if not self.selected:
+            self.selected = True
+        # Reopen the same wizard so the dialog refreshes instead of closing
+        return selector._open_action(
+            _("Alternative Components - %s",
+              selector.production_id.display_name))
+
     def action_toggle_fold(self):
         self.ensure_one()
         selector = self.selector_id

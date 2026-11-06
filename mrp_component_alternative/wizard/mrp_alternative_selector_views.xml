@@ -83,9 +83,12 @@
                                    decoration-info="is_current and not is_suggested"
                                    decoration-warning="not can_cover"/>
                             <field name="selected" string="Seç"
-                                   readonly="not can_cover and not (parent.allow_partial and has_coverage)"
+                                   readonly="not parent.allow_partial or (not can_cover and not (parent.allow_partial and has_coverage))"
                                    width="50px"
                                    invisible="parent.mode != 'production' or (not can_cover and not (parent.allow_partial and has_coverage))"/>
+                            <button name="action_select_option" type="object"
+                                    string="Seç" title="Bu seçeneği işaretle"
+                                    invisible="parent.mode != 'production' or parent.allow_partial or not can_cover or selected"/>
                             <field name="selected_qty" string="Miktar"
                                    width="90px"
                                    readonly="not selected"
