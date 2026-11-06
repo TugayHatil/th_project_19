@@ -40,6 +40,7 @@ chatter'ına yazılır.""",
     ],
     'assets': {
         'web.assets_backend': [
+            'mrp_component_alternative/static/src/js/alternative_radio_field.js',
             'mrp_component_alternative/static/src/scss/alternative_selector.scss',
         ],
     },

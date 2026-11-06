@@ -142,6 +142,8 @@ class TestComponentAlternative(TransactionCase):
         self.assertTrue(high.can_cover)
         self.assertTrue(high.is_suggested)
         self.assertTrue(high.selected)
+        # the chosen row shows the quantity that will be applied
+        self.assertEqual(high.selected_qty, 2.0)
 
     def test_main_sufficient_no_suggestion(self):
         self._set_stock(self.main, 5.0)

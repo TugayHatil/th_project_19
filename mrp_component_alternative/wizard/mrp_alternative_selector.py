@@ -245,7 +245,8 @@ class MrpAlternativeSelector(models.TransientModel):
             "alt_count": len(alternatives),
             "remembered_selected_id": chosen,
             "suggested_label": suggested_name,
-            "selected_qty": main_alloc if self.allow_partial else 0.0,
+            "selected_qty": (main_alloc if self.allow_partial else (
+                demand_main_uom if chosen == main.id else 0.0)),
             "selected": (float_compare(
                 main_alloc, 0.0,
                 precision_rounding=main.uom_id.rounding) > 0
@@ -272,6 +273,10 @@ class MrpAlternativeSelector(models.TransientModel):
         else:
             for vals in alt_vals:
                 vals["selected"] = vals["alternative_product_id"] == chosen
+                if vals["selected"]:
+                    # show the quantity that will be applied for the
+                    # chosen option
+                    vals["selected_qty"] = vals["demand_qty"]
         return [main_vals] + alt_vals
 
     # ------------------------------------------------------------------
