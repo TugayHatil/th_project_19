@@ -9,21 +9,21 @@ class SaleOrder(models.Model):
 
     order_nature = fields.Selection(
         selection=[
-            ('normal', 'Normal'),
-            ('forecast', 'Forecast'),
+            ('normal', 'Kesinleşmiş'),
+            ('forecast', 'Öngörü'),
         ],
         string='Sipariş Niteliği',
         required=True,
         default='normal',
         tracking=True,
-        help="Normal: standart satış siparişi süreci.\n"
-             "Forecast: teslimat emri oluşturulmadan onaylanabilen satış siparişi.")
+        help="Kesinleşmiş: standart satış siparişi süreci.\n"
+             "Öngörü: teslimat emri oluşturulmadan onaylanabilen satış siparişi.")
     forecast_converted = fields.Boolean(
-        string='Forecast\'ten Dönüştürüldü',
+        string='Öngörü\'den Dönüştürüldü',
         default=False,
         copy=False,
         readonly=True,
-        help="Bu sipariş Forecast niteliğinden Normal niteliğe dönüştürülmüştür. "
+        help="Bu sipariş Öngörü niteliğinden Kesinleşmiş niteliğe dönüştürülmüştür. "
              "Dönüştürme tek yönlüdür ve tekrarlanamaz.")
 
     def write(self, vals):
@@ -33,29 +33,29 @@ class SaleOrder(models.Model):
                     continue
                 if order.forecast_converted and vals['order_nature'] == 'forecast':
                     raise UserError(_(
-                        "Dönüştürülmüş bir sipariş tekrar Forecast niteliğine alınamaz."))
+                        "Dönüştürülmüş bir sipariş tekrar Öngörü niteliğine alınamaz."))
                 if order.state not in ('draft', 'sent'):
                     raise UserError(_(
                         "Onaylanmış veya iptal edilmiş bir siparişin niteliği değiştirilemez. "
-                        "Forecast siparişleri yalnızca \"Normal Siparişe Dönüştür\" "
-                        "butonu ile Normal niteliğe çevrilebilir."))
+                        "Öngörü siparişleri yalnızca \"Kesinleşmiş Siparişe Dönüştür\" "
+                        "butonu ile Kesinleşmiş niteliğe çevrilebilir."))
         return super().write(vals)
 
     def action_convert_to_normal(self):
         for order in self:
             if order.order_nature != 'forecast':
                 raise UserError(_(
-                    "Yalnızca Forecast niteliğindeki siparişler Normal siparişe "
+                    "Yalnızca Öngörü niteliğindeki siparişler Kesinleşmiş siparişe "
                     "dönüştürülebilir."))
             if order.state != 'sale':
                 raise UserError(_(
-                    "Yalnızca onaylanmış (Satış Siparişi) Forecast siparişleri "
+                    "Yalnızca onaylanmış (Satış Siparişi) Öngörü siparişleri "
                     "dönüştürülebilir."))
             order._convert_forecast_to_normal()
         return True
 
     def _convert_forecast_to_normal(self):
-        """ Forecast siparişini Normal niteliğe çevirir ve standart stok/tedarik
+        """ Öngörü siparişini Kesinleşmiş niteliğe çevirir ve standart stok/tedarik
         kuralı mekanizmasını çalıştırarak teslimat emrini oluşturur.
 
         Tüm işlem tek transaction içinde yürür; herhangi bir adım hata verirse
@@ -85,7 +85,7 @@ class SaleOrder(models.Model):
             if was_locked:
                 self.locked = True
         self.message_post(body=_(
-            "Forecast siparişi Normal siparişe dönüştürüldü. "
+            "Öngörü siparişi Kesinleşmiş siparişe dönüştürüldü. "
             "İşlemi yapan: %(user)s – Tarih: %(date)s",
             user=self.env.user.display_name,
             date=format_datetime(self.env, fields.Datetime.now())))
@@ -94,7 +94,7 @@ class SaleOrder(models.Model):
         forecast_orders = self.filtered(lambda o: o.order_nature == 'forecast')
         if forecast_orders:
             raise UserError(_(
-                "Forecast niteliğindeki siparişlerden fatura oluşturulamaz. "
-                "Önce siparişi Normal niteliğe dönüştürün. (%s)",
+                "Öngörü niteliğindeki siparişlerden fatura oluşturulamaz. "
+                "Önce siparişi Kesinleşmiş niteliğe dönüştürün. (%s)",
                 ', '.join(forecast_orders.mapped('name'))))
         return super()._create_invoices(grouped=grouped, final=final, date=date)

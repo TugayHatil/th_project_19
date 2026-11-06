@@ -2,20 +2,21 @@
 {
     'name': "Sale Order Forecast Nature",
 
-    'summary': "Satış siparişlerinde Forecast niteliği: teslimat emri oluşturmadan onay ve tek tuşla Normal siparişe dönüştürme",
+    'summary': "Satış siparişlerinde Öngörü niteliği: teslimat emri oluşturmadan onay ve tek tuşla Kesinleşmiş siparişe dönüştürme",
 
-    'description': """Satış siparişlerine Sipariş Niteliği (Normal / Forecast) alanı ekler.
+    'description': """Satış siparişlerine Sipariş Niteliği (Kesinleşmiş / Öngörü) alanı ekler.
 
-Forecast niteliğindeki teklifler standart onay sürecinden geçerek Sales Order
+Öngörü niteliğindeki teklifler standart onay sürecinden geçerek Sales Order
 durumuna gelir ancak teslimat emri, stok rezervasyonu veya stok hareketi
 oluşturulmaz. Sipariş onaylandığında stok kuralları tetiklenmez.
 
-Onaylanmış Forecast siparişi formundaki "Normal Siparişe Dönüştür" butonu ile
-sipariş aynı numara ve satırlarla Normal niteliğe çevrilir; dönüştürme anında
-standart Odoo teslimat süreci başlatılır ve işlem chatter'a yazılır.
-Dönüştürme tek yönlüdür ve her sipariş için yalnızca bir kez yapılabilir.
+Onaylanmış Öngörü siparişi formundaki "Kesinleşmiş Siparişe Dönüştür" butonu
+ile sipariş aynı numara ve satırlarla Kesinleşmiş niteliğe çevrilir;
+dönüştürme anında standart Odoo teslimat süreci başlatılır ve işlem
+chatter'a yazılır. Dönüştürme tek yönlüdür ve her sipariş için yalnızca
+bir kez yapılabilir.
 
-Forecast niteliğindeki siparişlerden fatura oluşturulamaz; dönüştürme
+Öngörü niteliğindeki siparişlerden fatura oluşturulamaz; dönüştürme
 sonrasında standart faturalama süreci kullanılır.
 
 Mevcut Satış Sipariş Türü (sale_order_type_journal) alanından bağımsız
@@ -25,7 +26,7 @@ Mevcut Satış Sipariş Türü (sale_order_type_journal) alanından bağımsız
     'website': "https://projet.solutions",
 
     'category': 'Sales/Sales',
-    'version': '19.0.1.1.0',
+    'version': '19.0.1.2.0',
 
     'depends': [
         'sale_stock',

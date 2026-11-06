@@ -9,11 +9,11 @@
                     <attribute name="invisible">invoice_status != 'no' or state != 'sale' or order_nature == 'forecast'</attribute>
                 </xpath>
                 <xpath expr="//header/button[@name='action_cancel']" position="before">
-                    <button string="Normal Siparişe Dönüştür"
+                    <button string="Kesinleşmiş Siparişe Dönüştür"
                             name="action_convert_to_normal"
                             type="object"
                             class="btn-primary"
-                            confirm="Bu Forecast siparişini Normal siparişe dönüştürmek istediğinize emin misiniz? Bu işlem sonrasında standart teslimat süreci başlatılacaktır."
+                            confirm="Bu Öngörü siparişini Kesinleşmiş siparişe dönüştürmek istediğinize emin misiniz? Bu işlem sonrasında standart teslimat süreci başlatılacaktır."
                             invisible="order_nature != 'forecast' or state != 'sale'"/>
                 </xpath>
                 <xpath expr="//group[@name='order_details']/field[@name='payment_term_id']" position="after">
@@ -46,7 +46,7 @@
                     <filter name="order_nature" string="Sipariş Niteliği" context="{'group_by': 'order_nature'}"/>
                 </xpath>
                 <xpath expr="//filter[@name='my_sale_orders_filter']" position="after">
-                    <filter name="forecast_orders" string="Forecast" domain="[('order_nature', '=', 'forecast')]"/>
+                    <filter name="forecast_orders" string="Öngörü" domain="[('order_nature', '=', 'forecast')]"/>
                 </xpath>
             </field>
         </record>

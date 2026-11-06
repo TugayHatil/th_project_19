@@ -115,7 +115,7 @@ class TestSaleOrderForecast(TransactionCase):
         order.action_confirm()
         order.action_convert_to_normal()
         last_message = order.message_ids[0]
-        self.assertIn("Normal siparişe dönüştürüldü", last_message.body)
+        self.assertIn("Kesinleşmiş siparişe dönüştürüldü", last_message.body)
 
     # 12) Tekrar dönüştürme engellenmeli
     def test_08_second_convert_is_blocked(self):
