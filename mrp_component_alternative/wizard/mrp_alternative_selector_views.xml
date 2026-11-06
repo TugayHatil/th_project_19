@@ -90,6 +90,7 @@
                             <field name="selected_qty" string="Miktar"
                                    width="90px"
                                    readonly="not parent.allow_partial or not selected"
+                                   invisible="not selected"
                                    column_invisible="parent.mode != 'production'"/>
                         </list>
                     </field>

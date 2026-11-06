@@ -2,26 +2,29 @@
 
 import { BooleanField, booleanField } from "@web/views/fields/boolean/boolean_field";
 import { registry } from "@web/core/registry";
+import { xml } from "@odoo/owl";
 
 export class AlternativeRadioField extends BooleanField {
     /**
-     * Radio behaviour for the alternative selector: in non-partial mode,
-     * checking an option clears the other options of the same component
-     * (move) so only one option can ever be selected.
+     * The checkbox stays enabled in the list's readonly rendering so a
+     * single click toggles the selection instead of merely activating
+     * the row's edit mode. In non-partial mode, checking an option also
+     * clears the other options of the same component (move) so only one
+     * option can ever be selected.
      */
-    async onChange(newValue) {
-        await super.onChange(newValue);
+    async onChange(ev) {
+        const newValue = ev.target.checked;
+        await this.props.record.update({ [this.props.name]: newValue });
         if (!newValue) {
             return;
         }
-        const record = this.props.record;
-        const parent = record.model.root;
+        const parent = this.props.record.model.root;
         if (parent.data.allow_partial) {
             return;
         }
-        const moveId = this._moveId(record.data.move_id);
+        const moveId = this._moveId(this.props.record.data.move_id);
         for (const line of parent.data.line_ids.records) {
-            if (line === record || !line.data.selected) {
+            if (line === this.props.record || !line.data.selected) {
                 continue;
             }
             if (this._moveId(line.data.move_id) === moveId) {
@@ -37,6 +40,12 @@ export class AlternativeRadioField extends BooleanField {
         return Array.isArray(value) ? value[0] : value.id;
     }
 }
+
+AlternativeRadioField.template = xml`
+    <input type="checkbox" class="o_checkbox form-check-input"
+           t-att-checked="props.record.data[props.name]"
+           t-on-change="onChange"/>
+`;
 
 export const alternativeRadioField = {
     ...booleanField,
