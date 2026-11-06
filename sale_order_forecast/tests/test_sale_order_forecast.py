@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from unittest.mock import patch
+
 from odoo.exceptions import UserError
 from odoo.fields import Command
 from odoo.tests.common import TransactionCase
@@ -46,7 +48,9 @@ class TestSaleOrderForecast(TransactionCase):
 
     def _confirm_via_wizard(self, order, nature):
         """Onay butonunun açtığı pencerede seçim yapma akışını simüle eder."""
-        action = order.action_confirm()
+        with patch.object(
+                type(order), "_is_backend_button_call", return_value=True):
+            action = order.action_confirm()
         if isinstance(action, dict):
             wizard = self.Wizard.browse(action["res_id"])
             return getattr(
@@ -70,7 +74,9 @@ class TestSaleOrderForecast(TransactionCase):
     # 3/4/6) Onayla, niteliksiz siparişi onaylamak yerine seçim penceresi açar
     def test_02_confirm_without_nature_opens_wizard(self):
         order = self._create_order(nature=False)
-        action = order.action_confirm()
+        with patch.object(
+                type(order), "_is_backend_button_call", return_value=True):
+            action = order.action_confirm()
         self.assertIsInstance(action, dict)
         self.assertEqual(action["res_model"], "sale.order.nature.wizard")
         self.assertEqual(action["target"], "new")
@@ -118,15 +124,26 @@ class TestSaleOrderForecast(TransactionCase):
     # Entegrasyonlar için context ile otomatik nitelik
     def test_07_confirm_with_context_nature(self):
         order = self._create_order(nature=False)
-        order.with_context(order_nature="confirmed").action_confirm()
+        order.with_context(order_nature="forecast").action_confirm()
+        self.assertEqual(order.order_nature, "forecast")
+        self.assertEqual(order.state, "sale")
+        self.assertFalse(order.picking_ids)
+
+    # Portal/ödeme/webhook gibi arayüz dışı onaylarda otomatik Kesin
+    def test_08_non_ui_confirm_auto_confirmed(self):
+        order = self._create_order(nature=False)
+        order.action_confirm()  # test ortamında request yok → arayüz dışı
         self.assertEqual(order.order_nature, "confirmed")
         self.assertEqual(order.state, "sale")
+        self.assertTrue(order.picking_ids)
 
-    # Birden fazla niteliksiz teklif toplu onaylanamaz
-    def test_08_multi_confirm_without_nature_blocked(self):
+    # Birden fazla niteliksiz teklif arayüzden toplu onaylanamaz
+    def test_09_multi_confirm_without_nature_blocked(self):
         orders = self._create_order(nature=False) | self._create_order(nature=False)
-        with self.assertRaises(UserError):
-            orders.action_confirm()
+        with patch.object(
+                type(orders), "_is_backend_button_call", return_value=True):
+            with self.assertRaises(UserError):
+                orders.action_confirm()
         self.assertFalse(orders.mapped("picking_ids"))
 
     # 11/12/13) Dönüştürme: aynı kayıt/numara, teslimat oluşmalı

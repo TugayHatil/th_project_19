@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, _
 from odoo.exceptions import UserError
+from odoo.http import request
 from odoo.tools import format_datetime
 
 
@@ -47,17 +48,24 @@ class SaleOrder(models.Model):
         """ Sipariş niteliği seçilmemiş teklifler doğrudan onaylanmaz;
         kullanıcıya nitelik seçim penceresi açılır.
 
-        Entegrasyonlar `order_nature` context anahtarı ile niteliği
-        önden ileterek pencereyi atlayabilir:
-        order.with_context(order_nature='confirmed').action_confirm()
+        Pencere yalnızca backend arayüzünden gelen onay çağrılarında
+        açılır. Portal, online ödeme, webhook, XML-RPC veya cron gibi
+        arayüz dışı onaylarda sipariş otomatik olarak Kesin niteliği
+        alır. Entegrasyonlar ayrıca `order_nature` context anahtarı ile
+        niteliği önden iletebilir:
+        order.with_context(order_nature='forecast').action_confirm()
         """
         missing = self.filtered(
             lambda o: not o.order_nature and o.state in ('draft', 'sent'))
-        auto_nature = self.env.context.get('order_nature')
-        if missing and auto_nature in ('confirmed', 'forecast'):
-            missing.with_context(order_nature_change_allowed=True).write(
-                {'order_nature': auto_nature})
-            missing = self.browse()
+        if missing:
+            auto_nature = self.env.context.get('order_nature')
+            if auto_nature not in ('confirmed', 'forecast') \
+                    and not self._is_backend_button_call():
+                auto_nature = 'confirmed'
+            if auto_nature in ('confirmed', 'forecast'):
+                missing.with_context(order_nature_change_allowed=True).write(
+                    {'order_nature': auto_nature})
+                missing = self.browse()
         if missing:
             if len(missing) > 1:
                 raise UserError(_(
@@ -66,6 +74,17 @@ class SaleOrder(models.Model):
                     "belirleyin."))
             return missing._action_open_nature_wizard()
         return super().action_confirm()
+
+    def _is_backend_button_call(self):
+        """Onay çağrısı backend arayüzünden mi geliyor?
+
+        Portal, online ödeme, sağlayıcı webhook'ları, XML-RPC/JSON-RPC ve
+        cron gibi arayüz dışı çağrılarda nitelik penceresi gösterilemez."""
+        try:
+            path = request.httprequest.path or ''
+        except RuntimeError:
+            return False
+        return path.startswith('/web/')
 
     def _action_confirm(self):
         self.was_confirmed = True

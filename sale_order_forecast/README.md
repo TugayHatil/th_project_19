@@ -15,8 +15,11 @@ Satış siparişlerine **Sipariş Niteliği** (`order_nature`) alanı ekler:
   stok hareketi ve rezervasyon **oluşturulmaz** (tedarik kuralı
   `_action_launch_stock_rule` satır bazında engellenir).
 - Formda nitelik önceden seçilmişse Onayla doğrudan çalışır.
-- Entegrasyonlar `order.with_context(order_nature='confirmed')` ile
-  pencereyi atlayabilir.
+- **Portal, online ödeme, webhook, XML-RPC ve cron** gibi arayüz dışı
+  onaylarda pencere açılamaz; sipariş otomatik **Kesin** niteliği alır.
+  Arayüz çağrısı `/web/` yolu üzerinden tespit edilir.
+- Entegrasyonlar `order.with_context(order_nature='forecast')` ile
+  niteliği önden iletebilir.
 
 ## Dönüştürme
 
