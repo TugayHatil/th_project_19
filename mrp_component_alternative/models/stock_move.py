@@ -31,6 +31,10 @@ class StockMove(models.Model):
         compute="_compute_alternative_rank", compute_sudo=True)
     alt_marker = fields.Char(
         compute="_compute_alternative_rank", compute_sudo=True)
+    production_product_id = fields.Many2one(
+        "product.product", string="Üretilen Ürün",
+        related="raw_material_production_id.product_id",
+        store=True, readonly=True)
 
     @api.depends("product_id", "original_product_id")
     def _compute_alt_group(self):

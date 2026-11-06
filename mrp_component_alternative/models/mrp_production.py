@@ -10,6 +10,15 @@ class MrpProduction(models.Model):
         compute="_compute_alternative_component_count", compute_sudo=True)
     alternative_shortage_count = fields.Integer(
         compute="_compute_alternative_component_count", compute_sudo=True)
+    alternative_used_count = fields.Integer(
+        compute="_compute_alternative_used_count", compute_sudo=True)
+
+    @api.depends("move_raw_ids.is_alternative_component")
+    def _compute_alternative_used_count(self):
+        for production in self:
+            production.alternative_used_count = len(
+                production.move_raw_ids.filtered(
+                    "is_alternative_component"))
 
     @api.depends("move_raw_ids.bom_line_id")
     def _compute_alternative_component_count(self):
@@ -41,6 +50,15 @@ class MrpProduction(models.Model):
     def action_open_alternative_selector(self):
         self.ensure_one()
         return self.env["mrp.alternative.selector"]._open_for_production(self)
+
+    def action_view_alternative_moves(self):
+        self.ensure_one()
+        action = self.env["ir.actions.actions"]._for_xml_id(
+            "mrp_component_alternative.action_mrp_alternative_moves")
+        action["domain"] = [
+            ("raw_material_production_id", "=", self.id)]
+        action["context"] = {}
+        return action
 
     def _ensure_alternative_orderpoints(self, moves):
         """Surface the shortage of a component that has alternatives on the

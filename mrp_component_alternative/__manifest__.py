@@ -37,6 +37,7 @@ chatter'ına yazılır.""",
         'views/mrp_bom_views.xml',
         'views/mrp_production_views.xml',
         'views/stock_orderpoint_views.xml',
+        'views/stock_move_views.xml',
     ],
     'assets': {
         'web.assets_backend': [
