@@ -50,6 +50,9 @@ class MrpCogiRecord(models.Model):
                                  store=True, digits='Product Unit')
     remaining_qty = fields.Float('Eksik Miktar', compute='_compute_correction_qty',
                                  store=True, digits='Product Unit')
+    correction_progress = fields.Float('Düzeltme İlerlemesi',
+                                       compute='_compute_correction_qty',
+                                       store=True, digits=(16, 1))
 
     # İşlem ve hata bilgileri
     operator_id = fields.Many2one('res.users', string='İşlemi Yapan', readonly=True)
@@ -90,6 +93,9 @@ class MrpCogiRecord(models.Model):
             )
             rec.corrected_qty = qty
             rec.remaining_qty = max(rec.initial_missing_qty - qty, 0.0)
+            rec.correction_progress = (
+                qty / rec.initial_missing_qty * 100.0
+                if rec.initial_missing_qty else 0.0)
 
     @api.depends('correction_move_ids')
     def _compute_correction_move_count(self):
