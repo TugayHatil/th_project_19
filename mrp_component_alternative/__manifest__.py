@@ -17,7 +17,13 @@ alternatif seçim sihirbazı otomatik açılır (üretim emri üzerindeki
 karşılayan ilk alternatifi önceliğe göre önerir; nihai seçim ve onay
 kullanıcıdadır. Onaylanan alternatif bileşen satırına uygulanır,
 rezervasyon seçilen ürün üzerinden yapılır ve değişiklik üretim emri
-chatter'ına yazılır.""",
+chatter'ına yazılır. Ayarlardan parçalı kullanım açıldığında ihtiyaç
+birden fazla alternatiften bölünebilir.
+
+Yetki grupları: "Alternatif Bileşen Yöneticisi" reçete üzerinde alternatif
+tanımı yapar; "Alternatif Bileşen Kullanıcısı" üretim emrinde alternatif
+seçimi uygular. Üretim > Raporlama altındaki "Alternatif Bileşen
+Hareketleri" listesi tüm değişiklikleri izler.""",
 
     'author': "Projet Solutions",
     'website': "https://projet.solutions",

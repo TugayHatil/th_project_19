@@ -307,9 +307,12 @@ class MrpAlternativeSelector(models.TransientModel):
             "demand_qty": demand,
             "allow_partial": self._partial_allowed(),
         })
-        alternatives = self.env["mrp.bom.line.alternative"].search([
+        # sudo: replenishment users may not have read access on the
+        # alternative model; the popup is information-only.
+        alternatives = self.env["mrp.bom.line.alternative"].sudo().search([
             ("product_id", "=", product.id),
             ("active", "=", True),
+            ("bom_id.active", "=", True),
             ("company_id", "in", [False, orderpoint.company_id.id]),
         ]).sorted("sequence")
         by_product = {}

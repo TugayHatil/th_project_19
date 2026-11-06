@@ -20,7 +20,7 @@ class MrpProduction(models.Model):
                 production.move_raw_ids.filtered(
                     "is_alternative_component"))
 
-    @api.depends("move_raw_ids.bom_line_id")
+    @api.depends("move_raw_ids")
     def _compute_alternative_component_count(self):
         for production in self:
             moves = production.move_raw_ids.filtered(
@@ -119,8 +119,7 @@ class MrpProduction(models.Model):
             if target:
                 move_ctx._apply_alternative_product(target)
             else:
-                selector = self.env["mrp.alternative.selector"].new()
-                if selector._partial_allowed():
+                if self.env["mrp.alternative.selector"]._partial_allowed():
                     allocs = selector._suggest_allocations(move)
                     total = sum(
                         product.uom_id._compute_quantity(qty, main.uom_id)

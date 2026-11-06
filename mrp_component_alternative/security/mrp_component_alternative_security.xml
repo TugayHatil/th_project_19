@@ -5,6 +5,7 @@
          MRP user rights; MRP users can view alternative definitions. -->
     <record id="group_alternative_selector" model="res.groups">
         <field name="name">Alternatif Bileşen Kullanıcısı</field>
+        <field name="category_id" ref="base.module_category_manufacturing_manufacturing"/>
         <field name="implied_ids" eval="[(4, ref('mrp.group_mrp_user'))]"/>
     </record>
 
@@ -13,6 +14,7 @@
          selector (user) group so managers can select on MOs too. -->
     <record id="group_alternative_manager" model="res.groups">
         <field name="name">Alternatif Bileşen Yöneticisi</field>
+        <field name="category_id" ref="base.module_category_manufacturing_manufacturing"/>
         <field name="implied_ids" eval="[(4, ref('mrp_component_alternative.group_alternative_selector'))]"/>
     </record>
 

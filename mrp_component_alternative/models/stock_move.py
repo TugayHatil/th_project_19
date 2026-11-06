@@ -64,11 +64,13 @@ class StockMove(models.Model):
                 move.alternative_label = ""
             move.alt_marker = "↳" if move.original_product_id else ""
 
-    @api.depends("bom_line_id", "bom_line_id.alternative_ids.active")
+    @api.depends("bom_line_id", "bom_line_id.alternative_ids.active",
+                 "bom_line_id.bom_id.active")
     def _compute_has_bom_alternatives(self):
         for move in self:
             move.has_bom_alternatives = bool(
-                move.bom_line_id.alternative_ids.filtered("active"))
+                move.bom_line_id.alternative_ids.filtered(
+                    lambda a: a.active and a.bom_id.active))
 
     # ------------------------------------------------------------------
     # Availability helpers (all quantities expressed in product uom)

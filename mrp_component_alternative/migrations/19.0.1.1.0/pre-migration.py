@@ -8,6 +8,7 @@ def migrate(cr, version):
     cr.execute("""
         SELECT id FROM stock_move
         WHERE is_alternative_origin AND state = 'cancel'
+          AND raw_material_production_id IS NOT NULL
     """)
     ids = [row[0] for row in cr.fetchall()]
     if not ids:
