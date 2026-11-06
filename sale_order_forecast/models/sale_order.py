@@ -9,13 +9,12 @@ class SaleOrder(models.Model):
 
     order_nature = fields.Selection(
         selection=[
-            ('normal', 'Kesin'),
+            ('confirmed', 'Kesin'),
             ('forecast', 'Öngörü'),
         ],
         string='Sipariş Niteliği',
-        required=True,
-        default='normal',
         tracking=True,
+        copy=False,
         help="Kesin: standart satış siparişi süreci.\n"
              "Öngörü: teslimat emri oluşturulmadan onaylanabilen satış siparişi.")
     forecast_converted = fields.Boolean(
@@ -25,21 +24,66 @@ class SaleOrder(models.Model):
         readonly=True,
         help="Bu sipariş Öngörü niteliğinden Kesin niteliğe dönüştürülmüştür. "
              "Dönüştürme tek yönlüdür ve tekrarlanamaz.")
+    was_confirmed = fields.Boolean(
+        string='Daha Önce Onaylandı',
+        default=False,
+        copy=False,
+        readonly=True,
+        help="Sipariş en az bir kez onaylandı; niteliği artık değiştirilemez.")
 
     def write(self, vals):
         if 'order_nature' in vals and not self.env.context.get('order_nature_change_allowed'):
             for order in self:
                 if vals['order_nature'] == order.order_nature:
                     continue
-                if order.forecast_converted and vals['order_nature'] == 'forecast':
+                if order.was_confirmed or order.state not in ('draft', 'sent'):
                     raise UserError(_(
-                        "Dönüştürülmüş bir sipariş tekrar Öngörü niteliğine alınamaz."))
-                if order.state not in ('draft', 'sent'):
-                    raise UserError(_(
-                        "Onaylanmış veya iptal edilmiş bir siparişin niteliği değiştirilemez. "
-                        "Öngörü siparişleri yalnızca \"Kesin Siparişe Dönüştür\" "
-                        "butonu ile Kesin niteliğe çevrilebilir."))
+                        "Onaylanmış bir siparişin niteliği değiştirilemez. Öngörü "
+                        "siparişleri yalnızca \"Kesin Siparişe Dönüştür\" butonu "
+                        "ile Kesin niteliğe çevrilebilir."))
         return super().write(vals)
+
+    def action_confirm(self):
+        """ Sipariş niteliği seçilmemiş teklifler doğrudan onaylanmaz;
+        kullanıcıya nitelik seçim penceresi açılır.
+
+        Entegrasyonlar `order_nature` context anahtarı ile niteliği
+        önden ileterek pencereyi atlayabilir:
+        order.with_context(order_nature='confirmed').action_confirm()
+        """
+        missing = self.filtered(
+            lambda o: not o.order_nature and o.state in ('draft', 'sent'))
+        auto_nature = self.env.context.get('order_nature')
+        if missing and auto_nature in ('confirmed', 'forecast'):
+            missing.with_context(order_nature_change_allowed=True).write(
+                {'order_nature': auto_nature})
+            missing = self.browse()
+        if missing:
+            if len(missing) > 1:
+                raise UserError(_(
+                    "Sipariş niteliği seçilmemiş birden fazla teklif var. "
+                    "Lütfen teklifleri tek tek onaylayarak niteliklerini "
+                    "belirleyin."))
+            return missing._action_open_nature_wizard()
+        return super().action_confirm()
+
+    def _action_confirm(self):
+        self.was_confirmed = True
+        return super()._action_confirm()
+
+    def _action_open_nature_wizard(self):
+        self.ensure_one()
+        wizard = self.env['sale.order.nature.wizard'].create({
+            'order_id': self.id,
+        })
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Sipariş Niteliğini Seçiniz'),
+            'res_model': 'sale.order.nature.wizard',
+            'res_id': wizard.id,
+            'view_mode': 'form',
+            'target': 'new',
+        }
 
     def action_convert_to_normal(self):
         for order in self:
@@ -76,7 +120,7 @@ class SaleOrder(models.Model):
             # kural çalıştırılırken kilidi geçici olarak kaldır.
             self.locked = False
         self.with_context(order_nature_change_allowed=True).write({
-            'order_nature': 'normal',
+            'order_nature': 'confirmed',
             'forecast_converted': True,
         })
         try:

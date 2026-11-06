@@ -43,8 +43,10 @@ definition record automatically updates every linked product card.
 ## `sale_order_forecast`
 
 Adds an Order Nature (Sipariş Niteliği) selection on sale orders: Kesin
-or Öngörü. Öngörü orders confirm to Sales Order without creating delivery
-orders, stock moves or reservations. A confirmed Öngörü order can be
+or Öngörü. The field stays empty on quotations; pressing Confirm opens a
+selection dialog (Kesin / Öngörü) and orders cannot reach the `sale` state
+without a nature. Öngörü orders confirm to Sales Order without creating
+delivery orders, stock moves or reservations. A confirmed Öngörü order can be
 converted in place to Kesin from a header button (with confirmation dialog):
 the same order number and lines are kept, the standard stock-rule/delivery
 flow is launched and the conversion is logged to chatter. Conversion is

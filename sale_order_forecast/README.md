@@ -3,25 +3,45 @@
 Satış siparişlerine **Sipariş Niteliği** (`order_nature`) alanı ekler:
 `Kesin` ve `Öngörü`.
 
-- **Öngörü** teklifler standart onay süreciyle Satış Siparişi durumuna
-  gelir; sipariş numarası oluşur ancak teslimat emri, stok hareketi ve
-  rezervasyon **oluşturulmaz** (tedarik kuralı `_action_launch_stock_rule`
-  satır bazında engellenir).
-- Onaylanmış Öngörü siparişi formundaki **Kesin Siparişe Dönüştür**
-  butonu (onay pencereli) siparişi aynı numara ve satırlarla Kesin
-  niteliğe çevirir ve standart teslimat sürecini başlatır. İşlem
-  chatter'a yazılır, tek yönlüdür ve her sipariş için bir kez yapılabilir.
+## Akış
+
+- Teklif aşamasında alan **boş** kalır; teklif nitelik seçilmeden
+  kaydedilebilir ve gönderilebilir.
+- **Onayla** butonu niteliksiz teklifte doğrudan onay yapmaz; "Sipariş
+  Niteliğini Seçiniz" penceresi açılır (Kesin / Öngörü yan yana butonlar,
+  varsayılan seçim yok). Pencere kapatılırsa sipariş teklif durumunda kalır.
+- **Kesin** seçilirse standart onay + teslimat akışı çalışır.
+- **Öngörü** seçilirse sipariş `sale` durumuna geçer ancak teslimat emri,
+  stok hareketi ve rezervasyon **oluşturulmaz** (tedarik kuralı
+  `_action_launch_stock_rule` satır bazında engellenir).
+- Formda nitelik önceden seçilmişse Onayla doğrudan çalışır.
+- Entegrasyonlar `order.with_context(order_nature='confirmed')` ile
+  pencereyi atlayabilir.
+
+## Dönüştürme
+
+- Onaylanmış Öngörü siparişi formundaki **Kesin Siparişe Dönüştür** butonu
+  (onay pencereli) siparişi aynı numara ve satırlarla Kesin niteliğe
+  çevirir ve standart teslimat sürecini başlatır. İşlem chatter'a yazılır,
+  tek yönlüdür ve her sipariş için bir kez yapılabilir.
 - Kilitli (`locked`) siparişlerde kural çalıştırılırken kilit geçici
   kaldırılıp geri yüklenir.
-- Dönüştürülmüş sipariş `forecast_converted` bayrağı ile işaretlenir;
-  iptal → taslak döngüsüyle bile tekrar Öngörü yapılamaz. Onaylı/iptal
-  siparişlerde nitelik `write` ile değiştirilemez (sunucu tarafı kontrol).
+- `was_confirmed` bayrağı onaylanmış siparişin niteliğini kilitler; iptal →
+  taslak döngüsüyle bile nitelik değiştirilemez. Onaylı/iptal siparişlerde
+  nitelik `write` ile değiştirilemez (sunucu tarafı kontrol).
+
+## Faturalama
+
 - Öngörü siparişlerde `qty_to_invoice` sıfırlanır (durum "Faturalandırılacak
   Bir Şey Yok") ve `_create_invoices` sunucu tarafında engellenir;
-  yüzdeli avans faturası butonu da gizlenir.
-- Liste görünümünde nitelik pastel badge olarak gösterilir (Kesin
-  yeşil, Öngörü turuncu); aramaya "Öngörü" filtresi ve
-  "Sipariş Niteliği" gruplaması eklenir.
+  yüzdeli avans faturası butonu da gizlenir. Kesin'e dönüşünce standart
+  faturalama çalışır.
+
+## Görünümler
+
+- Liste görünümünde nitelik pastel badge olarak gösterilir (Kesin yeşil,
+  Öngörü turuncu); aramada "Kesin" / "Öngörü" filtreleri ve
+  "Sipariş Niteliği" gruplaması bulunur.
 
 Bağımlılık: `sale_stock`
 

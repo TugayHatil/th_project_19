@@ -2,9 +2,12 @@
 {
     'name': "Sale Order Forecast Nature",
 
-    'summary': "Satış siparişlerinde Öngörü niteliği: teslimat emri oluşturmadan onay ve tek tuşla Kesin siparişe dönüştürme",
+    'summary': "Satış siparişlerinde Kesin/Öngörü niteliği: onayda seçim penceresi, teslimatsiz öngörü onayı ve Kesin siparişe dönüştürme",
 
     'description': """Satış siparişlerine Sipariş Niteliği (Kesin / Öngörü) alanı ekler.
+
+Teklif aşamasında alan boş kalır; Onayla butonu nitelik seçim penceresi
+açar (Kesin / Öngörü). Seçim yapılmadan sipariş onaylanamaz.
 
 Öngörü niteliğindeki teklifler standart onay sürecinden geçerek Sales Order
 durumuna gelir ancak teslimat emri, stok rezervasyonu veya stok hareketi
@@ -26,13 +29,15 @@ Mevcut Satış Sipariş Türü (sale_order_type_journal) alanından bağımsız
     'website': "https://projet.solutions",
 
     'category': 'Sales/Sales',
-    'version': '19.0.1.2.0',
+    'version': '19.0.2.0.0',
 
     'depends': [
         'sale_stock',
     ],
 
     'data': [
+        'security/ir.model.access.csv',
+        'wizard/sale_order_nature_wizard_views.xml',
         'views/sale_order_views.xml',
     ],
     'assets': {

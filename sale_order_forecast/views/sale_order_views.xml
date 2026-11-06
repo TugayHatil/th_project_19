@@ -18,8 +18,9 @@
                 </xpath>
                 <xpath expr="//group[@name='order_details']/field[@name='payment_term_id']" position="after">
                     <field name="order_nature"
-                           readonly="state in ['sale', 'cancel'] or locked or forecast_converted"/>
+                           readonly="state in ['sale', 'cancel'] or locked or was_confirmed"/>
                     <field name="forecast_converted" invisible="1"/>
+                    <field name="was_confirmed" invisible="1"/>
                 </xpath>
             </field>
         </record>
@@ -31,7 +32,7 @@
             <field name="arch" type="xml">
                 <xpath expr="//field[@name='partner_id']" position="after">
                     <field name="order_nature" widget="badge" optional="show"
-                           decoration-success="order_nature == 'normal'"
+                           decoration-success="order_nature == 'confirmed'"
                            decoration-warning="order_nature == 'forecast'"/>
                 </xpath>
             </field>
@@ -46,6 +47,7 @@
                     <filter name="order_nature" string="Sipariş Niteliği" context="{'group_by': 'order_nature'}"/>
                 </xpath>
                 <xpath expr="//filter[@name='my_sale_orders_filter']" position="after">
+                    <filter name="confirmed_orders" string="Kesin" domain="[('order_nature', '=', 'confirmed')]"/>
                     <filter name="forecast_orders" string="Öngörü" domain="[('order_nature', '=', 'forecast')]"/>
                 </xpath>
             </field>

@@ -10,7 +10,7 @@ class TestSaleOrderForecast(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.partner = cls.env["res.partner"].create({
-            "name": "Forecast Müşteri",
+            "name": "Öngörü Müşteri",
         })
         cls.product_stock = cls.env["product.product"].create({
             "name": "Stoklu Ürün",
@@ -26,6 +26,7 @@ class TestSaleOrderForecast(TransactionCase):
             "name": "Hizmet Ürünü",
             "type": "service",
         })
+        cls.Wizard = cls.env["sale.order.nature.wizard"]
         cls.quant = cls.env["stock.quant"]
         warehouse = cls.env["stock.warehouse"].search(
             [("company_id", "=", cls.env.company.id)], limit=1)
@@ -43,8 +44,19 @@ class TestSaleOrderForecast(TransactionCase):
             })],
         })
 
-    # 1) Varsayılan nitelik Normal olmalı
-    def test_01_default_nature_is_normal(self):
+    def _confirm_via_wizard(self, order, nature):
+        """Onay butonunun açtığı pencerede seçim yapma akışını simüle eder."""
+        action = order.action_confirm()
+        if isinstance(action, dict):
+            wizard = self.Wizard.browse(action["res_id"])
+            return getattr(
+                wizard,
+                "action_select_confirmed" if nature == "confirmed"
+                else "action_select_forecast")()
+        return action
+
+    # 1/2) Yeni teklifte nitelik boş olmalı ve kaydedilebilmeli
+    def test_01_no_default_nature(self):
         order = self.env["sale.order"].create({
             "partner_id": self.partner.id,
             "order_line": [Command.create({
@@ -52,19 +64,41 @@ class TestSaleOrderForecast(TransactionCase):
                 "product_uom_qty": 1.0,
             })],
         })
-        self.assertEqual(order.order_nature, "normal")
+        self.assertFalse(order.order_nature)
+        self.assertEqual(order.state, "draft")
 
-    # 2/4/5/6) Forecast teklif onaylanınca: sales order olmalı ama
-    # teslimat emri, stok hareketi ve rezervasyon oluşmamalı
-    def test_02_forecast_confirm_creates_no_delivery(self):
-        order = self._create_order("forecast")
-        order.action_confirm()
+    # 3/4/6) Onayla, niteliksiz siparişi onaylamak yerine seçim penceresi açar
+    def test_02_confirm_without_nature_opens_wizard(self):
+        order = self._create_order(nature=False)
+        action = order.action_confirm()
+        self.assertIsInstance(action, dict)
+        self.assertEqual(action["res_model"], "sale.order.nature.wizard")
+        self.assertEqual(action["target"], "new")
+        # Pencere açılırken sipariş onaylanmaz
+        self.assertEqual(order.state, "draft")
+        self.assertFalse(order.order_nature)
+
+    # 7) Pencerede Kesin seçimi → standart sipariş + teslimat
+    def test_03_wizard_confirmed_creates_delivery(self):
+        order = self._create_order(nature=False)
+        self._confirm_via_wizard(order, "confirmed")
+        self.assertEqual(order.order_nature, "confirmed")
+        self.assertEqual(order.state, "sale")
+        self.assertTrue(order.was_confirmed)
+        self.assertTrue(order.picking_ids)
+        self.assertTrue(order.order_line.move_ids)
+
+    # 8/9) Pencerede Öngörü seçimi → sale ama teslimat/hareket/rezervasyon yok
+    def test_04_wizard_forecast_no_delivery(self):
+        order = self._create_order(nature=False)
+        self._confirm_via_wizard(order, "forecast")
+        self.assertEqual(order.order_nature, "forecast")
         self.assertEqual(order.state, "sale")
         self.assertTrue(order.name and order.name != "New")
         self.assertFalse(order.picking_ids)
         self.assertFalse(order.order_line.move_ids)
 
-    def test_03_forecast_confirm_no_stock_reservation(self):
+    def test_05_forecast_confirm_no_stock_reservation(self):
         self.quant._update_available_quantity(
             self.product_stock, self.stock_location, 20.0)
         free_before = self.product_stock.free_qty
@@ -73,28 +107,42 @@ class TestSaleOrderForecast(TransactionCase):
         self.assertFalse(order.order_line.move_ids)
         self.assertEqual(self.product_stock.free_qty, free_before)
 
-    # 3) Normal teklif onayı standart akışı bozmamalı
-    def test_04_normal_confirm_creates_delivery(self):
-        order = self._create_order("normal")
-        order.action_confirm()
+    # Nitelik önceden seçilmişse onay doğrudan gerçekleşir
+    def test_06_confirm_with_preset_nature(self):
+        order = self._create_order("confirmed")
+        res = order.action_confirm()
+        self.assertNotIsInstance(res, dict)
         self.assertEqual(order.state, "sale")
         self.assertTrue(order.picking_ids)
-        self.assertTrue(order.order_line.move_ids)
 
-    # 8/9/10) Dönüştürme: aynı kayıt, aynı numara/satırlar, teslimat oluşmalı
-    def test_05_convert_creates_delivery_same_order(self):
+    # Entegrasyonlar için context ile otomatik nitelik
+    def test_07_confirm_with_context_nature(self):
+        order = self._create_order(nature=False)
+        order.with_context(order_nature="confirmed").action_confirm()
+        self.assertEqual(order.order_nature, "confirmed")
+        self.assertEqual(order.state, "sale")
+
+    # Birden fazla niteliksiz teklif toplu onaylanamaz
+    def test_08_multi_confirm_without_nature_blocked(self):
+        orders = self._create_order(nature=False) | self._create_order(nature=False)
+        with self.assertRaises(UserError):
+            orders.action_confirm()
+        self.assertFalse(orders.mapped("picking_ids"))
+
+    # 11/12/13) Dönüştürme: aynı kayıt/numara, teslimat oluşmalı
+    def test_09_convert_creates_delivery_same_order(self):
         order = self._create_order("forecast")
         order.action_confirm()
         name = order.name
         order.action_convert_to_normal()
-        self.assertEqual(order.order_nature, "normal")
+        self.assertEqual(order.order_nature, "confirmed")
         self.assertTrue(order.forecast_converted)
         self.assertEqual(order.name, name)
         self.assertTrue(order.picking_ids)
         self.assertEqual(order.picking_ids.sale_id, order)
         self.assertTrue(order.order_line.move_ids)
 
-    def test_06_convert_preserves_order_data(self):
+    def test_10_convert_preserves_order_data(self):
         order = self._create_order("forecast", qty=3.0, price=250.0)
         order.client_order_ref = "REF-42"
         order.action_confirm()
@@ -109,16 +157,16 @@ class TestSaleOrderForecast(TransactionCase):
         self.assertEqual(order.amount_total, amount_total)
         self.assertEqual(line_after, line_snapshot)
 
-    # 11) Chatter kaydı
-    def test_07_convert_posts_chatter_message(self):
+    # 14) Chatter kaydı
+    def test_11_convert_posts_chatter_message(self):
         order = self._create_order("forecast")
         order.action_confirm()
         order.action_convert_to_normal()
         last_message = order.message_ids[0]
         self.assertIn("Kesin siparişe dönüştürüldü", last_message.body)
 
-    # 12) Tekrar dönüştürme engellenmeli
-    def test_08_second_convert_is_blocked(self):
+    # 16) Tekrar dönüştürme engellenmeli
+    def test_12_second_convert_is_blocked(self):
         order = self._create_order("forecast")
         order.action_confirm()
         order.action_convert_to_normal()
@@ -127,38 +175,47 @@ class TestSaleOrderForecast(TransactionCase):
             order.action_convert_to_normal()
         self.assertEqual(len(order.picking_ids), picking_count)
 
-    # 13) İptal edilmiş forecast dönüştürülemez
-    def test_09_cancelled_forecast_cannot_convert(self):
+    # 17) İptal edilmiş öngörü dönüştürülemez
+    def test_13_cancelled_forecast_cannot_convert(self):
         order = self._create_order("forecast")
         order.action_confirm()
         order.action_cancel()
         with self.assertRaises(UserError):
             order.action_convert_to_normal()
 
-    # 14) Onaylı Normal sipariş Forecast'e çevrilemez
-    def test_10_normal_to_forecast_blocked_after_confirm(self):
-        order = self._create_order("normal")
+    # 18) Kesin sipariş Öngörü'ye çevrilemez
+    def test_14_confirmed_to_forecast_blocked(self):
+        order = self._create_order("confirmed")
         order.action_confirm()
         with self.assertRaises(UserError):
             order.order_nature = "forecast"
 
-    # Onaylı forecast de write ile normal yapılamaz (sadece buton ile)
-    def test_11_forecast_write_nature_blocked_after_confirm(self):
+    # Onaylı öngörü de write ile kesin yapılamaz (sadece buton ile)
+    def test_15_forecast_write_nature_blocked_after_confirm(self):
         order = self._create_order("forecast")
         order.action_confirm()
         with self.assertRaises(UserError):
-            order.write({"order_nature": "normal"})
+            order.write({"order_nature": "confirmed"})
 
     # Teklif aşamasında iki yönde değişim serbest
-    def test_12_nature_switchable_on_quotation(self):
-        order = self._create_order("normal")
+    def test_16_nature_switchable_on_quotation(self):
+        order = self._create_order(nature=False)
+        order.order_nature = "confirmed"
+        self.assertEqual(order.order_nature, "confirmed")
         order.order_nature = "forecast"
         self.assertEqual(order.order_nature, "forecast")
-        order.order_nature = "normal"
-        self.assertEqual(order.order_nature, "normal")
 
-    # 15) Forecast siparişinden fatura oluşturulamaz
-    def test_13_forecast_invoice_blocked(self):
+    # İptal → taslak döngüsü onaylanmış siparişin niteliğini kilitler
+    def test_17_nature_locked_after_cancel_redraft(self):
+        order = self._create_order("confirmed")
+        order.action_confirm()
+        order.action_cancel()
+        order.action_draft()
+        with self.assertRaises(UserError):
+            order.order_nature = "forecast"
+
+    # 10) Öngörü siparişinden fatura oluşturulamaz
+    def test_18_forecast_invoice_blocked(self):
         order = self._create_order("forecast")
         order.action_confirm()
         self.assertEqual(order.order_line.qty_to_invoice, 0.0)
@@ -167,15 +224,15 @@ class TestSaleOrderForecast(TransactionCase):
             order._create_invoices()
 
     # Dönüştürme sonrası fatura oluşturulabilmeli
-    def test_14_converted_order_invoiceable(self):
+    def test_19_converted_order_invoiceable(self):
         order = self._create_order("forecast")
         order.action_confirm()
         order.action_convert_to_normal()
         self.assertEqual(order.invoice_status, "to invoice")
         self.assertTrue(order.order_line.qty_to_invoice > 0)
 
-    # 17) Çok satırlı forecast dönüştürme
-    def test_15_multi_line_convert(self):
+    # 19) Çok satırlı öngörü dönüştürme
+    def test_20_multi_line_convert(self):
         order = self.env["sale.order"].create({
             "partner_id": self.partner.id,
             "order_nature": "forecast",
@@ -205,9 +262,8 @@ class TestSaleOrderForecast(TransactionCase):
             2)
         self.assertTrue(order.picking_ids)
 
-    # 3.7) Dönüştürülmüş sipariş iptal edilip teklife dönse bile
-    # tekrar Forecast yapılamaz
-    def test_16_converted_cannot_return_to_forecast(self):
+    # Dönüştürülmüş sipariş iptal → taslak sonrası bile Öngörü yapılamaz
+    def test_21_converted_cannot_return_to_forecast(self):
         order = self._create_order("forecast")
         order.action_confirm()
         order.action_convert_to_normal()
@@ -216,8 +272,8 @@ class TestSaleOrderForecast(TransactionCase):
         with self.assertRaises(UserError):
             order.order_nature = "forecast"
 
-    # İptal edilip tekrar teklife dönen forecast, niteliğini korur
-    def test_17_forecast_survives_draft_cycle(self):
+    # İptal edilip tekrar teklife dönen öngörü niteliğini korur
+    def test_22_forecast_survives_draft_cycle(self):
         order = self._create_order("forecast")
         order.action_confirm()
         order.action_cancel()
@@ -227,18 +283,18 @@ class TestSaleOrderForecast(TransactionCase):
         self.assertEqual(order.state, "sale")
         self.assertFalse(order.picking_ids)
 
-    # Kilitli forecast siparişi dönüştürülebilir, kilit korunur
-    def test_18_locked_forecast_convert(self):
+    # Kilitli öngörü siparişi dönüştürülebilir, kilit korunur
+    def test_23_locked_forecast_convert(self):
         order = self._create_order("forecast")
         order.action_confirm()
         order.locked = True
         order.action_convert_to_normal()
-        self.assertEqual(order.order_nature, "normal")
+        self.assertEqual(order.order_nature, "confirmed")
         self.assertTrue(order.locked)
         self.assertTrue(order.picking_ids)
 
     # Onaydan sonra eklenen satır da dönüştürmede teslimata dahil olur
-    def test_19_convert_covers_lines_added_after_confirm(self):
+    def test_24_convert_covers_lines_added_after_confirm(self):
         order = self._create_order("forecast", qty=2.0)
         order.action_confirm()
         self.env["sale.order.line"].create({
@@ -246,23 +302,15 @@ class TestSaleOrderForecast(TransactionCase):
             "product_id": self.product_stock2.id,
             "product_uom_qty": 3.0,
         })
-        # Forecast olduğu için yeni satır da stok kuralı tetiklemez
         self.assertFalse(order.order_line.move_ids)
         order.action_convert_to_normal()
         self.assertTrue(order.order_line.move_ids)
         self.assertTrue(order.picking_ids)
 
-    # Onaylı forecast'te miktar değişikliği stok kuralı tetiklemez
-    def test_20_qty_change_on_forecast_no_stock_rule(self):
+    # Onaylı öngörüde miktar değişikliği stok kuralı tetiklemez
+    def test_25_qty_change_on_forecast_no_stock_rule(self):
         order = self._create_order("forecast", qty=2.0)
         order.action_confirm()
         order.order_line.product_uom_qty = 9.0
         self.assertFalse(order.order_line.move_ids)
         self.assertFalse(order.picking_ids)
-
-    # 19) Satış siparişi niteliği diğer alanlardan bağımsız çalışır
-    def test_21_nature_independent_of_other_fields(self):
-        order = self._create_order("forecast")
-        self.assertEqual(order.order_nature, "forecast")
-        self.assertTrue(hasattr(order, "state"))
-        self.assertEqual(order.state, "draft")
