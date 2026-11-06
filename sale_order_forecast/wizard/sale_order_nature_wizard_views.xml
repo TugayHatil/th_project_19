@@ -14,13 +14,13 @@
                                 string="Kesin"
                                 type="object"
                                 icon="fa-check"
-                                class="btn-primary btn-lg w-50 py-4"
+                                class="btn o_nature_confirmed btn-lg w-50 py-4"
                                 title="Müşteri tarafından teyit edilmiş sipariş"/>
                         <button name="action_select_forecast"
                                 string="Öngörü"
                                 type="object"
                                 icon="fa-clock-o"
-                                class="btn-warning btn-lg w-50 py-4"
+                                class="btn o_nature_forecast btn-lg w-50 py-4"
                                 title="Henüz kesinleşmemiş, planlama amaçlı sipariş"/>
                     </div>
                     <footer/>

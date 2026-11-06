@@ -11,3 +11,31 @@
         color: #984c0c !important;
     }
 }
+
+// Nitelik seçim sihirbazındaki büyük butonlar liste rozetleriyle
+// aynı pastel tonlarda gösterilir.
+.btn.o_nature_confirmed {
+    background-color: #d9f2e4;
+    border-color: #a8e0c0;
+    color: #146c43;
+
+    &:hover,
+    &:focus {
+        background-color: #c3ecd5;
+        border-color: #a8e0c0;
+        color: #146c43;
+    }
+}
+
+.btn.o_nature_forecast {
+    background-color: #ffe9d1;
+    border-color: #f7c795;
+    color: #984c0c;
+
+    &:hover,
+    &:focus {
+        background-color: #ffdbb3;
+        border-color: #f7c795;
+        color: #984c0c;
+    }
+}
