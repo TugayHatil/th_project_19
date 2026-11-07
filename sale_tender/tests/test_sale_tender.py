@@ -1,0 +1,127 @@
+# -*- coding: utf-8 -*-
+from odoo.exceptions import UserError, ValidationError
+from odoo.tests.common import TransactionCase
+
+
+class TestSaleTender(TransactionCase):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.partner = cls.env["res.partner"].create({
+            "name": "İhale Müşteri",
+        })
+        cls.other_partner = cls.env["res.partner"].create({
+            "name": "Başka Müşteri",
+        })
+        cls.tender = cls.env["sale.tender"].create({
+            "tender_no": "İHL-2026-001",
+            "name": "Test İhalesi",
+            "partner_id": cls.partner.id,
+            "tender_date": "2026-11-01",
+            "bid_deadline": "2026-11-30 17:00:00",
+        })
+
+    def _create_order(self, **kwargs):
+        vals = {"partner_id": self.partner.id}
+        vals.update(kwargs)
+        return self.env["sale.order"].create(vals)
+
+    def test_display_name(self):
+        self.assertEqual(
+            self.tender.display_name, "İHL-2026-001 - Test İhalesi")
+
+    def test_create_quotation_defaults(self):
+        action = self.tender.action_create_quotation()
+        self.assertEqual(action["res_model"], "sale.order")
+        self.assertEqual(action["view_mode"], "form")
+        ctx = action["context"]
+        self.assertEqual(ctx["default_partner_id"], self.partner.id)
+        self.assertEqual(ctx["default_sale_type"], "tender")
+        self.assertEqual(ctx["default_tender_id"], self.tender.id)
+        self.assertEqual(ctx["default_user_id"], self.tender.user_id.id)
+
+    def test_quotation_link_and_count(self):
+        order = self._create_order(
+            sale_type="tender", tender_id=self.tender.id)
+        self.assertEqual(order.tender_id, self.tender)
+        self.assertEqual(self.tender.sale_order_count, 1)
+        action = self.tender.action_view_quotations()
+        self.assertEqual(action["domain"], [("tender_id", "=", self.tender.id)])
+
+    def test_tender_required_when_sale_type_tender(self):
+        with self.assertRaises(ValidationError):
+            self._create_order(sale_type="tender")
+
+    def test_tender_partner_mismatch_rejected(self):
+        other_tender = self.env["sale.tender"].create({
+            "tender_no": "İHL-2026-002",
+            "name": "Diğer Müşteri İhalesi",
+            "partner_id": self.other_partner.id,
+        })
+        with self.assertRaises(ValidationError):
+            self._create_order(
+                sale_type="tender", tender_id=other_tender.id)
+
+    def test_non_tender_types_allow_no_tender(self):
+        for sale_type in ("domestic", "export", "free", "other", False):
+            order = self._create_order(sale_type=sale_type)
+            self.assertFalse(order.tender_id)
+
+    def test_revision_copy_preserves_tender(self):
+        order = self._create_order(
+            sale_type="tender", tender_id=self.tender.id)
+        revision = order.copy()
+        self.assertEqual(revision.sale_type, "tender")
+        self.assertEqual(revision.tender_id, self.tender)
+        self.assertEqual(revision.partner_id, self.partner)
+
+    def test_linked_tender_cannot_be_deleted(self):
+        self._create_order(sale_type="tender", tender_id=self.tender.id)
+        with self.assertRaises(UserError):
+            self.tender.unlink()
+        self.assertTrue(self.tender.exists())
+
+    def test_unlinked_tender_can_be_deleted(self):
+        tender = self.env["sale.tender"].create({
+            "tender_no": "İHL-2026-003",
+            "name": "Teklifsiz İhale",
+            "partner_id": self.partner.id,
+        })
+        tender.unlink()
+        self.assertFalse(tender.exists())
+
+    def test_tender_user_readonly_access(self):
+        user = self.env["res.users"].create({
+            "name": "İhale Kullanıcı",
+            "login": "tender_user_test",
+            "group_ids": [
+                (6, 0, [self.env.ref("sale_tender.group_tender_user").id])],
+        })
+        tender_as_user = self.tender.with_user(user)
+        self.assertEqual(tender_as_user.name, "Test İhalesi")
+        with self.assertRaises(UserError):
+            tender_as_user.write({"name": "Değiştirilemez"})
+        with self.assertRaises(UserError):
+            self.env["sale.tender"].with_user(user).create({
+                "tender_no": "İHL-2026-004",
+                "name": "Yetkisiz",
+                "partner_id": self.partner.id,
+            })
+
+    def test_tender_manager_full_access(self):
+        user = self.env["res.users"].create({
+            "name": "İhale Yönetici",
+            "login": "tender_manager_test",
+            "group_ids": [
+                (6, 0, [self.env.ref("sale_tender.group_tender_manager").id])],
+        })
+        tender = self.env["sale.tender"].with_user(user).create({
+            "tender_no": "İHL-2026-005",
+            "name": "Yönetici İhalesi",
+            "partner_id": self.partner.id,
+        })
+        tender.with_user(user).write({"state": "bid_submitted"})
+        self.assertEqual(tender.state, "bid_submitted")
+        tender.with_user(user).unlink()
+        self.assertFalse(tender.exists())

@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sale_tender_list" model="ir.ui.view">
+        <field name="name">sale.tender.list</field>
+        <field name="model">sale.tender</field>
+        <field name="arch" type="xml">
+            <list string="İhaleler"
+                  decoration-success="state == 'won'"
+                  decoration-danger="state == 'lost'"
+                  decoration-muted="state == 'cancel'">
+                <field name="tender_no"/>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="tender_date"/>
+                <field name="bid_deadline" optional="show"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="sale_order_count" string="Teklifler"
+                       optional="show"/>
+                <field name="company_id"
+                       groups="base.group_multi_company" optional="hide"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'draft'"
+                       decoration-primary="state == 'bid_submitted'"
+                       decoration-success="state == 'won'"
+                       decoration-danger="state == 'lost'"
+                       decoration-muted="state == 'cancel'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sale_tender_form" model="ir.ui.view">
+        <field name="name">sale.tender.form</field>
+        <field name="model">sale.tender</field>
+        <field name="arch" type="xml">
+            <form string="İhale">
+                <header>
+                    <button name="action_create_quotation" type="object"
+                            string="Teklif Oluştur" class="oe_highlight"
+                            groups="sale_tender.group_tender_manager"/>
+                    <button name="action_cancel_tender" type="object"
+                            string="İptal" invisible="state == 'cancel'"
+                            groups="sale_tender.group_tender_manager"
+                            confirm="İhaleyi iptal etmek istediğinize emin misiniz?"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,bid_submitted,won,lost"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_quotations" type="object"
+                                class="oe_stat_button" icon="fa-file-text-o">
+                            <field name="sale_order_count" widget="statinfo"
+                                   string="Teklifler"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="İhale adı"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="İhale Bilgileri">
+                            <field name="tender_no" placeholder="İhale numarası"/>
+                            <field name="partner_id"/>
+                            <field name="tender_date"/>
+                            <field name="bid_deadline"/>
+                        </group>
+                        <group>
+                            <field name="user_id"/>
+                            <field name="company_id"
+                                   groups="base.group_multi_company"
+                                   options="{'no_create': True}"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Dokümanlar" name="documents">
+                            <field name="attachment_ids"
+                                   widget="many2many_binary" nolabel="1"/>
+                        </page>
+                        <page string="Açıklama" name="description">
+                            <field name="description" nolabel="1"
+                                   placeholder="İhale hakkında genel açıklamalar"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sale_tender_search" model="ir.ui.view">
+        <field name="name">sale.tender.search</field>
+        <field name="model">sale.tender</field>
+        <field name="arch" type="xml">
+            <search string="İhaleler">
+                <field name="name" string="İhale"
+                       filter_domain="['|', ('tender_no', 'ilike', self), ('name', 'ilike', self)]"/>
+                <field name="partner_id" operator="child_of"/>
+                <field name="user_id"/>
+                <filter name="draft" string="Hazırlık"
+                        domain="[('state', '=', 'draft')]"/>
+                <filter name="bid_submitted" string="Teklif Verildi"
+                        domain="[('state', '=', 'bid_submitted')]"/>
+                <filter name="won" string="Kazanıldı"
+                        domain="[('state', '=', 'won')]"/>
+                <filter name="lost" string="Kaybedildi"
+                        domain="[('state', '=', 'lost')]"/>
+                <filter name="cancel" string="İptal"
+                        domain="[('state', '=', 'cancel')]"/>
+                <separator/>
+                <filter name="group_partner" string="Müşteri"
+                        context="{'group_by': 'partner_id'}"/>
+                <filter name="group_user" string="Sorumlu"
+                        context="{'group_by': 'user_id'}"/>
+                <filter name="group_state" string="Durum"
+                        context="{'group_by': 'state'}"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- İhale smart button'unda kullanılan teklif liste görünümü -->
+    <record id="sale_tender_order_list" model="ir.ui.view">
+        <field name="name">sale.order.list.tender</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <list string="Teklifler"
+                  decoration-muted="state == 'cancel'">
+                <field name="name" string="Teklif Numarası" readonly="1"
+                       decoration-bf="1"/>
+                <field name="partner_id" string="Müşteri" readonly="1"/>
+                <field name="date_order" string="Sipariş Tarihi"/>
+                <field name="sale_type" string="Satış Türü" widget="badge"/>
+                <field name="amount_total" string="Tutar" widget="monetary"
+                       decoration-bf="1"/>
+                <field name="currency_id" string="Para Birimi"
+                       optional="hide"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'sale'"
+                       decoration-info="state == 'draft'"
+                       decoration-primary="state == 'sent'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_sale_tender" model="ir.actions.act_window">
+        <field name="name">İhaleler</field>
+        <field name="res_model">sale.tender</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sale_tender_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Henüz ihale kaydı yok.
+            </p>
+            <p>
+                Müşterilerinizin katıldığınız ihalelerini buradan takip
+                edebilir, ihalere bağlı satış teklifleri oluşturabilirsiniz.
+            </p>
+        </field>
+    </record>
+</odoo>

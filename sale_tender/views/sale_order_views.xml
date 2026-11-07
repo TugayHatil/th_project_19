@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_form_inherit_tender" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.tender</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='order_details']/field[@name='payment_term_id']" position="after">
+                <field name="sale_type"
+                       readonly="state in ['sale', 'cancel'] or locked"/>
+                <field name="tender_id"
+                       domain="[('partner_id', '=', partner_id)]"
+                       required="sale_type == 'tender'"
+                       readonly="state in ['sale', 'cancel'] or locked"
+                       options="{'no_create': True}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sale_order_tree_inherit_tender" model="ir.ui.view">
+        <field name="name">sale.order.list.inherit.tender</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.sale_order_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="sale_type" widget="badge" optional="show"/>
+                <field name="tender_id" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_sales_order_filter_inherit_tender" model="ir.ui.view">
+        <field name="name">sale.order.search.inherit.tender</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_sales_order_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="tender_id"/>
+            </xpath>
+            <xpath expr="//filter[@name='my_sale_orders_filter']" position="after">
+                <filter name="tender_orders" string="İhale"
+                        domain="[('sale_type', '=', 'tender')]"/>
+            </xpath>
+            <xpath expr="//filter[@name='order_month']" position="after">
+                <filter name="group_sale_type" string="Satış Türü"
+                        context="{'group_by': 'sale_type'}"/>
+                <filter name="group_tender" string="İhale"
+                        context="{'group_by': 'tender_id'}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

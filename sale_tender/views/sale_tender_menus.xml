@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_sale_tender_root"
+              name="İhale Yönetimi"
+              parent="sale.sale_menu_root"
+              groups="sale_tender.group_tender_user"
+              sequence="15"/>
+    <menuitem id="menu_sale_tender"
+              name="İhaleler"
+              parent="menu_sale_tender_root"
+              action="action_sale_tender"
+              sequence="10"/>
+</odoo>

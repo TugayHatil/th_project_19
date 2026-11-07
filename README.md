@@ -65,3 +65,18 @@ server-side). Öngörü orders cannot be invoiced (`qty_to_invoice` forced to
 zero plus a `_create_invoices` guard) until converted. Works independently
 of the Sale Order Type field and does not touch stock forecast, reservation
 or MRP mechanics.
+
+## `sale_tender`
+
+İhale Yönetimi: adds a Tender Management menu under Sales with a
+standalone `sale.tender` model (tender number, name, customer, dates,
+tracked state Hazırlık → Teklif Verildi → Kazanıldı/Kaybedildi/İptal,
+responsible, description, document attachments). A **Teklifler** smart
+button lists linked sale orders; **Teklif Oluştur** opens the standard
+quotation form with customer, Sale Type (İhale), tender and responsible
+pre-filled. `sale.order` gains a **Satış Türü** selection (Yurtiçi /
+Yurtdışı / İhale / Bedelsiz / Diğer) and an **İhale** many2one filtered
+to the customer's tenders and required when the type is İhale. Both
+fields copy on revision, tenders with linked orders cannot be deleted,
+and two groups (İhale Kullanıcısı read-only, İhale Yöneticisi full)
+govern access.
