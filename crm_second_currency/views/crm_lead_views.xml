@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- CRM Lead Form View Inheritance -->
+        <record id="view_crm_lead_form_inherit" model="ir.ui.view">
+            <field name="name">crm.lead.form.inherit.second.currency</field>
+            <field name="model">crm.lead</field>
+            <field name="inherit_id" ref="crm.crm_lead_view_form"/>
+            <field name="arch" type="xml">
+                <!-- Add deal-currency fields before the expected revenue block -->
+                <xpath expr="//div[hasclass('oe_title')]/h2" position="before">
+                    <h2 class="row g-0 pb-3 pb-sm-4">
+                        <div class="col-12 col-md-4 pb-2 pb-md-0">
+                            <label class="o_form_label oe_edit_only text-nowrap" for="currency_id">Deal Currency</label>
+                            <div class="d-flex flex-wrap align-items-baseline">
+                                <field name="currency_id" class="oe_inline"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-4 pb-2 pb-md-0">
+                            <label class="o_form_label oe_edit_only text-nowrap" for="planned_revenue_second">Revenue Other Currency</label>
+                            <div class="d-flex flex-wrap align-items-baseline">
+                                <field name="planned_revenue_second" class="oe_inline o_input_13ch"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-4 pb-2 pb-md-0">
+                            <label class="o_form_label oe_edit_only text-nowrap" for="prorated_revenue_second">Prorated Revenue</label>
+                            <div class="d-flex flex-wrap align-items-baseline">
+                                <field name="prorated_revenue_second" class="oe_inline o_input_13ch fw-normal"/>
+                            </div>
+                        </div>
+                    </h2>
+                </xpath>
+            </field>
+        </record>
+        <!-- CRM Lead Kanban View Inheritance -->
+        <record id="view_crm_lead_kanban_inherit" model="ir.ui.view">
+            <field name="name">crm.lead.kanban.inherit.second.currency</field>
+            <field name="model">crm.lead</field>
+            <field name="inherit_id" ref="crm.crm_case_kanban_view_leads"/>
+            <field name="arch" type="xml">
+                <!-- Show the deal-currency revenue on the kanban card -->
+                <xpath expr="//templates/t[@t-name='card']//div[hasclass('o_kanban_card_crm_lead_revenue')]" position="before">
+                    <field name="currency_id" invisible="1"/>
+                    <div class="o_kanban_card_crm_lead_revenue_second">
+                        <t t-if="record.planned_revenue_second.raw_value or record.prorated_revenue_second.raw_value">
+                            <t t-if="record.planned_revenue_second.raw_value">
+                                <field name="planned_revenue_second" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            </t>
+                            <t t-if="record.planned_revenue_second.raw_value and record.prorated_revenue_second.raw_value"> / </t>
+                            <t t-if="record.prorated_revenue_second.raw_value">
+                                <field name="prorated_revenue_second" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            </t>
+                        </t>
+                    </div>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

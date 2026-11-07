@@ -2,6 +2,16 @@
 
 Odoo 19 addon collection.
 
+## `crm_second_currency`
+
+Adds a second (deal) currency to CRM opportunities next to the company
+currency: the user picks the deal currency and enters the amount in it
+(Revenue Other Currency); the system converts it through the exchange
+rate and writes the result into the standard Expected Revenue field in
+company currency. Prorated Revenue (Other Currency) shows the
+probability-weighted share of the second-currency amount. Both
+second-currency amounts are also displayed on the CRM kanban card.
+
 ## `mrp_component_alternative`
 
 Defines alternative materials on BOM component lines (priority + active flag),

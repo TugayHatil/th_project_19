@@ -1,0 +1,37 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* crm_second_currency
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Report-Msgid-Bugs-To: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: tr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#. module: crm_second_currency
+#: model:ir.model.fields,field_description:crm_second_currency.field_crm_lead__currency_id
+#: model_terms:ir.ui.view,arch_db:crm_second_currency.view_crm_lead_form_inherit
+msgid "Deal Currency"
+msgstr "Anlaşma Para Birimi"
+
+#. module: crm_second_currency
+#: model_terms:ir.ui.view,arch_db:crm_second_currency.view_crm_lead_form_inherit
+msgid "Prorated Revenue"
+msgstr "Oranlı Gelir"
+
+#. module: crm_second_currency
+#: model:ir.model.fields,field_description:crm_second_currency.field_crm_lead__prorated_revenue_second
+msgid "Prorated Revenue (Other Currency)"
+msgstr "Oranlı Gelir (Diğer Para Birimi)"
+
+#. module: crm_second_currency
+#: model:ir.model.fields,field_description:crm_second_currency.field_crm_lead__planned_revenue_second
+#: model_terms:ir.ui.view,arch_db:crm_second_currency.view_crm_lead_form_inherit
+msgid "Revenue Other Currency"
+msgstr "Diğer Para Birimi Geliri"
