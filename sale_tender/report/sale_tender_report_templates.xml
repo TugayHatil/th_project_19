@@ -1,86 +1,90 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <template id="report_sale_tender_document">
-        <t t-call="web.external_layout">
-            <div class="page">
-                <h2>
-                    <span>İhale</span>
-                    <span t-field="doc.display_name"/>
-                </h2>
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2>
+                            <span>İhale</span>
+                            <span t-field="o.display_name"/>
+                        </h2>
 
-                <div id="informations" class="row mt-4 mb-4">
-                    <div class="col" t-if="doc.tender_no">
-                        <strong>İhale Numarası</strong>
-                        <div t-field="doc.tender_no"/>
-                    </div>
-                    <div class="col" t-if="doc.partner_id">
-                        <strong>Müşteri</strong>
-                        <div t-field="doc.partner_id"/>
-                    </div>
-                    <div class="col" t-if="doc.tender_date">
-                        <strong>İhale Tarihi</strong>
-                        <div t-field="doc.tender_date"/>
-                    </div>
-                    <div class="col" t-if="doc.bid_deadline">
-                        <strong>Son Teklif Tarihi</strong>
-                        <div t-field="doc.bid_deadline"/>
-                    </div>
-                </div>
-                <div class="row mb-4">
-                    <div class="col" t-if="doc.user_id">
-                        <strong>Sorumlu</strong>
-                        <div t-field="doc.user_id"/>
-                    </div>
-                    <div class="col">
-                        <strong>Durum</strong>
-                        <div t-field="doc.state"/>
-                    </div>
-                    <div class="col" t-if="doc.competitor_ids">
-                        <strong>Rakipler</strong>
-                        <div>
-                            <t t-foreach="doc.competitor_ids" t-as="comp">
-                                <span t-field="comp.name"/><t t-if="not comp_last">, </t>
-                            </t>
+                        <div id="informations" class="row mt-4 mb-4">
+                            <div class="col" t-if="o.tender_no">
+                                <strong>İhale Numarası</strong>
+                                <div t-field="o.tender_no"/>
+                            </div>
+                            <div class="col" t-if="o.partner_id">
+                                <strong>Müşteri</strong>
+                                <div t-field="o.partner_id"/>
+                            </div>
+                            <div class="col" t-if="o.tender_date">
+                                <strong>İhale Tarihi</strong>
+                                <div t-field="o.tender_date"/>
+                            </div>
+                            <div class="col" t-if="o.bid_deadline">
+                                <strong>Son Teklif Tarihi</strong>
+                                <div t-field="o.bid_deadline"/>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col" t-if="doc.state == 'lost' and doc.lost_reason_id">
-                        <strong>Kayıt Nedeni</strong>
-                        <div t-field="doc.lost_reason_id"/>
-                    </div>
-                </div>
+                        <div class="row mb-4">
+                            <div class="col" t-if="o.user_id">
+                                <strong>Sorumlu</strong>
+                                <div t-field="o.user_id"/>
+                            </div>
+                            <div class="col">
+                                <strong>Durum</strong>
+                                <div t-field="o.state"/>
+                            </div>
+                            <div class="col" t-if="o.competitor_ids">
+                                <strong>Rakipler</strong>
+                                <div>
+                                    <t t-foreach="o.competitor_ids" t-as="comp">
+                                        <span t-field="comp.name"/><t t-if="not comp_last">, </t>
+                                    </t>
+                                </div>
+                            </div>
+                            <div class="col" t-if="o.state == 'lost' and o.lost_reason_id">
+                                <strong>Kayıt Nedeni</strong>
+                                <div t-field="o.lost_reason_id"/>
+                            </div>
+                        </div>
 
-                <t t-if="doc.description">
-                    <h4>Açıklama</h4>
-                    <p t-field="doc.description" style="white-space: pre-wrap;"/>
-                </t>
+                        <t t-if="o.description">
+                            <h4>Açıklama</h4>
+                            <p t-field="o.description" style="white-space: pre-wrap;"/>
+                        </t>
 
-                <t t-set="orders" t-value="env['sale.order'].with_context(active_test=False).search([('tender_id', '=', doc.id)], order='date_order, name')"/>
-                <t t-if="orders">
-                    <h4>Teklifler</h4>
-                    <table class="table table-sm o_main_table">
-                        <thead>
-                            <tr>
-                                <th>Teklif No</th>
-                                <th>Müşteri</th>
-                                <th>Tarih</th>
-                                <th>Satış Türü</th>
-                                <th class="text-end">Tutar</th>
-                                <th>Durum</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr t-foreach="orders" t-as="order">
-                                <td><span t-field="order.name"/></td>
-                                <td><span t-field="order.partner_id"/></td>
-                                <td><span t-field="order.date_order"/></td>
-                                <td><span t-field="order.so_type_id"/></td>
-                                <td class="text-end"><span t-field="order.amount_total"/></td>
-                                <td><span t-field="order.state"/></td>
-                            </tr>
-                        </tbody>
-                    </table>
+                        <t t-set="orders" t-value="env['sale.order'].with_context(active_test=False).search([('tender_id', '=', o.id)], order='date_order, name')"/>
+                        <t t-if="orders">
+                            <h4>Teklifler</h4>
+                            <table class="table table-sm o_main_table">
+                                <thead>
+                                    <tr>
+                                        <th>Teklif No</th>
+                                        <th>Müşteri</th>
+                                        <th>Tarih</th>
+                                        <th>Satış Türü</th>
+                                        <th class="text-end">Tutar</th>
+                                        <th>Durum</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="orders" t-as="order">
+                                        <td><span t-field="order.name"/></td>
+                                        <td><span t-field="order.partner_id"/></td>
+                                        <td><span t-field="order.date_order"/></td>
+                                        <td><span t-field="order.so_type_id"/></td>
+                                        <td class="text-end"><span t-field="order.amount_total"/></td>
+                                        <td><span t-field="order.state"/></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </t>
+                    </div>
                 </t>
-            </div>
+            </t>
         </t>
     </template>
 </odoo>
