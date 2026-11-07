@@ -8,6 +8,7 @@ class TestSaleTender(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        cls.tender_type = cls.env.ref('sale_tender.sale_order_type_tender')
         cls.partner = cls.env["res.partner"].create({
             "name": "İhale Müşteri",
         })
@@ -37,21 +38,21 @@ class TestSaleTender(TransactionCase):
         self.assertEqual(action["view_mode"], "form")
         ctx = action["context"]
         self.assertEqual(ctx["default_partner_id"], self.partner.id)
-        self.assertEqual(ctx["default_sale_type"], "tender")
+        self.assertEqual(ctx["default_so_type_id"], self.tender_type.id)
         self.assertEqual(ctx["default_tender_id"], self.tender.id)
         self.assertEqual(ctx["default_user_id"], self.tender.user_id.id)
 
     def test_quotation_link_and_count(self):
         order = self._create_order(
-            sale_type="tender", tender_id=self.tender.id)
+            so_type_id=self.tender_type.id, tender_id=self.tender.id)
         self.assertEqual(order.tender_id, self.tender)
         self.assertEqual(self.tender.sale_order_count, 1)
         action = self.tender.action_view_quotations()
         self.assertEqual(action["domain"], [("tender_id", "=", self.tender.id)])
 
-    def test_tender_required_when_sale_type_tender(self):
+    def test_tender_required_when_type_tender(self):
         with self.assertRaises(ValidationError):
-            self._create_order(sale_type="tender")
+            self._create_order(so_type_id=self.tender_type.id)
 
     def test_tender_partner_mismatch_rejected(self):
         other_tender = self.env["sale.tender"].create({
@@ -61,23 +62,27 @@ class TestSaleTender(TransactionCase):
         })
         with self.assertRaises(ValidationError):
             self._create_order(
-                sale_type="tender", tender_id=other_tender.id)
+                so_type_id=self.tender_type.id, tender_id=other_tender.id)
 
     def test_non_tender_types_allow_no_tender(self):
-        for sale_type in ("domestic", "export", "free", "other", False):
-            order = self._create_order(sale_type=sale_type)
-            self.assertFalse(order.tender_id)
+        order = self._create_order()
+        self.assertFalse(order.so_type_id)
+        self.assertFalse(order.tender_id)
+        other_type = self.env["sale.order.type"].create({"name": "Yurtiçi"})
+        order2 = self._create_order(so_type_id=other_type.id)
+        self.assertFalse(order2.tender_id)
 
     def test_revision_copy_preserves_tender(self):
         order = self._create_order(
-            sale_type="tender", tender_id=self.tender.id)
+            so_type_id=self.tender_type.id, tender_id=self.tender.id)
         revision = order.copy()
-        self.assertEqual(revision.sale_type, "tender")
+        self.assertEqual(revision.so_type_id, self.tender_type)
         self.assertEqual(revision.tender_id, self.tender)
         self.assertEqual(revision.partner_id, self.partner)
 
     def test_linked_tender_cannot_be_deleted(self):
-        self._create_order(sale_type="tender", tender_id=self.tender.id)
+        self._create_order(
+            so_type_id=self.tender_type.id, tender_id=self.tender.id)
         with self.assertRaises(UserError):
             self.tender.unlink()
         self.assertTrue(self.tender.exists())

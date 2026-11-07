@@ -68,6 +68,19 @@ class SaleTender(models.Model):
     def action_cancel_tender(self):
         self.write({'state': 'cancel'})
 
+    def _get_tender_order_type(self):
+        return self.env.ref(
+            'sale_tender.sale_order_type_tender', raise_if_not_found=False)
+
+    def _get_quotation_context(self):
+        tender_type = self._get_tender_order_type()
+        return {
+            'default_partner_id': self.partner_id.id,
+            'default_so_type_id': tender_type.id if tender_type else False,
+            'default_tender_id': self.id,
+            'default_user_id': self.user_id.id,
+        }
+
     def action_create_quotation(self):
         self.ensure_one()
         return {
@@ -76,12 +89,7 @@ class SaleTender(models.Model):
             'res_model': 'sale.order',
             'view_mode': 'form',
             'target': 'current',
-            'context': {
-                'default_partner_id': self.partner_id.id,
-                'default_sale_type': 'tender',
-                'default_tender_id': self.id,
-                'default_user_id': self.user_id.id,
-            },
+            'context': self._get_quotation_context(),
         }
 
     def action_view_quotations(self):
@@ -94,10 +102,5 @@ class SaleTender(models.Model):
             'view_mode': 'list,form',
             'views': [(list_view.id, 'list'), (False, 'form')],
             'domain': [('tender_id', '=', self.id)],
-            'context': {
-                'default_partner_id': self.partner_id.id,
-                'default_sale_type': 'tender',
-                'default_tender_id': self.id,
-                'default_user_id': self.user_id.id,
-            },
+            'context': self._get_quotation_context(),
         }

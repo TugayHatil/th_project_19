@@ -128,7 +128,7 @@
                        decoration-bf="1"/>
                 <field name="partner_id" string="Müşteri" readonly="1"/>
                 <field name="date_order" string="Sipariş Tarihi"/>
-                <field name="sale_type" string="Satış Türü" widget="badge"/>
+                <field name="so_type_id" string="Satış Türü"/>
                 <field name="amount_total" string="Tutar" widget="monetary"
                        decoration-bf="1"/>
                 <field name="currency_id" string="Para Birimi"

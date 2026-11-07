@@ -74,9 +74,9 @@ tracked state Hazırlık → Teklif Verildi → Kazanıldı/Kaybedildi/İptal,
 responsible, description, document attachments). A **Teklifler** smart
 button lists linked sale orders; **Teklif Oluştur** opens the standard
 quotation form with customer, Sale Type (İhale), tender and responsible
-pre-filled. `sale.order` gains a **Satış Türü** selection (Yurtiçi /
-Yurtdışı / İhale / Bedelsiz / Diğer) and an **İhale** many2one filtered
-to the customer's tenders and required when the type is İhale. Both
-fields copy on revision, tenders with linked orders cannot be deleted,
-and two groups (İhale Kullanıcısı read-only, İhale Yöneticisi full)
-govern access.
+pre-filled. `sale.order` gains an **İhale** many2one filtered to the
+customer's tenders; the existing Sale Order Type (`so_type_id`) mechanism
+is reused via a shipped "İhale" type record, and a tender is required
+whenever the type is İhale. The link copies on revision, tenders with
+linked orders cannot be deleted, and two groups (İhale Kullanıcısı
+read-only, İhale Yöneticisi full) govern access.

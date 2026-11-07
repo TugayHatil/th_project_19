@@ -13,14 +13,14 @@ state) and a **Teklif Oluştur** header button that opens the standard
 quotation form with customer, sale type (İhale), tender and responsible
 pre-filled.
 
-`sale.order` gains two fields:
+`sale.order` gains an **İhale** many2one to `sale.tender`, filtered to
+the customer's tenders. The existing Sale Order Type mechanism
+(`sale_order_type_journal`, `so_type_id`) is reused: the module ships an
+"İhale" type record (`sale_tender.sale_order_type_tender`) and requires
+a tender whenever the quotation's type is İhale.
 
-- **Satış Türü** — Yurtiçi Satış, Yurtdışı Satış, İhale, Bedelsiz, Diğer
-- **İhale** — many2one to `sale.tender`, filtered to the customer's
-  tenders and required when Sale Type is İhale
-
-Both fields are copied on revision, so revised quotations keep the
-tender link. Tenders with linked sale orders cannot be deleted.
+The tender link is copied on revision, so revised quotations keep the
+tender. Tenders with linked sale orders cannot be deleted.
 
 ## Security
 

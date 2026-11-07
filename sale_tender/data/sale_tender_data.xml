@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- İhale satış türü: ihale teklifleri için standart tür kaydı.
+             Mevcut "İhale" türü varsa bu kayıt pasifleştirilebilir veya
+             mevcut kayıtla birleştirilebilir. -->
+        <record id="sale_order_type_tender" model="sale.order.type">
+            <field name="name">İhale</field>
+        </record>
+    </data>
+</odoo>
