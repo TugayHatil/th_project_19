@@ -70,12 +70,12 @@
                         </thead>
                         <tbody>
                             <tr t-foreach="orders" t-as="order">
-                                <td t-field="order.name"/>
-                                <td t-field="order.partner_id"/>
-                                <td t-field="order.date_order"/>
-                                <td t-field="order.so_type_id"/>
-                                <td class="text-end" t-field="order.amount_total"/>
-                                <td t-field="order.state"/>
+                                <td><span t-field="order.name"/></td>
+                                <td><span t-field="order.partner_id"/></td>
+                                <td><span t-field="order.date_order"/></td>
+                                <td><span t-field="order.so_type_id"/></td>
+                                <td class="text-end"><span t-field="order.amount_total"/></td>
+                                <td><span t-field="order.state"/></td>
                             </tr>
                         </tbody>
                     </table>
