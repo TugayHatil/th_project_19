@@ -6,6 +6,8 @@
              mevcut kayıtla birleştirilebilir. -->
         <record id="sale_order_type_tender" model="sale.order.type">
             <field name="name">İhale</field>
+            <field name="journal_id"
+                   search="[('type', '=', 'sale'), ('company_id', '=', ref('base.main_company'))]"/>
         </record>
     </data>
 </odoo>
