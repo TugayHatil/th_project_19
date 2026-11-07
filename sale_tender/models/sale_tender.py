@@ -44,7 +44,8 @@ class SaleTender(models.Model):
         default=lambda self: self.env.company)
     active = fields.Boolean(string='Aktif', default=True)
     sale_order_ids = fields.One2many(
-        'sale.order', 'tender_id', string='Teklifler')
+        'sale.order', 'tender_id', string='Teklifler',
+        context={'active_test': False})
     sale_order_count = fields.Integer(
         string='Teklif Sayısı', compute='_compute_sale_order_count')
 
@@ -56,11 +57,8 @@ class SaleTender(models.Model):
 
     @api.depends('sale_order_ids')
     def _compute_sale_order_count(self):
-        # İptal edilmiş eski revizyonlar (active=False) da sayılmalı
-        orders = self.env['sale.order'].with_context(active_test=False)
         for tender in self:
-            tender.sale_order_count = orders.search_count(
-                [('tender_id', '=', tender.id)])
+            tender.sale_order_count = len(tender.sale_order_ids)
 
     @api.constrains('state', 'lost_reason_id')
     def _check_lost_reason(self):

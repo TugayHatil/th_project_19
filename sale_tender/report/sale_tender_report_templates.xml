@@ -56,7 +56,7 @@
                             <p t-field="o.description" style="white-space: pre-wrap;"/>
                         </t>
 
-                        <t t-set="orders" t-value="env['sale.order'].with_context(active_test=False).search([('tender_id', '=', o.id)], order='date_order, name')"/>
+                        <t t-set="orders" t-value="o.sale_order_ids.sorted('date_order')"/>
                         <t t-if="orders">
                             <h4>Teklifler</h4>
                             <table class="table table-sm o_main_table">

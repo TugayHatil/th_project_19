@@ -6,15 +6,18 @@
 
     'description': """Müşteri ihalelerinin merkezi takibi için İhale Yönetimi.
 
-Satış uygulaması altında İhale Yönetimi menüsü ekler. Her ihale için ihale
-numarası, adı, müşteri, tarihler, durum (Hazırlık / Teklif Verildi /
-Kazanıldı / Kaybedildi / İptal), sorumlu, açıklama ve doküman ekleri
-içeren bağımsız bir ihale kaydı tutulur.
+Satış > Siparişler altında İhaleler menüsü ekler. Her ihale için ihale
+numarası, adı, müşteri, tarihler, tıklanabilir aşamalar (Hazırlık /
+Teklif Verildi / Kazanıldı / Kaybedildi / İptal), sorumlu, rakipler
+(kontak etiketleri), açıklama ve chatter ekleri içeren bağımsız bir
+ihale kaydı tutulur. Kaybedildi durumunda kayıt nedeni seçimi zorunludur;
+nedenler Satış > Yapılandırma altında yönetilir.
 
 İhale formundaki Teklifler smart button'u bağlı satış tekliflerini
-listeler; Teklif Oluştur butonu müşteri, satış türü (İhale), ihale
-bağlantısı ve sorumlu bilgileri önceden dolu standart satış teklifi
-formunu açar.
+(arşivli revizyonlar dahil) listeler; Teklif Oluştur butonu müşteri,
+satış türü (İhale), ihale bağlantısı ve sorumlu bilgileri önceden dolu
+standart satış teklifi formunu açar. Yazdır menüsünden ihale PDF çıktısı
+alınabilir.
 
 sale.order modeline İhale alanı eklenir. Mevcut Satış Türü (so_type_id)
 yapısı kullanılır; modül "İhale" tür kaydını data olarak ekler. Satış türü
@@ -29,7 +32,7 @@ grubu salt okunur erişim, İhale Yöneticisi grubu tam yetki sağlar.""",
     'website': "https://projet.solutions",
 
     'category': 'Sales/Sales',
-    'version': '19.0.1.4.0',
+    'version': '19.0.1.5.0',
 
     'depends': [
         'sale',

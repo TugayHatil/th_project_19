@@ -1,0 +1,240 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* sale_tender
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-08 00:00+0000\n"
+"PO-Revision-Date: 2026-11-08 00:00+0300\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: tr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#. module: sale_tender
+#: model:ir.module.module,summary:sale_tender.module_sale_tender
+msgid "Satış teklifleriyle entegre ihale kayıtları: ihale takibi ve teklif oluşturma"
+msgstr "Satış teklifleriyle entegre ihale kayıtları: ihale takibi ve teklif oluşturma"
+
+#. module: sale_tender
+#: model:ir.module.module,name:sale_tender.module_sale_tender
+msgid "İhale Yönetimi"
+msgstr "İhale Yönetimi"
+
+#. module: sale_tender
+#: model:ir.model,name:sale_tender.model_sale_tender
+msgid "İhale"
+msgstr "İhale"
+
+#. module: sale_tender
+#: model:ir.model.fields,field_description:sale_tender.field_sale_tender__tender_no
+msgid "İhale Numarası"
+msgstr "İhale Numarası"
+
+#. module: sale_tender
+#: model:ir.model.fields,field_description:sale_tender.field_sale_tender__name
+msgid "İhale Adı"
+msgstr "İhale Adı"
+
+#. module: sale_tender
+#: model:ir.model.fields,field_description:sale_tender.field_sale_tender__partner_id
+msgid "Müşteri"
+msgstr "Müşteri"
+
+#. module: sale_tender
+#: model:ir.model.fields,field_description:sale_tender.field_sale_tender__tender_date
+msgid "İhale Tarihi"
+msgstr "İhale Tarihi"
+
+#. module: sale_tender
+#: model:ir.model.fields,field_description:sale_tender.field_sale_tender__bid_deadline
+msgid "Son Teklif Tarihi"
+msgstr "Son Teklif Tarihi"
+
+#. module: sale_tender
+#: model:ir.model.fields,field_description:sale_tender.field_sale_tender__state
+#: model:ir.model.fields,field_description:sale_tender.field_sale_tender_lost_reason__sequence
+msgid "Durum"
+msgstr "Durum"
+
+#. module: sale_tender
+#: model:ir.model.fields.selection,name:sale_tender.selection__sale_tender__state__draft
+msgid "Hazırlık"
+msgstr "Hazırlık"
+
+#. module: sale_tender
+#: model:ir.model.fields.selection,name:sale_tender.selection__sale_tender__state__bid_submitted
+msgid "Teklif Verildi"
+msgstr "Teklif Verildi"
+
+#. module: sale_tender
+#: model:ir.model.fields.selection,name:sale_tender.selection__sale_tender__state__won
+msgid "Kazanıldı"
+msgstr "Kazanıldı"
+
+#. module: sale_tender
+#: model:ir.model.fields.selection,name:sale_tender.selection__sale_tender__state__lost
+msgid "Kaybedildi"
+msgstr "Kaybedildi"
+
+#. module: sale_tender
+#: model:ir.model.fields.selection,name:sale_tender.selection__sale_tender__state__cancel
+msgid "İptal"
+msgstr "İptal"
+
+#. module: sale_tender
+#: model:ir.model.fields,field_description:sale_tender.field_sale_tender__user_id
+msgid "Sorumlu"
+msgstr "Sorumlu"
+
+#. module: sale_tender
+#: model:ir.model.fields,field_description:sale_tender.field_sale_tender__competitor_ids
+msgid "Rakipler"
+msgstr "Rakipler"
+
+#. module: sale_tender
+#: model:ir.model.fields,field_description:sale_tender.field_sale_tender__lost_reason_id
+msgid "Kayıt Nedeni"
+msgstr "Kayıt Nedeni"
+
+#. module: sale_tender
+#: model:ir.model.fields,field_description:sale_tender.field_sale_tender__description
+msgid "Açıklama"
+msgstr "Açıklama"
+
+#. module: sale_tender
+#: model:ir.model.fields,field_description:sale_tender.field_sale_tender__company_id
+msgid "Şirket"
+msgstr "Şirket"
+
+#. module: sale_tender
+#: model:ir.model.fields,field_description:sale_tender.field_sale_tender__active
+#: model:ir.model.fields,field_description:sale_tender.field_sale_tender_lost_reason__active
+msgid "Aktif"
+msgstr "Aktif"
+
+#. module: sale_tender
+#: model:ir.model.fields,field_description:sale_tender.field_sale_tender__sale_order_ids
+msgid "Teklifler"
+msgstr "Teklifler"
+
+#. module: sale_tender
+#: model:ir.model.fields,field_description:sale_tender.field_sale_tender__sale_order_count
+msgid "Teklif Sayısı"
+msgstr "Teklif Sayısı"
+
+#. module: sale_tender
+#: model:ir.model.fields,field_description:sale_tender.field_sale_order__tender_id
+#: model_terms:ir.ui.view,arch_db:sale_tender.view_sales_order_filter_inherit_tender
+msgid "İhale"
+msgstr "İhale"
+
+#. module: sale_tender
+#: model:ir.model.fields,field_description:sale_tender.field_sale_order__is_tender_type
+msgid "İhale Türü"
+msgstr "İhale Türü"
+
+#. module: sale_tender
+#: model:ir.model,name:sale_tender.model_sale_tender_lost_reason
+msgid "İhale Kayıt Nedeni"
+msgstr "İhale Kayıt Nedeni"
+
+#. module: sale_tender
+#: model:ir.model.fields,field_description:sale_tender.field_sale_tender_lost_reason__name
+msgid "Kayıt Nedeni"
+msgstr "Kayıt Nedeni"
+
+#. module: sale_tender
+#: model:ir.model.fields,field_description:sale_tender.field_sale_tender_lost_reason__sequence
+msgid "Sıra"
+msgstr "Sıra"
+
+#. module: sale_tender
+#: model:ir.model,name:sale_tender.model_sale_tender_lost_wizard
+msgid "İhale Kayıt Nedeni"
+msgstr "İhale Kayıt Nedeni"
+
+#. module: sale_tender
+#: model:res.groups,name:sale_tender.group_tender_user
+msgid "İhale Kullanıcısı"
+msgstr "İhale Kullanıcısı"
+
+#. module: sale_tender
+#: model:res.groups,name:sale_tender.group_tender_manager
+msgid "İhale Yöneticisi"
+msgstr "İhale Yöneticisi"
+
+#. module: sale_tender
+#: model:ir.module.category,name:sale_tender.module_category_sale_tender
+#: model:res.groups.privilege,name:sale_tender.res_groups_privilege_sale_tender
+msgid "İhale Yönetimi"
+msgstr "İhale Yönetimi"
+
+#. module: sale_tender
+#: model:ir.ui.menu,name:sale_tender.menu_sale_tender
+msgid "İhaleler"
+msgstr "İhaleler"
+
+#. module: sale_tender
+#: model:ir.ui.menu,name:sale_tender.menu_sale_tender_lost_reason
+#: model:ir.actions.act_window,name:sale_tender.action_sale_tender_lost_reason
+msgid "İhale Kayıt Nedenleri"
+msgstr "İhale Kayıt Nedenleri"
+
+#. module: sale_tender
+#: model:ir.actions.act_window,name:sale_tender.action_sale_tender
+#: model_terms:ir.ui.view,arch_db:sale_tender.sale_tender_list
+#: model_terms:ir.ui.view,arch_db:sale_tender.sale_tender_search
+msgid "İhaleler"
+msgstr "İhaleler"
+
+#. module: sale_tender
+#: model:sale.tender.lost.reason,name:sale_tender.lost_reason_price
+msgid "Fiyat nedeniyle kaybedildi"
+msgstr "Fiyat nedeniyle kaybedildi"
+
+#. module: sale_tender
+#: model:sale.tender.lost.reason,name:sale_tender.lost_reason_technical
+msgid "Teknik şartnameye uyulamadı"
+msgstr "Teknik şartnameye uyulamadı"
+
+#. module: sale_tender
+#: model:sale.tender.lost.reason,name:sale_tender.lost_reason_delivery
+msgid "Teslim süresi uygun değildi"
+msgstr "Teslim süresi uygun değildi"
+
+#. module: sale_tender
+#: model:sale.tender.lost.reason,name:sale_tender.lost_reason_documents
+msgid "İdari / eksik evrak"
+msgstr "İdari / eksik evrak"
+
+#. module: sale_tender
+#: model:sale.tender.lost.reason,name:sale_tender.lost_reason_other
+msgid "Diğer"
+msgstr "Diğer"
+
+#. module: sale_tender
+#: code:addons/sale_tender/models/sale_tender.py
+#, python-format
+msgid "Bağlı satış teklifi bulunan ihale kayıtları silinemez: %s"
+msgstr "Bağlı satış teklifi bulunan ihale kayıtları silinemez: %s"
+
+#. module: sale_tender
+#: code:addons/sale_tender/models/sale_tender.py
+msgid "\"Kaybedildi\" durumu için kayıt nedeni seçilmelidir."
+msgstr "\"Kaybedildi\" durumu için kayıt nedeni seçilmelidir."
+
+#. module: sale_tender
+#: code:addons/sale_tender/models/sale_order.py
+msgid "Satış türü \"İhale\" olan tekliflerde İhale alanı zorunludur."
+msgstr "Satış türü \"İhale\" olan tekliflerde İhale alanı zorunludur."
+
+#. module: sale_tender
+#: model:ir.actions.report,name:sale_tender.action_report_sale_tender
+msgid "İhale"
+msgstr "İhale"

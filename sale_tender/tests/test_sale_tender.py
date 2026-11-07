@@ -20,7 +20,7 @@ class TestSaleTender(TransactionCase):
             "name": "Test İhalesi",
             "partner_id": cls.partner.id,
             "tender_date": "2026-11-01",
-            "bid_deadline": "2026-11-30 17:00:00",
+            "bid_deadline": "2026-11-30",
         })
 
     def _create_order(self, **kwargs):
