@@ -9,5 +9,27 @@
             <field name="journal_id"
                    search="[('type', '=', 'sale'), ('company_id', '=', ref('base.main_company'))]"/>
         </record>
+
+        <!-- Varsayılan ihale kayıt nedenleri -->
+        <record id="lost_reason_price" model="sale.tender.lost.reason">
+            <field name="name">Fiyat nedeniyle kaybedildi</field>
+            <field name="sequence" eval="10"/>
+        </record>
+        <record id="lost_reason_technical" model="sale.tender.lost.reason">
+            <field name="name">Teknik şartnameye uyulamadı</field>
+            <field name="sequence" eval="20"/>
+        </record>
+        <record id="lost_reason_delivery" model="sale.tender.lost.reason">
+            <field name="name">Teslim süresi uygun değildi</field>
+            <field name="sequence" eval="30"/>
+        </record>
+        <record id="lost_reason_documents" model="sale.tender.lost.reason">
+            <field name="name">İdari / eksik evrak</field>
+            <field name="sequence" eval="40"/>
+        </record>
+        <record id="lost_reason_other" model="sale.tender.lost.reason">
+            <field name="name">Diğer</field>
+            <field name="sequence" eval="50"/>
+        </record>
     </data>
 </odoo>

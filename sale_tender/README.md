@@ -2,10 +2,16 @@
 
 Centralized tracking of customer tenders linked to sale quotations.
 
-Adds a **Tender Management** menu under Sales. Each tender record holds
+Adds an **İhaleler** menu under Sales → Orders. Each tender record holds
 the tender number, name, customer, tender date, bid deadline, state
-(Hazırlık / Teklif Verildi / Kazanıldı / Kaybedildi / İptal — tracked in
-chatter), responsible user, description and document attachments.
+(Hazırlık / Teklif Verildi / Kazanıldı / Kaybedildi / İptal — clickable
+statusbar, tracked in chatter), responsible user, competitors
+(many2many tags), description and chatter attachments.
+
+Moving a tender to **Kaybedildi** opens a dialog asking for a loss reason
+(`sale.tender.lost.reason`, configured under Sales → Configuration →
+İhale Kayıt Nedenleri); the reason is required and cleared if the tender
+leaves the lost state.
 
 The tender form shows a **Teklifler** smart button listing all linked
 sale orders (number, customer, order date, sale type, amount, currency,

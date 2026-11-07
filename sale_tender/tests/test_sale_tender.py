@@ -114,6 +114,30 @@ class TestSaleTender(TransactionCase):
                 "partner_id": self.partner.id,
             })
 
+    def test_lost_requires_reason(self):
+        with self.assertRaises(ValidationError):
+            self.tender.write({"state": "lost"})
+
+    def test_lost_wizard_flow(self):
+        reason = self.env["sale.tender.lost.reason"].create({
+            "name": "Fiyat"})
+        wizard = self.env["sale.tender.lost.wizard"].create({
+            "tender_id": self.tender.id,
+            "lost_reason_id": reason.id,
+        })
+        wizard.action_confirm()
+        self.assertEqual(self.tender.state, "lost")
+        self.assertEqual(self.tender.lost_reason_id, reason)
+        # kaybedildi'den çıkınca neden temizlenir
+        self.tender.write({"state": "draft"})
+        self.assertFalse(self.tender.lost_reason_id)
+
+    def test_competitors_tags(self):
+        competitor = self.env["sale.tender.competitor"].create({
+            "name": "Rakip A.Ş."})
+        self.tender.competitor_ids = [(4, competitor.id)]
+        self.assertIn(competitor, self.tender.competitor_ids)
+
     def test_tender_manager_full_access(self):
         user = self.env["res.users"].create({
             "name": "İhale Yönetici",

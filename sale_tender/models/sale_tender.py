@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import _, api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 
 class SaleTender(models.Model):
@@ -32,6 +32,12 @@ class SaleTender(models.Model):
     user_id = fields.Many2one(
         'res.users', string='Sorumlu', index=True, tracking=True,
         default=lambda self: self.env.user)
+    competitor_ids = fields.Many2many(
+        'sale.tender.competitor', 'sale_tender_competitor_rel', 'tender_id',
+        'competitor_id', string='Rakipler')
+    lost_reason_id = fields.Many2one(
+        'sale.tender.lost.reason', string='Kayıt Nedeni', tracking=True,
+        ondelete='restrict', copy=False)
     description = fields.Text(string='Açıklama')
     company_id = fields.Many2one(
         'res.company', string='Şirket', required=True, index=True,
@@ -55,6 +61,30 @@ class SaleTender(models.Model):
         for tender in self:
             tender.sale_order_count = orders.search_count(
                 [('tender_id', '=', tender.id)])
+
+    @api.constrains('state', 'lost_reason_id')
+    def _check_lost_reason(self):
+        for tender in self:
+            if tender.state == 'lost' and not tender.lost_reason_id:
+                raise ValidationError(_(
+                    '"Kaybedildi" durumu için kayıt nedeni seçilmelidir.'))
+
+    def write(self, vals):
+        # Kaybedildi'den çıkıldığında kayıt nedenini temizle
+        if vals.get('state') and vals['state'] != 'lost':
+            vals.setdefault('lost_reason_id', False)
+        return super().write(vals)
+
+    def action_set_lost(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Kayıt Nedeni'),
+            'res_model': 'sale.tender.lost.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_tender_id': self.id},
+        }
 
     def unlink(self):
         linked = self.env['sale.order'].with_context(

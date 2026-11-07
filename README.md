@@ -68,15 +68,18 @@ or MRP mechanics.
 
 ## `sale_tender`
 
-İhale Yönetimi: adds a Tender Management menu under Sales with a
+İhale Yönetimi: adds an **İhaleler** menu under Sales → Orders with a
 standalone `sale.tender` model (tender number, name, customer, dates,
-tracked state Hazırlık → Teklif Verildi → Kazanıldı/Kaybedildi/İptal,
-responsible, description, document attachments). A **Teklifler** smart
-button lists linked sale orders; **Teklif Oluştur** opens the standard
-quotation form with customer, Sale Type (İhale), tender and responsible
-pre-filled. `sale.order` gains an **İhale** many2one filtered to the
-customer's tenders; the existing Sale Order Type (`so_type_id`) mechanism
-is reused via a shipped "İhale" type record, and a tender is required
+clickable-statusbar state Hazırlık → Teklif Verildi → Kazanıldı, İptal,
+responsible, competitor tags, description, chatter attachments).
+Marking a tender **Kaybedildi** opens a dialog for a required loss
+reason (İhale Kayıt Nedenleri managed under Sales → Configuration). A
+**Teklifler** smart button lists linked sale orders including archived
+revisions; **Teklif Oluştur** opens the standard quotation form with
+customer, Sale Type (İhale), tender and responsible pre-filled.
+`sale.order` gains an **İhale** many2one filtered to the customer's
+tenders; the existing Sale Order Type (`so_type_id`) mechanism is
+reused via a shipped "İhale" type record, and a tender is required
 whenever the type is İhale. The link copies on revision, tenders with
 linked orders cannot be deleted, and two groups (İhale Kullanıcısı
 read-only, İhale Yöneticisi full) govern access.

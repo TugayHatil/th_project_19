@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sale_tender_lost_wizard_form" model="ir.ui.view">
+        <field name="name">sale.tender.lost.wizard.form</field>
+        <field name="model">sale.tender.lost.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Kayıt Nedeni">
+                <group>
+                    <field name="tender_id" invisible="1"/>
+                    <field name="lost_reason_id"
+                           options="{'no_create': True, 'no_open': True}"/>
+                </group>
+                <footer>
+                    <button name="action_confirm" type="object"
+                            string="Kaybedildi Olarak İşaretle"
+                            class="btn-primary" data-hotkey="q"/>
+                    <button string="Vazgeç" class="btn-secondary"
+                            special="cancel" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
