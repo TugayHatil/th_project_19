@@ -29,7 +29,7 @@ grubu salt okunur erişim, İhale Yöneticisi grubu tam yetki sağlar.""",
     'website': "https://projet.solutions",
 
     'category': 'Sales/Sales',
-    'version': '19.0.1.3.0',
+    'version': '19.0.1.4.0',
 
     'depends': [
         'sale',
@@ -45,6 +45,8 @@ grubu salt okunur erişim, İhale Yöneticisi grubu tam yetki sağlar.""",
         'views/sale_order_views.xml',
         'views/sale_tender_lost_reason_views.xml',
         'views/sale_tender_menus.xml',
+        'report/sale_tender_report_templates.xml',
+        'report/sale_tender_report.xml',
     ],
     'license': 'LGPL-3',
     'installable': True,
