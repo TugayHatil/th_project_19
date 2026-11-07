@@ -1,8 +1,6 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_sale_tender_user,sale.tender user,model_sale_tender,sale_tender.group_tender_user,1,0,0,0
 access_sale_tender_manager,sale.tender manager,model_sale_tender,sale_tender.group_tender_manager,1,1,1,1
-access_sale_tender_competitor_user,sale.tender.competitor user,model_sale_tender_competitor,sale_tender.group_tender_user,1,0,0,0
-access_sale_tender_competitor_manager,sale.tender.competitor manager,model_sale_tender_competitor,sale_tender.group_tender_manager,1,1,1,1
 access_sale_tender_lost_reason_user,sale.tender.lost.reason user,model_sale_tender_lost_reason,sale_tender.group_tender_user,1,0,0,0
 access_sale_tender_lost_reason_manager,sale.tender.lost.reason manager,model_sale_tender_lost_reason,sale_tender.group_tender_manager,1,1,1,1
 access_sale_tender_lost_wizard,sale.tender.lost.wizard manager,model_sale_tender_lost_wizard,sale_tender.group_tender_manager,1,1,1,1

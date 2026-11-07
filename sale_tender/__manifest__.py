@@ -29,7 +29,7 @@ grubu salt okunur erişim, İhale Yöneticisi grubu tam yetki sağlar.""",
     'website': "https://projet.solutions",
 
     'category': 'Sales/Sales',
-    'version': '19.0.1.2.0',
+    'version': '19.0.1.3.0',
 
     'depends': [
         'sale',

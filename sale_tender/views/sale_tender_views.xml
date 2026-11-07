@@ -15,7 +15,7 @@
                 <field name="bid_deadline" optional="show"/>
                 <field name="user_id" widget="many2one_avatar_user"/>
                 <field name="competitor_ids" widget="many2many_tags"
-                       options="{'color_field': 'color'}" optional="hide"/>
+                       optional="hide"/>
                 <field name="sale_order_count" string="Teklifler"
                        optional="show"/>
                 <field name="company_id"
@@ -74,7 +74,7 @@
                         <group>
                             <field name="user_id"/>
                             <field name="competitor_ids" widget="many2many_tags"
-                                   options="{'color_field': 'color'}"
+                                   context="{'default_is_company': True}"
                                    placeholder="Rakip ekle"/>
                             <field name="lost_reason_id"
                                    invisible="state != 'lost'"

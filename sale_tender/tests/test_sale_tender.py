@@ -133,8 +133,8 @@ class TestSaleTender(TransactionCase):
         self.assertFalse(self.tender.lost_reason_id)
 
     def test_competitors_tags(self):
-        competitor = self.env["sale.tender.competitor"].create({
-            "name": "Rakip A.Ş."})
+        competitor = self.env["res.partner"].create({
+            "name": "Rakip A.Ş.", "is_company": True})
         self.tender.competitor_ids = [(4, competitor.id)]
         self.assertIn(competitor, self.tender.competitor_ids)
 

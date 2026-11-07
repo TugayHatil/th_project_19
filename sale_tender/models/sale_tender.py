@@ -20,7 +20,7 @@ class SaleTender(models.Model):
         'res.partner', string='Müşteri', required=True, index=True,
         tracking=True, check_company=True)
     tender_date = fields.Date(string='İhale Tarihi', tracking=True)
-    bid_deadline = fields.Datetime(string='Son Teklif Tarihi', tracking=True)
+    bid_deadline = fields.Date(string='Son Teklif Tarihi', tracking=True)
     state = fields.Selection([
         ('draft', 'Hazırlık'),
         ('bid_submitted', 'Teklif Verildi'),
@@ -33,8 +33,8 @@ class SaleTender(models.Model):
         'res.users', string='Sorumlu', index=True, tracking=True,
         default=lambda self: self.env.user)
     competitor_ids = fields.Many2many(
-        'sale.tender.competitor', 'sale_tender_competitor_rel', 'tender_id',
-        'competitor_id', string='Rakipler')
+        'res.partner', 'sale_tender_competitor_partner_rel', 'tender_id',
+        'partner_id', string='Rakipler', check_company=True)
     lost_reason_id = fields.Many2one(
         'sale.tender.lost.reason', string='Kayıt Nedeni', tracking=True,
         ondelete='restrict', copy=False)
