@@ -6,6 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 19.0\n"
 "Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-07 00:00+0000\n"
+"PO-Revision-Date: 2026-11-07 00:00+0300\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: tr\n"
@@ -13,6 +15,16 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: \n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#. module: crm_second_currency
+#: model:ir.module.module,name:crm_second_currency.module_crm_second_currency
+msgid "CRM İkinci Para Birimi"
+msgstr "CRM İkinci Para Birimi"
+
+#. module: crm_second_currency
+#: model:ir.module.module,summary:crm_second_currency.module_crm_second_currency
+msgid "Fırsatlara ikinci para birimi: tutar girişi, otomatik şirket para birimi çevrimi ve oranlı gelir"
+msgstr "Fırsatlara ikinci para birimi: tutar girişi, otomatik şirket para birimi çevrimi ve oranlı gelir"
 
 #. module: crm_second_currency
 #: model:ir.model.fields,field_description:crm_second_currency.field_crm_lead__currency_id

@@ -20,12 +20,15 @@ class CrmLead(models.Model):
         string='Prorated Revenue (Other Currency)',
         currency_field='currency_id',
         compute='_compute_prorated_revenue_second',
+        store=True,
     )
 
     @api.depends('planned_revenue_second', 'probability')
     def _compute_prorated_revenue_second(self):
         for lead in self:
-            lead.prorated_revenue_second = lead.planned_revenue_second * (lead.probability / 100.0)
+            lead.prorated_revenue_second = round(
+                (lead.planned_revenue_second or 0.0) * (lead.probability or 0) / 100.0, 2
+            )
 
     @api.onchange('currency_id', 'planned_revenue_second')
     def _onchange_planned_revenue_second(self):
@@ -36,9 +39,10 @@ class CrmLead(models.Model):
         if not self.currency_id:
             return
         company = self.company_id or self.env.company
+        rate_date = fields.Date.to_date(self.create_date) or fields.Date.context_today(self)
         self.expected_revenue = self.currency_id._convert(
             self.planned_revenue_second,
             company.currency_id,
             company,
-            self.create_date or fields.Date.context_today(self),
+            rate_date,
         )

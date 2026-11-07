@@ -9,7 +9,7 @@
             <field name="arch" type="xml">
                 <!-- Add deal-currency fields before the expected revenue block -->
                 <xpath expr="//div[hasclass('oe_title')]/h2" position="before">
-                    <h2 class="row g-0 pb-3 pb-sm-4">
+                    <h2 class="row g-0 pb-3 pb-sm-4" invisible="type == 'lead'">
                         <div class="col-12 col-md-4 pb-2 pb-md-0">
                             <label class="o_form_label oe_edit_only text-nowrap" for="currency_id">Deal Currency</label>
                             <div class="d-flex flex-wrap align-items-baseline">
