@@ -4,6 +4,9 @@
         <field name="name">sale.order.form.inherit.tender</field>
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_order_form"/>
+        <!-- sale_order_type_journal'ın form inherit'i priority 500;
+             so_type_id'nin view'a eklenmesinden SONRA uygulanmalı -->
+        <field name="priority" eval="600"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='so_type_id']" position="after">
                 <field name="is_tender_type" invisible="1"/>
@@ -32,6 +35,7 @@
         <field name="name">sale.order.search.inherit.tender</field>
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_sales_order_filter"/>
+        <field name="priority" eval="600"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='so_type_id']" position="after">
                 <field name="tender_id"/>
