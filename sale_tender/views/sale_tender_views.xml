@@ -71,7 +71,7 @@
                             <field name="tender_date"/>
                             <field name="bid_deadline"/>
                         </group>
-                        <group>
+                        <group string="Ek Bilgiler">
                             <field name="user_id"/>
                             <field name="competitor_ids" widget="many2many_tags"
                                    context="{'default_is_company': True}"
