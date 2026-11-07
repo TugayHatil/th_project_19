@@ -28,6 +28,7 @@
         <field name="privilege_id" ref="sale_tender.res_groups_privilege_sale_tender"/>
         <field name="sequence">20</field>
         <field name="implied_ids" eval="[(4, ref('sale_tender.group_tender_user'))]"/>
+        <field name="user_ids" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
     </record>
 
     <!-- Çoklu şirket: tüm gruplar için global kural -->

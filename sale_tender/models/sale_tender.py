@@ -33,10 +33,6 @@ class SaleTender(models.Model):
         'res.users', string='Sorumlu', index=True, tracking=True,
         default=lambda self: self.env.user)
     description = fields.Text(string='Açıklama')
-    attachment_ids = fields.Many2many(
-        'ir.attachment', 'sale_tender_attachment_rel', 'tender_id',
-        'attachment_id', string='Dokümanlar',
-        help="İhale şartnamesi, teknik doküman ve diğer dosyalar.")
     company_id = fields.Many2one(
         'res.company', string='Şirket', required=True, index=True,
         default=lambda self: self.env.company)
@@ -54,15 +50,20 @@ class SaleTender(models.Model):
 
     @api.depends('sale_order_ids')
     def _compute_sale_order_count(self):
+        # İptal edilmiş eski revizyonlar (active=False) da sayılmalı
+        orders = self.env['sale.order'].with_context(active_test=False)
         for tender in self:
-            tender.sale_order_count = len(tender.sale_order_ids)
+            tender.sale_order_count = orders.search_count(
+                [('tender_id', '=', tender.id)])
 
     def unlink(self):
-        linked = self.filtered('sale_order_ids')
+        linked = self.env['sale.order'].with_context(
+            active_test=False).search([('tender_id', 'in', self.ids)])
         if linked:
             raise UserError(_(
                 'Bağlı satış teklifi bulunan ihale kayıtları silinemez: %s',
-                ', '.join(linked.mapped('display_name'))))
+                ', '.join((self & linked.mapped('tender_id')).mapped(
+                    'display_name'))))
         return super().unlink()
 
     def action_cancel_tender(self):
@@ -102,5 +103,6 @@ class SaleTender(models.Model):
             'view_mode': 'list,form',
             'views': [(list_view.id, 'list'), (False, 'form')],
             'domain': [('tender_id', '=', self.id)],
-            'context': self._get_quotation_context(),
+            # İptal edilmiş eski revizyonlar da listelenebilmeli
+            'context': dict(self._get_quotation_context(), active_test=False),
         }

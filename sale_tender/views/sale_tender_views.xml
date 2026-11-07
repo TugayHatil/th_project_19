@@ -71,16 +71,10 @@
                                    options="{'no_create': True}"/>
                         </group>
                     </group>
-                    <notebook>
-                        <page string="Dokümanlar" name="documents">
-                            <field name="attachment_ids"
-                                   widget="many2many_binary" nolabel="1"/>
-                        </page>
-                        <page string="Açıklama" name="description">
-                            <field name="description" nolabel="1"
-                                   placeholder="İhale hakkında genel açıklamalar"/>
-                        </page>
-                    </notebook>
+                    <group string="Açıklama">
+                        <field name="description" nolabel="1"
+                               placeholder="İhale hakkında genel açıklamalar"/>
+                    </group>
                 </sheet>
                 <chatter/>
             </form>
