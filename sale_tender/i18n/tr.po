@@ -219,20 +219,41 @@ msgid "Diğer"
 msgstr "Diğer"
 
 #. module: sale_tender
-#: code:addons/sale_tender/models/sale_tender.py
+#: code:addons/sale_tender/models/sale_tender.py:91
 #, python-format
 msgid "Bağlı satış teklifi bulunan ihale kayıtları silinemez: %s"
 msgstr "Bağlı satış teklifi bulunan ihale kayıtları silinemez: %s"
 
 #. module: sale_tender
-#: code:addons/sale_tender/models/sale_tender.py
+#: code:addons/sale_tender/models/sale_tender.py:67
 msgid "\"Kaybedildi\" durumu için kayıt nedeni seçilmelidir."
 msgstr "\"Kaybedildi\" durumu için kayıt nedeni seçilmelidir."
 
 #. module: sale_tender
-#: code:addons/sale_tender/models/sale_order.py
+#: code:addons/sale_tender/models/sale_tender.py:80
+msgid "Kayıt Nedeni"
+msgstr "Kayıt Nedeni"
+
+#. module: sale_tender
+#: code:addons/sale_tender/models/sale_tender.py:117
+msgid "Yeni Teklif"
+msgstr "Yeni Teklif"
+
+#. module: sale_tender
+#: code:addons/sale_tender/models/sale_tender.py:129
+msgid "Teklifler"
+msgstr "Teklifler"
+
+#. module: sale_tender
+#: code:addons/sale_tender/models/sale_order.py:31
 msgid "Satış türü \"İhale\" olan tekliflerde İhale alanı zorunludur."
 msgstr "Satış türü \"İhale\" olan tekliflerde İhale alanı zorunludur."
+
+#. module: sale_tender
+#: code:addons/sale_tender/models/sale_order.py:36
+#, python-format
+msgid "Seçilen ihale (%(tender)s), teklif müşterisiyle eşleşmiyor. Yalnızca %(partner)s müşterisine ait ihaleler seçilebilir."
+msgstr "Seçilen ihale (%(tender)s), teklif müşterisiyle eşleşmiyor. Yalnızca %(partner)s müşterisine ait ihaleler seçilebilir."
 
 #. module: sale_tender
 #: model:ir.actions.report,name:sale_tender.action_report_sale_tender
