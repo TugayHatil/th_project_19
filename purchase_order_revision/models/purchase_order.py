@@ -6,8 +6,7 @@ class PurchaseOrder(models.Model):
     _inherit = 'purchase.order'
 
     revision_number = fields.Integer(string='Revizyon', default=0, copy=False, readonly=True)
-    display_name = fields.Char(string='Referans', compute='_compute_display_name', store=True)
-    was_confirmed = fields.Boolean(string="Önceden Onaylanmış", default=False)
+    was_confirmed = fields.Boolean(string="Önceden Onaylanmış", default=False, copy=False)
     unrevisioned_name = fields.Char(string='Orijinal Referans', copy=False, readonly=True)
     current_revision_id = fields.Many2one(
         'purchase.order', string='Güncel Revizyon', copy=False, readonly=True, index=True)
@@ -16,11 +15,6 @@ class PurchaseOrder(models.Model):
         context={'active_test': False})
     revision_count = fields.Integer(string='Revizyon Sayısı', compute='_compute_revision_count')
     active = fields.Boolean(string='Aktif', default=True)
-
-    @api.depends('name')
-    def _compute_display_name(self):
-        for order in self:
-            order.display_name = order.name
 
     @api.depends('old_revision_ids')
     def _compute_revision_count(self):
