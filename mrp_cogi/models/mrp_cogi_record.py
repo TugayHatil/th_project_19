@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
+from collections import defaultdict, deque
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
-from odoo.tools import float_is_zero
+from odoo.tools import float_is_zero, float_round
 
 
 class MrpCogiRecord(models.Model):
@@ -266,6 +268,7 @@ class MrpCogiRecord(models.Model):
                 finished_lines.write({
                     'consume_line_ids': [(4, ml.id) for ml in move.move_line_ids]
                 })
+        self._propagate_correction_value(move)
         return move
 
     def _prepare_correction_move_vals(self, qty):
@@ -287,6 +290,115 @@ class MrpCogiRecord(models.Model):
 
     def _component_display_name(self):
         return self.product_id.display_name or self.component_name or '?'
+
+    # ------------------------------------------------------------------
+    # Değer yansıtma
+    # ------------------------------------------------------------------
+
+    def _propagate_correction_value(self, correction_move):
+        """Düzeltme hareketinin değerini mamul hareketlerine işler.
+
+        Üretim emri kapandıktan sonra işlenen düzeltmeler çekirdek
+        _cal_price akışını kaçırır; bileşen maliyeti sanki üretim
+        anında tüketilmiş gibi mamul hareketinin değerine eklenir ve
+        partiyi fiilen tüketen çıkış hareketlerine paylaştırılır.
+        Yan ürünler çekirdek _cal_price ile aynı maliyet payını alır.
+        stock_account kurulu değilse no-op olur."""
+        self.ensure_one()
+        if ('product.value' not in self.env.registry
+                or 'is_in' not in correction_move._fields):
+            return
+        production = self.production_id
+        if not production:
+            return
+        currency = correction_move.company_currency_id
+        added_value = correction_move.value
+        if currency.is_zero(added_value):
+            return
+
+        note = _('COGI %(cogi)s düzeltmesi (%(move)s)',
+                 cogi=self.name, move=correction_move.name)
+        ProductValue = self.env['product.value'].sudo()
+        batches = {}
+
+        def add_value(move, adj):
+            if currency.is_zero(adj):
+                return
+            ProductValue.create({
+                'move_id': move.id,
+                'value': move.value + adj,
+                'description': note,
+            })
+            batch = batches.setdefault(
+                move.product_id,
+                {'moves': self.env['stock.move'], 'added': 0.0})
+            batch['moves'] |= move
+            batch['added'] += adj
+
+        byproduct_moves = production.move_byproduct_ids.filtered(
+            lambda m: m.state == 'done' and m.is_in
+            and m.product_uom.compare(m.cost_share, 0) > 0)
+        byproduct_share = sum(byproduct_moves.mapped('cost_share'))
+        for byproduct in byproduct_moves:
+            add_value(byproduct, added_value * byproduct.cost_share / 100)
+
+        finished_moves = production.move_finished_ids.filtered(
+            lambda m: m.product_id == production.product_id
+            and m.state == 'done' and m.is_in and m._get_valued_qty())
+        if finished_moves:
+            main_added = added_value * float_round(
+                1 - byproduct_share / 100, precision_rounding=0.0001)
+            total_qty = sum(m._get_valued_qty() for m in finished_moves)
+            for move in finished_moves:
+                add_value(
+                    move, main_added * move._get_valued_qty() / total_qty)
+
+        for product, batch in batches.items():
+            self._propagate_batch_value_to_out_moves(
+                production, product, batch['moves'], batch['added'])
+
+        if batches:
+            self.message_post(body=_(
+                'Düzeltme hareketi maliyeti (%(value)s) mamul '
+                'hareketine ve partiyi tüketen çıkış hareketlerine '
+                'yansıtıldı.', value=currency.format(added_value)))
+
+    def _propagate_batch_value_to_out_moves(self, production, product,
+                                          batch_moves, added_value):
+        """Düzeltmeyle artan parti maliyetini, partiyi fiilen tüketen
+        çıkış hareketlerine taşır. Ürünün değerlenen giriş/çıkış
+        hareketleri tarih sırasıyla FIFO mantığıyla eşleştirilir;
+        partiden çekilen her birim için birim maliyet farkı ilgili
+        çıkış hareketinin değerine eklenir."""
+        batch_total = sum(m._get_valued_qty() for m in batch_moves)
+        if not batch_total:
+            return
+        delta_unit = added_value / batch_total
+        valued_moves = self.env['stock.move'].search([
+            ('product_id', '=', product.id),
+            ('company_id', '=', production.company_id.id),
+            ('state', '=', 'done'),
+            '|', ('is_in', '=', True), ('is_out', '=', True),
+        ], order='date, id')
+        queue = deque()
+        for move in valued_moves.filtered('is_in'):
+            qty = move._get_valued_qty()
+            if qty > 0:
+                queue.append([move, qty])
+        deltas = defaultdict(float)
+        for out_move in valued_moves.filtered('is_out'):
+            need = out_move._get_valued_qty()
+            while need > 0 and queue:
+                take = min(queue[0][1], need)
+                queue[0][1] -= take
+                need -= take
+                if queue[0][0] in batch_moves:
+                    deltas[out_move] += take
+                if queue[0][1] <= 0:
+                    queue.popleft()
+        for out_move, qty in deltas.items():
+            if qty:
+                out_move.sudo().value += delta_unit * qty
 
     # ------------------------------------------------------------------
     # Navigasyon

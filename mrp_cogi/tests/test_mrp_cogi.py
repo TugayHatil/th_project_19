@@ -358,6 +358,70 @@ class TestMrpCogi(TransactionCase):
         self.assertTrue(notes)
         self.assertIn('Üretim Emrini Aç', notes[0].body or '')
 
+    def _delivery_out_move(self, product, qty):
+        """Mamul için tamamlanmış bir çıkış (teslimat) hareketi oluşturur."""
+        customers = self.env.ref('stock.stock_location_customers')
+        move = self.env['stock.move'].create({
+            'name': 'COGI Test Teslimat',
+            'product_id': product.id,
+            'product_uom': product.uom_id.id,
+            'product_uom_qty': qty,
+            'location_id': self.stock_location.id,
+            'location_dest_id': customers.id,
+        })
+        move._action_confirm()
+        move._action_assign()
+        move.quantity = qty
+        move.picked = True
+        move._action_done()
+        return move
+
+    def test_correction_value_propagates_to_moves(self):
+        """Düzeltme hareketinin değeri mamul hareketine işlenir ve
+        partiyi tüketen çıkış hareketinin değeri de güncellenir."""
+        if 'product.value' not in self.env.registry:
+            self.skipTest('stock_account kurulu değil')
+        self.component.standard_price = 100.0
+        mo = self._create_mo()
+        self._produce_with_consumption(mo, 0.0)
+        cogi = self.Cogi.search([('production_id', '=', mo.id)])
+        finished_move = mo.move_finished_ids.filtered(
+            lambda m: m.product_id == self.finished)
+        out_move = self._delivery_out_move(self.finished, 100.0)
+        self.assertEqual(finished_move.value, 0.0)
+        self.assertEqual(out_move.value, 0.0)
+
+        self._set_stock(100.0)
+        cogi.action_reprocess()
+
+        self.assertEqual(cogi.correction_move_ids.value, 10000.0)
+        self.assertEqual(finished_move.value, 10000.0)
+        self.assertEqual(out_move.value, 10000.0)
+
+    def test_correction_value_partial_reprocess(self):
+        """Kısmi düzeltmede yansıtılan değer işlenen miktar kadar olur."""
+        if 'product.value' not in self.env.registry:
+            self.skipTest('stock_account kurulu değil')
+        self.component.standard_price = 100.0
+        mo = self._create_mo()
+        self._produce_with_consumption(mo, 0.0)
+        cogi = self.Cogi.search([('production_id', '=', mo.id)])
+        finished_move = mo.move_finished_ids.filtered(
+            lambda m: m.product_id == self.finished)
+        out_move = self._delivery_out_move(self.finished, 100.0)
+
+        self._set_stock(40.0)
+        cogi.action_reprocess()
+
+        self.assertEqual(cogi.correction_move_ids.value, 4000.0)
+        self.assertEqual(finished_move.value, 4000.0)
+        self.assertEqual(out_move.value, 4000.0)
+
+        self._set_stock(60.0)
+        cogi.action_reprocess()
+        self.assertEqual(finished_move.value, 10000.0)
+        self.assertEqual(out_move.value, 10000.0)
+
     def test_original_values_not_changed_after_reprocess(self):
         """Orijinal planlanan/tüketilen/eksik değerler düzeltme sonrası korunur."""
         self._set_stock(95.0)
