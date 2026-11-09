@@ -156,8 +156,6 @@ class MrpCogiRecord(models.Model):
                 'last_result_note': note,
             })
             self.message_post(body=note)
-            self.env.user.notify_warning(
-                error, title=_('Yeniden işleme başarısız'), sticky=True)
             return {'type': 'ir.actions.client', 'tag': 'reload'}
 
         done_qty = move.product_uom._compute_quantity(move.quantity, self.product_uom_id)
@@ -177,7 +175,6 @@ class MrpCogiRecord(models.Model):
             'last_result_note': note,
         })
         self.message_post(body=note)
-        self.env.user.notify_success(note, title=_('Başarılı'))
         return {'type': 'ir.actions.client', 'tag': 'reload'}
 
     def _check_reprocessable(self):
