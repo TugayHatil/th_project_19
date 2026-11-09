@@ -422,6 +422,27 @@ class TestMrpCogi(TransactionCase):
         self.assertEqual(finished_move.value, 10000.0)
         self.assertEqual(out_move.value, 10000.0)
 
+    def test_correction_value_partially_consumed_batch(self):
+        """Partinin yalnızca bir kısmı sevk edildiyse çıkış hareketine
+        tüketilen pay kadar maliyet yansır, kalan stokta kalır."""
+        if 'product.value' not in self.env.registry:
+            self.skipTest('stock_account kurulu değil')
+        self.component.standard_price = 100.0
+        mo = self._create_mo()
+        self._produce_with_consumption(mo, 0.0)
+        cogi = self.Cogi.search([('production_id', '=', mo.id)])
+        finished_move = mo.move_finished_ids.filtered(
+            lambda m: m.product_id == self.finished)
+        out_move = self._delivery_out_move(self.finished, 40.0)
+
+        self._set_stock(100.0)
+        cogi.action_reprocess()
+
+        # Parti maliyeti tamamen mamule işler (10.000); çıkış hareketi
+        # yalnızca tükettiği 40 birimlik payı alır (4.000).
+        self.assertEqual(finished_move.value, 10000.0)
+        self.assertEqual(out_move.value, 4000.0)
+
     def test_original_values_not_changed_after_reprocess(self):
         """Orijinal planlanan/tüketilen/eksik değerler düzeltme sonrası korunur."""
         self._set_stock(95.0)

@@ -313,13 +313,14 @@ class MrpCogiRecord(models.Model):
             return
         currency = correction_move.company_currency_id
         added_value = correction_move.value
-        if currency.is_zero(added_value):
+        if currency.is_zero(added_value) or added_value < 0:
             return
 
         note = _('COGI %(cogi)s düzeltmesi (%(move)s)',
                  cogi=self.name, move=correction_move.name)
         ProductValue = self.env['product.value'].sudo()
         batches = {}
+        aml_vals_list = []
 
         def add_value(move, adj):
             if currency.is_zero(adj):
@@ -334,10 +335,12 @@ class MrpCogiRecord(models.Model):
                 {'moves': self.env['stock.move'], 'added': 0.0})
             batch['moves'] |= move
             batch['added'] += adj
+            if move.product_id.valuation == 'real_time':
+                aml_vals_list.extend(move._cogi_delta_aml_vals(adj))
 
         byproduct_moves = production.move_byproduct_ids.filtered(
             lambda m: m.state == 'done' and m.is_in
-            and m.product_uom.compare(m.cost_share, 0) > 0)
+            and not float_is_zero(m.cost_share, precision_digits=2))
         byproduct_share = sum(byproduct_moves.mapped('cost_share'))
         for byproduct in byproduct_moves:
             add_value(byproduct, added_value * byproduct.cost_share / 100)
@@ -349,13 +352,28 @@ class MrpCogiRecord(models.Model):
             main_added = added_value * float_round(
                 1 - byproduct_share / 100, precision_rounding=0.0001)
             total_qty = sum(m._get_valued_qty() for m in finished_moves)
-            for move in finished_moves:
-                add_value(
-                    move, main_added * move._get_valued_qty() / total_qty)
+            distributed = 0.0
+            for i, move in enumerate(finished_moves):
+                # Son hareket kalan kuruşu devralır; toplam added_value'yu aşmaz.
+                if i == len(finished_moves) - 1:
+                    adj = main_added - distributed
+                else:
+                    adj = main_added * move._get_valued_qty() / total_qty
+                    distributed += adj
+                add_value(move, adj)
 
         for product, batch in batches.items():
-            self._propagate_batch_value_to_out_moves(
+            aml_vals_list += self._propagate_batch_value_to_out_moves(
                 production, product, batch['moves'], batch['added'])
+
+        if aml_vals_list and production.company_id.account_stock_journal_id:
+            self.env['account.move'].sudo().create({
+                'journal_id': production.company_id.account_stock_journal_id.id,
+                'date': fields.Date.context_today(self),
+                'ref': _('COGI değer düzeltmesi: %s', self.name),
+                'move_type': 'entry',
+                'line_ids': [(0, 0, v) for v in aml_vals_list],
+            })._post()
 
         if batches:
             self.message_post(body=_(
@@ -372,33 +390,56 @@ class MrpCogiRecord(models.Model):
         çıkış hareketinin değerine eklenir."""
         batch_total = sum(m._get_valued_qty() for m in batch_moves)
         if not batch_total:
-            return
+            return []
+        consumed = batch_total - sum(batch_moves.mapped('remaining_qty'))
+        if product.uom_id.compare(consumed, 0) <= 0:
+            # Parti tamamen stokta; maliyet kalan stok değerine yansımıştır.
+            return []
         delta_unit = added_value / batch_total
+        batch_min_date = min(batch_moves.mapped('date'))
+        # Parti tarihindeki elde kalan giriş kuyruğu çekirdek FIFO
+        # yığınından alınır; önceki çıkışlar zaten hesaba katılmıştır.
+        queue = deque()
+        stack, first_qty = product._run_fifo_get_stack(at_date=batch_min_date)
+        stack_ids = set()
+        for i, move in enumerate(stack):
+            stack_ids.add(move.id)
+            qty = first_qty if i == 0 else move._get_valued_qty()
+            if qty > 0:
+                queue.append([move, qty])
         valued_moves = self.env['stock.move'].search([
             ('product_id', '=', product.id),
             ('company_id', '=', production.company_id.id),
             ('state', '=', 'done'),
+            ('date', '>=', batch_min_date),
             '|', ('is_in', '=', True), ('is_out', '=', True),
         ], order='date, id')
-        queue = deque()
-        for move in valued_moves.filtered('is_in'):
-            qty = move._get_valued_qty()
-            if qty > 0:
-                queue.append([move, qty])
         deltas = defaultdict(float)
-        for out_move in valued_moves.filtered('is_out'):
-            need = out_move._get_valued_qty()
+        for move in valued_moves:
+            if move.is_in:
+                if move.id not in stack_ids:
+                    qty = move._get_valued_qty()
+                    if qty > 0:
+                        queue.append([move, qty])
+                continue
+            need = move._get_valued_qty()
             while need > 0 and queue:
                 take = min(queue[0][1], need)
                 queue[0][1] -= take
                 need -= take
                 if queue[0][0] in batch_moves:
-                    deltas[out_move] += take
+                    deltas[move] += take
                 if queue[0][1] <= 0:
                     queue.popleft()
+        aml_vals_list = []
         for out_move, qty in deltas.items():
-            if qty:
-                out_move.sudo().value += delta_unit * qty
+            if not qty:
+                continue
+            delta = delta_unit * qty
+            out_move.sudo().value += delta
+            if out_move.product_id.valuation == 'real_time':
+                aml_vals_list += out_move._cogi_delta_aml_vals(delta)
+        return aml_vals_list
 
     # ------------------------------------------------------------------
     # Navigasyon

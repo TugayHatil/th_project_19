@@ -70,6 +70,39 @@ class StockMove(models.Model):
             else:
                 move.cogi_state = False
 
+    def _cogi_delta_aml_vals(self, delta):
+        """stock_account'ın _get_account_move_line_vals ile aynı hesap
+        yönünü kullanarak, değer farkı için hareket satırı değerleri
+        üretir. Sürekli değerlemede orijinal hareket fişi eski değerle
+        oluştuğu için fark ayrı bir fişle düzeltilir."""
+        self.ensure_one()
+        if not (self.is_valued
+                and (self.location_dest_id.valuation_account_id
+                     or self.location_id.valuation_account_id)):
+            return []
+        if self.location_id.valuation_account_id:
+            debit_acc = self.product_id._get_product_accounts()['stock_valuation']
+            credit_acc = self.location_id.valuation_account_id
+        else:
+            debit_acc = self.location_dest_id.valuation_account_id
+            credit_acc = self.product_id._get_product_accounts()['stock_valuation']
+        if not (debit_acc and credit_acc):
+            return []
+        name = '%s - %s' % (self.reference or self.name, self.product_id.name)
+        return [{
+            'account_id': credit_acc.id,
+            'name': name,
+            'debit': 0,
+            'credit': delta,
+            'product_id': self.product_id.id,
+        }, {
+            'account_id': debit_acc.id,
+            'name': name,
+            'debit': delta,
+            'credit': 0,
+            'product_id': self.product_id.id,
+        }]
+
     def action_view_source_cogi(self):
         self.ensure_one()
         action = self.env['ir.actions.actions']._for_xml_id(
