@@ -29,7 +29,7 @@ class PurchaseOrder(models.Model):
 
     def button_cancel(self):
         for order in self:
-            if order.state == 'purchase':
+            if order.state in ('sent', 'to approve', 'purchase'):
                 order.was_confirmed = True
         return super().button_cancel()
 
