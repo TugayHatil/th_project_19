@@ -156,16 +156,9 @@ class MrpCogiRecord(models.Model):
                 'last_result_note': note,
             })
             self.message_post(body=note)
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': _('Yeniden işleme başarısız'),
-                    'message': error,
-                    'type': 'warning',
-                    'sticky': True,
-                },
-            }
+            self.env.user.notify_warning(
+                error, title=_('Yeniden işleme başarısız'), sticky=True)
+            return {'type': 'ir.actions.client', 'tag': 'reload'}
 
         done_qty = move.product_uom._compute_quantity(move.quantity, self.product_uom_id)
         note = _('COGI yeniden işleme başarılı. %(product)s için %(qty)s %(uom)s '
@@ -184,16 +177,8 @@ class MrpCogiRecord(models.Model):
             'last_result_note': note,
         })
         self.message_post(body=note)
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': _('Başarılı'),
-                'message': note,
-                'type': 'success',
-                'sticky': False,
-            },
-        }
+        self.env.user.notify_success(note, title=_('Başarılı'))
+        return {'type': 'ir.actions.client', 'tag': 'reload'}
 
     def _check_reprocessable(self):
         if self.state not in ('open', 'reprocessing'):
