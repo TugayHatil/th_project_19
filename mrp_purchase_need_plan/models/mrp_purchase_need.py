@@ -601,7 +601,7 @@ class MrpPurchaseNeed(models.AbstractModel):
     # payload schema — bump whenever the serialized plan shape changes;
     # a snapshot written by older code is rejected outright since its
     # missing keys would silently break new frontend features
-    _PLAN_SCHEMA = 7
+    _PLAN_SCHEMA = 8
 
     def _snapshot_name(self, warehouse_id, date_from, date_to, query,
                        include_covered=False):
