@@ -440,8 +440,39 @@ class MrpLtpNeed(models.AbstractModel):
         q = (query or "").strip().lower()
         wc_filter = set(int(i) for i in workcenter_ids) \
             if workcenter_ids else set()
-        # group rows by their root order need, EDD inside each family —
-        # otherwise exploded deadlines scatter one order's rows
+        # parents that cannot receive the first unit in time are pushed
+        # later — the parent waits instead of the child scheduling into
+        # the past; repeat so the shift can cascade up the chain
+        for _ in range(3):
+            changed = False
+            for need in sorted(needs, key=lambda n: (
+                    n.get("depth", 0), n["deadline"])):
+                if not need.get("sug_start"):
+                    continue
+                unit = sum(h for _w, h in need["ops"]) / (
+                    need.get("eff_cap") or 1.0)
+                lag = max(1, math.ceil(unit / 8.0))
+                for pk in need.get("parent_keys") or []:
+                    p = by_key.get(pk)
+                    ps = p and p.get("sug_start")
+                    pe = p and p.get("sug_end")
+                    if not (ps and pe) \
+                            or need["sug_start"] <= ps - timedelta(
+                                days=lag):
+                        continue
+                    p["deadline"] = max(
+                        p["deadline"],
+                        need["sug_start"] + timedelta(days=lag)
+                        + (pe - ps))
+                    self._place_backward(
+                        p, cap_map, plan_map, alloc, today)
+                    changed = True
+            if not changed:
+                break
+
+        # group rows by their root order need — hierarchy inside each
+        # family block (deepest child first, finished product last)
+        # regardless of the adjusted planning dates
         root_of = {}
         for n in needs:
             cur = n["line_key"]
@@ -458,6 +489,7 @@ class MrpLtpNeed(models.AbstractModel):
         for need in sorted(needs, key=lambda n: (
                 by_key.get(root_of[n["line_key"]], n)["deadline"],
                 root_of[n["line_key"]],
+                -(n.get("depth") or 0),
                 n["deadline"], n["pid"])):
             row = self._row_payload(
                 need, prod_map[need["pid"]], schedules, wc_name, today)
