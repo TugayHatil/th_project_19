@@ -537,7 +537,7 @@ class MrpLtpNeed(models.AbstractModel):
         ops = [{"wc_id": w, "per_unit": h, "seq": i * 10,
                 "op_id": 0, "name": ""}
                for i, (w, h) in enumerate(need["ops"])]
-        windows = self._place_ops_backward(
+        windows = self._place_ops_forward(
             dict(need, ops=ops), cap_map, plan_map, alloc, today)
         starts = [fields.Date.to_date(w["start"])
                   for w in windows.values()]
@@ -823,7 +823,7 @@ class MrpLtpNeed(models.AbstractModel):
                     need["deadline"],
                     min(ps) - timedelta(days=lag)
                     + timedelta(days=span_est))
-            windows = self._place_ops_backward(
+            windows = self._place_ops_forward(
                 need, cap_map, plan_map, alloc, today)
             if windows:
                 placed_start[need["line_key"]] = min(
@@ -1063,6 +1063,55 @@ class MrpLtpNeed(models.AbstractModel):
                 "shortage": short,
             }
             cursor = start_day
+        return windows
+
+    @api.model
+    def _place_ops_forward(self, need, cap_map, plan_map, alloc, today):
+        """Forward-schedule one need's ops — {op_index: {start, end,
+        shortage}}. Ops run in BoM order from the need's earliest date;
+        the deadline only flags lateness, never delays the start. This
+        is the ASAP mode the planner expects: chains cascade forward
+        and a child may begin the same day its parent's first unit is
+        ready."""
+        horizon = today + timedelta(days=730)
+        cursor = need.get("earliest") or today
+        windows = {}
+        cap = max(need.get("eff_cap") or 1.0, 1.0)
+        for idx, op in enumerate(need["ops"]):
+            wc_id = op["wc_id"]
+            remaining = need["qty"] * op["per_unit"] / cap
+            if remaining <= 0:
+                continue
+            start_day = end_day = None
+            short = False
+            day = max(cursor, today)
+            while remaining > 1e-9:
+                if day > horizon:
+                    short = True
+                    break
+                free = (cap_map.get(wc_id, {}).get(day, 0.0)
+                        - plan_map.get(wc_id, {}).get(day, 0.0)
+                        - alloc[(wc_id, day)])
+                if free > 1e-9:
+                    take = min(free, remaining)
+                    alloc[(wc_id, day)] += take
+                    remaining -= take
+                    end_day = day
+                    if start_day is None:
+                        start_day = day
+                day += timedelta(days=1)
+            if end_day is None:
+                continue
+            if end_day > need["deadline"]:
+                short = True
+            windows[idx] = {
+                "start": datetime.combine(start_day, datetime.min.time()),
+                "end": datetime.combine(
+                    end_day, datetime.min.time()) + timedelta(days=1)
+                    - timedelta(seconds=1),
+                "shortage": short,
+            }
+            cursor = end_day
         return windows
 
     # ---- draft/confirm workflow (BRD §7/§9) ----------------------------
