@@ -17,6 +17,9 @@ from pytz import timezone, utc
 OPEN_STATES = ("confirmed", "assigned", "partially_available")
 # Request states that still reserve the need against a live request.
 ACTIVE_REQUEST_STATES = ("draft", "to_approve", "approved", "in_progress", "done")
+# Request states counted in the PR column — unapproved requests are not
+# committed demand yet, so they show there only once approved
+APPROVED_REQUEST_STATES = ("approved", "in_progress", "done")
 
 # ------------------------------------------------------------------
 # plan result cache — the whole computation is pure data (no recordsets)
@@ -753,8 +756,8 @@ class MrpPurchaseNeed(models.AbstractModel):
         self._load_ctx(flow_moves, ctx)
         _mark("flow+load_ctx")
         onhand = self._get_onhand(products, scope_ids)
-        requested, req_docs, pend, conv = self._get_requested_quantities(
-            need_moves, ctx)
+        requested, req_docs, pend, conv, appr = \
+            self._get_requested_quantities(need_moves, ctx)
         exc_map = self._get_reschedule_log(need_moves)
         _mark("onhand+requested")
         buy_ids = self._get_buy_route_ids()
@@ -851,7 +854,7 @@ class MrpPurchaseNeed(models.AbstractModel):
         vmips, vmip_trunc = self._ensure_virtual_mips(
             all_vevents, max_create=mip_cap)
         demand = {ev["key"]: ev["qty"] for ev in all_vevents}
-        vreq, _vdocs, vpend, vconv = self._get_virtual_requested(
+        vreq, _vdocs, vpend, vconv, vappr = self._get_virtual_requested(
             demand, vmips, ctx)
         _mark("virtual_mips")
 
@@ -863,7 +866,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                 continue
             data = self._finalize_product(
                 pid, walk, ctx, mip_by_move, requested, req_docs, pend,
-                conv, vmips, vreq, vpend, vconv, exc_map,
+                conv, appr, vmips, vreq, vpend, vconv, vappr, exc_map,
                 lead_info[pid], today, route_sets)
             if data["lines"]:
                 plan[pid] = data
@@ -1400,8 +1403,8 @@ class MrpPurchaseNeed(models.AbstractModel):
 
     @api.model
     def _finalize_product(self, pid, walk, ctx, mip_by_move, requested,
-                          req_docs, pend, conv, vmips, vreq, vpend, vconv,
-                          exc_map, lead, today, route_sets):
+                          req_docs, pend, conv, appr, vmips, vreq, vpend,
+                          vconv, vappr, exc_map, lead, today, route_sets):
         """Turn a phase-A walk into the screen payload for one product."""
         prod = ctx["prod"][pid]
         detail = walk["detail"]
@@ -1550,7 +1553,8 @@ class MrpPurchaseNeed(models.AbstractModel):
                     "po_qty": sum(c["qty"] for c in cov
                                   if c["kind"] == "po"),
                     "pr_qty": max(
-                        0.0, req_qty - vconv.get(entry["key"], 0.0)),
+                        0.0, vappr.get(entry["key"], 0.0)
+                        - vconv.get(entry["key"], 0.0)),
                     "coverage": cov,
                     "pull_covered": suggest_map[entry["key"]],
                     "uom": prod["uom_name"],
@@ -1661,7 +1665,8 @@ class MrpPurchaseNeed(models.AbstractModel):
                 # request qty not yet converted to an order (PR)
                 "po_qty": sum(c["qty"] for c in cov
                               if c["kind"] == "po"),
-                "pr_qty": max(0.0, req_qty - conv.get(mv["id"], 0.0)),
+                "pr_qty": max(0.0, appr.get(mv["id"], 0.0)
+                              - conv.get(mv["id"], 0.0)),
                 "coverage": cov,
                 "pull_covered": suggest_map[mv["id"]],
                 "uom": prod["uom_name"],
@@ -2226,10 +2231,10 @@ class MrpPurchaseNeed(models.AbstractModel):
     @api.model
     def _get_virtual_requested(self, demand, vmips, ctx):
         """({key: requested qty}, {key: doc labels}, {key: pending docs},
-            {key: ordered qty})
+            {key: ordered qty}, {key: approved request qty})
         for virtual need keys linked through need_mip_ids."""
         if not vmips:
-            return {}, {}, {}, {}
+            return {}, {}, {}, {}, {}
         lines = self.env["purchase.request.line"].sudo().search([
             ("need_mip_ids", "in",
              [info["id"] for info in vmips.values()]),
@@ -2242,6 +2247,7 @@ class MrpPurchaseNeed(models.AbstractModel):
         docs = defaultdict(set)
         pend = defaultdict(list)
         conv = defaultdict(float)
+        appr = defaultdict(float)
         for rl in lines:
             mips = [mip_by_id[i] for i in rl.need_mip_ids.ids
                     if i in mip_by_id]
@@ -2260,6 +2266,8 @@ class MrpPurchaseNeed(models.AbstractModel):
                 take = min(demand.get(mip.key, 0.0), remaining)
                 takes.append((mip, take))
                 alloc[mip.key] += take
+                if rl.request_state in APPROVED_REQUEST_STATES:
+                    appr[mip.key] += take
                 remaining -= take
                 last_key = mip.key
             if remaining > 0.0 and last_key is not None:
@@ -2337,7 +2345,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                     last_mip = mip
                 if left > 0.0 and last_mip is not None:
                     conv[last_mip.key] += left
-        return dict(alloc), dict(docs), dict(pend), dict(conv)
+        return dict(alloc), dict(docs), dict(pend), dict(conv), dict(appr)
 
     # ------------------------------------------------------------------
     # data sources
@@ -2470,7 +2478,7 @@ class MrpPurchaseNeed(models.AbstractModel):
     def _get_requested_quantities(self, need_moves, ctx):
         """({move_id: requested qty}, {move_id: doc-type labels},
             {move_id: [pending doc entries]},
-            {move_id: ordered qty}).
+            {move_id: ordered qty}, {move_id: approved request qty}).
 
         A merged request line is attributed to its need moves in
         need-date order — earliest needs are considered served first,
@@ -2492,6 +2500,7 @@ class MrpPurchaseNeed(models.AbstractModel):
         docs = defaultdict(set)
         pend = defaultdict(list)
         conv = defaultdict(float)
+        appr = defaultdict(float)
         for rl in lines:
             mids = [i for i in rl.need_move_ids.ids if i in move_data]
             mids.sort(key=lambda i: (
@@ -2513,6 +2522,8 @@ class MrpPurchaseNeed(models.AbstractModel):
                 take = min(open_need, remaining)
                 takes.append((mid, take))
                 alloc[mid] += take
+                if rl.request_state in APPROVED_REQUEST_STATES:
+                    appr[mid] += take
                 remaining -= take
                 last = mid
             if remaining > 0.0 and last is not None:
@@ -2600,7 +2611,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                     last_mid = mid
                 if left > 0.0 and last_mid is not None:
                     conv[last_mid] += left
-        return dict(alloc), dict(docs), dict(pend), dict(conv)
+        return dict(alloc), dict(docs), dict(pend), dict(conv), dict(appr)
 
     @api.model
     def _request_doc_labels(self, request_line):

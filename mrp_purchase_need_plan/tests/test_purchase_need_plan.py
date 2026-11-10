@@ -466,7 +466,7 @@ class TestPurchaseNeedPlan(TransactionCase):
 
     def test_15b_po_pr_columns(self):
         """PO column = confirmed-order supply still in transit; PR =
-        request qty not yet converted to an approved order."""
+        approved-request qty not yet converted to an approved order."""
         d = fields.Date.today() + timedelta(days=30)
         m1 = self._make_mo(self.vida, 400, d)
 
@@ -476,10 +476,16 @@ class TestPurchaseNeedPlan(TransactionCase):
         self.assertAlmostEqual(line["po_qty"], 100.0)
         self.assertAlmostEqual(line["pr_qty"], 0.0)
 
-        # the rest goes to a purchase request: until it turns into an
-        # approved order the amount shows under PR
+        # the rest goes to a purchase request: while it is still
+        # unapproved nothing shows under PR
         res = self.Need.create_purchase_request(move_ids=[m1.id])
         request = self.env["purchase.request"].browse(res["requests"][0]["id"])
+        line = self._lines(self.vida)[0]
+        self.assertAlmostEqual(line["pr_qty"], 0.0)
+        self.assertAlmostEqual(line["po_qty"], 100.0)
+
+        # approval turns the open request amount into PR
+        request.button_approve()
         line = self._lines(self.vida)[0]
         self.assertAlmostEqual(line["pr_qty"], 300.0)
         self.assertAlmostEqual(line["po_qty"], 100.0)
