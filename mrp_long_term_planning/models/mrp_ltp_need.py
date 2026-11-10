@@ -862,6 +862,7 @@ class MrpLtpNeed(models.AbstractModel):
         # family enforcement on drafts: a parent may only start once the
         # child's first unit exists — ops of violating parents shift
         # later; rounds cascade the shift up the chain
+        by_key = {n["line_key"]: n for n in needs}
         groups = {}
         for o in Op.search_read(
                 [("company_id", "=", self.env.company.id),
@@ -879,13 +880,17 @@ class MrpLtpNeed(models.AbstractModel):
                     continue
                 unit_h = (sum(o["per_unit"] for o in need["ops"])
                           / (need.get("eff_cap") or 1.0))
-                lead = timedelta(hours=unit_h)
                 c_start = min(fields.Datetime.to_datetime(
                     r["planned_start"]) for r in rows)
                 for pk in need.get("parent_keys") or []:
                     prows = groups.get(pk)
-                    if not prows:
+                    pneed = by_key.get(pk)
+                    if not prows or not pneed or not pneed["qty"]:
                         continue
+                    # a parent unit consumes qty_child/qty_parent child
+                    # units — the first parent unit needs that many
+                    units = need["qty"] / pneed["qty"]
+                    lead = timedelta(hours=units * unit_h)
                     p_start = min(fields.Datetime.to_datetime(
                         r["planned_start"]) for r in prows)
                     if p_start >= c_start + lead:
