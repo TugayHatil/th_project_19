@@ -429,7 +429,25 @@ class MrpLtpNeed(models.AbstractModel):
         q = (query or "").strip().lower()
         wc_filter = set(int(i) for i in workcenter_ids) \
             if workcenter_ids else set()
-        for need in sorted(needs, key=lambda n: (n["deadline"], n["pid"])):
+        # group rows by their root order need, EDD inside each family —
+        # otherwise exploded deadlines scatter one order's rows
+        root_of = {}
+        for n in needs:
+            cur = n["line_key"]
+            seen = set()
+            while True:
+                par = by_key.get(cur)
+                ups = [p for p in (par.get("parent_keys") or [])
+                       if p in by_key] if par else []
+                if not ups or cur in seen:
+                    break
+                seen.add(cur)
+                cur = ups[0]
+            root_of[n["line_key"]] = cur
+        for need in sorted(needs, key=lambda n: (
+                by_key.get(root_of[n["line_key"]], n)["deadline"],
+                root_of[n["line_key"]],
+                n["deadline"], n["pid"])):
             row = self._row_payload(
                 need, prod_map[need["pid"]], schedules, wc_name, today)
             if q and q not in (row["name"] or "").lower() \
