@@ -531,66 +531,22 @@ class MrpLtpNeed(models.AbstractModel):
 
     @api.model
     def _place_backward(self, need, cap_map, plan_map, alloc, today):
-        """Backward-schedule one need's ops through free daily capacity.
-
-        Ops run in reverse BoM order; each op ends where the next begins.
-        What does not fit before today spills forward past the deadline —
-        the row then flags overload. A bounded horizon keeps workcenters
-        with zero capacity from looping forever.
-        """
-        horizon = today + timedelta(days=730)
-        cursor = need["deadline"]
-        placed_start = None
-        placed_end = None
-        unplaced = False
-        cap = max(need.get("eff_cap") or need.get("capacity") or 1.0,
-                  1.0)
-        for wc_id, per_unit in reversed(need["ops"]):
-            remaining = need["qty"] * per_unit / cap
-            if remaining <= 0:
-                continue
-            day = cursor
-            # backward: consume free capacity while the day is plannable
-            while remaining > 1e-9 and day >= today:
-                free = (cap_map.get(wc_id, {}).get(day, 0.0)
-                        - plan_map.get(wc_id, {}).get(day, 0.0)
-                        - alloc[(wc_id, day)])
-                if free > 1e-9:
-                    take = min(free, remaining)
-                    alloc[(wc_id, day)] += take
-                    remaining -= take
-                    placed_start = day
-                    if placed_end is None:
-                        placed_end = day
-                day -= timedelta(days=1)
-            # never schedule into the past: the forward pass starts at
-            # today at the earliest
-            if day < today:
-                day = today - timedelta(days=1)
-            # forward: leftover could not be produced in time — it lands
-            # after the deadline and the row flags overload
-            while remaining > 1e-9:
-                day += timedelta(days=1)
-                if day > horizon:
-                    unplaced = True
-                    break
-                free = (cap_map.get(wc_id, {}).get(day, 0.0)
-                        - plan_map.get(wc_id, {}).get(day, 0.0)
-                        - alloc[(wc_id, day)])
-                if free > 1e-9:
-                    take = min(free, remaining)
-                    alloc[(wc_id, day)] += take
-                    remaining -= take
-                    placed_end = day
-                    if placed_start is None:
-                        placed_start = day
-            if placed_start:
-                cursor = placed_start
-            elif not unplaced and day > cursor:
-                cursor = day
-        need["sug_start"] = placed_start
-        need["sug_end"] = placed_end
-        need["unplaced"] = unplaced
+        """Need window = aggregate of the same op-level placement the
+        APS draft uses — ONE engine, so the suggested window and the
+        stored plan can never diverge."""
+        ops = [{"wc_id": w, "per_unit": h, "seq": i * 10,
+                "op_id": 0, "name": ""}
+               for i, (w, h) in enumerate(need["ops"])]
+        windows = self._place_ops_backward(
+            dict(need, ops=ops), cap_map, plan_map, alloc, today)
+        starts = [fields.Date.to_date(w["start"])
+                  for w in windows.values()]
+        ends = [fields.Date.to_date(w["end"])
+                for w in windows.values()]
+        need["sug_start"] = min(starts) if starts else None
+        need["sug_end"] = max(ends) if ends else None
+        need["unplaced"] = any(
+            w.get("shortage") for w in windows.values())
 
     @api.model
     def _row_payload(self, need, product, schedules, wc_name, today):
@@ -902,6 +858,55 @@ class MrpLtpNeed(models.AbstractModel):
                     shortage += 1
                 else:
                     planned += 1
+
+        # family enforcement on drafts: a parent may only start once the
+        # child's first unit exists — ops of violating parents shift
+        # later; rounds cascade the shift up the chain
+        groups = {}
+        for o in Op.search_read(
+                [("company_id", "=", self.env.company.id),
+                 ("line_key", "in",
+                  [n["line_key"] for n in needs] or ["-"]),
+                 ("state", "in", ("draft", "shortage"))],
+                ["id", "line_key", "planned_start", "planned_end"]):
+            groups.setdefault(o["line_key"], []).append(o)
+        for _round in range(3):
+            moved = False
+            for need in sorted(needs, key=lambda n: (
+                    n.get("depth", 0), n["deadline"])):
+                rows = groups.get(need["line_key"])
+                if not rows:
+                    continue
+                unit = (sum(o["per_unit"] for o in need["ops"])
+                        / (need.get("eff_cap") or 1.0))
+                lag = int(unit / 24.0)
+                c_start = min(fields.Date.to_date(r["planned_start"])
+                              for r in rows)
+                for pk in need.get("parent_keys") or []:
+                    prows = groups.get(pk)
+                    if not prows:
+                        continue
+                    p_start = min(fields.Date.to_date(r["planned_start"])
+                                  for r in prows)
+                    if p_start >= c_start + timedelta(days=lag):
+                        continue
+                    delta = c_start + timedelta(days=lag) - p_start
+                    for r in prows:
+                        Op.browse(r["id"]).write({
+                            "planned_start": fields.Datetime.to_datetime(
+                                r["planned_start"]) + delta,
+                            "planned_end": fields.Datetime.to_datetime(
+                                r["planned_end"]) + delta,
+                        })
+                        r["planned_start"] = fields.Date.to_string(
+                            fields.Date.to_date(
+                                r["planned_start"]) + delta)
+                        r["planned_end"] = fields.Date.to_string(
+                            fields.Date.to_date(
+                                r["planned_end"]) + delta)
+                    moved = True
+            if not moved:
+                break
         return {
             "needs": len(needs),
             "planned": planned,
