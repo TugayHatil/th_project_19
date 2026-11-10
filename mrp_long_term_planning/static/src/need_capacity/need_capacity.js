@@ -415,9 +415,10 @@ export class NeedCapacityPlanning extends Component {
                     barWidth: Math.max((eH - sH) / 24 * 100, 0.8),
                     barText: sH + ":00 → " + eH + ":00"});
             }
-            const startIdx = s ? Math.max(0, Math.round(
+            // whatever the hour, start/end days render as full columns
+            const startIdx = s ? Math.max(0, Math.floor(
                 (new Date(s) - new Date(cols[0].iso)) / DAY)) : 0;
-            const endIdx = e ? Math.max(startIdx, Math.round(
+            const endIdx = e ? Math.max(startIdx, Math.floor(
                 (new Date(e) - new Date(cols[0].iso)) / DAY)) : startIdx;
             return Object.assign({}, f, {
                 barLeft: startIdx / N * 100,
