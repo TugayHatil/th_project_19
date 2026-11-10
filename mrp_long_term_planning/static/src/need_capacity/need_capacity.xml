@@ -249,10 +249,18 @@
                 </div>
                 <div class="card-body py-2">
                     <div class="d-flex o_nc_fhead">
-                        <div class="o_nc_flabel"/>
+                        <div class="o_nc_flabel d-flex align-items-center">
+                            <t t-if="state.familyView == 'day'">
+                                <a href="#" class="o_nc_fnav"
+                                   t-on-click.prevent="() => this._shiftFamilyDay(-1)">&#9664;</a>
+                                <span class="mx-1 small" t-esc="state.familyDay"/>
+                                <a href="#" class="o_nc_fnav"
+                                   t-on-click.prevent="() => this._shiftFamilyDay(1)">&#9654;</a>
+                            </t>
+                        </div>
                         <div class="o_nc_ftrack flex-grow-1 d-flex">
                             <t t-foreach="state.familyCols" t-as="c" t-key="c_index">
-                                <div t-attf-class="o_nc_fcol {{c.wknd ? 'o_nc_fcol_we' : ''}} {{(c_index % (state.familyView == 'day' ? 3 : 2)) == 0 ? '' : 'o_nc_fcol_sml'}}"
+                                <div t-attf-class="o_nc_fcol {{c.wknd ? 'o_nc_fcol_we' : ''}}"
                                      t-esc="c.label"/>
                             </t>
                         </div>

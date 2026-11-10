@@ -381,7 +381,10 @@ export class NeedCapacityPlanning extends Component {
         this.state.familyRows = fam.map((f) => {
             const [s, e] = range(f);
             if (this.state.familyView === "day") {
-                const D = cols.length ? mn.slice(0, 10) : "";
+                const D = this.state.familyDay || mn.slice(0, 10);
+                if (!this.state.familyDay) {
+                    this.state.familyDay = D;
+                }
                 let sH = null, eH = null;
                 for (const o of this.state.allOps || []) {
                     if (o.line_key !== f.key || !o.planned_start) {
@@ -427,6 +430,20 @@ export class NeedCapacityPlanning extends Component {
 
     setFamilyView(v) {
         this.state.familyView = v;
+        if (this.state.familySel) {
+            this._familyOf(this.state.familySel);
+        }
+    }
+
+    _shiftFamilyDay(delta) {
+        if (!this.state.familyDay) {
+            return;
+        }
+        const d = new Date(this.state.familyDay + "T00:00:00");
+        d.setDate(d.getDate() + delta);
+        const pad = (n) => String(n).padStart(2, "0");
+        this.state.familyDay =
+            `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
         if (this.state.familySel) {
             this._familyOf(this.state.familySel);
         }
