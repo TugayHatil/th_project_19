@@ -241,6 +241,7 @@ class MrpLtpNeed(models.AbstractModel):
                         "source": ln.get("source") or "",
                         "so_ids": ln.get("so_ids") or [],
                         "so_qty": ln.get("so_qty") or {},
+                        "parent_keys": ln.get("parent_keys") or [],
                     })
             products = self.env["product.product"].browse(
                 {n["pid"] for n in needs})
@@ -377,6 +378,28 @@ class MrpLtpNeed(models.AbstractModel):
                  "qty": so_qty.get(i)}
                 for i in sorted(set(need.get("so_ids") or []))]
 
+        # hierarchy depth — a virtual need indents under the need that
+        # exploded it; keys resolve transitively across BoM levels
+        by_key = {n["line_key"]: n for n in needs}
+        depth_cache = {}
+
+        def depth_of(key, seen=()):
+            if key in depth_cache:
+                return depth_cache[key]
+            n = by_key.get(key)
+            if not n or key in seen:
+                return 0
+            deps = [d for d in
+                    (depth_of(pk, seen + (key,))
+                     for pk in n.get("parent_keys") or [])
+                    if d is not None]
+            depth_cache[key] = (max(deps) + 1) if any(
+                pk in by_key for pk in n.get("parent_keys") or []) else 0
+            return depth_cache[key]
+
+        for need in needs:
+            need["depth"] = depth_of(need["line_key"])
+
         # EDD placement for unconfirmed needs
         for need in sorted(needs, key=lambda n: (n["deadline"], n["pid"])):
             if (need["pid"], need["line_key"]) in schedules:
@@ -499,6 +522,7 @@ class MrpLtpNeed(models.AbstractModel):
             "workcenters": ", ".join(wc_names),
             "req_hours": req_hours,
             "capacity": cap,
+            "depth": need.get("depth") or 0,
             "source_orders": need.get("source_orders") or [],
             "start": fields.Date.to_string(start) if start else False,
             "end": fields.Date.to_string(end) if end else False,

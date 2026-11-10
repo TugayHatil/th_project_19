@@ -595,7 +595,7 @@ class MrpPurchaseNeed(models.AbstractModel):
     # payload schema — bump whenever the serialized plan shape changes;
     # a snapshot written by older code is rejected outright since its
     # missing keys would silently break new frontend features
-    _PLAN_SCHEMA = 12
+    _PLAN_SCHEMA = 13
 
     def _snapshot_name(self, warehouse_id, date_from, date_to, query,
                        include_covered=False):
@@ -1610,6 +1610,8 @@ class MrpPurchaseNeed(models.AbstractModel):
                     "source_type": "ÜP",
                     "so_ids": sorted(entry.get("so_ids") or ()),
                     "so_qty": dict(entry.get("so_qty") or {}),
+                    "parent_keys": sorted(
+                        entry.get("parent_keys") or ()),
                     "onhand": walk["onhand"],
                     "forecast": info["forecast"],
                     "need_qty": entry["qty"],
@@ -2217,6 +2219,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                     "date": ev_date,
                     "qty": 0.0,
                     "parents": set(),
+                    "parent_keys": set(),
                     "so_ids": set(),
                     "so_qty": defaultdict(float),
                     "company_id": company_id,
@@ -2225,6 +2228,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                 })
                 ev["qty"] += qty
                 ev["parents"].add(prod["display_name"])
+                ev["parent_keys"].add(lkey)
                 ev["so_ids"] |= parent_sos
                 for so_, q_ in parent_so_qty.items():
                     ev["so_qty"][so_] += q_ * comp_qty / bom["qty"]

@@ -126,13 +126,11 @@
                         <t t-foreach="state.rows" t-as="row" t-key="row.product_id + '-' + row.key">
                             <tr t-att-class="'o_nc_row' + (row.overload ? ' o_nc_row_late' : '') + (isEditing(row) || rowKey(row) === state.selectedKey ? ' o_nc_row_sel' : '')"
                                 t-on-click="() => this.selectRow(row)">
-                                <td class="o_nc_product">
+                                <td class="o_nc_product"
+                                    t-attf-style="padding-left: {{8 + (row.depth or 0) * 20}}px">
+                                    <i t-if="row.depth > 0"
+                                       class="fa fa-level-up fa-rotate-90 text-muted me-1"/>
                                     <strong t-esc="row.name"/>
-                                    <span t-if="row.code" class="text-muted ms-1"
-                                          t-esc="'[' + row.code + ']'"/>
-                                    <div t-if="row.source"
-                                         class="text-muted o_nc_source"
-                                         t-esc="row.source"/>
                                 </td>
                                 <td class="text-nowrap">
                                     <t t-foreach="row.source_orders" t-as="so" t-key="so.id">
