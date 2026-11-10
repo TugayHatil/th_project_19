@@ -342,7 +342,7 @@ class TestPurchaseNeedPlan(TransactionCase):
         self.assertAlmostEqual(lines[0]["pull_covered"], 100.0)
         self.assertAlmostEqual(lines[1]["uncovered_qty"], 200.0)
         self.assertAlmostEqual(
-            res["group"]["total_uncovered"], 600.0)
+            res["group"]["total_open"], 600.0)
 
         res2 = self.Need.create_purchase_request([self.vida.id])
         request = self.env["purchase.request"].browse(res2["requests"][0]["id"])
@@ -470,11 +470,14 @@ class TestPurchaseNeedPlan(TransactionCase):
         d = fields.Date.today() + timedelta(days=30)
         m1 = self._make_mo(self.vida, 400, d)
 
-        # a confirmed PO receipt covers part of the need
+        # a confirmed PO receipt covers part of the need — it shows
+        # under PO and is pulled out of Karşılanan
         self._confirm_po(self.vida, 100, d - timedelta(days=5))
         line = self._lines(self.vida)[0]
         self.assertAlmostEqual(line["po_qty"], 100.0)
+        self.assertAlmostEqual(line["covered_qty"], 0.0)
         self.assertAlmostEqual(line["pr_qty"], 0.0)
+        self.assertAlmostEqual(line["open_qty"], 300.0)
 
         # the rest goes to a purchase request — over-requested by 50 on
         # purpose: while it is still unapproved nothing shows under PR
@@ -485,12 +488,14 @@ class TestPurchaseNeedPlan(TransactionCase):
         self.assertAlmostEqual(line["pr_qty"], 0.0)
         self.assertAlmostEqual(line["po_qty"], 100.0)
 
-        # approval turns the open request amount into PR — including the
-        # over-requested surplus beyond the move's open qty
+        # approval turns the open request amount into PR — capped at
+        # the row's own open amount, the 50 surplus flows to later rows
+        # (none exist here, so it simply does not show)
         request.button_approve()
         line = self._lines(self.vida)[0]
-        self.assertAlmostEqual(line["pr_qty"], 350.0)
+        self.assertAlmostEqual(line["pr_qty"], 300.0)
         self.assertAlmostEqual(line["po_qty"], 100.0)
+        self.assertAlmostEqual(line["open_qty"], 0.0)
 
         # converting the request line into a confirmed order moves the
         # qty from PR to PO (still in transit, not yet received)
@@ -510,8 +515,9 @@ class TestPurchaseNeedPlan(TransactionCase):
             k: v for k, v in vals.items()
             if k in Alloc._fields and not Alloc._fields[k].compute})
         line = self._lines(self.vida)[0]
-        self.assertAlmostEqual(line["pr_qty"], 50.0)
+        self.assertAlmostEqual(line["pr_qty"], 0.0)
         self.assertAlmostEqual(line["po_qty"], 400.0)
+        self.assertAlmostEqual(line["open_qty"], 0.0)
         self.assertAlmostEqual(line["uncovered_qty"], 0.0)
 
     def test_11b_no_suggestion_when_po_on_time(self):

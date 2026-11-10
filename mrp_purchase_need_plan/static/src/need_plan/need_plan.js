@@ -1001,7 +1001,7 @@ export class NeedPlan extends Component {
         if (group.has_late) {
             cls += " o_mnp_late";
         }
-        if (group.total_uncovered <= 0) {
+        if (group.total_open <= 0) {
             cls += " o_mnp_covered";
         }
         return cls;
@@ -1009,7 +1009,7 @@ export class NeedPlan extends Component {
 
     lineClass(line) {
         let cls = "o_mnp_line";
-        if (line.uncovered_qty <= 0) {
+        if (line.open_qty <= 0) {
             cls += " o_mnp_covered";
         }
         return cls;
