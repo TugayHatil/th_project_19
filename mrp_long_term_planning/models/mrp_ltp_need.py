@@ -238,6 +238,7 @@ class MrpLtpNeed(models.AbstractModel):
                         "pid": pid,
                         "line_key": ln["key"],
                         "qty": qty,
+                        "need_date": fields.Date.to_date(ln["need_date"]),
                         "deadline": fields.Date.to_date(ln["need_date"]),
                         "source": ln.get("source") or "",
                         "so_ids": ln.get("so_ids") or [],
@@ -408,8 +409,9 @@ class MrpLtpNeed(models.AbstractModel):
             if (need["pid"], need["line_key"]) in schedules:
                 continue
             self._place_backward(need, cap_map, plan_map, alloc, today)
-            # overlap: the child may finish during the parent's run but
-            # must start ≥ t1 (one unit through its op chain) earlier
+            # overlap vs each placed parent: the child ends inside the
+            # parent's window (end ≤ parent end) and starts ≥ t1 before
+            # the parent's start so the first unit is ready in time
             if need.get("sug_start"):
                 unit = sum(h for _w, h in need["ops"]) / (
                     need.get("eff_cap") or 1.0)
@@ -417,10 +419,19 @@ class MrpLtpNeed(models.AbstractModel):
                 for pk in need.get("parent_keys") or []:
                     p = by_key.get(pk)
                     ps = p and p.get("sug_start")
-                    if ps and need["sug_start"] \
-                            > ps - timedelta(days=lag):
+                    pe = p and p.get("sug_end")
+                    if not (ps and pe):
+                        continue
+                    if need["sug_end"] > pe:
+                        need["deadline"] = pe
+                        self._place_backward(
+                            need, cap_map, plan_map, alloc, today)
+                    if need["sug_start"] \
+                            and need["sug_start"] > ps - timedelta(
+                                days=lag):
                         span = need["sug_end"] - need["sug_start"]
-                        need["deadline"] = (
+                        need["deadline"] = min(
+                            need["deadline"],
                             ps - timedelta(days=lag) + span)
                         self._place_backward(
                             need, cap_map, plan_map, alloc, today)
@@ -553,7 +564,8 @@ class MrpLtpNeed(models.AbstractModel):
             "source": need["source"],
             "period": "%d-%02d" % (
                 need["deadline"].year, need["deadline"].month),
-            "deadline": fields.Date.to_string(need["deadline"]),
+            "deadline": fields.Date.to_string(
+                need.get("need_date") or need["deadline"]),
             "qty": need["qty"],
             "wc_ids": wc_ids,
             "workcenters": ", ".join(wc_names),
