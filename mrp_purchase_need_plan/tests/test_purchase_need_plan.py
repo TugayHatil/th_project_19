@@ -476,18 +476,20 @@ class TestPurchaseNeedPlan(TransactionCase):
         self.assertAlmostEqual(line["po_qty"], 100.0)
         self.assertAlmostEqual(line["pr_qty"], 0.0)
 
-        # the rest goes to a purchase request: while it is still
-        # unapproved nothing shows under PR
-        res = self.Need.create_purchase_request(move_ids=[m1.id])
+        # the rest goes to a purchase request — over-requested by 50 on
+        # purpose: while it is still unapproved nothing shows under PR
+        res = self.Need.create_purchase_request(
+            move_quantities={str(m1.id): 350.0})
         request = self.env["purchase.request"].browse(res["requests"][0]["id"])
         line = self._lines(self.vida)[0]
         self.assertAlmostEqual(line["pr_qty"], 0.0)
         self.assertAlmostEqual(line["po_qty"], 100.0)
 
-        # approval turns the open request amount into PR
+        # approval turns the open request amount into PR — including the
+        # over-requested surplus beyond the move's open qty
         request.button_approve()
         line = self._lines(self.vida)[0]
-        self.assertAlmostEqual(line["pr_qty"], 300.0)
+        self.assertAlmostEqual(line["pr_qty"], 350.0)
         self.assertAlmostEqual(line["po_qty"], 100.0)
 
         # converting the request line into a confirmed order moves the
@@ -508,7 +510,7 @@ class TestPurchaseNeedPlan(TransactionCase):
             k: v for k, v in vals.items()
             if k in Alloc._fields and not Alloc._fields[k].compute})
         line = self._lines(self.vida)[0]
-        self.assertAlmostEqual(line["pr_qty"], 0.0)
+        self.assertAlmostEqual(line["pr_qty"], 50.0)
         self.assertAlmostEqual(line["po_qty"], 400.0)
         self.assertAlmostEqual(line["uncovered_qty"], 0.0)
 

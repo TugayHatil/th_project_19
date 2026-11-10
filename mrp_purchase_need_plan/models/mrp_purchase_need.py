@@ -2272,6 +2272,8 @@ class MrpPurchaseNeed(models.AbstractModel):
                 last_key = mip.key
             if remaining > 0.0 and last_key is not None:
                 alloc[last_key] += remaining
+                if rl.request_state in APPROVED_REQUEST_STATES:
+                    appr[last_key] += remaining
                 mip, take = takes[-1]
                 takes[-1] = (mip, take + remaining)
             req_label = self.env._("Onaysız Talep") \
@@ -2530,6 +2532,8 @@ class MrpPurchaseNeed(models.AbstractModel):
                 # planner asked for more than the raw need — attribute
                 # the surplus to the latest need so sums stay truthful
                 alloc[last] += remaining
+                if rl.request_state in APPROVED_REQUEST_STATES:
+                    appr[last] += remaining
                 mid, take = takes[-1]
                 takes[-1] = (mid, take + remaining)
             req_label = self.env._("Onaysız Talep") \
