@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+from collections import defaultdict
+from datetime import timedelta
+
 from odoo import fields
 from odoo.exceptions import UserError
 from odoo.fields import Command
@@ -292,3 +295,67 @@ class TestLongTermPlanning(TransactionCase):
         self.assertEqual(crow["cells"][0]["a"], 0)
         self.assertEqual(crow["cells"][0]["b"], 120)
         self.assertEqual(crow["cells"][0]["delta"], 120)
+
+    def test_90_aps_operation_plan(self):
+        """BRD §11 tests 1/2/6 — per-op backward placement, order kept,
+        shortage flagged, draft→confirm→lock→move workflow."""
+        Need = self.env["mrp.ltp.need"]
+        Op = self.env["mrp.ltp.need.operation"]
+        today = fields.Date.today()
+
+        wc1 = self.env["mrp.workcenter"].create({"name": "APS Cut"})
+        wc2 = self.env["mrp.workcenter"].create({"name": "APS Assy"})
+        need = {
+            "pid": self.p_flagged.id, "line_key": "mv:999999",
+            "qty": 10.0, "deadline": today + timedelta(days=10),
+        }
+        ops = [
+            {"op_id": 0, "name": "Cut", "wc_id": wc1.id,
+             "per_unit": 0.1, "seq": 10},
+            {"op_id": 0, "name": "Assemble", "wc_id": wc2.id,
+             "per_unit": 0.1, "seq": 20},
+        ]
+        need["ops"] = ops
+        # 8 h/day on both centers — 1h each op fits easily
+        cap = {w.id: {today + timedelta(days=i): 8.0
+                      for i in range(15)} for w in (wc1, wc2)}
+        windows = Need._place_ops_backward(
+            need, cap, defaultdict(float), defaultdict(float), today)
+        self.assertIn(0, windows)
+        self.assertIn(1, windows)
+        # op 2 ends at/under deadline and never before op 1 ends
+        self.assertLessEqual(windows[1]["end"].date(),
+                             need["deadline"])
+        self.assertLessEqual(windows[0]["end"], windows[1]["start"])
+        self.assertFalse(windows[0]["shortage"])
+
+        # a need whose ops exceed the horizon's capacity flags shortage
+        need2 = dict(need, qty=10000.0)
+        w2 = Need._place_ops_backward(
+            need2, cap, defaultdict(float), defaultdict(float), today)
+        self.assertTrue(w2[0]["shortage"])
+
+        # draft rows -> confirm -> lock -> move
+        op1 = Op.create({
+            "product_id": self.p_flagged.id, "line_key": "mv:1",
+            "name": "Cut", "workcenter_id": wc1.id, "qty": 10,
+            "planned_start": fields.Datetime.now(),
+            "planned_end": fields.Datetime.now() + timedelta(hours=8)})
+        op2 = Op.create({
+            "product_id": self.p_flagged.id, "line_key": "mv:1",
+            "name": "Assemble", "workcenter_id": wc2.id, "qty": 10,
+            "predecessor_id": op1.id,
+            "planned_start": fields.Datetime.now() + timedelta(hours=9),
+            "planned_end": fields.Datetime.now() + timedelta(hours=17)})
+        res = Need.confirm_operations()
+        self.assertEqual(res["confirmed"], 2)
+        self.assertEqual((op1 | op2).mapped("state"), ["confirmed"] * 2)
+        # moving op1's end past op2's start breaks the chain -> shortage
+        res = Need.move_operation(
+            op1.id, fields.Datetime.now() + timedelta(hours=10))
+        self.assertEqual(res["state"], "shortage")
+        rows = Need.get_operation_rows(
+            product_id=self.p_flagged.id, line_key="mv:1")
+        self.assertEqual(len(rows), 2)
+        Need.set_operation_lock([op2.id], locked=True)
+        self.assertTrue(op2.locked)
