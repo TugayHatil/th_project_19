@@ -250,6 +250,15 @@
                                  t-attf-style="left: {{f.barLeft}}%; width: {{f.barWidth}}%"
                                  t-att-title="f.barStart + ' → ' + f.barEnd"/>
                         </div>
+                        <div class="o_nc_fdate text-muted" t-esc="f.barText"/>
+                    </div>
+                    <div class="d-flex o_nc_faxis">
+                        <div class="o_nc_flabel"/>
+                        <div class="flex-grow-1 d-flex justify-content-between text-muted small">
+                            <span t-esc="state.familyRange.mn"/>
+                            <span t-esc="state.familyRange.mx"/>
+                        </div>
+                        <div class="o_nc_fdate"/>
                     </div>
                 </div>
             </div>

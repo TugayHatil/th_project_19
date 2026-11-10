@@ -39,6 +39,7 @@ export class NeedCapacityPlanning extends Component {
             allOps: [],
             familyRows: [],
             familyRoot: "",
+            familyRange: {},
             gantt: { days: [], wcs: [] },
             planning: false,
         });
@@ -351,13 +352,16 @@ export class NeedCapacityPlanning extends Component {
         }
         const DAY = 86400000;
         const span = Math.max((new Date(mx) - new Date(mn)) / DAY, 1);
+        this.state.familyRange = {mn: mn.slice(5), mx: mx.slice(5)};
         this.state.familyRows = fam.map((f) => {
             const [s, e] = range(f);
             const left = s ? (new Date(s) - new Date(mn)) / DAY / span * 100 : 0;
-            const width = s && e ? Math.max(
-                ((new Date(e) - new Date(s)) / DAY + 1) / span * 100, 1.2) : 0;
-            return Object.assign({}, f,
-                {barLeft: left, barWidth: width, barStart: s, barEnd: e});
+            const width = s && e ? Math.min(Math.max(
+                ((new Date(e) - new Date(s)) / DAY + 1) / span * 100, 1.2),
+                100 - left) : 0;
+            return Object.assign({}, f, {barLeft: left, barWidth: width,
+                barStart: s, barEnd: e,
+                barText: s && e ? s.slice(5) + " → " + e.slice(5) : "—"});
         });
         this.state.familyRoot = row.name;
     }
