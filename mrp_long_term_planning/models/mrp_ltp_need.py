@@ -877,33 +877,31 @@ class MrpLtpNeed(models.AbstractModel):
                 rows = groups.get(need["line_key"])
                 if not rows:
                     continue
-                unit = (sum(o["per_unit"] for o in need["ops"])
-                        / (need.get("eff_cap") or 1.0))
-                lag = int(unit / 24.0)
-                c_start = min(fields.Date.to_date(r["planned_start"])
-                              for r in rows)
+                unit_h = (sum(o["per_unit"] for o in need["ops"])
+                          / (need.get("eff_cap") or 1.0))
+                lead = timedelta(hours=unit_h)
+                c_start = min(fields.Datetime.to_datetime(
+                    r["planned_start"]) for r in rows)
                 for pk in need.get("parent_keys") or []:
                     prows = groups.get(pk)
                     if not prows:
                         continue
-                    p_start = min(fields.Date.to_date(r["planned_start"])
-                                  for r in prows)
-                    if p_start >= c_start + timedelta(days=lag):
+                    p_start = min(fields.Datetime.to_datetime(
+                        r["planned_start"]) for r in prows)
+                    if p_start >= c_start + lead:
                         continue
-                    delta = c_start + timedelta(days=lag) - p_start
+                    delta = c_start + lead - p_start
                     for r in prows:
+                        ns = fields.Datetime.to_datetime(
+                            r["planned_start"]) + delta
+                        ne = fields.Datetime.to_datetime(
+                            r["planned_end"]) + delta
                         Op.browse(r["id"]).write({
-                            "planned_start": fields.Datetime.to_datetime(
-                                r["planned_start"]) + delta,
-                            "planned_end": fields.Datetime.to_datetime(
-                                r["planned_end"]) + delta,
+                            "planned_start": ns,
+                            "planned_end": ne,
                         })
-                        r["planned_start"] = fields.Date.to_string(
-                            fields.Date.to_date(
-                                r["planned_start"]) + delta)
-                        r["planned_end"] = fields.Date.to_string(
-                            fields.Date.to_date(
-                                r["planned_end"]) + delta)
+                        r["planned_start"] = fields.Datetime.to_string(ns)
+                        r["planned_end"] = fields.Datetime.to_string(ne)
                     moved = True
             if not moved:
                 break
