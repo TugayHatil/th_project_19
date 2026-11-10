@@ -6,3 +6,4 @@ from . import mrp_ltp_capacity_factor
 from . import mrp_ltp_capacity
 from . import mrp_ltp_need
 from . import mrp_ltp_need_operation
+from . import mrp_ltp_need_parallel

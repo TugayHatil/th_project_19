@@ -595,7 +595,7 @@ class MrpPurchaseNeed(models.AbstractModel):
     # payload schema — bump whenever the serialized plan shape changes;
     # a snapshot written by older code is rejected outright since its
     # missing keys would silently break new frontend features
-    _PLAN_SCHEMA = 11
+    _PLAN_SCHEMA = 12
 
     def _snapshot_name(self, warehouse_id, date_from, date_to, query,
                        include_covered=False):
@@ -1608,6 +1608,8 @@ class MrpPurchaseNeed(models.AbstractModel):
                     "source": " / ".join(sorted(entry["parents"]))
                         or self.env._("Üretim Planı"),
                     "source_type": "ÜP",
+                    "so_ids": sorted(entry.get("so_ids") or ()),
+                    "so_qty": dict(entry.get("so_qty") or {}),
                     "onhand": walk["onhand"],
                     "forecast": info["forecast"],
                     "need_qty": entry["qty"],
@@ -1663,6 +1665,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                 else:
                     source = mv["origin"] or ctx["pick_name"].get(
                         mv["picking_id"], "")
+            so_id = ctx["sl_order"].get(sl) if sl else False
             need_date = self._local_date(need_dt, ctx)
             delay = line_delay(qty, need_date)
             approve_by = need_date - timedelta(days=approve_days)
@@ -1722,6 +1725,8 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "route": route_abbr,
                 "source": source,
                 "source_type": source_type,
+                "so_ids": [so_id] if so_id else [],
+                "so_qty": {so_id: info["uncovered"]} if so_id else {},
                 "onhand": walk["onhand"],
                 "forecast": info["forecast"],
                 "need_qty": qty,
@@ -2180,6 +2185,18 @@ class MrpPurchaseNeed(models.AbstractModel):
             sch_need = sched.get(lkey)
             prod_date = (sch_need["first"] if sch_need
                          else need_date - timedelta(days=delay_days))
+            # source sale orders travel down the explosion — a virtual
+            # need inherits every order its parents came from
+            if kind == "ev":
+                parent_sos = set(
+                    out[pid][eid].get("so_ids") or ())
+                parent_so_qty = dict(
+                    out[pid][eid].get("so_qty") or {})
+            else:
+                so = ctx["sl_order"].get(entry.get("sale_line_id"))
+                parent_sos = {so} if so else set()
+                parent_so_qty = (
+                    {so: info["uncovered"]} if so else {})
             line_ops = bom.get("line_ops") or [False] * len(bom["lines"])
             for (comp_pid, comp_qty), comp_op in zip(
                     bom["lines"], line_ops):
@@ -2200,12 +2217,17 @@ class MrpPurchaseNeed(models.AbstractModel):
                     "date": ev_date,
                     "qty": 0.0,
                     "parents": set(),
+                    "so_ids": set(),
+                    "so_qty": defaultdict(float),
                     "company_id": company_id,
                     "warehouse_id": wh_id,
                     "location": location,
                 })
                 ev["qty"] += qty
                 ev["parents"].add(prod["display_name"])
+                ev["so_ids"] |= parent_sos
+                for so_, q_ in parent_so_qty.items():
+                    ev["so_qty"][so_] += q_ * comp_qty / bom["qty"]
 
     @api.model
     def _ensure_virtual_mips(self, all_vevents, max_create=None):

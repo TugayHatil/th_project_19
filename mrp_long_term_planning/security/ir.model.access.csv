@@ -13,3 +13,6 @@ access_mrp_ltp_need_sched_readonly,mrp.ltp.need.schedule internal read,model_mrp
 access_mrp_ltp_need_op_stock_user,mrp.ltp.need.operation stock user,model_mrp_ltp_need_operation,stock.group_stock_user,1,1,1,1
 access_mrp_ltp_need_op_mrp_manager,mrp.ltp.need.operation mrp manager,model_mrp_ltp_need_operation,mrp.group_mrp_manager,1,1,1,1
 access_mrp_ltp_need_op_readonly,mrp.ltp.need.operation internal read,model_mrp_ltp_need_operation,base.group_user,1,0,0,0
+access_mrp_ltp_need_par_stock_user,mrp.ltp.need.parallel stock user,model_mrp_ltp_need_parallel,stock.group_stock_user,1,1,1,1
+access_mrp_ltp_need_par_mrp_manager,mrp.ltp.need.parallel mrp manager,model_mrp_ltp_need_parallel,mrp.group_mrp_manager,1,1,1,1
+access_mrp_ltp_need_par_readonly,mrp.ltp.need.parallel internal read,model_mrp_ltp_need_parallel,base.group_user,1,0,0,0

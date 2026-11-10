@@ -109,11 +109,13 @@
                     <thead>
                         <tr>
                             <th>Product</th>
+                            <th>Source Order</th>
                             <th>Period</th>
                             <th>Deadline</th>
                             <th class="o_nc_num">Qty</th>
-                            <th class="o_nc_num">Req. Hours</th>
                             <th>Work Centers</th>
+                            <th class="o_nc_num">Par. Capacity</th>
+                            <th class="o_nc_num">Req. Hours</th>
                             <th>Suggested Window</th>
                             <th>Planned Window</th>
                             <th>Status</th>
@@ -132,13 +134,32 @@
                                          class="text-muted o_nc_source"
                                          t-esc="row.source"/>
                                 </td>
+                                <td class="text-nowrap">
+                                    <t t-foreach="row.source_orders" t-as="so" t-key="so.id">
+                                        <a href="#"
+                                           t-on-click.stop="(ev) => this.openSo(so.id, ev)"
+                                           t-esc="so.name + (so.qty ? ' (' + fmtQty(so.qty) + ')' : '')"/>
+                                        <t t-if="!so_last">, </t>
+                                    </t>
+                                    <t t-if="!row.source_orders.length">
+                                        <span class="text-muted">—</span>
+                                    </t>
+                                </td>
                                 <td class="text-nowrap" t-esc="row.period"/>
                                 <td t-esc="fmtDate(row.deadline)"/>
                                 <td class="o_nc_num"
                                     t-esc="fmtQty(row.qty) + ' ' + row.uom"/>
+                                <td class="o_nc_wc text-muted" t-esc="row.workcenters"/>
+                                <td class="o_nc_num">
+                                    <input type="number" min="1" step="1"
+                                           class="form-control form-control-sm o_nc_cap"
+                                           title="Parallel machines for this need"
+                                           t-att-value="row.capacity"
+                                           t-on-click.stop="() => {}"
+                                           t-on-change="(ev) => this.onNeedCapacity(row, ev)"/>
+                                </td>
                                 <td class="o_nc_num"
                                     t-esc="fmtHours(row.req_hours) + ' h'"/>
-                                <td class="o_nc_wc text-muted" t-esc="row.workcenters"/>
                                 <td class="text-nowrap">
                                     <t t-if="!row.planned &amp;&amp; row.start">
                                         <t t-esc="fmtDate(row.start)"/> → <t t-esc="fmtDate(row.end)"/>

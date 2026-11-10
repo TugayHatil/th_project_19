@@ -44,6 +44,7 @@ class MrpLtpNeedOperation(models.Model):
                        digits="Long-Term Planning Quantity")
     unit_hours = fields.Float("Unit Hours", digits=(16, 4))
     total_hours = fields.Float("Operation Hours", digits=(16, 2))
+    capacity = fields.Integer("Parallel Capacity", default=1)
     planned_start = fields.Datetime("Planned Start", index=True)
     planned_end = fields.Datetime("Planned End", index=True)
     locked = fields.Boolean(

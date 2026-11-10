@@ -239,6 +239,8 @@ class MrpLtpNeed(models.AbstractModel):
                         "qty": qty,
                         "deadline": fields.Date.to_date(ln["need_date"]),
                         "source": ln.get("source") or "",
+                        "so_ids": ln.get("so_ids") or [],
+                        "so_qty": ln.get("so_qty") or {},
                     })
             products = self.env["product.product"].browse(
                 {n["pid"] for n in needs})
@@ -302,6 +304,14 @@ class MrpLtpNeed(models.AbstractModel):
             need["ops"] = ops
             wc_ids.update(wc for wc, _h in ops)
 
+        # planner-chosen parallel capacity per need (schedule wins)
+        Par = self.env["mrp.ltp.need.parallel"].sudo()
+        par_map = {}
+        for p in Par.search_read(
+                [("company_id", "=", self.env.company.id)],
+                ["product_id", "line_key", "capacity"]):
+            par_map[(p["product_id"][0], p["line_key"])] = p["capacity"]
+
         # confirmed planner windows reserve capacity ahead of suggestions
         schedules = {}
         for s in self.env["mrp.ltp.need.schedule"].search_read([
@@ -344,6 +354,29 @@ class MrpLtpNeed(models.AbstractModel):
                     alloc[(wc_id, day)] += (
                         op_hours[wc_id] * hours / wc_tot[wc_id])
 
+        # effective parallel capacity: confirmed window > planner
+        # choice > 1 — divides the op hours a need books
+        for need in needs:
+            key = (need["pid"], need["line_key"])
+            sch = schedules.get(key)
+            need["eff_cap"] = (sch.get("capacity") if sch else 0) \
+                or par_map.get(key) or 1.0
+
+        # source sale orders of every need (BRD §3.2)
+        so_name = {
+            s["id"]: s["name"] for s in self.env["sale.order"].sudo(
+                ).search_read(
+                [("id", "in", list({
+                    i for n in needs for i in n.get("so_ids") or []}))],
+                ["name"])}
+        for need in needs:
+            so_qty = {int(k): v for k, v in
+                      (need.get("so_qty") or {}).items()}
+            need["source_orders"] = [
+                {"id": i, "name": so_name.get(i, "#%s" % i),
+                 "qty": so_qty.get(i)}
+                for i in sorted(set(need.get("so_ids") or []))]
+
         # EDD placement for unconfirmed needs
         for need in sorted(needs, key=lambda n: (n["deadline"], n["pid"])):
             if (need["pid"], need["line_key"]) in schedules:
@@ -382,8 +415,10 @@ class MrpLtpNeed(models.AbstractModel):
         placed_start = None
         placed_end = None
         unplaced = False
+        cap = max(need.get("eff_cap") or need.get("capacity") or 1.0,
+                  1.0)
         for wc_id, per_unit in reversed(need["ops"]):
-            remaining = need["qty"] * per_unit
+            remaining = need["qty"] * per_unit / cap
             if remaining <= 0:
                 continue
             day = cursor
@@ -431,7 +466,8 @@ class MrpLtpNeed(models.AbstractModel):
     def _row_payload(self, need, product, schedules, wc_name, today):
         sch = schedules.get((need["pid"], need["line_key"]))
         wc_ids = [wc for wc, _h in need["ops"]]
-        req_hours = need["qty"] * sum(h for _w, h in need["ops"])
+        cap = need.get("eff_cap") or 1.0
+        req_hours = need["qty"] * sum(h for _w, h in need["ops"]) / cap
         if not need["ops"]:
             # no BoM operations — capacity cannot be attributed; this is
             # a data problem, not an overload
@@ -462,7 +498,8 @@ class MrpLtpNeed(models.AbstractModel):
             "wc_ids": wc_ids,
             "workcenters": ", ".join(wc_names),
             "req_hours": req_hours,
-            "capacity": sch["capacity"] if sch else 1.0,
+            "capacity": cap,
+            "source_orders": need.get("source_orders") or [],
             "start": fields.Date.to_string(start) if start else False,
             "end": fields.Date.to_string(end) if end else False,
             "overload": overload,
@@ -621,6 +658,13 @@ class MrpLtpNeed(models.AbstractModel):
             need["bom_id"] = bom.id if bom else False
             wc_ids.update(o["wc_id"] for o in ops)
 
+        # planner-chosen parallel capacity per need (schedule wins)
+        par_map = {}
+        for p in self.env["mrp.ltp.need.parallel"].sudo().search_read(
+                [("company_id", "=", self.env.company.id)],
+                ["product_id", "line_key", "capacity"]):
+            par_map[(p["product_id"][0], p["line_key"])] = p["capacity"]
+
         # confirmed need windows still reserve capacity first (BRD §6.3)
         schedules = {}
         for s in self.env["mrp.ltp.need.schedule"].sudo().search_read([
@@ -671,6 +715,9 @@ class MrpLtpNeed(models.AbstractModel):
                 continue
             if not need["ops"]:
                 continue  # no BoM operations — nothing to schedule
+            sch = schedules.get((need["pid"], need["line_key"]))
+            need["eff_cap"] = (sch.get("capacity") if sch else 0) \
+                or par_map.get((need["pid"], need["line_key"])) or 1.0
             windows = self._place_ops_backward(
                 need, cap_map, plan_map, alloc, today)
             prev = self.env["mrp.ltp.need.operation"]
@@ -691,7 +738,9 @@ class MrpLtpNeed(models.AbstractModel):
                     "workcenter_id": op["wc_id"],
                     "qty": need["qty"],
                     "unit_hours": op["per_unit"],
-                    "total_hours": need["qty"] * op["per_unit"],
+                    "total_hours": need["qty"] * op["per_unit"]
+                                   / need["eff_cap"],
+                    "capacity": int(need["eff_cap"]),
                     "planned_start": win["start"],
                     "planned_end": win["end"],
                     "state": "shortage" if win["shortage"] else "draft",
@@ -705,6 +754,65 @@ class MrpLtpNeed(models.AbstractModel):
             "planned": planned,
             "shortage": shortage,
         }
+
+    @api.model
+    def set_need_capacity(self, product_id, line_key, capacity,
+                          warehouse_id=False):
+        """Planner chooses how many machines run this need in parallel
+        (BRD §3.1/§5). Validated against the workcenters' parallel
+        resources — a need cannot book more machines than its ops'
+        workcenters provide."""
+        product_id = int(product_id)
+        line_key = str(line_key or "")
+        try:
+            capacity = int(capacity)
+        except (TypeError, ValueError):
+            capacity = 0
+        if capacity < 1:
+            raise UserError(_(
+                "Parallel capacity must be a positive integer."))
+        needs, _products = self._collect_needs()
+        need = next(
+            (n for n in needs
+             if n["pid"] == product_id and n["line_key"] == line_key),
+            None)
+        if need is None:
+            raise UserError(_("Need line not found."))
+        bom = self.env["mrp.bom"]._bom_find(
+            self.env["product.product"].browse(product_id))
+        bom = bom.get(self.env["product.product"].browse(product_id)) \
+            if bom else False
+        wc_ids = [op.workcenter_id.id for op in
+                  (bom.operation_ids if bom else self.env[
+                      "mrp.routing.workcenter"])
+                  if op.workcenter_id and op.time_cycle]
+        if wc_ids:
+            wcs = self.env["mrp.workcenter"].browse(wc_ids)
+            available = min(
+                max(wc.capacity_ids.mapped("capacity") or [1.0])
+                for wc in wcs)
+            if capacity > available:
+                raise UserError(_(
+                    "Only %(avail)s parallel resource(s) available on "
+                    "the need's workcenters — %(cap)s requested.",
+                    avail=int(available), cap=capacity))
+        Par = self.env["mrp.ltp.need.parallel"].sudo()
+        rec = Par.search([
+            ("product_id", "=", product_id),
+            ("line_key", "=", line_key),
+            ("warehouse_id", "=", warehouse_id or False),
+            ("company_id", "=", self.env.company.id),
+        ], limit=1)
+        if rec:
+            rec.capacity = capacity
+        else:
+            Par.create({
+                "product_id": product_id,
+                "line_key": line_key,
+                "capacity": capacity,
+                "warehouse_id": warehouse_id or False,
+            })
+        return {"ok": True, "capacity": capacity}
 
     @api.model
     def _reserve_confirmed_ops(self, cap_map, alloc):
@@ -746,10 +854,11 @@ class MrpLtpNeed(models.AbstractModel):
         horizon = today + timedelta(days=730)
         cursor = need["deadline"]
         windows = {}
+        cap = max(need.get("eff_cap") or 1.0, 1.0)
         for idx in range(len(need["ops"]) - 1, -1, -1):
             op = need["ops"][idx]
             wc_id = op["wc_id"]
-            remaining = need["qty"] * op["per_unit"]
+            remaining = need["qty"] * op["per_unit"] / cap
             if remaining <= 0:
                 continue
             start_day = end_day = None
@@ -866,7 +975,7 @@ class MrpLtpNeed(models.AbstractModel):
             ["product_id", "line_key", "name", "sequence",
              "predecessor_id", "workcenter_id", "qty", "unit_hours",
              "total_hours", "planned_start", "planned_end", "state",
-             "locked", "operation_id"],
+             "locked", "operation_id", "capacity"],
             order="line_key, sequence", load="_classic_write")
         wc_name = {
             w.id: w.name for w in self.env["mrp.workcenter"].browse(

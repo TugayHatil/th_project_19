@@ -18,6 +18,7 @@ export class NeedCapacityPlanning extends Component {
     setup() {
         this.orm = useService("orm");
         this.notification = useService("notification");
+        this.action = useService("action");
         this.state = useState({
             loading: false,
             periods: [],
@@ -358,6 +359,41 @@ export class NeedCapacityPlanning extends Component {
             days: [...daySet].sort().slice(0, 62),
             wcs: [...byWc.values()],
         };
+    }
+
+    openSo(soId, ev) {
+        if (ev) {
+            ev.preventDefault();
+        }
+        this.action.doAction({
+            type: "ir.actions.act_window",
+            res_model: "sale.order",
+            res_id: soId,
+            views: [[false, "form"]],
+            target: "current",
+        });
+    }
+
+    async onNeedCapacity(row, ev) {
+        const cap = parseInt(ev.target.value, 10);
+        ev.target.value = row.capacity || 1;
+        if (!cap || cap < 1) {
+            this.notification.add(
+                _t("Parallel capacity must be a positive integer."),
+                { type: "warning" });
+            return;
+        }
+        try {
+            await this.orm.call(
+                "mrp.ltp.need", "set_need_capacity", [], {
+                    product_id: row.product_id,
+                    line_key: row.key,
+                    capacity: cap,
+                });
+            await this.loadGrid();
+        } catch (error) {
+            this.notifyError(error, _t("Capacity could not be saved."));
+        }
     }
 
     async toggleOpLock(op) {

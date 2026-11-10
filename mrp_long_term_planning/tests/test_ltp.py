@@ -359,3 +359,33 @@ class TestLongTermPlanning(TransactionCase):
         self.assertEqual(len(rows), 2)
         Need.set_operation_lock([op2.id], locked=True)
         self.assertTrue(op2.locked)
+
+    def test_91_parallel_capacity(self):
+        """BRD §8 — parallel capacity: default 1, hours divide, window
+        shortens, positive-int validation."""
+        Need = self.env["mrp.ltp.need"]
+        today = fields.Date.today()
+        wc = self.env["mrp.workcenter"].create({"name": "PAR WC"})
+        need = {
+            "pid": self.p_flagged.id, "line_key": "mv:8888",
+            "qty": 10.0, "deadline": today + timedelta(days=10),
+            "ops": [{"op_id": 0, "name": "Op", "wc_id": wc.id,
+                     "per_unit": 2.0, "seq": 10}],
+        }
+        cap = {wc.id: {today + timedelta(days=i): 8.0
+                       for i in range(15)}}
+        w1 = Need._place_ops_backward(
+            dict(need, eff_cap=1.0), cap,
+            defaultdict(float), defaultdict(float), today)
+        d1 = (w1[0]["end"].date() - w1[0]["start"].date()).days
+        w2 = Need._place_ops_backward(
+            dict(need, eff_cap=2.0), cap,
+            defaultdict(float), defaultdict(float), today)
+        d2 = (w2[0]["end"].date() - w2[0]["start"].date()).days
+        self.assertLessEqual(d2, d1)
+
+        # invalid capacity rejected
+        with self.assertRaises(UserError):
+            Need.set_need_capacity(self.p_flagged.id, "mv:x", 0)
+        with self.assertRaises(UserError):
+            Need.set_need_capacity(self.p_flagged.id, "mv:x", "abc")
