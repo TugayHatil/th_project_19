@@ -319,7 +319,6 @@ export class NeedCapacityPlanning extends Component {
     // product family timeline — the clicked need plus every need that
     // transitively explodes out of it (parent_keys chain)
     _familyOf(row) {
-        const key = this.rowKey(row);
         const kids = {};
         for (const r of this.state.rows) {
             for (const pk of r.parent_keys || []) {
@@ -327,12 +326,12 @@ export class NeedCapacityPlanning extends Component {
             }
         }
         const fam = [];
-        const seen = new Set([key]);
+        const seen = new Set([row.key]);
         const queue = [row];
         while (queue.length) {
             const n = queue.shift();
             fam.push(n);
-            for (const c of kids[this.rowKey(n)] || []) {
+            for (const c of kids[n.key] || []) {
                 if (!seen.has(c.key)) {
                     seen.add(c.key);
                     queue.push(c);
