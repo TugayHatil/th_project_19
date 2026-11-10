@@ -575,3 +575,308 @@ class MrpLtpNeed(models.AbstractModel):
                     out[(wc_id, day)] = hours
             day += timedelta(days=1)
         return out
+
+    # ------------------------------------------------------------------
+    # APS — operation-level auto planning (BRD §5-§7)
+    # ------------------------------------------------------------------
+
+    _APS_LOCK_KEY = "mrp_ltp_need_aps"
+
+    @api.model
+    def auto_plan(self, warehouse_id=False):
+        """Draft an operation-level plan for every open need (BRD §5).
+
+        Serialized by an advisory lock so two concurrent runs can never
+        double-reserve the same capacity. Draft/shortage rows are
+        rebuilt wholesale; confirmed, done and manually locked rows
+        stay in the load map and are never touched (BRD §6).
+        """
+        self.env.cr.execute(
+            "SELECT pg_advisory_xact_lock(hashtext(%s))",
+            (self._APS_LOCK_KEY,))
+        Line = self.env["mrp.ltp.line"]
+        periods = Line._periods(*Line._current_period())
+        today = fields.Date.context_today(self)
+        needs, products = self._collect_needs(periods)
+        if not needs:
+            return {"needs": 0, "planned": 0, "shortage": 0}
+        boms = self.env["mrp.bom"]._bom_find(products)
+        bom_by_pid = {
+            getattr(k, "id", k): b for k, b in boms.items()}
+        wc_ids = set()
+        for need in needs:
+            bom = bom_by_pid.get(need["pid"])
+            ops = []
+            if bom and bom.type == "normal":
+                ops = sorted(
+                    [{"op_id": op.id, "name": op.name,
+                      "wc_id": op.workcenter_id.id,
+                      "per_unit": (op.time_cycle or 0.0) / 60.0
+                                  / (bom.product_qty or 1.0),
+                      "seq": op.sequence or 10}
+                     for op in bom.operation_ids
+                     if op.workcenter_id and op.time_cycle],
+                    key=lambda o: o["seq"])
+            need["ops"] = ops
+            need["bom_id"] = bom.id if bom else False
+            wc_ids.update(o["wc_id"] for o in ops)
+
+        # confirmed need windows still reserve capacity first (BRD §6.3)
+        schedules = {}
+        for s in self.env["mrp.ltp.need.schedule"].sudo().search_read([
+                ("company_id", "=", self.env.company.id),
+            ], ["product_id", "line_key",
+                "planned_start", "planned_end", "capacity"]):
+            s["start_d"] = fields.Date.to_date(s["planned_start"])
+            s["end_d"] = fields.Date.to_date(s["planned_end"])
+            schedules[(s["product_id"][0], s["line_key"])] = s
+
+        wcs = self.env["mrp.workcenter"].browse(sorted(wc_ids))
+        last_deadline = max(n["deadline"] for n in needs)
+        cap_map, plan_map = self._daily_load_maps(
+            wcs, periods, last_deadline)
+        alloc = defaultdict(float)
+        for need in needs:
+            sch = schedules.get((need["pid"], need["line_key"]))
+            if not sch or not need["ops"]:
+                continue
+            days = self._work_days(
+                sch["start_d"], sch["end_d"],
+                [(o["wc_id"], 0.0) for o in need["ops"]], cap_map)
+            wc_tot = defaultdict(float)
+            for (wc_id, _day), hours in days.items():
+                wc_tot[wc_id] += hours
+            op_hours = defaultdict(float)
+            cap = sch.get("capacity") or 1.0
+            for o in need["ops"]:
+                op_hours[o["wc_id"]] += o["per_unit"] * need["qty"] / cap
+            for (wc_id, day), hours in days.items():
+                if wc_tot[wc_id] > 0:
+                    alloc[(wc_id, day)] += (
+                        op_hours[wc_id] * hours / wc_tot[wc_id])
+        # confirmed/locked operation rows reserve their windows too
+        self._reserve_confirmed_ops(cap_map, alloc)
+
+        Op = self.env["mrp.ltp.need.operation"].sudo()
+        Op.search([
+            ("company_id", "=", self.env.company.id),
+            ("state", "in", ("draft", "shortage")),
+            ("locked", "=", False),
+        ]).unlink()
+
+        planned = shortage = 0
+        for need in sorted(
+                needs, key=lambda n: (n["deadline"], n["pid"])):
+            if (need["pid"], need["line_key"]) in schedules:
+                continue
+            if not need["ops"]:
+                continue  # no BoM operations — nothing to schedule
+            windows = self._place_ops_backward(
+                need, cap_map, plan_map, alloc, today)
+            prev = self.env["mrp.ltp.need.operation"]
+            for idx, op in enumerate(need["ops"]):
+                win = windows.get(idx)
+                if not win:
+                    continue
+                prev = Op.create({
+                    "product_id": need["pid"],
+                    "line_key": need["line_key"],
+                    "warehouse_id": need.get("warehouse_id") or False,
+                    "company_id": self.env.company.id,
+                    "bom_id": need["bom_id"],
+                    "operation_id": op["op_id"],
+                    "name": op["name"] or "",
+                    "sequence": (idx + 1) * 10,
+                    "predecessor_id": prev.id if prev else False,
+                    "workcenter_id": op["wc_id"],
+                    "qty": need["qty"],
+                    "unit_hours": op["per_unit"],
+                    "total_hours": need["qty"] * op["per_unit"],
+                    "planned_start": win["start"],
+                    "planned_end": win["end"],
+                    "state": "shortage" if win["shortage"] else "draft",
+                })
+                if win["shortage"]:
+                    shortage += 1
+                else:
+                    planned += 1
+        return {
+            "needs": len(needs),
+            "planned": planned,
+            "shortage": shortage,
+        }
+
+    @api.model
+    def _reserve_confirmed_ops(self, cap_map, alloc):
+        """Spread every confirmed/done operation row's hours over its
+        window's work days — proportional to the day capacity, the same
+        shape as confirmed need-window reservations."""
+        Op = self.env["mrp.ltp.need.operation"].sudo()
+        rows = Op.search_read(
+            [("company_id", "=", self.env.company.id),
+             ("state", "in", ("confirmed", "done")),
+             ("workcenter_id", "!=", False)],
+            ["workcenter_id", "planned_start", "planned_end",
+             "total_hours"])
+        for r in rows:
+            start_d = fields.Date.to_date(
+                fields.Datetime.context_timestamp(
+                    self, fields.Datetime.to_datetime(r["planned_start"])))
+            end_d = fields.Date.to_date(
+                fields.Datetime.context_timestamp(
+                    self, fields.Datetime.to_datetime(r["planned_end"])))
+            days = self._work_days(
+                start_d, end_d, [(r["workcenter_id"], 0.0)], cap_map)
+            total = sum(days.values())
+            if total <= 0:
+                continue
+            for (wc_id, day), hours in days.items():
+                alloc[(wc_id, day)] += r["total_hours"] * hours / total
+
+    @api.model
+    def _place_ops_backward(self, need, cap_map, plan_map, alloc, today):
+        """Backward-schedule one need's ops — returns
+        {op_index: {start, end, shortage}} with datetime edges.
+
+        Same finite-capacity walk as _place_backward but per BoM
+        operation: the last op ends at the deadline, each earlier op
+        ends where its successor begins. What cannot fit before today
+        spills past the deadline and flags shortage.
+        """
+        horizon = today + timedelta(days=730)
+        cursor = need["deadline"]
+        windows = {}
+        for idx in range(len(need["ops"]) - 1, -1, -1):
+            op = need["ops"][idx]
+            wc_id = op["wc_id"]
+            remaining = need["qty"] * op["per_unit"]
+            if remaining <= 0:
+                continue
+            start_day = end_day = None
+            short = False
+            day = cursor
+            while remaining > 1e-9 and day >= today:
+                free = (cap_map.get(wc_id, {}).get(day, 0.0)
+                        - plan_map.get(wc_id, {}).get(day, 0.0)
+                        - alloc[(wc_id, day)])
+                if free > 1e-9:
+                    take = min(free, remaining)
+                    alloc[(wc_id, day)] += take
+                    remaining -= take
+                    start_day = day
+                    if end_day is None:
+                        end_day = day
+                day -= timedelta(days=1)
+            if day < today:
+                day = today - timedelta(days=1)
+            while remaining > 1e-9:
+                day += timedelta(days=1)
+                if day > horizon:
+                    short = True
+                    break
+                free = (cap_map.get(wc_id, {}).get(day, 0.0)
+                        - plan_map.get(wc_id, {}).get(day, 0.0)
+                        - alloc[(wc_id, day)])
+                if free > 1e-9:
+                    take = min(free, remaining)
+                    alloc[(wc_id, day)] += take
+                    remaining -= take
+                    end_day = day
+            if end_day is None:
+                continue
+            if start_day is None:
+                start_day = today
+            if start_day < today or end_day > need["deadline"]:
+                short = True
+            windows[idx] = {
+                "start": datetime.combine(start_day, datetime.min.time()),
+                "end": datetime.combine(
+                    end_day, datetime.min.time()) + timedelta(days=1)
+                    - timedelta(seconds=1),
+                "shortage": short,
+            }
+            cursor = start_day
+        return windows
+
+    # ---- draft/confirm workflow (BRD §7/§9) ----------------------------
+
+    @api.model
+    def confirm_operations(self, ids=False):
+        """Draft/shortage rows -> confirmed capacity reservations."""
+        domain = [("company_id", "=", self.env.company.id),
+                  ("state", "in", ("draft", "shortage"))]
+        if ids:
+            domain.append(("id", "in", [int(i) for i in ids]))
+        n = self.env["mrp.ltp.need.operation"].sudo().search(domain)
+        n.write({"state": "confirmed"})
+        return {"confirmed": len(n)}
+
+    @api.model
+    def clear_operation_drafts(self):
+        """Drop unlocked draft/shortage rows — confirmed, done and
+        locked plans are never cleared (BRD §9)."""
+        n = self.env["mrp.ltp.need.operation"].sudo().search([
+            ("company_id", "=", self.env.company.id),
+            ("state", "in", ("draft", "shortage")),
+            ("locked", "=", False),
+        ])
+        n.unlink()
+        return {"cleared": len(n)}
+
+    @api.model
+    def set_operation_lock(self, ids, locked=True):
+        self.env["mrp.ltp.need.operation"].sudo().browse(
+            [int(i) for i in ids]).write({"locked": bool(locked)})
+        return {"ok": True}
+
+    @api.model
+    def move_operation(self, op_id, new_start):
+        """Relocate one operation to a new start datetime — dependents
+        are not silently moved: a chain violation flags the row as
+        shortage so the planner sees it (BRD §4.3)."""
+        op = self.env["mrp.ltp.need.operation"].sudo().browse(int(op_id))
+        if not op or op.state == "done":
+            return {"ok": False}
+        new_start = fields.Datetime.to_datetime(new_start)
+        delta = new_start - op.planned_start
+        new_end = op.planned_end + delta
+        vals = {"planned_start": new_start, "planned_end": new_end}
+        nxt = self.env["mrp.ltp.need.operation"].sudo().search(
+            [("predecessor_id", "=", op.id)], limit=1)
+        if nxt and nxt.planned_start < new_end:
+            vals["state"] = "shortage"
+        op.write(vals)
+        return {"ok": True, "state": op.state}
+
+    @api.model
+    def get_operation_rows(self, product_id=False, line_key=False,
+                           workcenter_ids=False):
+        """Operation rows for the detail panel / Gantt — drafts and
+        confirmed plans together, ordered per need then per sequence."""
+        domain = [("company_id", "=", self.env.company.id)]
+        if product_id:
+            domain.append(("product_id", "=", int(product_id)))
+        if line_key:
+            domain.append(("line_key", "=", str(line_key)))
+        if workcenter_ids:
+            domain.append(
+                ("workcenter_id", "in", [int(i) for i in workcenter_ids]))
+        rows = self.env["mrp.ltp.need.operation"].sudo().search_read(
+            domain,
+            ["product_id", "line_key", "name", "sequence",
+             "predecessor_id", "workcenter_id", "qty", "unit_hours",
+             "total_hours", "planned_start", "planned_end", "state",
+             "locked", "operation_id"],
+            order="line_key, sequence", load="_classic_write")
+        wc_name = {
+            w.id: w.name for w in self.env["mrp.workcenter"].browse(
+                {r["workcenter_id"] for r in rows
+                 if r["workcenter_id"]})}
+        for r in rows:
+            r["wc_name"] = wc_name.get(r["workcenter_id"], "")
+            for f in ("planned_start", "planned_end"):
+                if r[f]:
+                    r[f] = fields.Datetime.to_string(
+                        fields.Datetime.context_timestamp(
+                            self, fields.Datetime.to_datetime(r[f])))
+        return rows

@@ -595,7 +595,7 @@ class MrpPurchaseNeed(models.AbstractModel):
     # payload schema — bump whenever the serialized plan shape changes;
     # a snapshot written by older code is rejected outright since its
     # missing keys would silently break new frontend features
-    _PLAN_SCHEMA = 10
+    _PLAN_SCHEMA = 11
 
     def _snapshot_name(self, warehouse_id, date_from, date_to, query,
                        include_covered=False):
@@ -819,7 +819,23 @@ class MrpPurchaseNeed(models.AbstractModel):
                     ["line_key", "planned_start"]):
                 d = fields.Date.to_date(s["planned_start"])
                 if d:
-                    sched[s["line_key"]] = d
+                    sched[s["line_key"]] = {"first": d, "ops": {}}
+        # confirmed APS operation plans give per-operation starts —
+        # a component is needed when its consuming operation begins
+        if "mrp.ltp.need.operation" in self.env:
+            for s in self.env["mrp.ltp.need.operation"].sudo().search_read(
+                    [("company_id", "in", self.env.companies.ids),
+                     ("state", "=", "confirmed"),
+                     ("planned_start", "!=", False)],
+                    ["line_key", "operation_id", "planned_start"],
+                    load="_classic_write"):
+                d = fields.Datetime.to_datetime(
+                    s["planned_start"]).date()
+                ent = sched.setdefault(
+                    s["line_key"], {"first": d, "ops": {}})
+                ent["first"] = min(ent["first"], d)
+                if s["operation_id"]:
+                    ent["ops"][s["operation_id"]] = d
 
         # ---- phase A: per-product chronological walk + BoM explosion --
         walks = {}
@@ -2076,7 +2092,8 @@ class MrpPurchaseNeed(models.AbstractModel):
                 d["id"]: d
                 for d in self.env["mrp.bom.line"].sudo().browse(
                     boms.bom_line_ids.ids).read(
-                    ["product_id", "product_qty"], load="_classic_write")}
+                    ["product_id", "product_qty", "operation_id"],
+                    load="_classic_write")}
             comp_pids = {d["product_id"] for d in bl_rows.values()
                          if d["product_id"]}
             comp_tmpl = {
@@ -2092,11 +2109,15 @@ class MrpPurchaseNeed(models.AbstractModel):
                 if t in bom_map:
                     continue
                 lines = []
+                line_ops = []
                 for bl_id in d["bom_line_ids"]:
                     bl = bl_rows.get(bl_id)
                     if not bl or not bl["product_id"]:
                         continue
                     lines.append((bl["product_id"], bl["product_qty"]))
+                    # "Consumed in Operation" — drives the component
+                    # need date once an APS op plan exists
+                    line_ops.append(bl.get("operation_id") or False)
                     comp_ids.add(bl["product_id"])
                     ct = comp_tmpl.get(bl["product_id"])
                     if ct:
@@ -2105,7 +2126,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                             seen.add(ct)
                             nxt.add(ct)
                 bom_map[t] = {"qty": d["product_qty"] or 1.0,
-                              "lines": lines}
+                              "lines": lines, "line_ops": line_ops}
             cur = nxt
         # BFS depth: a component is processed one level below the
         # deepest parent that produces it
@@ -2156,18 +2177,27 @@ class MrpPurchaseNeed(models.AbstractModel):
             # a capacity-confirmed production window overrides the
             # lead-time estimate: components are needed when production
             # actually starts
-            prod_date = sched.get(lkey) or (
-                need_date - timedelta(days=delay_days))
-            for comp_pid, comp_qty in bom["lines"]:
+            sch_need = sched.get(lkey)
+            prod_date = (sch_need["first"] if sch_need
+                         else need_date - timedelta(days=delay_days))
+            line_ops = bom.get("line_ops") or [False] * len(bom["lines"])
+            for (comp_pid, comp_qty), comp_op in zip(
+                    bom["lines"], line_ops):
                 qty = info["uncovered"] * comp_qty / bom["qty"]
                 if qty <= 0.0:
                     continue
+                # components are needed when the operation that
+                # consumes them starts — the op's own date when the
+                # APS plan knows it
+                ev_date = prod_date
+                if sch_need and comp_op:
+                    ev_date = sch_need["ops"].get(comp_op, prod_date)
                 key = "bom:%s:%s:%s" % (
                     comp_pid, wh_id or 0,
-                    fields.Date.to_string(prod_date))
+                    fields.Date.to_string(ev_date))
                 ev = out[comp_pid].setdefault(key, {
                     "key": key,
-                    "date": prod_date,
+                    "date": ev_date,
                     "qty": 0.0,
                     "parents": set(),
                     "company_id": company_id,

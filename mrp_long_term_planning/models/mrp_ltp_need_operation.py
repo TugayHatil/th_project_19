@@ -30,6 +30,8 @@ class MrpLtpNeedOperation(models.Model):
         default=lambda self: self.env.company)
 
     bom_id = fields.Many2one("mrp.bom", string="BoM")
+    operation_id = fields.Many2one(
+        "mrp.routing.workorder", string="BoM Operation")
     name = fields.Char(string="Operation", required=True)
     sequence = fields.Integer(default=10)
     predecessor_id = fields.Many2one(
