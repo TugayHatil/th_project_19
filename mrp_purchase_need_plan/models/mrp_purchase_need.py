@@ -2188,10 +2188,10 @@ class MrpPurchaseNeed(models.AbstractModel):
             # source sale orders travel down the explosion — a virtual
             # need inherits every order its parents came from
             if kind == "ev":
-                parent_sos = set(
-                    out[pid][eid].get("so_ids") or ())
-                parent_so_qty = dict(
-                    out[pid][eid].get("so_qty") or {})
+                # the entry IS the virtual need event — carry its own
+                # accumulated order sources, no dict lookup needed
+                parent_sos = set(entry.get("so_ids") or ())
+                parent_so_qty = dict(entry.get("so_qty") or {})
             else:
                 so = ctx["sl_order"].get(entry.get("sale_line_id"))
                 parent_sos = {so} if so else set()
