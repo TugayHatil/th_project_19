@@ -415,7 +415,8 @@ class MrpLtpNeed(models.AbstractModel):
             if need.get("sug_start"):
                 unit = sum(h for _w, h in need["ops"]) / (
                     need.get("eff_cap") or 1.0)
-                lag = max(1, math.ceil(unit / 8.0))
+                # one unit ready within the day → same-day start ok
+                lag = int(unit / 24.0)
                 for pk in need.get("parent_keys") or []:
                     p = by_key.get(pk)
                     ps = p and p.get("sug_start")
@@ -451,7 +452,7 @@ class MrpLtpNeed(models.AbstractModel):
                     continue
                 unit = sum(h for _w, h in need["ops"]) / (
                     need.get("eff_cap") or 1.0)
-                lag = max(1, math.ceil(unit / 8.0))
+                lag = int(unit / 24.0)
                 for pk in need.get("parent_keys") or []:
                     p = by_key.get(pk)
                     ps = p and p.get("sug_start")
@@ -557,6 +558,8 @@ class MrpLtpNeed(models.AbstractModel):
                     alloc[(wc_id, day)] += take
                     remaining -= take
                     placed_end = day
+                    if placed_start is None:
+                        placed_start = day
             if placed_start:
                 cursor = placed_start
             elif not unplaced and day > cursor:
@@ -834,7 +837,7 @@ class MrpLtpNeed(models.AbstractModel):
             if ps:
                 unit = (sum(o["per_unit"] for o in need["ops"])
                         / need["eff_cap"])
-                lag = max(1, math.ceil(unit / 8.0))
+                lag = int(unit / 24.0)
                 span_est = max(1, math.ceil(need["qty"] * unit / 8.0))
                 need["deadline"] = min(
                     need["deadline"],
