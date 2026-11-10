@@ -315,6 +315,23 @@ class MrpLtpNeed(models.AbstractModel):
                 ["product_id", "line_key", "capacity"]):
             par_map[(p["product_id"][0], p["line_key"])] = p["capacity"]
 
+        # draft/confirmed APS ops define the need's actual window —
+        # rows, family timeline and the op panel must agree
+        op_win = {}
+        for o in self.env["mrp.ltp.need.operation"].sudo().search_read(
+                [("line_key", "in",
+                  [n["line_key"] for n in needs] or ["-"]),
+                 ("state", "in", ("draft", "confirmed", "shortage"))],
+                ["line_key", "planned_start", "planned_end"]):
+            s = fields.Date.to_date(o["planned_start"])
+            e = fields.Date.to_date(o["planned_end"])
+            k = o["line_key"]
+            if k in op_win:
+                op_win[k] = (min(op_win[k][0], s),
+                             max(op_win[k][1], e))
+            else:
+                op_win[k] = (s, e)
+
         # confirmed planner windows reserve capacity ahead of suggestions
         schedules = {}
         for s in self.env["mrp.ltp.need.schedule"].search_read([
@@ -470,6 +487,13 @@ class MrpLtpNeed(models.AbstractModel):
                     changed = True
             if not changed:
                 break
+
+        # needs with stored op plans display the op window itself —
+        # grid, family timeline and op panel then agree on one date
+        for need in needs:
+            w = op_win.get(need["line_key"])
+            if w:
+                need["sug_start"], need["sug_end"] = w
 
         # group rows by their root order need — hierarchy inside each
         # family block (deepest child first, finished product last)
