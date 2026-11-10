@@ -410,15 +410,16 @@ class MrpLtpNeed(models.AbstractModel):
             self._place_backward(need, cap_map, plan_map, alloc, today)
             # overlap: the child may finish during the parent's run but
             # must start ≥ t1 (one unit through its op chain) earlier
-            if need.get("start"):
+            if need.get("sug_start"):
                 unit = sum(h for _w, h in need["ops"]) / (
                     need.get("eff_cap") or 1.0)
                 lag = max(1, math.ceil(unit / 8.0))
                 for pk in need.get("parent_keys") or []:
                     p = by_key.get(pk)
-                    ps = p and p.get("start")
-                    if ps and need["start"] > ps - timedelta(days=lag):
-                        span = need["end"] - need["start"]
+                    ps = p and p.get("sug_start")
+                    if ps and need["sug_start"] \
+                            > ps - timedelta(days=lag):
+                        span = need["sug_end"] - need["sug_start"]
                         need["deadline"] = (
                             ps - timedelta(days=lag) + span)
                         self._place_backward(
