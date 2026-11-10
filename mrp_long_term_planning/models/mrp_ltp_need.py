@@ -523,6 +523,7 @@ class MrpLtpNeed(models.AbstractModel):
             "req_hours": req_hours,
             "capacity": cap,
             "depth": need.get("depth") or 0,
+            "parent_keys": need.get("parent_keys") or [],
             "source_orders": need.get("source_orders") or [],
             "start": fields.Date.to_string(start) if start else False,
             "end": fields.Date.to_string(end) if end else False,

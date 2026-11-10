@@ -37,6 +37,8 @@ export class NeedCapacityPlanning extends Component {
             selectedKey: null,
             opsRows: [],
             allOps: [],
+            familyRows: [],
+            familyRoot: "",
             gantt: { days: [], wcs: [] },
             planning: false,
         });
@@ -314,8 +316,56 @@ export class NeedCapacityPlanning extends Component {
         }
     }
 
+    // product family timeline — the clicked need plus every need that
+    // transitively explodes out of it (parent_keys chain)
+    _familyOf(row) {
+        const key = this.rowKey(row);
+        const kids = {};
+        for (const r of this.state.rows) {
+            for (const pk of r.parent_keys || []) {
+                (kids[pk] = kids[pk] || []).push(r);
+            }
+        }
+        const fam = [];
+        const seen = new Set([key]);
+        const queue = [row];
+        while (queue.length) {
+            const n = queue.shift();
+            fam.push(n);
+            for (const c of kids[this.rowKey(n)] || []) {
+                if (!seen.has(c.key)) {
+                    seen.add(c.key);
+                    queue.push(c);
+                }
+            }
+        }
+        fam.sort((a, b) => (a.depth - b.depth) ||
+            (a.deadline || "").localeCompare(b.deadline || ""));
+        const range = (r) => [
+            (r.sch_start || r.planned_start || r.start || "").slice(0, 10),
+            (r.sch_end || r.planned_end || r.end || "").slice(0, 10)];
+        let mn = "9999-99", mx = "";
+        for (const f of fam) {
+            const [s, e] = range(f);
+            if (s && s < mn) mn = s;
+            if (e && e > mx) mx = e;
+        }
+        const DAY = 86400000;
+        const span = Math.max((new Date(mx) - new Date(mn)) / DAY, 1);
+        this.state.familyRows = fam.map((f) => {
+            const [s, e] = range(f);
+            const left = s ? (new Date(s) - new Date(mn)) / DAY / span * 100 : 0;
+            const width = s && e ? Math.max(
+                ((new Date(e) - new Date(s)) / DAY + 1) / span * 100, 1.2) : 0;
+            return Object.assign({}, f,
+                {barLeft: left, barWidth: width, barStart: s, barEnd: e});
+        });
+        this.state.familyRoot = row.name;
+    }
+
     async selectRow(row) {
         this.state.selectedKey = this.rowKey(row);
+        this._familyOf(row);
         await this.loadOps();
     }
 

@@ -234,6 +234,26 @@
             </div>
 
             <!-- operation detail panel for the selected need -->
+            <div t-if="state.familyRows.length > 1" class="card shadow-sm mb-3">
+                <div class="card-header bg-white py-2">
+                    <h5 class="mb-0">Family Timeline —
+                        <t t-esc="state.familyRoot"/></h5>
+                </div>
+                <div class="card-body py-2">
+                    <div t-foreach="state.familyRows" t-as="f" t-key="f.key"
+                         class="d-flex align-items-center o_nc_frow">
+                        <div class="o_nc_flabel text-truncate"
+                             t-attf-style="padding-left: {{f.depth * 16}}px"
+                             t-esc="f.name"/>
+                        <div class="o_nc_ftrack flex-grow-1">
+                            <div t-attf-class="o_nc_fbar o_nc_fbar_{{f.status}}"
+                                 t-attf-style="left: {{f.barLeft}}%; width: {{f.barWidth}}%"
+                                 t-att-title="f.barStart + ' → ' + f.barEnd"/>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div t-if="state.opsRows.length" class="o_nc_ops mt-2">
                 <table class="o_nc_table">
                     <thead>

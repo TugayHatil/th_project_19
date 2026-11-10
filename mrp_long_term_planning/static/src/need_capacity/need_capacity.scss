@@ -96,3 +96,13 @@
 .o_nc_bg_danger { background: #dc3545; }
 .o_nc_bg_primary { background: #714b67; }
 .o_nc_bg_success { background: #198754; }
+
+/* product family timeline */
+.o_nc_frow { gap: 8px; }
+.o_nc_flabel { flex: 0 0 260px; width: 260px; font-size: 12px; }
+.o_nc_ftrack { position: relative; height: 14px; background: #f1f3f7;
+    border-radius: 3px; }
+.o_nc_fbar { position: absolute; top: 1px; bottom: 1px;
+    border-radius: 3px; background: #7c7bad; }
+.o_nc_fbar_planned { background: #28a745; }
+.o_nc_fbar_overload { background: #dc3545; }
