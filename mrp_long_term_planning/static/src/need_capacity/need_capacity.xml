@@ -327,36 +327,8 @@
                 </table>
             </div>
 
-            <!-- capacity Gantt: workcenters x days -->
-            <div t-if="state.gantt.days.length" class="o_nc_gantt mt-2 overflow-auto">
-                <table class="o_nc_table">
-                    <thead>
-                        <tr>
-                            <th class="o_ltp_sticky">Work Center</th>
-                            <t t-foreach="state.gantt.days" t-as="d" t-key="d">
-                                <th class="o_nc_num" t-esc="opDay(d)"/>
-                            </t>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <t t-foreach="state.gantt.wcs" t-as="wc" t-key="wc.name">
-                            <tr>
-                                <td class="o_ltp_sticky text-nowrap" t-esc="wc.name"/>
-                                <t t-foreach="state.gantt.days" t-as="d" t-key="d">
-                                    <td class="o_nc_gcell">
-                                        <t t-foreach="wc.days[d] || []" t-as="op" t-key="op.id">
-                                            <span t-att-class="'o_nc_gop ' + opStateClass(op).replace('text-bg-', 'o_nc_bg_')"
-                                                  t-att-title="op.name + ' — ' + fmtQty(op.qty)">
-                                                <i t-if="op.locked" class="fa fa-lock"/>
-                                            </span>
-                                        </t>
-                                    </td>
-                                </t>
-                            </tr>
-                        </t>
-                    </tbody>
-                </table>
-            </div>
+            <!-- capacity Gantt hidden for now — kept in code,
+                 re-enable by restoring this block -->
         </div>
     </t>
 </templates>
