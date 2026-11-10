@@ -29,6 +29,27 @@
                 </div>
                 <div class="d-flex align-items-center gap-3 mt-2 flex-wrap">
 
+                    <!-- APS actions -->
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-sm btn-primary"
+                                title="Draft an operation-level plan for all open needs"
+                                t-att-disabled="state.planning"
+                                t-on-click="autoPlan">
+                            <i t-attf-class="fa {{state.planning ? 'fa-spinner fa-spin' : 'fa-magic'}}"/>
+                            Auto Plan
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary"
+                                title="Confirm the draft plan into capacity reservations"
+                                t-on-click="confirmPlan">
+                            <i class="fa fa-check"/> Confirm
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                title="Clear unlocked draft rows"
+                                t-on-click="clearDrafts">
+                            <i class="fa fa-eraser"/> Clear
+                        </button>
+                    </div>
+
                     <!-- multi-select workcenter filter -->
                     <div class="dropdown o_nc_dd">
                         <div class="d-flex align-items-center gap-2">
@@ -101,7 +122,8 @@
                     </thead>
                     <tbody>
                         <t t-foreach="state.rows" t-as="row" t-key="row.product_id + '-' + row.key">
-                            <tr t-att-class="row.overload ? 'o_nc_row_late' : ''">
+                            <tr t-att-class="'o_nc_row' + (row.overload ? ' o_nc_row_late' : '') + (isEditing(row) || rowKey(row) === state.selectedKey ? ' o_nc_row_sel' : '')"
+                                t-on-click="() => this.selectRow(row)">
                                 <td class="o_nc_product">
                                     <strong t-esc="row.name"/>
                                     <span t-if="row.code" class="text-muted ms-1"
@@ -190,6 +212,80 @@
                      class="o_nc_empty text-muted text-center py-5">
                     No unmet production demand for the current filters.
                 </div>
+            </div>
+
+            <!-- operation detail panel for the selected need -->
+            <div t-if="state.opsRows.length" class="o_nc_ops mt-2">
+                <table class="o_nc_table">
+                    <thead>
+                        <tr>
+                            <th>Operation</th>
+                            <th class="o_nc_num">Seq</th>
+                            <th>Work Center</th>
+                            <th class="o_nc_num">Qty</th>
+                            <th class="o_nc_num">Hours</th>
+                            <th>Start</th>
+                            <th>End</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="state.opsRows" t-as="op" t-key="op.id">
+                            <tr>
+                                <td t-esc="op.name"/>
+                                <td class="o_nc_num" t-esc="op.sequence"/>
+                                <td class="text-muted" t-esc="op.wc_name"/>
+                                <td class="o_nc_num" t-esc="fmtQty(op.qty)"/>
+                                <td class="o_nc_num" t-esc="fmtHours(op.total_hours) + ' h'"/>
+                                <td class="text-nowrap" t-esc="fmtDateTime(op.planned_start)"/>
+                                <td class="text-nowrap" t-esc="fmtDateTime(op.planned_end)"/>
+                                <td>
+                                    <span t-att-class="'badge ' + opStateClass(op)"
+                                          t-esc="opStateLabel(op)"/>
+                                </td>
+                                <td class="text-end">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                                            t-att-title="op.locked ? 'Unlock' : 'Lock against re-planning'"
+                                            t-on-click.stop="() => this.toggleOpLock(op)">
+                                        <i t-attf-class="fa {{op.locked ? 'fa-lock' : 'fa-unlock'}}"/>
+                                    </button>
+                                </td>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- capacity Gantt: workcenters x days -->
+            <div t-if="state.gantt.days.length" class="o_nc_gantt mt-2 overflow-auto">
+                <table class="o_nc_table">
+                    <thead>
+                        <tr>
+                            <th class="o_ltp_sticky">Work Center</th>
+                            <t t-foreach="state.gantt.days" t-as="d" t-key="d">
+                                <th class="o_nc_num" t-esc="opDay(d)"/>
+                            </t>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="state.gantt.wcs" t-as="wc" t-key="wc.name">
+                            <tr>
+                                <td class="o_ltp_sticky text-nowrap" t-esc="wc.name"/>
+                                <t t-foreach="state.gantt.days" t-as="d" t-key="d">
+                                    <td class="o_nc_gcell">
+                                        <t t-foreach="wc.days[d] || []" t-as="op" t-key="op.id">
+                                            <span t-att-class="'o_nc_gop ' + opStateClass(op).replace('text-bg-', 'o_nc_bg_')"
+                                                  t-att-title="op.name + ' — ' + fmtQty(op.qty)">
+                                                <i t-if="op.locked" class="fa fa-lock"/>
+                                            </span>
+                                        </t>
+                                    </td>
+                                </t>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
             </div>
         </div>
     </t>

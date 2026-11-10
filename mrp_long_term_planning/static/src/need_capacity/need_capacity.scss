@@ -75,3 +75,24 @@
     background: rgba(255, 255, 255, 0.6);
     z-index: 5;
 }
+
+/* APS — needs row select, ops panel, capacity gantt */
+.o_nc_row { cursor: pointer; }
+.o_nc_row_sel { outline: 2px solid #714b67; outline-offset: -2px; }
+.o_nc_ops { max-height: 260px; overflow: auto; }
+.o_nc_cap { width: 60px; display: inline-block; }
+.o_nc_gantt { max-height: 320px; }
+.o_nc_gantt .o_ltp_sticky {
+    position: sticky; left: 0; z-index: 1;
+    background: var(--o-view-background-color, #fff);
+}
+.o_nc_gcell { min-width: 34px; height: 26px; padding: 1px !important; }
+.o_nc_gop {
+    display: inline-block; width: 100%; min-width: 26px; height: 18px;
+    border-radius: 3px; font-size: 10px; line-height: 18px;
+    text-align: center; color: #fff; margin: 1px;
+}
+.o_nc_bg_secondary { background: #6c757d; }
+.o_nc_bg_danger { background: #dc3545; }
+.o_nc_bg_primary { background: #714b67; }
+.o_nc_bg_success { background: #198754; }

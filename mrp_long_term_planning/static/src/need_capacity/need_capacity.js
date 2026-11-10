@@ -32,6 +32,12 @@ export class NeedCapacityPlanning extends Component {
             wcMenuOpen: false,
             // inline window editing: {key, start, end}
             editRow: null,
+            // APS: selected need's op rows, all ops, gantt, run flag
+            selectedKey: null,
+            opsRows: [],
+            allOps: [],
+            gantt: { days: [], wcs: [] },
+            planning: false,
         });
         this._searchTimer = null;
         useExternalListener(window, "click", (ev) => {
@@ -259,6 +265,136 @@ export class NeedCapacityPlanning extends Component {
         } catch (error) {
             this.notifyError(error, _t("Window could not be cleared."));
         }
+    }
+
+    // -- APS ---------------------------------------------------------------
+
+    async autoPlan() {
+        this.state.planning = true;
+        try {
+            const res = await this.orm.call(
+                "mrp.ltp.need", "auto_plan", []);
+            this.notification.add(
+                _t("Draft plan ready: %(p)s operations placed, %(s)s capacity shortage.",
+                   { p: res.planned, s: res.shortage }),
+                { type: res.shortage ? "warning" : "success" });
+            await this.loadGrid();
+            await this.loadOps();
+        } catch (error) {
+            this.notifyError(error, _t("Auto plan failed."));
+        } finally {
+            this.state.planning = false;
+        }
+    }
+
+    async confirmPlan() {
+        try {
+            const res = await this.orm.call(
+                "mrp.ltp.need", "confirm_operations", []);
+            this.notification.add(
+                _t("%s operations confirmed.", res.confirmed),
+                { type: "success" });
+            await this.loadOps();
+        } catch (error) {
+            this.notifyError(error, _t("Plan could not be confirmed."));
+        }
+    }
+
+    async clearDrafts() {
+        try {
+            const res = await this.orm.call(
+                "mrp.ltp.need", "clear_operation_drafts", []);
+            this.notification.add(
+                _t("%s draft rows cleared.", res.cleared),
+                { type: "success" });
+            await this.loadOps();
+        } catch (error) {
+            this.notifyError(error, _t("Drafts could not be cleared."));
+        }
+    }
+
+    async selectRow(row) {
+        this.state.selectedKey = this.rowKey(row);
+        await this.loadOps();
+    }
+
+    async loadOps() {
+        try {
+            const rows = await this.orm.call(
+                "mrp.ltp.need", "get_operation_rows", [], {});
+            this.state.allOps = rows || [];
+            const sel = (this.state.rows || []).find(
+                (r) => this.rowKey(r) === this.state.selectedKey);
+            this.state.opsRows = sel
+                ? this.state.allOps.filter((r) => r.line_key === sel.key)
+                : [];
+            this.buildGantt(this.state.allOps);
+        } catch (error) {
+            this.notifyError(error, _t("Operations could not be loaded."));
+        }
+    }
+
+    buildGantt(ops) {
+        const byWc = new Map();
+        const daySet = new Set();
+        for (const r of ops) {
+            if (!r.planned_start || !r.planned_end || !r.workcenter_id) {
+                continue;
+            }
+            if (!byWc.has(r.workcenter_id)) {
+                byWc.set(r.workcenter_id,
+                    { name: r.wc_name || "?", days: {} });
+            }
+            let d = new Date(r.planned_start.slice(0, 10));
+            const de = new Date(r.planned_end.slice(0, 10));
+            while (d <= de) {
+                const ds = d.toISOString().slice(0, 10);
+                daySet.add(ds);
+                (byWc.get(r.workcenter_id).days[ds] ||= []).push(r);
+                d.setDate(d.getDate() + 1);
+            }
+        }
+        this.state.gantt = {
+            days: [...daySet].sort().slice(0, 62),
+            wcs: [...byWc.values()],
+        };
+    }
+
+    async toggleOpLock(op) {
+        try {
+            await this.orm.call(
+                "mrp.ltp.need", "set_operation_lock", [], {
+                    ids: [op.id], locked: !op.locked });
+            await this.loadOps();
+        } catch (error) {
+            this.notifyError(error, _t("Lock could not be changed."));
+        }
+    }
+
+    opStateClass(op) {
+        return {
+            draft: "text-bg-secondary", shortage: "text-bg-danger",
+            confirmed: "text-bg-primary", done: "text-bg-success",
+        }[op.state] || "text-bg-secondary";
+    }
+
+    opStateLabel(op) {
+        return {
+            draft: _t("Draft"), shortage: _t("Capacity Shortage"),
+            confirmed: _t("Confirmed"), done: _t("Done"),
+        }[op.state] || op.state;
+    }
+
+    fmtDateTime(v) {
+        if (!v) {
+            return "—";
+        }
+        const d = luxon.DateTime.fromSQL(v);
+        return d.isValid ? d.toFormat("dd.MM.yy HH:mm") : v;
+    }
+
+    opDay(ds) {
+        return ds ? ds.slice(8, 10) + "." + ds.slice(5, 7) : "";
     }
 
     // -- rendering helpers -------------------------------------------------------
