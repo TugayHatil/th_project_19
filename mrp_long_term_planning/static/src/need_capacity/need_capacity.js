@@ -40,6 +40,9 @@ export class NeedCapacityPlanning extends Component {
             familyRows: [],
             familyRoot: "",
             familyRange: {},
+            familyView: "month",
+            familyCols: [],
+            familySel: null,
             gantt: { days: [], wcs: [] },
             planning: false,
         });
@@ -351,23 +354,87 @@ export class NeedCapacityPlanning extends Component {
             if (e && e > mx) mx = e;
         }
         const DAY = 86400000;
-        const span = Math.max((new Date(mx) - new Date(mn)) / DAY, 1);
-        this.state.familyRange = {mn: mn.slice(5), mx: mx.slice(5)};
+        // columns: day mode → 24 hours of the earliest day, month mode
+        // → every day of the spanned month(s), weekends shaded
+        const cols = [];
+        if (this.state.familyView === "day") {
+            for (let h = 0; h < 24; h++) {
+                cols.push({label: h, wknd: false});
+            }
+        } else {
+            let d = new Date(mn.slice(0, 7) + "-01T00:00:00");
+            const end = mx.slice(0, 10);
+            const pad = (n) => String(n).padStart(2, "0");
+            while (true) {
+                const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+                if (iso > end) {
+                    break;
+                }
+                const wd = d.getDay();
+                cols.push({label: d.getDate(),
+                    wknd: wd === 0 || wd === 6, iso});
+                d = new Date(d.getTime() + DAY);
+            }
+        }
+        this.state.familyCols = cols;
+        const N = Math.max(cols.length, 1);
         this.state.familyRows = fam.map((f) => {
             const [s, e] = range(f);
-            const left = s ? (new Date(s) - new Date(mn)) / DAY / span * 100 : 0;
-            const width = s && e ? Math.min(Math.max(
-                ((new Date(e) - new Date(s)) / DAY + 1) / span * 100, 1.2),
-                100 - left) : 0;
-            return Object.assign({}, f, {barLeft: left, barWidth: width,
-                barStart: s, barEnd: e,
+            if (this.state.familyView === "day") {
+                const D = cols.length ? mn.slice(0, 10) : "";
+                let sH = null, eH = null;
+                for (const o of this.state.allOps || []) {
+                    if (o.line_key !== f.key || !o.planned_start) {
+                        continue;
+                    }
+                    const os = o.planned_start.slice(0, 10);
+                    const oe = (o.planned_end || "").slice(0, 10);
+                    if (os > D || (oe && oe < D)) {
+                        continue;
+                    }
+                    const hs = os === D
+                        ? parseInt(o.planned_start.slice(11, 13), 10) : 0;
+                    const he = oe === D
+                        ? parseInt(o.planned_end.slice(11, 13), 10) + 1
+                        : 24;
+                    sH = sH === null ? hs : Math.min(sH, hs);
+                    eH = eH === null ? he : Math.max(eH, he);
+                }
+                if (sH === null && s && e && s <= D && D <= e) {
+                    sH = 0; eH = 24;
+                }
+                if (sH === null) {
+                    return Object.assign({}, f,
+                        {barLeft: 0, barWidth: 0, barText: "—"});
+                }
+                return Object.assign({}, f, {
+                    barLeft: sH / 24 * 100,
+                    barWidth: Math.max((eH - sH) / 24 * 100, 0.8),
+                    barText: sH + ":00 → " + eH + ":00"});
+            }
+            const startIdx = s ? Math.max(0, Math.round(
+                (new Date(s) - new Date(cols[0].iso)) / DAY)) : 0;
+            const endIdx = e ? Math.max(startIdx, Math.round(
+                (new Date(e) - new Date(cols[0].iso)) / DAY)) : startIdx;
+            return Object.assign({}, f, {
+                barLeft: startIdx / N * 100,
+                barWidth: Math.max((endIdx - startIdx + 1) / N * 100,
+                    0.8),
                 barText: s && e ? s.slice(5) + " → " + e.slice(5) : "—"});
         });
         this.state.familyRoot = row.name;
     }
 
+    setFamilyView(v) {
+        this.state.familyView = v;
+        if (this.state.familySel) {
+            this._familyOf(this.state.familySel);
+        }
+    }
+
     async selectRow(row) {
         this.state.selectedKey = this.rowKey(row);
+        this.state.familySel = row;
         this._familyOf(row);
         await this.loadOps();
     }
@@ -383,6 +450,9 @@ export class NeedCapacityPlanning extends Component {
                 ? this.state.allOps.filter((r) => r.line_key === sel.key)
                 : [];
             this.buildGantt(this.state.allOps);
+            if (this.state.familySel) {
+                this._familyOf(this.state.familySel);
+            }
         } catch (error) {
             this.notifyError(error, _t("Operations could not be loaded."));
         }

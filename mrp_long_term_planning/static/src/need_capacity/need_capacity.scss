@@ -108,3 +108,10 @@
 .o_nc_fbar_overload { background: #dc3545; }
 .o_nc_fdate { flex: 0 0 105px; width: 105px; font-size: 11px; }
 .o_nc_faxis { margin-top: 4px; }
+.o_nc_fhead { margin-bottom: 2px; }
+.o_nc_fcol { flex: 1 1 0; font-size: 10px; color: #6c757d;
+    text-align: center; overflow: hidden; }
+.o_nc_fcol_sml { color: transparent; }
+.o_nc_fcol_we { background: rgba(0,0,0,.06); color: #adb5bd; }
+.o_nc_fwe { position: absolute; top: 0; bottom: 0;
+    background: rgba(0,0,0,.07); }
