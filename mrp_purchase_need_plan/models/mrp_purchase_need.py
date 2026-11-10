@@ -62,6 +62,8 @@ _GROUP_SORT_KEYS = {
     "end_forecast": "end_forecast",
     "total_need": "total_need",
     "covered": "covered",
+    "total_po": "total_po",
+    "total_pr": "total_pr",
     "total_uncovered": "total_uncovered",
     "earliest_approve": "earliest_approve",
 }
@@ -596,7 +598,7 @@ class MrpPurchaseNeed(models.AbstractModel):
     # payload schema — bump whenever the serialized plan shape changes;
     # a snapshot written by older code is rejected outright since its
     # missing keys would silently break new frontend features
-    _PLAN_SCHEMA = 6
+    _PLAN_SCHEMA = 7
 
     def _snapshot_name(self, warehouse_id, date_from, date_to, query,
                        include_covered=False):
@@ -751,7 +753,7 @@ class MrpPurchaseNeed(models.AbstractModel):
         self._load_ctx(flow_moves, ctx)
         _mark("flow+load_ctx")
         onhand = self._get_onhand(products, scope_ids)
-        requested, req_docs, pend = self._get_requested_quantities(
+        requested, req_docs, pend, conv = self._get_requested_quantities(
             need_moves, ctx)
         exc_map = self._get_reschedule_log(need_moves)
         _mark("onhand+requested")
@@ -849,7 +851,7 @@ class MrpPurchaseNeed(models.AbstractModel):
         vmips, vmip_trunc = self._ensure_virtual_mips(
             all_vevents, max_create=mip_cap)
         demand = {ev["key"]: ev["qty"] for ev in all_vevents}
-        vreq, _vdocs, vpend = self._get_virtual_requested(
+        vreq, _vdocs, vpend, vconv = self._get_virtual_requested(
             demand, vmips, ctx)
         _mark("virtual_mips")
 
@@ -861,7 +863,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                 continue
             data = self._finalize_product(
                 pid, walk, ctx, mip_by_move, requested, req_docs, pend,
-                vmips, vreq, vpend, exc_map,
+                conv, vmips, vreq, vpend, vconv, exc_map,
                 lead_info[pid], today, route_sets)
             if data["lines"]:
                 plan[pid] = data
@@ -1398,8 +1400,8 @@ class MrpPurchaseNeed(models.AbstractModel):
 
     @api.model
     def _finalize_product(self, pid, walk, ctx, mip_by_move, requested,
-                          req_docs, pend, vmips, vreq, vpend, exc_map,
-                          lead, today, route_sets):
+                          req_docs, pend, conv, vmips, vreq, vpend, vconv,
+                          exc_map, lead, today, route_sets):
         """Turn a phase-A walk into the screen payload for one product."""
         prod = ctx["prod"][pid]
         detail = walk["detail"]
@@ -1518,6 +1520,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                                    "uncovered": 0.0})
                 req_qty = vreq.get(entry["key"], 0.0)
                 requestable = max(0.0, info["uncovered"] - req_qty)
+                cov = walk["coverage_map"].get(entry["key"], [])
                 mip = vmips.get(entry["key"])
                 lines.append({
                     "key": entry["key"],
@@ -1542,15 +1545,20 @@ class MrpPurchaseNeed(models.AbstractModel):
                     "need_qty": entry["qty"],
                     "uncovered_qty": info["uncovered"],
                     "covered_qty": entry["qty"] - info["uncovered"],
-                    "coverage": walk["coverage_map"].get(entry["key"], []),
+                    # confirmed-order supply still in transit (PO) and
+                    # request qty not yet converted to an order (PR)
+                    "po_qty": sum(c["qty"] for c in cov
+                                  if c["kind"] == "po"),
+                    "pr_qty": max(
+                        0.0, req_qty - vconv.get(entry["key"], 0.0)),
+                    "coverage": cov,
                     "pull_covered": suggest_map[entry["key"]],
                     "uom": prod["uom_name"],
                     "approve_by": fields.Date.to_string(approve_by),
                     "is_late": approve_by < today,
                     "suggested_termin": fields.Date.to_string(
                         self._suggested_termin(
-                            ctx, need_date, delay, today,
-                            walk["coverage_map"].get(entry["key"], []),
+                            ctx, need_date, delay, today, cov,
                             vpend.get(entry["key"], []), requestable)),
                     "exception": False,
                     "exception_log": [],
@@ -1593,6 +1601,7 @@ class MrpPurchaseNeed(models.AbstractModel):
                                          "uncovered": 0.0})
             req_qty = requested.get(mv["id"], 0.0)
             requestable = max(0.0, info["uncovered"] - req_qty)
+            cov = walk["coverage_map"].get(mv["id"], [])
             # informational exception flag: linked request/RFQ/PO is no
             # longer (fully) needed — nothing is cancelled automatically
             action, action_doc = "", ""
@@ -1648,15 +1657,19 @@ class MrpPurchaseNeed(models.AbstractModel):
                 "need_qty": qty,
                 "uncovered_qty": info["uncovered"],
                 "covered_qty": qty - info["uncovered"],
-                "coverage": walk["coverage_map"].get(mv["id"], []),
+                # confirmed-order supply still in transit (PO) and
+                # request qty not yet converted to an order (PR)
+                "po_qty": sum(c["qty"] for c in cov
+                              if c["kind"] == "po"),
+                "pr_qty": max(0.0, req_qty - conv.get(mv["id"], 0.0)),
+                "coverage": cov,
                 "pull_covered": suggest_map[mv["id"]],
                 "uom": prod["uom_name"],
                 "approve_by": fields.Date.to_string(approve_by),
                 "is_late": approve_by < today,
                 "suggested_termin": fields.Date.to_string(
                     self._suggested_termin(
-                        ctx, need_date, delay, today,
-                        walk["coverage_map"].get(mv["id"], []),
+                        ctx, need_date, delay, today, cov,
                         pend.get(mv["id"], []), requestable)),
                 "exception": bool(exc_map.get(mv["id"])),
                 "exception_log": exc_map.get(mv["id"], []),
@@ -1697,6 +1710,8 @@ class MrpPurchaseNeed(models.AbstractModel):
             "route": data["route"],
             "total_need": sum(ln["need_qty"] for ln in lines),
             "total_uncovered": sum(ln["uncovered_qty"] for ln in lines),
+            "total_po": sum(ln["po_qty"] for ln in lines),
+            "total_pr": sum(ln["pr_qty"] for ln in lines),
             "need_count": len(lines),
             "earliest_need": min(ln["need_date"] for ln in lines),
             "earliest_approve": min(ln["approve_by"] for ln in lines),
@@ -2210,10 +2225,11 @@ class MrpPurchaseNeed(models.AbstractModel):
 
     @api.model
     def _get_virtual_requested(self, demand, vmips, ctx):
-        """({key: requested qty}, {key: doc labels}, {key: pending docs})
+        """({key: requested qty}, {key: doc labels}, {key: pending docs},
+            {key: ordered qty})
         for virtual need keys linked through need_mip_ids."""
         if not vmips:
-            return {}, {}, {}
+            return {}, {}, {}, {}
         lines = self.env["purchase.request.line"].sudo().search([
             ("need_mip_ids", "in",
              [info["id"] for info in vmips.values()]),
@@ -2225,6 +2241,7 @@ class MrpPurchaseNeed(models.AbstractModel):
         alloc = defaultdict(float)
         docs = defaultdict(set)
         pend = defaultdict(list)
+        conv = defaultdict(float)
         for rl in lines:
             mips = [mip_by_id[i] for i in rl.need_mip_ids.ids
                     if i in mip_by_id]
@@ -2297,7 +2314,30 @@ class MrpPurchaseNeed(models.AbstractModel):
                     last_mip = mip
                 if left > 0.0 and last_mip is not None:
                     pend[last_mip.key][-1]["qty"] += left
-        return dict(alloc), dict(docs), dict(pend)
+            # confirmed downstream orders — see _get_requested_quantities
+            for po_line in rl.purchase_lines:
+                order = po_line.order_id
+                if order.state not in ("purchase", "done"):
+                    continue
+                rem = po_line.product_uom_id._compute_quantity(
+                    po_line.product_qty, po_line.product_id.uom_id,
+                    round=False)
+                if rem <= 0.0:
+                    continue
+                left = rem
+                last_mip = None
+                for mip, take in takes:
+                    if left <= 0.0:
+                        break
+                    share = min(take, left)
+                    if share <= 0.0:
+                        continue
+                    conv[mip.key] += share
+                    left -= share
+                    last_mip = mip
+                if left > 0.0 and last_mip is not None:
+                    conv[last_mip.key] += left
+        return dict(alloc), dict(docs), dict(pend), dict(conv)
 
     # ------------------------------------------------------------------
     # data sources
@@ -2429,12 +2469,17 @@ class MrpPurchaseNeed(models.AbstractModel):
     @api.model
     def _get_requested_quantities(self, need_moves, ctx):
         """({move_id: requested qty}, {move_id: doc-type labels},
-            {move_id: [pending doc entries]}).
+            {move_id: [pending doc entries]},
+            {move_id: ordered qty}).
 
         A merged request line is attributed to its need moves in
         need-date order — earliest needs are considered served first,
         matching the merge order — so a partially requested need line
-        keeps its remaining quantity requestable (BRD §7.2)."""
+        keeps its remaining quantity requestable (BRD §7.2).
+
+        The fourth map tracks the request part that already turned into
+        an approved order (purchase/done downstream PO lines), allocated
+        over the same takes — the PR column shows requested minus that."""
         # sudo: dedup must work even for users who cannot read purchase
         # request lines directly (BRD §10)
         lines = self.env["purchase.request.line"].sudo().search([
@@ -2446,6 +2491,7 @@ class MrpPurchaseNeed(models.AbstractModel):
         alloc = defaultdict(float)
         docs = defaultdict(set)
         pend = defaultdict(list)
+        conv = defaultdict(float)
         for rl in lines:
             mids = [i for i in rl.need_move_ids.ids if i in move_data]
             mids.sort(key=lambda i: (
@@ -2528,7 +2574,33 @@ class MrpPurchaseNeed(models.AbstractModel):
                     last_mid = mid
                 if left > 0.0 and last_mid is not None:
                     pend[last_mid][-1]["qty"] += left
-        return dict(alloc), dict(docs), dict(pend)
+            # confirmed downstream orders — the request part that
+            # already converted to an approved order leaves the PR
+            # column (its open receipt also feeds the PO column via the
+            # coverage pool)
+            for po_line in rl.purchase_lines:
+                order = po_line.order_id
+                if order.state not in ("purchase", "done"):
+                    continue
+                rem = po_line.product_uom_id._compute_quantity(
+                    po_line.product_qty, po_line.product_id.uom_id,
+                    round=False)
+                if rem <= 0.0:
+                    continue
+                left = rem
+                last_mid = None
+                for mid, take in takes:
+                    if left <= 0.0:
+                        break
+                    share = min(take, left)
+                    if share <= 0.0:
+                        continue
+                    conv[mid] += share
+                    left -= share
+                    last_mid = mid
+                if left > 0.0 and last_mid is not None:
+                    conv[last_mid] += left
+        return dict(alloc), dict(docs), dict(pend), dict(conv)
 
     @api.model
     def _request_doc_labels(self, request_line):

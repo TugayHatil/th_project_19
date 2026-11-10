@@ -245,6 +245,8 @@
                         <col class="o_mnp_col_qty"/>
                         <col class="o_mnp_col_qty"/>
                         <col class="o_mnp_col_qty"/>
+                        <col class="o_mnp_col_qty"/>
+                        <col class="o_mnp_col_qty"/>
                         <col class="o_mnp_col_uom"/>
                         <col class="o_mnp_col_days"/>
                         <col class="o_mnp_col_date"/>
@@ -293,6 +295,16 @@
                             <th class="o_mnp_num o_mnp_sortable"
                                 t-on-click="() => this.toggleSort('covered')">
                                 Karşılanan <i t-attf-class="fa {{sortIcon('covered')}}"/>
+                            </th>
+                            <th class="o_mnp_num o_mnp_sortable"
+                                title="Depoya henüz girmemiş onaylı sipariş miktarı"
+                                t-on-click="() => this.toggleSort('total_po')">
+                                PO <i t-attf-class="fa {{sortIcon('total_po')}}"/>
+                            </th>
+                            <th class="o_mnp_num o_mnp_sortable"
+                                title="Onaylı siparişe dönmemiş talep miktarı"
+                                t-on-click="() => this.toggleSort('total_pr')">
+                                PR <i t-attf-class="fa {{sortIcon('total_pr')}}"/>
                             </th>
                             <th class="o_mnp_num o_mnp_sortable"
                                 t-on-click="() => this.toggleSort('total_uncovered')">
@@ -429,6 +441,12 @@
                                 <td class="o_mnp_num o_mnp_summary">
                                     <strong t-esc="fmtQty(group.total_need - group.total_uncovered)"/>
                                 </td>
+                                <td class="o_mnp_num o_mnp_summary">
+                                    <strong t-esc="fmtQty(group.total_po)"/>
+                                </td>
+                                <td class="o_mnp_num o_mnp_summary">
+                                    <strong t-esc="fmtQty(group.total_pr)"/>
+                                </td>
                                 <td t-att-class="'o_mnp_num o_mnp_summary' + (group.total_uncovered > 0 ? ' o_mnp_neg' : '')">
                                     <strong t-esc="fmtQty(group.total_uncovered)"/>
                                 </td>
@@ -522,6 +540,17 @@
                                             <t t-else=""
                                                t-esc="fmtQty(line.covered_qty)"/>
                                         </td>
+                                        <td class="o_mnp_num">
+                                            <a t-if="line.po_qty > 0"
+                                               href="#"
+                                               class="o_mnp_cov_link"
+                                               t-on-click.prevent="() => this.openCoverage(line)"
+                                               t-esc="fmtQty(line.po_qty)"/>
+                                            <t t-else=""
+                                               t-esc="fmtQty(line.po_qty)"/>
+                                        </td>
+                                        <td class="o_mnp_num"
+                                            t-esc="fmtQty(line.pr_qty)"/>
                                         <td t-att-class="'o_mnp_num' + (line.uncovered_qty > 0 ? ' o_mnp_neg' : '')"
                                             t-esc="fmtQty(line.uncovered_qty)"/>
                                         <td class="o_mnp_num">
@@ -550,13 +579,13 @@
                                 </t>
                                 <tr t-if="state.lines[group.product_id] === undefined"
                                     class="o_mnp_line">
-                                    <td t-att-colspan="15 + (state.showMipResp ? 1 : 0) + (state.showSaResp ? 1 : 0) + (state.showType ? 1 : 0) + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0) + (state.showExc ? 1 : 0) + (state.showRoute ? 1 : 0)"
+                                    <td t-att-colspan="17 + (state.showMipResp ? 1 : 0) + (state.showSaResp ? 1 : 0) + (state.showType ? 1 : 0) + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0) + (state.showExc ? 1 : 0) + (state.showRoute ? 1 : 0)"
                                         class="text-muted text-center">
                                         Yükleniyor…
                                     </td>
                                 </tr>
                                 <tr t-elif="!groupLines(group).length" class="o_mnp_line">
-                                    <td t-att-colspan="15 + (state.showMipResp ? 1 : 0) + (state.showSaResp ? 1 : 0) + (state.showType ? 1 : 0) + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0) + (state.showExc ? 1 : 0) + (state.showRoute ? 1 : 0)"
+                                    <td t-att-colspan="17 + (state.showMipResp ? 1 : 0) + (state.showSaResp ? 1 : 0) + (state.showType ? 1 : 0) + (state.showSource ? 1 : 0) + (state.showMip ? 1 : 0) + (state.showExc ? 1 : 0) + (state.showRoute ? 1 : 0)"
                                         class="text-muted text-center">
                                         Bu kapsamda ihtiyaç satırı yok.
                                     </td>

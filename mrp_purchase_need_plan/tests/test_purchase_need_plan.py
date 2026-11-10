@@ -464,6 +464,48 @@ class TestPurchaseNeedPlan(TransactionCase):
         self.assertEqual(rec.state, "cancel")
         self.assertTrue(rec.exists())
 
+    def test_15b_po_pr_columns(self):
+        """PO column = confirmed-order supply still in transit; PR =
+        request qty not yet converted to an approved order."""
+        d = fields.Date.today() + timedelta(days=30)
+        m1 = self._make_mo(self.vida, 400, d)
+
+        # a confirmed PO receipt covers part of the need
+        self._confirm_po(self.vida, 100, d - timedelta(days=5))
+        line = self._lines(self.vida)[0]
+        self.assertAlmostEqual(line["po_qty"], 100.0)
+        self.assertAlmostEqual(line["pr_qty"], 0.0)
+
+        # the rest goes to a purchase request: until it turns into an
+        # approved order the amount shows under PR
+        res = self.Need.create_purchase_request(move_ids=[m1.id])
+        request = self.env["purchase.request"].browse(res["requests"][0]["id"])
+        line = self._lines(self.vida)[0]
+        self.assertAlmostEqual(line["pr_qty"], 300.0)
+        self.assertAlmostEqual(line["po_qty"], 100.0)
+
+        # converting the request line into a confirmed order moves the
+        # qty from PR to PO (still in transit, not yet received)
+        Alloc = self.env.get("purchase.request.allocation")
+        if Alloc is None:
+            self.skipTest("purchase.request.allocation modeli yok")
+        po, po_move = self._confirm_po(
+            self.vida, 300, d - timedelta(days=2))
+        vals = {
+            "purchase_request_line_id": request.line_ids[:1].id,
+            "company_id": self.env.company.id,
+            "stock_move_id": po_move.id,
+            "product_uom_id": self.vida.uom_id.id,
+            "allocated_product_qty": 300.0,
+        }
+        Alloc.create({
+            k: v for k, v in vals.items()
+            if k in Alloc._fields and not Alloc._fields[k].compute})
+        line = self._lines(self.vida)[0]
+        self.assertAlmostEqual(line["pr_qty"], 0.0)
+        self.assertAlmostEqual(line["po_qty"], 400.0)
+        self.assertAlmostEqual(line["uncovered_qty"], 0.0)
+
     def test_11b_no_suggestion_when_po_on_time(self):
         """PO arriving before the need covers it directly — no pull
         suggestion is emitted."""
