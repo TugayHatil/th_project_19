@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from collections import defaultdict
+import math
 from datetime import datetime, timedelta
 
 import pytz
@@ -400,11 +401,28 @@ class MrpLtpNeed(models.AbstractModel):
         for need in needs:
             need["depth"] = depth_of(need["line_key"])
 
-        # EDD placement for unconfirmed needs
-        for need in sorted(needs, key=lambda n: (n["deadline"], n["pid"])):
+        # parents before children — a need's placement may depend on
+        # the window its parent occupies (first-unit overlap rule)
+        for need in sorted(needs, key=lambda n: (
+                n.get("depth", 0), n["deadline"], n["pid"])):
             if (need["pid"], need["line_key"]) in schedules:
                 continue
             self._place_backward(need, cap_map, plan_map, alloc, today)
+            # overlap: the child may finish during the parent's run but
+            # must start ≥ t1 (one unit through its op chain) earlier
+            if need.get("start"):
+                unit = sum(h for _w, h in need["ops"]) / (
+                    need.get("eff_cap") or 1.0)
+                lag = max(1, math.ceil(unit / 8.0))
+                for pk in need.get("parent_keys") or []:
+                    p = by_key.get(pk)
+                    ps = p and p.get("start")
+                    if ps and need["start"] > ps - timedelta(days=lag):
+                        span = need["end"] - need["start"]
+                        need["deadline"] = (
+                            ps - timedelta(days=lag) + span)
+                        self._place_backward(
+                            need, cap_map, plan_map, alloc, today)
 
         rows = []
         q = (query or "").strip().lower()
@@ -734,8 +752,10 @@ class MrpLtpNeed(models.AbstractModel):
         ]).unlink()
 
         planned = shortage = 0
+        placed_start = {}
         for need in sorted(
-                needs, key=lambda n: (n["deadline"], n["pid"])):
+                needs, key=lambda n: (
+                    n.get("depth", 0), n["deadline"], n["pid"])):
             if (need["pid"], need["line_key"]) in schedules:
                 continue
             if not need["ops"]:
@@ -743,8 +763,26 @@ class MrpLtpNeed(models.AbstractModel):
             sch = schedules.get((need["pid"], need["line_key"]))
             need["eff_cap"] = (sch.get("capacity") if sch else 0) \
                 or par_map.get((need["pid"], need["line_key"])) or 1.0
+            # first-unit overlap: the child may run inside the parent's
+            # window but must START early enough to hand over one unit
+            ps = [placed_start[pk]
+                  for pk in need.get("parent_keys") or []
+                  if pk in placed_start]
+            if ps:
+                unit = (sum(o["per_unit"] for o in need["ops"])
+                        / need["eff_cap"])
+                lag = max(1, math.ceil(unit / 8.0))
+                span_est = max(1, math.ceil(need["qty"] * unit / 8.0))
+                need["deadline"] = min(
+                    need["deadline"],
+                    min(ps) - timedelta(days=lag)
+                    + timedelta(days=span_est))
             windows = self._place_ops_backward(
                 need, cap_map, plan_map, alloc, today)
+            if windows:
+                placed_start[need["line_key"]] = min(
+                    fields.Date.to_date(w["start"])
+                    for w in windows.values())
             prev = self.env["mrp.ltp.need.operation"]
             for idx, op in enumerate(need["ops"]):
                 win = windows.get(idx)
