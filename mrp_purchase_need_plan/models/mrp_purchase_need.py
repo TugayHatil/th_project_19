@@ -595,7 +595,7 @@ class MrpPurchaseNeed(models.AbstractModel):
     # payload schema — bump whenever the serialized plan shape changes;
     # a snapshot written by older code is rejected outright since its
     # missing keys would silently break new frontend features
-    _PLAN_SCHEMA = 9
+    _PLAN_SCHEMA = 10
 
     def _snapshot_name(self, warehouse_id, date_from, date_to, query,
                        include_covered=False):
@@ -808,6 +808,19 @@ class MrpPurchaseNeed(models.AbstractModel):
 
         _mark("flow_bucket+prepass")
 
+        # confirmed production windows from the need-level capacity
+        # plan (mrp_long_term_planning) move component needs to the
+        # real production start — a capacity-planned parent shifts its
+        # components' need dates
+        sched = {}
+        if "mrp.ltp.need.schedule" in self.env:
+            for s in self.env["mrp.ltp.need.schedule"].sudo().search_read(
+                    [("company_id", "in", self.env.companies.ids)],
+                    ["line_key", "planned_start"]):
+                d = fields.Date.to_date(s["planned_start"])
+                if d:
+                    sched[s["line_key"]] = d
+
         # ---- phase A: per-product chronological walk + BoM explosion --
         walks = {}
         virtual_events = defaultdict(dict)  # pid -> {key: event dict}
@@ -839,7 +852,7 @@ class MrpPurchaseNeed(models.AbstractModel):
             if walk["needs"]:
                 self._explode_bom(
                     pid, walk, bom_map, manu_ids, ctx,
-                    out=virtual_events)
+                    out=virtual_events, sched=sched)
         _mark("walks+explosion")
 
         # ---- virtual MİP records + live request links, in one batch ---
@@ -2107,7 +2120,8 @@ class MrpPurchaseNeed(models.AbstractModel):
         return bom_map, children, depth, comp_products
 
     @api.model
-    def _explode_bom(self, pid, walk, bom_map, manu_route_ids, ctx, out):
+    def _explode_bom(self, pid, walk, bom_map, manu_route_ids, ctx, out,
+                     sched=None):
         """Turn the uncovered part of a manufactured product's needs
         into virtual component demands (dependent requirements).
 
@@ -2120,6 +2134,7 @@ class MrpPurchaseNeed(models.AbstractModel):
         bom = bom_map.get(prod["tmpl_id"])
         if not bom or not (manu_route_ids & prod["routes"]):
             return
+        sched = sched or {}
         delay_days = prod["produce_delay"] or 0
         detail = walk["detail"]
         for kind, entry in walk["needs"]:
@@ -2137,7 +2152,12 @@ class MrpPurchaseNeed(models.AbstractModel):
                 wh_id = entry["warehouse_id"]
                 company_id = entry["company_id"]
                 location = ctx["loc_name"].get(entry["location_id"], "")
-            prod_date = need_date - timedelta(days=delay_days)
+            lkey = entry["key"] if kind == "ev" else "mv:%s" % eid
+            # a capacity-confirmed production window overrides the
+            # lead-time estimate: components are needed when production
+            # actually starts
+            prod_date = sched.get(lkey) or (
+                need_date - timedelta(days=delay_days))
             for comp_pid, comp_qty in bom["lines"]:
                 qty = info["uncovered"] * comp_qty / bom["qty"]
                 if qty <= 0.0:

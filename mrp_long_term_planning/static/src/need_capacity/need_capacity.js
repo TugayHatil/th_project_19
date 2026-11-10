@@ -204,6 +204,7 @@ export class NeedCapacityPlanning extends Component {
             line_key: row.key,
             start: row.start || "",
             end: row.end || "",
+            capacity: row.capacity || 1,
         };
     }
 
@@ -213,6 +214,11 @@ export class NeedCapacityPlanning extends Component {
 
     onEditDate(field, ev) {
         this.state.editRow[field] = ev.target.value;
+    }
+
+    onEditCapacity(ev) {
+        const v = parseFloat(ev.target.value);
+        this.state.editRow.capacity = Number.isNaN(v) ? 1 : v;
     }
 
     async saveEdit() {
@@ -232,6 +238,7 @@ export class NeedCapacityPlanning extends Component {
                     line_key: edit.line_key,
                     planned_start: edit.start,
                     planned_end: edit.end,
+                    capacity: edit.capacity || false,
                 });
             this.notification.add(
                 _t("Planned window saved."), { type: "success" });

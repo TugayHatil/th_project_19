@@ -3,7 +3,7 @@
 {
     "name": "Long-Term Production Planning",
     "summary": "12-month long-term production planning grid (OS/SM/GM/IM/PM/DS)",
-    "version": "19.0.6.0.0",
+    "version": "19.0.6.1.0",
     "category": "Manufacturing/Manufacturing",
     "author": "Projet Solutions",
     "website": "https://projet.solutions",

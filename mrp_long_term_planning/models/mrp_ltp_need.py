@@ -45,6 +45,9 @@ class MrpLtpNeedSchedule(models.Model):
         string="Need Quantity", digits="Long-Term Planning Quantity",
         default=0.0,
     )
+    # parallel units assigned to the need — op hours divide by it, so
+    # 2 units turn a 1000-hour job into a 500-hour window
+    capacity = fields.Float(default=1.0)
 
     def init(self):
         self.env.cr.execute("""
@@ -53,6 +56,28 @@ class MrpLtpNeedSchedule(models.Model):
             ON mrp_ltp_need_schedule
                (company_id, product_id, COALESCE(warehouse_id, 0), line_key)
         """)
+
+    # a confirmed window feeds the MİP plan's component need dates —
+    # every change must invalidate the cached plan
+    def _bump_mip_plan_version(self):
+        if "mrp.purchase.need" in self.env:
+            self.env["mrp.purchase.need"]._bump_plan_version()
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        recs = super().create(vals_list)
+        self._bump_mip_plan_version()
+        return recs
+
+    def write(self, vals):
+        res = super().write(vals)
+        self._bump_mip_plan_version()
+        return res
+
+    def unlink(self):
+        res = super().unlink()
+        self._bump_mip_plan_version()
+        return res
 
 
 class MrpLtpNeed(models.AbstractModel):
@@ -115,7 +140,8 @@ class MrpLtpNeed(models.AbstractModel):
 
     @api.model
     def set_need_schedule(self, product_id, line_key,
-                          planned_start, planned_end, warehouse_id=False):
+                          planned_start, planned_end, warehouse_id=False,
+                          capacity=False):
         """Confirm (or move) the production window of one need line."""
         product_id = int(product_id)
         line_key = str(line_key or "")
@@ -141,6 +167,12 @@ class MrpLtpNeed(models.AbstractModel):
             "planned_end": end,
             "need_qty": self._live_need_qty(product_id, line_key),
         }
+        if capacity:
+            capacity = float(capacity)
+            if capacity <= 0.0:
+                raise UserError(_(
+                    "Parallel capacity must be greater than zero."))
+            vals["capacity"] = capacity
         if rec:
             rec.write(vals)
         else:
@@ -276,7 +308,7 @@ class MrpLtpNeed(models.AbstractModel):
                 ("company_id", "=", self.env.company.id),
             ], ["product_id", "line_key",
                 "planned_start", "planned_end", "need_qty",
-                "warehouse_id"]):
+                "capacity", "warehouse_id"]):
             s["start_d"] = fields.Date.to_date(s["planned_start"])
             s["end_d"] = fields.Date.to_date(s["planned_end"])
             schedules[(s["product_id"][0], s["line_key"])] = s
@@ -303,9 +335,10 @@ class MrpLtpNeed(models.AbstractModel):
             wc_tot = defaultdict(float)
             for (wc_id, _day), hours in days.items():
                 wc_tot[wc_id] += hours
+            cap = sch.get("capacity") or 1.0
             op_hours = defaultdict(float)
             for wc_id, per_unit in need["ops"]:
-                op_hours[wc_id] += per_unit * need["qty"]
+                op_hours[wc_id] += per_unit * need["qty"] / cap
             for (wc_id, day), hours in days.items():
                 if wc_tot[wc_id] > 0:
                     alloc[(wc_id, day)] += (
@@ -429,6 +462,7 @@ class MrpLtpNeed(models.AbstractModel):
             "wc_ids": wc_ids,
             "workcenters": ", ".join(wc_names),
             "req_hours": req_hours,
+            "capacity": sch["capacity"] if sch else 1.0,
             "start": fields.Date.to_string(start) if start else False,
             "end": fields.Date.to_string(end) if end else False,
             "overload": overload,

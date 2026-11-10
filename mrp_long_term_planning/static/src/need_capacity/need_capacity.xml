@@ -131,11 +131,20 @@
                                         <input type="date" class="form-control form-control-sm o_nc_date"
                                                t-att-value="state.editRow.end"
                                                t-on-change="(ev) => this.onEditDate('end', ev)"/>
+                                        <span class="d-inline-flex align-items-center gap-1">
+                                            ×<input type="number" min="1" step="1"
+                                                   class="form-control form-control-sm o_nc_cap"
+                                                   title="Parallel capacity (units)"
+                                                   t-att-value="state.editRow.capacity"
+                                                   t-on-change="onEditCapacity"/>
+                                        </span>
                                     </t>
                                     <t t-elif="row.planned &amp;&amp; row.start">
                                         <strong>
                                             <t t-esc="fmtDate(row.start)"/> → <t t-esc="fmtDate(row.end)"/>
                                         </strong>
+                                        <span t-if="row.capacity > 1" class="text-muted"
+                                              t-esc="' ×' + row.capacity"/>
                                     </t>
                                     <t t-else=""><span class="text-muted">—</span></t>
                                 </td>
