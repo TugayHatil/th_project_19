@@ -130,7 +130,7 @@
                                     t-attf-style="padding-left: {{8 + (row.depth or 0) * 20}}px">
                                     <i t-if="row.depth > 0"
                                        class="fa fa-level-up fa-rotate-90 text-muted me-1"/>
-                                    <strong t-esc="row.name"/>
+                                    <span t-esc="row.name"/>
                                 </td>
                                 <td class="text-nowrap">
                                     <t t-foreach="row.source_orders" t-as="so" t-key="so.id">
