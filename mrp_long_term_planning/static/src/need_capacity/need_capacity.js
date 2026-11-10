@@ -363,11 +363,11 @@ export class NeedCapacityPlanning extends Component {
             }
         } else {
             let d = new Date(mn.slice(0, 7) + "-01T00:00:00");
-            const end = mx.slice(0, 10);
+            const endYM = mx.slice(0, 7);
             const pad = (n) => String(n).padStart(2, "0");
             while (true) {
                 const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-                if (iso > end) {
+                if (iso.slice(0, 7) > endYM) {
                     break;
                 }
                 const wd = d.getDay();
