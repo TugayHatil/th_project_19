@@ -980,7 +980,7 @@ class MrpLtpNeed(models.AbstractModel):
                             self, ns).replace(tzinfo=None)
                         wc_id = r["workcenter_id"]
                         wc_id = wc_id[0] if isinstance(
-                            wc_id, list) else wc_id
+                            wc_id, (list, tuple)) else wc_id
                         if not isinstance(wc_id, int):
                             wc_id = self.env["mrp.workcenter"].sudo(
                                 ).search([("name", "=", str(wc_id))],
