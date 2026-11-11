@@ -229,7 +229,9 @@ class MrpLtpNeed(models.AbstractModel):
             needs = []
             for pid, data in plan.items():
                 for ln in data["lines"]:
-                    if "Ü" not in (ln.get("route") or ""):
+                    # leaf lines (raw materials, no BoM) stay — they
+                    # belong to the family timeline too
+                    if not (ln.get("route") or "").strip():
                         continue
                     qty = ln.get("uncovered_qty") or 0.0
                     if qty <= 0.0:
@@ -487,6 +489,17 @@ class MrpLtpNeed(models.AbstractModel):
                     changed = True
             if not changed:
                 break
+
+        # leaf needs (no BoM ops — e.g. raw materials): a point window
+        # at the parent's start, the day they are consumed
+        for need in needs:
+            if need["ops"] or need["sug_start"]:
+                continue
+            base = None
+            for pk in need.get("parent_keys") or []:
+                base = placed_start.get(pk) or base
+            need["sug_start"] = base or need["deadline"]
+            need["sug_end"] = need["sug_start"]
 
         # needs with stored op plans display the op window itself —
         # grid, family timeline and op panel then agree on one date
