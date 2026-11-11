@@ -978,6 +978,10 @@ class MrpLtpNeed(models.AbstractModel):
                         wc_id = r["workcenter_id"]
                         wc_id = wc_id[0] if isinstance(
                             wc_id, list) else wc_id
+                        if not isinstance(wc_id, int):
+                            wc_id = self.env["mrp.workcenter"].sudo(
+                                ).search([("name", "=", str(wc_id))],
+                                         limit=1).id or 0
                         ne = self._to_utc(self._finish_after(
                             wc_id, local, r["total_hours"] or 0.0))
                         Op.browse(r["id"]).write({
