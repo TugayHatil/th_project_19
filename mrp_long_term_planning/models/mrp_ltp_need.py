@@ -663,26 +663,28 @@ class MrpLtpNeed(models.AbstractModel):
         return start_dt + timedelta(hours=hours)
 
     def _rebind_op_keys(self, needs):
-        """Ops whose embedded need_date drifted re-attach to the same
-        product's current line — confirmed plans never orphan."""
+        """Ops keyed to a moved need_date re-attach to the product's
+        current line; stale duplicates on old keys are dropped so a
+        need never carries two plans on different keys."""
         Op = self.env["mrp.ltp.need.operation"].sudo()
         need_keys = {(n["pid"], n["line_key"]) for n in needs}
-        taken = {(o["product_id"][0] if isinstance(
-                     o["product_id"], (list, tuple))
-                 else o["product_id"], o["line_key"])
-                 for o in Op.search_read(
-                     [("company_id", "=", self.env.company.id)],
-                     ["product_id", "line_key"])}
+        groups = defaultdict(list)
         for o in Op.search([("company_id", "=", self.env.company.id)]):
-            if (o.product_id.id, o.line_key) in need_keys:
+            groups[(o.product_id.id,
+                    o.line_key.rsplit(":", 1)[0],
+                    o.operation_id.id or o.sequence or 0)].append(o)
+        for (pid, pref, _op), rows in groups.items():
+            targets = [k for k in need_keys
+                       if k[0] == pid and k[1].rsplit(":", 1)[0] == pref]
+            if len(targets) != 1:
                 continue
-            pref = o.line_key.rsplit(":", 1)[0]
-            matches = [k for k in need_keys
-                       if k[0] == o.product_id.id
-                       and k[1].rsplit(":", 1)[0] == pref]
-            if len(matches) == 1 and matches[0] not in taken:
-                o.line_key = matches[0][1]
-                taken.add(matches[0])
+            key = targets[0][1]
+            stale = [o for o in rows if o.line_key != key]
+            for o in stale:
+                o.unlink()
+            rows = [o for o in rows if o.line_key == key]
+            if len(rows) == 1 and rows[0].line_key != key:
+                rows[0].line_key = key
 
     def _op_wc_spans(self, wc_id):
         """{weekday: [(hour_from, hour_to)]} — the workcenter's working
