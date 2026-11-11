@@ -977,7 +977,7 @@ class MrpLtpNeed(models.AbstractModel):
                         # re-walk the finish through working slots —
                         # a raw shift would land inside breaks/nights
                         local = fields.Datetime.context_timestamp(
-                            self, ns)
+                            self, ns).replace(tzinfo=None)
                         wc_id = r["workcenter_id"]
                         wc_id = wc_id[0] if isinstance(
                             wc_id, list) else wc_id
