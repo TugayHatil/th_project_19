@@ -557,6 +557,26 @@ class MrpLtpNeed(models.AbstractModel):
         local = pytz.timezone(self.env.user.tz or "UTC").localize(dt)
         return local.astimezone(pytz.UTC).replace(tzinfo=None)
 
+    def _finish_after(self, wc_id, start_dt, hours):
+        """Naive-local finish of `hours` work starting at `start_dt`,
+        counting only the WC's working slots (breaks/nights skipped)."""
+        rem = hours
+        d = start_dt.date()
+        cur = start_dt.hour + start_dt.minute / 60.0
+        spans = self._op_wc_spans(wc_id)
+        while True:
+            for f, t in spans.get(d.weekday(), []):
+                if t <= cur:
+                    continue
+                f2 = max(f, cur)
+                if rem <= t - f2:
+                    return datetime.combine(
+                        d, datetime.min.time()) + timedelta(
+                            hours=f2 + rem)
+                rem -= t - f2
+            d += timedelta(days=1)
+            cur = 0.0
+
     def _op_wc_spans(self, wc_id):
         """{weekday: [(hour_from, hour_to)]} — the workcenter's working
         calendar; ops only ever land inside these slots."""
@@ -919,7 +939,8 @@ class MrpLtpNeed(models.AbstractModel):
                  ("line_key", "in",
                   [n["line_key"] for n in needs] or ["-"]),
                  ("state", "in", ("draft", "shortage"))],
-                ["id", "line_key", "planned_start", "planned_end"]):
+                ["id", "line_key", "planned_start", "planned_end",
+                 "workcenter_id", "total_hours"]):
             groups.setdefault(o["line_key"], []).append(o)
         for _round in range(3):
             moved = False
@@ -950,8 +971,15 @@ class MrpLtpNeed(models.AbstractModel):
                     for r in prows:
                         ns = fields.Datetime.to_datetime(
                             r["planned_start"]) + delta
-                        ne = fields.Datetime.to_datetime(
-                            r["planned_end"]) + delta
+                        # re-walk the finish through working slots —
+                        # a raw shift would land inside breaks/nights
+                        local = fields.Datetime.context_timestamp(
+                            self, ns)
+                        wc_id = r["workcenter_id"]
+                        wc_id = wc_id[0] if isinstance(
+                            wc_id, list) else wc_id
+                        ne = self._to_utc(self._finish_after(
+                            wc_id, local, r["total_hours"] or 0.0))
                         Op.browse(r["id"]).write({
                             "planned_start": ns,
                             "planned_end": ne,
