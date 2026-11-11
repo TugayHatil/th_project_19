@@ -27,7 +27,6 @@ export class NeedCapacityPlanning extends Component {
             workcenterIds: [],        // multi-select; empty = all
             query: "",
             overloadOnly: false,
-            checked: new Set(),
             rows: [],
             total: 0,
             page: 0,
@@ -296,48 +295,13 @@ export class NeedCapacityPlanning extends Component {
         }
     }
 
-    // rows carrying a confirmable plan (a suggested window)
-    plannedKeys() {
-        return new Set((this.state.rows || [])
-            .filter((r) => r.start && r.end)
-            .map((r) => r.key));
-    }
-    allPlannedChecked() {
-        const pk = this.plannedKeys();
-        return pk.size > 0
-            && [...pk].every((k) => this.state.checked.has(k));
-    }
-    toggleAll() {
-        this.state.checked = this.allPlannedChecked()
-            ? new Set() : this.plannedKeys();
-    }
-    toggleRow(row) {
-        const s = new Set(this.state.checked);
-        if (s.has(row.key)) {
-            s.delete(row.key);
-        } else {
-            s.add(row.key);
-        }
-        this.state.checked = s;
-    }
-
     async confirmPlan() {
         try {
-            const ids = (this.state.allOps || [])
-                .filter((o) => this.state.checked.has(o.line_key))
-                .map((o) => o.id);
-            if (!ids.length) {
-                this.notification.add(
-                    _t("Select the planned rows to confirm first."),
-                    { type: "warning" });
-                return;
-            }
             const res = await this.orm.call(
-                "mrp.ltp.need", "confirm_operations", [ids]);
+                "mrp.ltp.need", "confirm_operations", []);
             this.notification.add(
                 _t("%s operations confirmed.", res.confirmed),
                 { type: "success" });
-            this.state.checked = new Set();
             await this.loadGrid();
             await this.loadOps();
         } catch (error) {
