@@ -564,7 +564,9 @@ class MrpLtpNeed(models.AbstractModel):
         d = start_dt.date()
         cur = start_dt.hour + start_dt.minute / 60.0
         spans = self._op_wc_spans(wc_id)
-        while True:
+        if not spans:
+            return start_dt + timedelta(hours=hours)
+        for _ in range(4000):  # bounded — never outlive the horizon
             for f, t in spans.get(d.weekday(), []):
                 if t <= cur:
                     continue
@@ -576,6 +578,7 @@ class MrpLtpNeed(models.AbstractModel):
                 rem -= t - f2
             d += timedelta(days=1)
             cur = 0.0
+        return start_dt + timedelta(hours=hours)
 
     def _op_wc_spans(self, wc_id):
         """{weekday: [(hour_from, hour_to)]} — the workcenter's working
