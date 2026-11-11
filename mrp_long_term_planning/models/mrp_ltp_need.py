@@ -947,7 +947,7 @@ class MrpLtpNeed(models.AbstractModel):
         Op.search([
             ("company_id", "=", self.env.company.id),
             ("state", "in", ("draft", "shortage")),
-            ("locked", "=", False),
+            ("locked", "!=", True),
         ]).unlink()
 
         planned = shortage = 0
@@ -1337,7 +1337,7 @@ class MrpLtpNeed(models.AbstractModel):
         n = self.env["mrp.ltp.need.operation"].sudo().search([
             ("company_id", "=", self.env.company.id),
             ("state", "in", ("draft", "shortage")),
-            ("locked", "=", False),
+            ("locked", "!=", True),
         ])
         n.unlink()
         return {"cleared": len(n)}
