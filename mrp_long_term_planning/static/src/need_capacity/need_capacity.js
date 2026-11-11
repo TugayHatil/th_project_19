@@ -373,8 +373,13 @@ export class NeedCapacityPlanning extends Component {
         // → every day of the spanned month(s), weekends shaded
         const cols = [];
         if (this.state.familyView === "day") {
+            const D = this.state.familyDay || mn.slice(0, 10);
+            const dow = (new Date(D + "T00:00:00").getDay() + 6) % 7;
+            const spans = (this.state.wcAtt || {})[dow];
             for (let h = 0; h < 24; h++) {
-                cols.push({label: h, wknd: false});
+                const off = this.state.wcAtt && !(spans || []).some(
+                    (s) => h >= s[0] && h < s[1]);
+                cols.push({label: h, wknd: !!off});
             }
         } else {
             let d = new Date(mn.slice(0, 7) + "-01T00:00:00");
@@ -500,6 +505,19 @@ export class NeedCapacityPlanning extends Component {
                 ? this.state.allOps.filter((r) => r.line_key === sel.key)
                 : [];
             this.buildGantt(this.state.allOps);
+            const wcIds = [...new Set(this.state.allOps.map(
+                (o) => Array.isArray(o.workcenter_id)
+                    ? o.workcenter_id[0] : o.workcenter_id
+            ).filter(Boolean))];
+            if (wcIds.length) {
+                const att = await this.orm.call(
+                    "mrp.ltp.need", "get_wc_attendance", [wcIds]);
+                const cal = {};
+                for (const a of att) {
+                    (cal[a.dow] = cal[a.dow] || []).push([a.f, a.t]);
+                }
+                this.state.wcAtt = cal;
+            }
             if (this.state.familySel) {
                 this._familyOf(this.state.familySel);
             }

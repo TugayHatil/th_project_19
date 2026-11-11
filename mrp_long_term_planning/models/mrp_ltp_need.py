@@ -952,6 +952,18 @@ class MrpLtpNeed(models.AbstractModel):
         }
 
     @api.model
+    def get_wc_attendance(self, wc_ids):
+        """Working intervals per workcenter for the daily timeline —
+        non-working hours shade like weekends."""
+        out = []
+        for wc in self.env["mrp.workcenter"].sudo().browse(
+                [int(i) for i in wc_ids or []]):
+            for a in wc.resource_calendar_id.attendance_ids:
+                out.append({"wc_id": wc.id, "dow": int(a.dayofweek),
+                            "f": a.hour_from, "t": a.hour_to})
+        return out
+
+    @api.model
     def set_need_capacity(self, product_id, line_key, capacity,
                           warehouse_id=False):
         """Planner chooses how many machines run this need in parallel
