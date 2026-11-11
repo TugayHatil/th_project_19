@@ -348,6 +348,21 @@ class MrpLtpNeed(models.AbstractModel):
             s["end_d"] = fields.Date.to_date(s["planned_end"])
             schedules[(s["product_id"][0], s["line_key"])] = s
 
+        # a schedule's line_key embeds the need_date — replanning or
+        # date shifts orphan it; rebind to the same product's current
+        # line so the confirmed window never evaporates
+        need_keys = {(n["pid"], n["line_key"]) for n in needs}
+        for skey in list(schedules):
+            if skey in need_keys:
+                continue
+            pref = skey[1].rsplit(":", 1)[0]
+            matches = [k for k in need_keys
+                       if k[0] == skey[0]
+                       and k[1].rsplit(":", 1)[0] == pref
+                       and k not in schedules]
+            if len(matches) == 1:
+                schedules[matches[0]] = schedules.pop(skey)
+
         wcs = self.env["mrp.workcenter"].browse(sorted(wc_ids))
         # the daily maps must cover the furthest deadline too — a need
         # landing outside the 12-month window still gets real capacity
@@ -836,6 +851,21 @@ class MrpLtpNeed(models.AbstractModel):
             s["start_d"] = fields.Date.to_date(s["planned_start"])
             s["end_d"] = fields.Date.to_date(s["planned_end"])
             schedules[(s["product_id"][0], s["line_key"])] = s
+
+        # a schedule's line_key embeds the need_date — replanning or
+        # date shifts orphan it; rebind to the same product's current
+        # line so the confirmed window never evaporates
+        need_keys = {(n["pid"], n["line_key"]) for n in needs}
+        for skey in list(schedules):
+            if skey in need_keys:
+                continue
+            pref = skey[1].rsplit(":", 1)[0]
+            matches = [k for k in need_keys
+                       if k[0] == skey[0]
+                       and k[1].rsplit(":", 1)[0] == pref
+                       and k not in schedules]
+            if len(matches) == 1:
+                schedules[matches[0]] = schedules.pop(skey)
 
         wcs = self.env["mrp.workcenter"].browse(sorted(wc_ids))
         last_deadline = max(n["deadline"] for n in needs)
