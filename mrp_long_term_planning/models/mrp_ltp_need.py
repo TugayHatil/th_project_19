@@ -229,9 +229,7 @@ class MrpLtpNeed(models.AbstractModel):
             needs = []
             for pid, data in plan.items():
                 for ln in data["lines"]:
-                    # leaf lines (raw materials, no BoM) stay — they
-                    # belong to the family timeline too
-                    if not (ln.get("route") or "").strip():
+                    if "Ü" not in (ln.get("route") or ""):
                         continue
                     qty = ln.get("uncovered_qty") or 0.0
                     if qty <= 0.0:
