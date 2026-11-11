@@ -410,11 +410,23 @@ export class NeedCapacityPlanning extends Component {
                     if (os > D || (oe && oe < D)) {
                         continue;
                     }
-                    const hs = os === D
-                        ? parseInt(o.planned_start.slice(11, 13), 10) : 0;
-                    const he = oe === D
+                    // bar length = the op's hour budget on that day,
+                    // not the stored whole-day window
+                    let hs, he;
+                    const endH = oe === D
                         ? parseInt(o.planned_end.slice(11, 13), 10) + 1
-                        : 24;
+                        : null;
+                    if (os === D) {
+                        hs = parseInt(o.planned_start.slice(11, 13), 10)
+                            + parseInt(o.planned_start.slice(14, 16), 10)
+                              / 60;
+                        he = endH !== null
+                            ? Math.min(24, hs + (o.total_hours || 0))
+                            : Math.min(24, hs + (o.total_hours || 0));
+                    } else {
+                        hs = 0;
+                        he = endH !== null ? endH : 24;
+                    }
                     sH = sH === null ? hs : Math.min(sH, hs);
                     eH = eH === null ? he : Math.max(eH, he);
                 }
@@ -425,10 +437,15 @@ export class NeedCapacityPlanning extends Component {
                     return Object.assign({}, f,
                         {barLeft: 0, barWidth: 0, barText: "—"});
                 }
+                const fmt = (h) => {
+                    const hh = Math.floor(h);
+                    const mm = Math.round((h - hh) * 60);
+                    return hh + ":" + String(mm).padStart(2, "0");
+                };
                 return Object.assign({}, f, {
                     barLeft: sH / 24 * 100,
                     barWidth: Math.max((eH - sH) / 24 * 100, 0.8),
-                    barText: sH + ":00 → " + eH + ":00"});
+                    barText: fmt(sH) + " → " + fmt(eH)});
             }
             // whatever the hour, start/end days render as full columns
             const startIdx = s ? Math.max(0, Math.floor(
