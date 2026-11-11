@@ -482,6 +482,30 @@ class MrpLtpNeed(models.AbstractModel):
                         self._place_backward(
                             need, cap_map, plan_map, alloc, today)
 
+        # late = the child's first unit arrives after the parent
+        # starts; a same-day child finishing mid-window is on time
+        for need in needs:
+            need["late_flag"] = False
+            sch = schedules.get((need["pid"], need["line_key"]))
+            nstart = sch["start_d"] if sch else need.get("sug_start")
+            if nstart is None and need["ops"]:
+                need["late_flag"] = True
+                continue
+            unit = sum(h for _w, h in need["ops"])
+            for pk in need.get("parent_keys") or []:
+                p = by_key.get(pk)
+                if not p:
+                    continue
+                psch = schedules.get((p["pid"], p["line_key"]))
+                ps = psch["start_d"] if psch else p.get("sug_start")
+                if ps is None or nstart is None:
+                    continue
+                units = need["qty"] / (p["qty"] or 1.0)
+                lag = math.ceil(units / (need.get("eff_cap") or 1.0)) \
+                    * unit / 24.0
+                if nstart > ps - timedelta(days=lag):
+                    need["late_flag"] = True
+
         # Termin = the source order's fixed required date — the
         # propagated component deadlines stay internal only
         so_dates = {}
@@ -668,15 +692,13 @@ class MrpLtpNeed(models.AbstractModel):
             status, start, end, overload = "missing", None, None, False
         elif sch:
             start, end = sch["start_d"], sch["end_d"]
-            real_dl = need.get("need_date") or need["deadline"]
-            overload = end > real_dl or start < today
+            overload = need.get("late_flag") or start < today
             status = "planned_late" if overload else "planned"
         else:
             start = need.get("sug_start")
             end = need.get("sug_end")
-            real_dl = need.get("need_date") or need["deadline"]
             overload = need.get("unplaced") or start is None \
-                or end > real_dl or start < today
+                or need.get("late_flag") or start < today
             status = "late" if overload else "ok"
         wc_names = [wc_name[wc] for wc in dict.fromkeys(wc_ids)
                     if wc in wc_name]
