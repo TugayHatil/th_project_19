@@ -1334,6 +1334,32 @@ class MrpLtpNeed(models.AbstractModel):
             domain.append(("id", "in", [int(i) for i in ids]))
         n = self.env["mrp.ltp.need.operation"].sudo().search(domain)
         n.write({"state": "confirmed"})
+        # the confirmed ops are the row's real plan — mirror the
+        # window into the schedule so the need shows Planlandı +
+        # Planlanan Pencere (single source of truth)
+        Schedule = self.env["mrp.ltp.need.schedule"].sudo()
+        by_key = defaultdict(list)
+        for o in n:
+            by_key[(o.product_id.id, o.line_key,
+                    o.warehouse_id.id or False)].append(o)
+        for (pid, lkey, wh), rows in by_key.items():
+            starts = [o.planned_start for o in rows if o.planned_start]
+            ends = [o.planned_end for o in rows if o.planned_end]
+            if not starts or not ends:
+                continue
+            vals = {"planned_start": min(starts).date(),
+                    "planned_end": max(ends).date(),
+                    "need_qty": self._live_need_qty(pid, lkey)}
+            rec = Schedule.search([
+                ("product_id", "=", pid), ("line_key", "=", lkey),
+                ("warehouse_id", "=", wh),
+                ("company_id", "=", self.env.company.id)], limit=1)
+            if rec:
+                rec.write(vals)
+            else:
+                vals.update({"product_id": pid, "line_key": lkey,
+                             "warehouse_id": wh})
+                Schedule.create(vals)
         return {"confirmed": len(n)}
 
     @api.model
