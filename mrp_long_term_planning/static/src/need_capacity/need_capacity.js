@@ -301,6 +301,7 @@ export class NeedCapacityPlanning extends Component {
             this.notification.add(
                 _t("%s operations confirmed.", res.confirmed),
                 { type: "success" });
+            await this.loadGrid();
             await this.loadOps();
         } catch (error) {
             this.notifyError(error, _t("Plan could not be confirmed."));
@@ -314,6 +315,7 @@ export class NeedCapacityPlanning extends Component {
             this.notification.add(
                 _t("%s draft rows cleared.", res.cleared),
                 { type: "success" });
+            await this.loadGrid();
             await this.loadOps();
         } catch (error) {
             this.notifyError(error, _t("Drafts could not be cleared."));
