@@ -434,6 +434,11 @@ export class NeedCapacityPlanning extends Component {
         this.state.familyOffs = offs;
         this.state.familyRows = fam.map((f) => {
             const [s, e] = range(f);
+            // bar colour follows the OP state — a confirmed operation
+            // is the real locked plan, not the row badge
+            const st = (this.state.allOps || []).some(
+                (o) => o.line_key === f.key && o.state === "confirmed")
+                ? "planned" : f.status;
             // tooltip window: earliest op start → latest op end
             let tipS = s, tipE = e;
             for (const o of this.state.allOps || []) {
@@ -483,8 +488,8 @@ export class NeedCapacityPlanning extends Component {
                 }
                 if (sH === null) {
                     return Object.assign({}, f,
-                        {barLeft: 0, barWidth: 0, barText: "—",
-                         barStart: bS, barEnd: bE});
+                        {status: st, barLeft: 0, barWidth: 0,
+                         barText: "—", barStart: bS, barEnd: bE});
                 }
                 const fmt = (h) => {
                     const hh = Math.floor(h);
@@ -492,6 +497,7 @@ export class NeedCapacityPlanning extends Component {
                     return hh + ":" + String(mm).padStart(2, "0");
                 };
                 return Object.assign({}, f, {
+                    status: st,
                     barLeft: sH / 24 * 100,
                     barWidth: Math.max((eH - sH) / 24 * 100, 0.8),
                     barText: fmt(sH) + " → " + fmt(eH),
@@ -503,6 +509,7 @@ export class NeedCapacityPlanning extends Component {
             const endIdx = e ? Math.max(startIdx, Math.floor(
                 (new Date(e) - new Date(cols[0].iso)) / DAY)) : startIdx;
             return Object.assign({}, f, {
+                status: st,
                 barLeft: startIdx / N * 100,
                 barWidth: Math.max((endIdx - startIdx + 1) / N * 100,
                     0.8),
