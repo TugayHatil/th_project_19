@@ -552,6 +552,25 @@ class MrpLtpNeed(models.AbstractModel):
         return rows
 
     @api.model
+    def _to_utc(self, dt):
+        """Naive local datetime -> naive UTC for storage."""
+        local = pytz.timezone(self.env.user.tz or "UTC").localize(dt)
+        return local.astimezone(pytz.UTC).replace(tzinfo=None)
+
+    def _op_wc_spans(self, wc_id):
+        """{weekday: [(hour_from, hour_to)]} — the workcenter's working
+        calendar; ops only ever land inside these slots."""
+        cache = self.__dict__.setdefault("_span_cache", {})
+        if wc_id not in cache:
+            cal = self.env["mrp.workcenter"].sudo().browse(
+                wc_id).resource_calendar_id
+            spans = {}
+            for a in cal.attendance_ids:
+                spans.setdefault(int(a.dayofweek), []).append(
+                    (a.hour_from, a.hour_to))
+            cache[wc_id] = {d: sorted(s) for d, s in spans.items()}
+        return cache[wc_id]
+
     def _op_day_dt(self, day, end=False):
         """Day boundary in the user's timezone stored as UTC — 00:00
         local at start, 23:59:59 local at end. Ops and rows then agree
@@ -1126,12 +1145,29 @@ class MrpLtpNeed(models.AbstractModel):
         cursor = need.get("earliest") or today
         windows = {}
         cap = max(need.get("eff_cap") or 1.0, 1.0)
+
+        def _edge(wc_id, day, hours):
+            """Timestamp inside the day's working slots where `hours`
+            of work completes — skipped breaks/nights never count."""
+            h = hours
+            for f, t in self._op_wc_spans(wc_id).get(
+                    day.weekday()) or [(0.0, 24.0)]:
+                if h <= t - f:
+                    return datetime.combine(
+                        day, datetime.min.time()) + timedelta(hours=f + h)
+                h -= t - f
+            last = self._op_wc_spans(wc_id).get(
+                day.weekday(), [(0.0, 24.0)])[-1][1]
+            return datetime.combine(
+                day, datetime.min.time()) + timedelta(hours=last)
+
         for idx, op in enumerate(need["ops"]):
             wc_id = op["wc_id"]
             remaining = need["qty"] * op["per_unit"] / cap
             if remaining <= 0:
                 continue
             start_day = end_day = None
+            end_take = 0.0
             short = False
             day = max(cursor, today)
             while remaining > 1e-9:
@@ -1146,6 +1182,7 @@ class MrpLtpNeed(models.AbstractModel):
                     alloc[(wc_id, day)] += take
                     remaining -= take
                     end_day = day
+                    end_take = take
                     if start_day is None:
                         start_day = day
                 day += timedelta(days=1)
@@ -1153,9 +1190,16 @@ class MrpLtpNeed(models.AbstractModel):
                 continue
             if end_day > (need.get("need_date") or need["deadline"]):
                 short = True
+            # edges inside the WC's working hours: first slot starts,
+            # the end lands on the hour the last work finishes
+            spans = self._op_wc_spans(wc_id).get(
+                start_day.weekday()) or [(0.0, 24.0)]
+            start_dt = datetime.combine(
+                start_day, datetime.min.time()) + timedelta(
+                    hours=spans[0][0])
             windows[idx] = {
-                "start": self._op_day_dt(start_day),
-                "end": self._op_day_dt(end_day, end=True),
+                "start": self._to_utc(start_dt),
+                "end": self._to_utc(_edge(wc_id, end_day, end_take)),
                 "shortage": short,
             }
             cursor = end_day

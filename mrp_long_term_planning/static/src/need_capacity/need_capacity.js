@@ -391,8 +391,12 @@ export class NeedCapacityPlanning extends Component {
                     break;
                 }
                 const wd = d.getDay();
-                cols.push({label: d.getDate(),
-                    wknd: wd === 0 || wd === 6, iso});
+                const odow = (wd + 6) % 7;
+                const spans = (this.state.wcAtt || {})[odow];
+                const off = this.state.wcAtt
+                    ? !(spans || []).length
+                    : (wd === 0 || wd === 6);
+                cols.push({label: d.getDate(), wknd: off, iso});
                 d = new Date(d.getTime() + DAY);
             }
         }
