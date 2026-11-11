@@ -269,6 +269,7 @@ export class NeedCapacityPlanning extends Component {
                     line_key: row.key,
                 });
             await this.loadGrid();
+            await this.loadOps();
         } catch (error) {
             this.notifyError(error, _t("Window could not be cleared."));
         }
