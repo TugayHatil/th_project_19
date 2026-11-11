@@ -409,6 +409,13 @@ export class NeedCapacityPlanning extends Component {
                 if (!this.state.familyDay) {
                     this.state.familyDay = D;
                 }
+                const ddow = (new Date(D + "T00:00:00").getDay() + 6) % 7;
+                const dspans = (this.state.wcAtt || {})[ddow] || [];
+                const wsStart = dspans.length ? dspans[0][0] : 0;
+                const wsEnd = dspans.length
+                    ? dspans[dspans.length - 1][1] : 24;
+                const hh = (dt) => parseInt(dt.slice(11, 13), 10)
+                    + parseInt(dt.slice(14, 16), 10) / 60;
                 let sH = null, eH = null;
                 for (const o of this.state.allOps || []) {
                     if (o.line_key !== f.key || !o.planned_start) {
@@ -419,23 +426,10 @@ export class NeedCapacityPlanning extends Component {
                     if (os > D || (oe && oe < D)) {
                         continue;
                     }
-                    // bar length = the op's hour budget on that day,
-                    // not the stored whole-day window
-                    let hs, he;
-                    const endH = oe === D
-                        ? parseInt(o.planned_end.slice(11, 13), 10) + 1
-                        : null;
-                    if (os === D) {
-                        hs = parseInt(o.planned_start.slice(11, 13), 10)
-                            + parseInt(o.planned_start.slice(14, 16), 10)
-                              / 60;
-                        he = endH !== null
-                            ? Math.min(24, hs + (o.total_hours || 0))
-                            : Math.min(24, hs + (o.total_hours || 0));
-                    } else {
-                        hs = 0;
-                        he = endH !== null ? endH : 24;
-                    }
+                    // the op's real window clipped to that day's
+                    // working slots — starts/ends inside work hours
+                    const hs = os === D ? hh(o.planned_start) : wsStart;
+                    const he = oe === D ? hh(o.planned_end) : wsEnd;
                     sH = sH === null ? hs : Math.min(sH, hs);
                     eH = eH === null ? he : Math.max(eH, he);
                 }
