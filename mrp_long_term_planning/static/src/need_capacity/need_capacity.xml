@@ -108,11 +108,6 @@
                 <table class="o_nc_table">
                     <thead>
                         <tr>
-                            <th class="o_nc_chk">
-                                <input type="checkbox"
-                                       t-att-checked="allPlannedChecked()"
-                                       t-on-change="toggleAll"/>
-                            </th>
                             <th>Product</th>
                             <th>Source Order</th>
                             <th>Period</th>
@@ -131,11 +126,6 @@
                         <t t-foreach="state.rows" t-as="row" t-key="row.product_id + '-' + row.key">
                             <tr t-att-class="'o_nc_row' + (row.overload ? ' o_nc_row_late' : '') + (isEditing(row) || rowKey(row) === state.selectedKey ? ' o_nc_row_sel' : '')"
                                 t-on-click="() => this.selectRow(row)">
-                                <td class="o_nc_chk" t-on-click.stop="noop">
-                                    <input type="checkbox"
-                                        t-att-checked="state.checked[row.key]"
-                                        t-on-change="toggleRow(row)"/>
-                                </td>
                                 <td class="o_nc_product"
                                     t-attf-style="padding-left: {{8 + (row.depth or 0) * 20}}px">
                                     <i t-if="row.depth > 0"

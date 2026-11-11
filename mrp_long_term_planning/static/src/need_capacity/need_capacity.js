@@ -27,7 +27,6 @@ export class NeedCapacityPlanning extends Component {
             workcenterIds: [],        // multi-select; empty = all
             query: "",
             overloadOnly: false,
-            checked: {},
             rows: [],
             total: 0,
             page: 0,
@@ -296,53 +295,20 @@ export class NeedCapacityPlanning extends Component {
         }
     }
 
-    noop() {}
-
-    // rows carrying a confirmable plan (a suggested window)
-    plannedKeys() {
-        return (this.state.rows || [])
-            .filter((r) => r.start && r.end)
-            .map((r) => r.key);
-    }
-    allPlannedChecked() {
-        const pk = this.plannedKeys();
-        return pk.length > 0
-            && pk.every((k) => this.state.checked[k]);
-    }
-    toggleAll() {
-        if (this.allPlannedChecked()) {
-            this.state.checked = {};
-        } else {
-            const c = {};
-            for (const k of this.plannedKeys()) {
-                c[k] = true;
-            }
-            this.state.checked = c;
-        }
-    }
-    toggleRow(row) {
-        const c = Object.assign({}, this.state.checked);
-        c[row.key] = !c[row.key];
-        this.state.checked = c;
-    }
-
     async confirmPlan() {
         try {
-            const ids = (this.state.allOps || [])
-                .filter((o) => this.state.checked[o.line_key])
-                .map((o) => o.id);
-            if (!ids.length) {
-                this.notification.add(
-                    _t("Select the planned rows to confirm first."),
-                    { type: "warning" });
-                return;
-            }
+            // a clicked row is the selection — confirm only its ops;
+            // nothing selected → confirm everything
+            const sel = (this.state.rows || [])
+                .find((r) => this.rowKey(r) === this.state.selectedKey);
+            const ids = sel && (this.state.allOps || [])
+                .filter((o) => o.line_key === sel.key)
+                .map((o) => o.id) || false;
             const res = await this.orm.call(
                 "mrp.ltp.need", "confirm_operations", [ids]);
             this.notification.add(
                 _t("%s operations confirmed.", res.confirmed),
                 { type: "success" });
-            this.state.checked = {};
             await this.loadGrid();
             await this.loadOps();
         } catch (error) {
