@@ -323,8 +323,13 @@ class MrpLtpNeed(models.AbstractModel):
                   [n["line_key"] for n in needs] or ["-"]),
                  ("state", "in", ("draft", "confirmed", "shortage"))],
                 ["line_key", "planned_start", "planned_end"]):
-            s = fields.Date.to_date(o["planned_start"])
-            e = fields.Date.to_date(o["planned_end"])
+            # local dates — stored UTC datetimes sit on day bounds
+            s = fields.Datetime.context_timestamp(
+                self, fields.Datetime.to_datetime(
+                    o["planned_start"])).date()
+            e = fields.Datetime.context_timestamp(
+                self, fields.Datetime.to_datetime(
+                    o["planned_end"])).date()
             k = o["line_key"]
             if k in op_win:
                 op_win[k] = (min(op_win[k][0], s),
@@ -542,6 +547,16 @@ class MrpLtpNeed(models.AbstractModel):
         return rows
 
     @api.model
+    def _op_day_dt(self, day, end=False):
+        """Day boundary in the user's timezone stored as UTC — 00:00
+        local at start, 23:59:59 local at end. Ops and rows then agree
+        on the calendar day in every display."""
+        naive = datetime.combine(day, datetime.min.time())
+        if end:
+            naive += timedelta(days=1) - timedelta(seconds=1)
+        local = pytz.timezone(self.env.user.tz or "UTC").localize(naive)
+        return local.astimezone(pytz.UTC).replace(tzinfo=None)
+
     def _place_backward(self, need, cap_map, plan_map, alloc, today):
         """Need window = aggregate of the same op-level placement the
         APS draft uses — ONE engine, so the suggested window and the
@@ -1071,10 +1086,8 @@ class MrpLtpNeed(models.AbstractModel):
             if start_day < today or end_day > need["deadline"]:
                 short = True
             windows[idx] = {
-                "start": datetime.combine(start_day, datetime.min.time()),
-                "end": datetime.combine(
-                    end_day, datetime.min.time()) + timedelta(days=1)
-                    - timedelta(seconds=1),
+                "start": self._op_day_dt(start_day),
+                "end": self._op_day_dt(end_day, end=True),
                 "shortage": short,
             }
             cursor = start_day
@@ -1120,10 +1133,8 @@ class MrpLtpNeed(models.AbstractModel):
             if end_day > need["deadline"]:
                 short = True
             windows[idx] = {
-                "start": datetime.combine(start_day, datetime.min.time()),
-                "end": datetime.combine(
-                    end_day, datetime.min.time()) + timedelta(days=1)
-                    - timedelta(seconds=1),
+                "start": self._op_day_dt(start_day),
+                "end": self._op_day_dt(end_day, end=True),
                 "shortage": short,
             }
             cursor = end_day
