@@ -205,12 +205,16 @@ class MrpLtpNeed(models.AbstractModel):
             ("company_id", "=", self.env.company.id),
         ]).unlink()
         # unplanning the row releases its ops too — confirmed rows
-        # revert to draft so row and ops never disagree
+        # revert to draft so row and ops never disagree; ops may sit
+        # on a drifted key, match the product's key prefix too
+        pref = str(line_key or "").rsplit(":", 1)[0]
         self.env["mrp.ltp.need.operation"].sudo().search([
-            ("line_key", "=", str(line_key or "")),
+            ("product_id", "=", int(product_id)),
             ("company_id", "=", self.env.company.id),
             ("state", "=", "confirmed"),
-        ]).write({"state": "draft"})
+        ]).filtered(lambda o: o.line_key == line_key
+                    or o.line_key.rsplit(":", 1)[0] == pref
+                    ).write({"state": "draft"})
         return {"ok": True}
 
     @api.model
@@ -333,6 +337,7 @@ class MrpLtpNeed(models.AbstractModel):
 
         # draft/confirmed APS ops define the need's actual window —
         # rows, family timeline and the op panel must agree
+        self._rebind_op_keys(needs)
         op_win = {}
         for o in self.env["mrp.ltp.need.operation"].sudo().search_read(
                 [("line_key", "in",
@@ -657,6 +662,28 @@ class MrpLtpNeed(models.AbstractModel):
             cur = 0.0
         return start_dt + timedelta(hours=hours)
 
+    def _rebind_op_keys(self, needs):
+        """Ops whose embedded need_date drifted re-attach to the same
+        product's current line — confirmed plans never orphan."""
+        Op = self.env["mrp.ltp.need.operation"].sudo()
+        need_keys = {(n["pid"], n["line_key"]) for n in needs}
+        taken = {(o["product_id"][0] if isinstance(
+                     o["product_id"], (list, tuple))
+                 else o["product_id"], o["line_key"])
+                 for o in Op.search_read(
+                     [("company_id", "=", self.env.company.id)],
+                     ["product_id", "line_key"])}
+        for o in Op.search([("company_id", "=", self.env.company.id)]):
+            if (o.product_id.id, o.line_key) in need_keys:
+                continue
+            pref = o.line_key.rsplit(":", 1)[0]
+            matches = [k for k in need_keys
+                       if k[0] == o.product_id.id
+                       and k[1].rsplit(":", 1)[0] == pref]
+            if len(matches) == 1 and matches[0] not in taken:
+                o.line_key = matches[0][1]
+                taken.add(matches[0])
+
     def _op_wc_spans(self, wc_id):
         """{weekday: [(hour_from, hour_to)]} — the workcenter's working
         calendar; ops only ever land inside these slots."""
@@ -960,6 +987,7 @@ class MrpLtpNeed(models.AbstractModel):
         self._reserve_confirmed_ops(cap_map, alloc)
 
         Op = self.env["mrp.ltp.need.operation"].sudo()
+        self._rebind_op_keys(needs)
         Op.search([
             ("company_id", "=", self.env.company.id),
             ("state", "in", ("draft", "shortage")),
