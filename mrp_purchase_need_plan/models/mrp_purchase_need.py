@@ -2214,7 +2214,8 @@ class MrpPurchaseNeed(models.AbstractModel):
                 # the key's date must be STABLE — the source order's
                 # commitment never drifts, unlike the consuming op's
                 # scheduled date which moves on every replan
-                so_id = so
+                so_id = locals().get("so") or ctx["sl_order"].get(
+                    entry.get("sale_line_id"))
                 if isinstance(so_id, (list, tuple)):
                     so_id = so_id[0]
                 elif not isinstance(so_id, int):
