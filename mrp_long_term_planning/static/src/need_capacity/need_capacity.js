@@ -27,6 +27,7 @@ export class NeedCapacityPlanning extends Component {
             workcenterIds: [],        // multi-select; empty = all
             query: "",
             overloadOnly: false,
+            checked: {},
             rows: [],
             total: 0,
             page: 0,
@@ -299,13 +300,15 @@ export class NeedCapacityPlanning extends Component {
         try {
             // a clicked row is the selection — confirm only its ops;
             // nothing selected → confirm everything
-            const sel = (this.state.rows || [])
-                .find((r) => this.rowKey(r) === this.state.selectedKey);
-            const ids = sel && (this.state.allOps || [])
-                .filter((o) => o.line_key === sel.key)
-                .map((o) => o.id) || false;
+            const marked = Object.keys(this.state.checked)
+                .filter((k) => this.state.checked[k]);
+            const ids = marked.length
+                ? (this.state.allOps || [])
+                    .filter((o) => marked.indexOf(o.line_key) >= 0)
+                    .map((o) => o.id) : false;
             const res = await this.orm.call(
                 "mrp.ltp.need", "confirm_operations", [ids]);
+            this.state.checked = {};
             this.notification.add(
                 _t("%s operations confirmed.", res.confirmed),
                 { type: "success" });
@@ -550,7 +553,32 @@ export class NeedCapacityPlanning extends Component {
         }
     }
 
-    async selectRow(row) {
+    // mark rows for a scoped confirm — click on the left marker cell
+    toggleCheck(row) {
+        const c = Object.assign({}, this.state.checked);
+        c[row.key] = !c[row.key];
+        this.state.checked = c;
+    }
+    toggleAll() {
+        const planned = (this.state.rows || [])
+            .filter((r) => r.start && r.end);
+        const all = planned.length > 0
+            && planned.every((r) => this.state.checked[r.key]);
+        const c = {};
+        if (!all) {
+            for (const r of planned) {
+                c[r.key] = true;
+            }
+        }
+        this.state.checked = c;
+    }
+
+    async selectRow(row, ev) {
+        if (ev && ev.target && ev.target.closest
+                && ev.target.closest('.o_nc_chk')) {
+            this.toggleCheck(row);
+            return;
+        }
         this.state.selectedKey = this.rowKey(row);
         this.state.familySel = row;
         this._familyOf(row);

@@ -123,3 +123,7 @@
 .o_nc_ftrack_day { background-image:
     linear-gradient(to right, rgba(0,0,0,.10) 1px, transparent 1px);
     background-size: calc(100%/24) 100%; }
+.o_nc_chk { width: 1.4rem; text-align: center; }
+.o_nc_chk::before { content: ""; display: inline-block; width: 12px; height: 12px; border: 1.5px solid #999; border-radius: 2px; }
+.o_nc_row_mark .o_nc_chk::before { background: #714B67; border-color: #714B67; }
+.o_nc_row_mark td { background: #f3ebf1; }
