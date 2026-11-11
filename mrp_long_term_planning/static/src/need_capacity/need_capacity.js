@@ -402,6 +402,33 @@ export class NeedCapacityPlanning extends Component {
         }
         this.state.familyCols = cols;
         const N = Math.max(cols.length, 1);
+        // off-work stripes: day mode = exact off intervals between
+        // attendance spans (e.g. 0→8.5), month = whole off days
+        const offs = [];
+        if (this.state.familyView === "day" && this.state.wcAtt) {
+            const dd = new Date(
+                (this.state.familyDay || mn.slice(0, 10))
+                + "T00:00:00").getDay();
+            const sp = (this.state.wcAtt[(dd + 6) % 7] || []).slice()
+                .sort((a, b) => a[0] - b[0]);
+            let c = 0;
+            for (const [f, t] of sp) {
+                if (f > c) {
+                    offs.push({left: c / 24 * 100, w: (f - c) / 24 * 100});
+                }
+                c = Math.max(c, t);
+            }
+            if (c < 24) {
+                offs.push({left: c / 24 * 100, w: (24 - c) / 24 * 100});
+            }
+        } else {
+            for (let i = 0; i < cols.length; i++) {
+                if (cols[i].wknd) {
+                    offs.push({left: i / N * 100, w: 100 / N});
+                }
+            }
+        }
+        this.state.familyOffs = offs;
         this.state.familyRows = fam.map((f) => {
             const [s, e] = range(f);
             if (this.state.familyView === "day") {
