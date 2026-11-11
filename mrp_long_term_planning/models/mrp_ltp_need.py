@@ -497,7 +497,8 @@ class MrpLtpNeed(models.AbstractModel):
                 continue
             base = None
             for pk in need.get("parent_keys") or []:
-                base = placed_start.get(pk) or base
+                p = by_key.get(pk)
+                base = (p or {}).get("sug_start") or base
             need["sug_start"] = base or need["deadline"]
             need["sug_end"] = need["sug_start"]
 
