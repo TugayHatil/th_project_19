@@ -587,13 +587,15 @@ class MrpLtpNeed(models.AbstractModel):
             status, start, end, overload = "missing", None, None, False
         elif sch:
             start, end = sch["start_d"], sch["end_d"]
-            overload = end > need["deadline"] or start < today
+            real_dl = need.get("need_date") or need["deadline"]
+            overload = end > real_dl or start < today
             status = "planned_late" if overload else "planned"
         else:
             start = need.get("sug_start")
             end = need.get("sug_end")
+            real_dl = need.get("need_date") or need["deadline"]
             overload = need.get("unplaced") or start is None \
-                or end > need["deadline"] or start < today
+                or end > real_dl or start < today
             status = "late" if overload else "ok"
         wc_names = [wc_name[wc] for wc in dict.fromkeys(wc_ids)
                     if wc in wc_name]
@@ -1083,7 +1085,8 @@ class MrpLtpNeed(models.AbstractModel):
                 continue
             if start_day is None:
                 start_day = today
-            if start_day < today or end_day > need["deadline"]:
+            real_dl = need.get("need_date") or need["deadline"]
+            if start_day < today or end_day > real_dl:
                 short = True
             windows[idx] = {
                 "start": self._op_day_dt(start_day),
@@ -1130,7 +1133,7 @@ class MrpLtpNeed(models.AbstractModel):
                 day += timedelta(days=1)
             if end_day is None:
                 continue
-            if end_day > need["deadline"]:
+            if end_day > (need.get("need_date") or need["deadline"]):
                 short = True
             windows[idx] = {
                 "start": self._op_day_dt(start_day),
