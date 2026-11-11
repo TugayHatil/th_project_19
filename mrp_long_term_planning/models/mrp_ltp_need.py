@@ -435,16 +435,19 @@ class MrpLtpNeed(models.AbstractModel):
             # parent's window (end ≤ parent end) and starts ≥ t1 before
             # the parent's start so the first unit is ready in time
             if need.get("sug_start"):
-                unit = sum(h for _w, h in need["ops"]) / (
-                    need.get("eff_cap") or 1.0)
-                # one unit ready within the day → same-day start ok
-                lag = int(unit / 24.0)
+                unit = sum(h for _w, h in need["ops"])
                 for pk in need.get("parent_keys") or []:
                     p = by_key.get(pk)
                     ps = p and p.get("sug_start")
                     pe = p and p.get("sug_end")
                     if not (ps and pe):
                         continue
+                    # parallel lines raise throughput, not per-unit
+                    # speed: lead = ceil(units/lines) x unit time
+                    units = need["qty"] / (p["qty"] or 1.0)
+                    lag = int(math.ceil(
+                        units / (need.get("eff_cap") or 1.0))
+                        * unit / 24.0)
                     if need["sug_end"] > pe:
                         need["deadline"] = pe
                         self._place_backward(
@@ -472,11 +475,13 @@ class MrpLtpNeed(models.AbstractModel):
                     n.get("depth", 0), n["deadline"])):
                 if not need.get("sug_start"):
                     continue
-                unit = sum(h for _w, h in need["ops"]) / (
-                    need.get("eff_cap") or 1.0)
-                lag = int(unit / 24.0)
+                unit = sum(h for _w, h in need["ops"])
                 for pk in need.get("parent_keys") or []:
                     p = by_key.get(pk)
+                    units = need["qty"] / ((p or {}).get("qty") or 1.0)
+                    lag = int(math.ceil(
+                        units / (need.get("eff_cap") or 1.0))
+                        * unit / 24.0)
                     ps = p and p.get("sug_start")
                     pe = p and p.get("sug_end")
                     if not (ps and pe) \
@@ -907,8 +912,7 @@ class MrpLtpNeed(models.AbstractModel):
                 rows = groups.get(need["line_key"])
                 if not rows:
                     continue
-                unit_h = (sum(o["per_unit"] for o in need["ops"])
-                          / (need.get("eff_cap") or 1.0))
+                unit_h = sum(o["per_unit"] for o in need["ops"])
                 c_start = min(fields.Datetime.to_datetime(
                     r["planned_start"]) for r in rows)
                 for pk in need.get("parent_keys") or []:
@@ -917,9 +921,11 @@ class MrpLtpNeed(models.AbstractModel):
                     if not prows or not pneed or not pneed["qty"]:
                         continue
                     # a parent unit consumes qty_child/qty_parent child
-                    # units — the first parent unit needs that many
+                    # units; parallel lines produce them in batches —
+                    # lead = ceil(units/lines) x per-unit machine time
                     units = need["qty"] / pneed["qty"]
-                    lead = timedelta(hours=units * unit_h)
+                    lead = timedelta(hours=math.ceil(
+                        units / (need.get("eff_cap") or 1.0)) * unit_h)
                     p_start = min(fields.Datetime.to_datetime(
                         r["planned_start"]) for r in prows)
                     if p_start >= c_start + lead:
