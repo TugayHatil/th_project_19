@@ -103,7 +103,7 @@ class MrpLtpNeed(models.AbstractModel):
     # ------------------------------------------------------------------
 
     @api.model
-    def get_need_filters(self):
+    def get_need_filters(self, *args, **kw):
         Line = self.env["mrp.ltp.line"]
         periods = Line._periods(*Line._current_period())
         return {
