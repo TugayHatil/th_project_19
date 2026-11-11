@@ -679,12 +679,16 @@ class MrpLtpNeed(models.AbstractModel):
             if len(targets) != 1:
                 continue
             key = targets[0][1]
+            live = [o for o in rows if o.line_key == key]
             stale = [o for o in rows if o.line_key != key]
-            for o in stale:
-                o.unlink()
-            rows = [o for o in rows if o.line_key == key]
-            if len(rows) == 1 and rows[0].line_key != key:
-                rows[0].line_key = key
+            if live:
+                for o in stale:
+                    o.unlink()
+            else:
+                # no live op — the newest key wins, the rest is stale
+                for o in stale[:-1]:
+                    o.unlink()
+                stale[-1].line_key = key
 
     def _op_wc_spans(self, wc_id):
         """{weekday: [(hour_from, hour_to)]} — the workcenter's working
