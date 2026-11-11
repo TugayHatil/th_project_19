@@ -347,6 +347,9 @@ export class NeedCapacityPlanning extends Component {
             }
             root = up;
         }
+        // the captured selection is a stale object — re-read the row
+        // so a cleared plan doesn't keep showing its old status
+        root = byKey[root.key] || root;
         const fam = [];
         const seen = new Set([root.key]);
         const queue = [root];
