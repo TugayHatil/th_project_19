@@ -271,7 +271,7 @@
                         <div class="o_nc_flabel text-truncate"
                              t-attf-style="padding-left: {{f.depth * 16}}px"
                              t-esc="f.name"/>
-                        <div class="o_nc_ftrack flex-grow-1">
+                        <div t-attf-class="o_nc_ftrack flex-grow-1 {{state.familyView == 'day' ? 'o_nc_ftrack_day' : ''}}">
                             <t t-foreach="state.familyOffs" t-as="o" t-key="o_index">
                                 <div class="o_nc_fwe"
                                      t-attf-style="left: {{o.left}}%; width: {{o.w}}%"/>

@@ -120,3 +120,6 @@
 .o_nc_fnav:hover { color: #212529; }
 .o_nc_fcol { color: #495057; font-weight: 500; }
 .o_nc_fcol_we { color: #868e96; background: rgba(0,0,0,.05); }
+.o_nc_ftrack_day { background-image:
+    linear-gradient(to right, rgba(0,0,0,.10) 1px, transparent 1px);
+    background-size: calc(100%/24) 100%; }
