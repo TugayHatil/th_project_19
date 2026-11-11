@@ -560,16 +560,13 @@ class MrpLtpNeed(models.AbstractModel):
     def _op_wc_spans(self, wc_id):
         """{weekday: [(hour_from, hour_to)]} — the workcenter's working
         calendar; ops only ever land inside these slots."""
-        cache = self.__dict__.setdefault("_span_cache", {})
-        if wc_id not in cache:
-            cal = self.env["mrp.workcenter"].sudo().browse(
-                wc_id).resource_calendar_id
-            spans = {}
-            for a in cal.attendance_ids:
-                spans.setdefault(int(a.dayofweek), []).append(
-                    (a.hour_from, a.hour_to))
-            cache[wc_id] = {d: sorted(s) for d, s in spans.items()}
-        return cache[wc_id]
+        cal = self.env["mrp.workcenter"].sudo().browse(
+            wc_id).resource_calendar_id
+        spans = {}
+        for a in cal.attendance_ids:
+            spans.setdefault(int(a.dayofweek), []).append(
+                (a.hour_from, a.hour_to))
+        return {d: sorted(s) for d, s in spans.items()}
 
     def _op_day_dt(self, day, end=False):
         """Day boundary in the user's timezone stored as UTC — 00:00
