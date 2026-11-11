@@ -195,6 +195,13 @@ class MrpLtpNeed(models.AbstractModel):
             ("warehouse_id", "=", warehouse_id or False),
             ("company_id", "=", self.env.company.id),
         ]).unlink()
+        # unplanning the row releases its ops too — confirmed rows
+        # revert to draft so row and ops never disagree
+        self.env["mrp.ltp.need.operation"].sudo().search([
+            ("line_key", "=", str(line_key or "")),
+            ("company_id", "=", self.env.company.id),
+            ("state", "=", "confirmed"),
+        ]).write({"state": "draft"})
         return {"ok": True}
 
     @api.model
