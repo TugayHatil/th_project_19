@@ -1331,7 +1331,7 @@ class MrpLtpNeed(models.AbstractModel):
         return {"confirmed": len(n)}
 
     @api.model
-    def clear_operation_drafts(self):
+    def clear_operation_drafts(self, ids=False):
         """Drop unlocked draft/shortage rows — confirmed, done and
         locked plans are never cleared (BRD §9)."""
         n = self.env["mrp.ltp.need.operation"].sudo().search([
