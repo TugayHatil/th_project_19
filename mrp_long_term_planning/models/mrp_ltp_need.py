@@ -144,6 +144,10 @@ class MrpLtpNeed(models.AbstractModel):
                           planned_start, planned_end, warehouse_id=False,
                           capacity=False):
         """Confirm (or move) the production window of one need line."""
+        product_id = product_id[0] if isinstance(
+            product_id, (list, tuple)) else product_id
+        product_id = product_id[0] if isinstance(
+            product_id, (list, tuple)) else product_id
         product_id = int(product_id)
         line_key = str(line_key or "")
         if not line_key:
@@ -189,6 +193,8 @@ class MrpLtpNeed(models.AbstractModel):
     def clear_need_schedule(self, product_id, line_key,
                             warehouse_id=False):
         """Drop the confirmed window — the need returns to suggestion."""
+        product_id = product_id[0] if isinstance(
+            product_id, (list, tuple)) else product_id
         self.env["mrp.ltp.need.schedule"].search([
             ("product_id", "=", int(product_id)),
             ("line_key", "=", str(line_key or "")),
@@ -1114,6 +1120,8 @@ class MrpLtpNeed(models.AbstractModel):
         (BRD §3.1/§5). Validated against the workcenters' parallel
         resources — a need cannot book more machines than its ops'
         workcenters provide."""
+        product_id = product_id[0] if isinstance(
+            product_id, (list, tuple)) else product_id
         product_id = int(product_id)
         line_key = str(line_key or "")
         try:
