@@ -329,9 +329,24 @@ export class NeedCapacityPlanning extends Component {
                 (kids[pk] = kids[pk] || []).push(r);
             }
         }
+        // walk to the family root first — clicking any member shows
+        // the whole order family, not only the clicked subtree
+        const byKey = {};
+        for (const r of this.state.rows) {
+            byKey[r.key] = r;
+        }
+        let root = row;
+        for (let i = 0; i < 20; i++) {
+            const up = (root.parent_keys || [])
+                .map((k) => byKey[k]).find(Boolean);
+            if (!up) {
+                break;
+            }
+            root = up;
+        }
         const fam = [];
-        const seen = new Set([row.key]);
-        const queue = [row];
+        const seen = new Set([root.key]);
+        const queue = [root];
         while (queue.length) {
             const n = queue.shift();
             fam.push(n);
@@ -426,7 +441,7 @@ export class NeedCapacityPlanning extends Component {
                     0.8),
                 barText: s && e ? s.slice(5) + " → " + e.slice(5) : "—"});
         });
-        this.state.familyRoot = row.name;
+        this.state.familyRoot = root.name;
     }
 
     setFamilyView(v) {

@@ -234,7 +234,7 @@
             </div>
 
             <!-- operation detail panel for the selected need -->
-            <div t-if="state.familyRows.length > 1" class="card shadow-sm mb-3">
+            <div t-if="state.familyRows.length" class="card shadow-sm mb-3">
                 <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Family Timeline —
                         <t t-esc="state.familyRoot"/></h5>
