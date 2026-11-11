@@ -132,7 +132,7 @@
                         <t t-foreach="state.rows" t-as="row" t-key="row.product_id + '-' + row.key">
                             <tr t-att-class="'o_nc_row' + (row.overload ? ' o_nc_row_late' : '') + (isEditing(row) || rowKey(row) === state.selectedKey ? ' o_nc_row_sel' : '')"
                                 t-on-click="() => this.selectRow(row)">
-                                <td class="o_nc_chk" t-on-click.stop="">
+                                <td class="o_nc_chk" t-on-click.stop="() => {}">
                                     <input type="checkbox"
                                         t-att-checked="state.checked.has(row.key)"
                                         t-on-change="toggleRow(row)"/>
