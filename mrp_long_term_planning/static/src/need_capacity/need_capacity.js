@@ -431,6 +431,21 @@ export class NeedCapacityPlanning extends Component {
         this.state.familyOffs = offs;
         this.state.familyRows = fam.map((f) => {
             const [s, e] = range(f);
+            // tooltip window: earliest op start → latest op end
+            let tipS = s, tipE = e;
+            for (const o of this.state.allOps || []) {
+                if (o.line_key !== f.key || !o.planned_start) {
+                    continue;
+                }
+                if (!tipS || o.planned_start < tipS) {
+                    tipS = o.planned_start;
+                }
+                if (!tipE || o.planned_end > tipE) {
+                    tipE = o.planned_end;
+                }
+            }
+            const bS = (tipS || "").slice(0, 16);
+            const bE = (tipE || "").slice(0, 16);
             if (this.state.familyView === "day") {
                 const D = this.state.familyDay || mn.slice(0, 10);
                 if (!this.state.familyDay) {
@@ -465,7 +480,8 @@ export class NeedCapacityPlanning extends Component {
                 }
                 if (sH === null) {
                     return Object.assign({}, f,
-                        {barLeft: 0, barWidth: 0, barText: "—"});
+                        {barLeft: 0, barWidth: 0, barText: "—",
+                         barStart: bS, barEnd: bE});
                 }
                 const fmt = (h) => {
                     const hh = Math.floor(h);
@@ -475,7 +491,8 @@ export class NeedCapacityPlanning extends Component {
                 return Object.assign({}, f, {
                     barLeft: sH / 24 * 100,
                     barWidth: Math.max((eH - sH) / 24 * 100, 0.8),
-                    barText: fmt(sH) + " → " + fmt(eH)});
+                    barText: fmt(sH) + " → " + fmt(eH),
+                    barStart: bS, barEnd: bE});
             }
             // whatever the hour, start/end days render as full columns
             const startIdx = s ? Math.max(0, Math.floor(
@@ -486,7 +503,8 @@ export class NeedCapacityPlanning extends Component {
                 barLeft: startIdx / N * 100,
                 barWidth: Math.max((endIdx - startIdx + 1) / N * 100,
                     0.8),
-                barText: s && e ? s.slice(5) + " → " + e.slice(5) : "—"});
+                barText: s && e ? s.slice(5) + " → " + e.slice(5) : "—",
+                barStart: bS, barEnd: bE});
         });
         this.state.familyRoot = root.name;
     }
