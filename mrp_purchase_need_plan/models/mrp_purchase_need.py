@@ -2211,9 +2211,22 @@ class MrpPurchaseNeed(models.AbstractModel):
                 ev_date = prod_date
                 if sch_need and comp_op:
                     ev_date = sch_need["ops"].get(comp_op, prod_date)
+                # the key's date must be STABLE — the source order's
+                # commitment never drifts, unlike the consuming op's
+                # scheduled date which moves on every replan
+                so_id = so
+                if isinstance(so_id, (list, tuple)):
+                    so_id = so_id[0]
+                elif not isinstance(so_id, int):
+                    so_id = so_id and so_id.id
+                so_d = False
+                if so_id:
+                    sord = self.env["sale.order"].sudo().browse(so_id)
+                    so_d = sord.commitment_date or sord.date_order
                 key = "bom:%s:%s:%s" % (
                     comp_pid, wh_id or 0,
-                    fields.Date.to_string(ev_date))
+                    fields.Date.to_string(
+                        fields.Date.to_date(so_d) or ev_date))
                 ev = out[comp_pid].setdefault(key, {
                     "key": key,
                     "date": ev_date,
