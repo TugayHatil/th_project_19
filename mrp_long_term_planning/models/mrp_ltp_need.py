@@ -952,9 +952,15 @@ class MrpLtpNeed(models.AbstractModel):
 
         planned = shortage = 0
         placed_start = {}
+        confirmed_keys = {o["line_key"] for o in Op.search_read([
+            ("company_id", "=", self.env.company.id),
+            ("state", "in", ("confirmed", "done")),
+        ], ["line_key"])}
         for need in sorted(
                 needs, key=lambda n: (
                     n.get("depth", 0), n["deadline"], n["pid"])):
+            if need["line_key"] in confirmed_keys:
+                continue  # confirmed ops lock the need — no new draft
             if (need["pid"], need["line_key"]) in schedules:
                 continue
             if not need["ops"]:
