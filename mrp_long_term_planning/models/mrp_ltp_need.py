@@ -482,6 +482,23 @@ class MrpLtpNeed(models.AbstractModel):
                         self._place_backward(
                             need, cap_map, plan_map, alloc, today)
 
+        # Termin = the source order's fixed required date — the
+        # propagated component deadlines stay internal only
+        so_dates = {}
+        so_ids = sorted({i for n in needs
+                         for i in (n.get("so_ids") or [])})
+        if so_ids:
+            for so in self.env["sale.order"].sudo().browse(so_ids):
+                d = so.commitment_date or so.date_order
+                if d:
+                    so_dates[so.id] = fields.Datetime.to_datetime(
+                        d).date()
+        for n in needs:
+            ds = [so_dates[i] for i in (n.get("so_ids") or [])
+                  if i in so_dates]
+            if ds:
+                n["order_date"] = min(ds)
+
         rows = []
         q = (query or "").strip().lower()
         wc_filter = set(int(i) for i in workcenter_ids) \
@@ -673,7 +690,8 @@ class MrpLtpNeed(models.AbstractModel):
             "period": "%d-%02d" % (
                 need["deadline"].year, need["deadline"].month),
             "deadline": fields.Date.to_string(
-                need.get("need_date") or need["deadline"]),
+                need.get("order_date") or need.get("need_date")
+                or need["deadline"]),
             "qty": need["qty"],
             "wc_ids": wc_ids,
             "workcenters": ", ".join(wc_names),
