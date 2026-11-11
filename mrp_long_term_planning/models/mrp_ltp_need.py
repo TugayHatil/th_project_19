@@ -361,7 +361,12 @@ class MrpLtpNeed(models.AbstractModel):
                        and k[1].rsplit(":", 1)[0] == pref
                        and k not in schedules]
             if len(matches) == 1:
-                schedules[matches[0]] = schedules.pop(skey)
+                rec = schedules.pop(skey)
+                schedules[matches[0]] = rec
+                # persist the new key — otherwise set/clear still
+                # address the stale key and the row looks stuck
+                self.env["mrp.ltp.need.schedule"].browse(
+                    rec["id"]).write({"line_key": matches[0][1]})
 
         wcs = self.env["mrp.workcenter"].browse(sorted(wc_ids))
         # the daily maps must cover the furthest deadline too — a need
@@ -865,7 +870,12 @@ class MrpLtpNeed(models.AbstractModel):
                        and k[1].rsplit(":", 1)[0] == pref
                        and k not in schedules]
             if len(matches) == 1:
-                schedules[matches[0]] = schedules.pop(skey)
+                rec = schedules.pop(skey)
+                schedules[matches[0]] = rec
+                # persist the new key — otherwise set/clear still
+                # address the stale key and the row looks stuck
+                self.env["mrp.ltp.need.schedule"].browse(
+                    rec["id"]).write({"line_key": matches[0][1]})
 
         wcs = self.env["mrp.workcenter"].browse(sorted(wc_ids))
         last_deadline = max(n["deadline"] for n in needs)
