@@ -1,8 +1,9 @@
 # Purchase Request Line Paste
 
-Satınalma talebi (`purchase.request`) formuna, taslak durumdayken görünen
-**Satır Yapıştır** butonu ekler. Buton, Excel'den kopyalanan
-"ürün kodu + miktar" listesini alan bir sihirbaz açar:
+Satınalma talebi (`purchase.request`) satır listesinde "Satır Ekle"nin
+yanına, taslak durumdayken görünen **Satır Yapıştır** bağlantısı ekler
+(`<control>` butonu — `purchase.order`'daki Catalog deseni). Bağlantı,
+Excel'den kopyalanan "ürün kodu + miktar" listesini alan bir sihirbaz açar:
 
 - Her satır `ürün kodu <sekme> miktar` biçimindedir (`;` ve boşluk da
   desteklenir); ilk satır başlıksa otomatik atlanır.

@@ -3,7 +3,7 @@ import re
 
 from markupsafe import Markup
 
-from odoo import _, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 
@@ -28,6 +28,7 @@ class PurchaseRequestLinePasteWizard(models.TransientModel):
     valid_line_count = fields.Integer(compute='_compute_line_counts')
     error_line_count = fields.Integer(compute='_compute_line_counts')
 
+    @api.depends('line_ids.state')
     def _compute_line_counts(self):
         for wiz in self:
             states = wiz.line_ids.mapped('state')
@@ -53,43 +54,32 @@ class PurchaseRequestLinePasteWizard(models.TransientModel):
 
     def _parse_qty(self, text):
         """Miktarı kullanıcının Odoo dil/biçim ayarına göre float'a çevirir."""
-        raw = re.sub(r'[\s\xa0  ]', '', text or '')
+        raw = re.sub(r'\s', '', text or '')
         if not raw:
             return None
         lang = self.env['res.lang']._lang_get(self.env.user.lang)
-        decimal_point = lang.decimal_point if lang else '.'
-        thousands_sep = lang.thousands_sep if lang else ''
+        decimal_point = lang.decimal_point or '.'
+        thousands_sep = lang.thousands_sep or ''
+        candidates = [raw]
         if decimal_point != '.' and decimal_point in raw:
             # "1.234,5" (tr_TR) → binlik ayıracını sil, ondalığı noktala
-            candidate = raw.replace(thousands_sep, '') \
-                           .replace(decimal_point, '.')
+            candidates.insert(
+                0, raw.replace(thousands_sep, '').replace(decimal_point, '.'))
+        elif thousands_sep and re.search(
+                r'^\d{1,3}(%s\d{3})+$' % re.escape(thousands_sep), raw):
+            # "1.234" gibi gruplanmış binlikler → tamamı binlik ayıracı
+            candidates.insert(0, raw.replace(thousands_sep, ''))
+        for candidate in candidates:
             try:
                 return float(candidate)
             except ValueError:
-                return None
-        if thousands_sep and thousands_sep in raw:
-            # "1.234" gibi gruplanmış binlikler → tamamı binlik ayıracı
-            if re.search(r'^\d{1,3}(%s\d{3})+$' % re.escape(thousands_sep), raw):
-                try:
-                    return float(raw.replace(thousands_sep, ''))
-                except ValueError:
-                    return None
-            try:
-                return float(raw)
-            except ValueError:
-                return None
-        try:
-            return float(raw)
-        except ValueError:
-            return None
+                continue
+        return None
 
-    def _resolve_product(self, code):
-        Product = self.env['product.product']
-        products = Product.search([
-            ('default_code', '=', code),
-            '|', ('company_id', '=', False),
-            ('company_id', '=', self.request_id.company_id.id),
-        ])
+    def _resolve_product(self, code, products_by_code):
+        if not code:
+            return False, _('Ürün kodu boş.')
+        products = products_by_code.get(code)
         if not products:
             return False, _('Ürün kodu bulunamadı.')
         if len(products) > 1:
@@ -98,20 +88,41 @@ class PurchaseRequestLinePasteWizard(models.TransientModel):
             return False, _('Ürün satınalmaya açık değil.')
         return products, False
 
+    def _products_by_code(self, codes):
+        """Yapıştırılan tüm kodları tek sorguda product.product ile eşler."""
+        Product = self.env['product.product']
+        if not codes:
+            return {}
+        products = Product.search([
+            ('default_code', 'in', list(codes)),
+            '|', ('company_id', '=', False),
+            ('company_id', '=', self.request_id.company_id.id),
+        ])
+        products_by_code = {}
+        for product in products:
+            products_by_code.setdefault(product.default_code, Product)
+            products_by_code[product.default_code] |= product
+        return products_by_code
+
     def _parse_input(self):
         """input_text'i wizard.line kayıtlarına dönüştürür."""
-        rows = [
-            (idx, row) for idx, row in enumerate(
-                (self.input_text or '').splitlines(), start=1)
-            if row.strip()
-        ]
+        parsed_rows = []
+        codes = set()
+        for idx, row in enumerate(
+                (self.input_text or '').splitlines(), start=1):
+            if not row.strip():
+                continue
+            code, qty_text = self._split_row(row)
+            parsed_rows.append((idx, code, qty_text))
+            if code:
+                codes.add(code)
+        products_by_code = self._products_by_code(codes)
+
         vals_list = []
         first = True
-        for row_no, row in rows:
-            code, qty_text = self._split_row(row)
+        for row_no, code, qty_text in parsed_rows:
             qty = self._parse_qty(qty_text)
-            product, error = self._resolve_product(code) if code else (
-                False, _('Ürün kodu boş.'))
+            product, error = self._resolve_product(code, products_by_code)
             if first and qty is None and error:
                 # İlk satır iki yönden de veri değilse başlık sayılır
                 vals_list.append({
@@ -188,8 +199,8 @@ class PurchaseRequestLinePasteWizard(models.TransientModel):
         for line in ok_lines:
             product = line.product_id
             name = product.name
-            if product.default_code:
-                name = '[%s] %s' % (product.default_code, name)
+            if product.code:
+                name = '[%s] %s' % (product.code, name)
             if product.description_purchase:
                 name += '\n' + product.description_purchase
             line_vals.append({

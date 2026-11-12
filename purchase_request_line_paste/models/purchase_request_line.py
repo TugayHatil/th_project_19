@@ -11,7 +11,8 @@ class PurchaseRequestLine(models.Model):
         # buton context'i ile gelir
         request = self.env['purchase.request'].browse(
             self.env.context.get('request_id'))
-        request.ensure_one()
+        if not request.exists():
+            raise UserError(_('Satınalma talebi bulunamadı.'))
         if not request.is_editable:
             raise UserError(_(
                 'Satır yapıştırma yalnızca düzenlenebilir (taslak) '
