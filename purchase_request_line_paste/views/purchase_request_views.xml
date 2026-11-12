@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_purchase_request_form_line_paste" model="ir.ui.view">
+        <field name="name">purchase.request.form.line.paste</field>
+        <field name="model">purchase.request</field>
+        <field name="inherit_id" ref="purchase_request.view_purchase_request_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/field[@name='state']" position="before">
+                <button name="action_open_line_paste_wizard" type="object"
+                        string="Satır Yapıştır" icon="fa-paste"
+                        invisible="not is_editable"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

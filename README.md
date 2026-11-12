@@ -50,6 +50,17 @@ External Material Groups, MIP Responsibles, Production Supervisors) managed
 under Inventory → Configuration → Products; changing the responsible on a
 definition record automatically updates every linked product card.
 
+## `purchase_request_line_paste`
+
+Adds a **Satır Yapıştır** (Paste Lines) button on draft purchase requests.
+A wizard accepts an Excel-pasted "product code + quantity" list
+(tab-separated), resolves each product by `default_code`, parses the
+quantity using the user's Odoo number format, and shows a validation
+preview. Confirming creates `purchase.request.line` records for the valid
+rows only — with the same `name`/`product_uom_id` values the standard
+product onchange would produce — while invalid rows are skipped, flagged
+in the preview, and summarized on the request's chatter.
+
 ## `sale_order_forecast`
 
 Adds an Order Nature (Sipariş Niteliği) selection on sale orders: Kesin

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="purchase_request_line_paste_wizard_form" model="ir.ui.view">
+        <field name="name">purchase.request.line.paste.wizard.form</field>
+        <field name="model">purchase.request.line.paste.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Satır Yapıştır">
+                <field name="state" invisible="1"/>
+                <field name="valid_line_count" invisible="1"/>
+                <field name="error_line_count" invisible="1"/>
+                <group>
+                    <field name="request_id"/>
+                </group>
+                <group invisible="state != 'input'">
+                    <field name="input_text" nolabel="1"
+                           placeholder="Ürün&#9;Miktar&#10;A000001&#9;10&#10;A000002&#9;20"/>
+                    <div class="text-muted">
+                        Her satıra ürün kodu ve miktar girin (Excel'den
+                        sekme ile ayrılmış olarak kopyalayabilirsiniz).
+                        İlk satır başlık ise otomatik atlanır.
+                    </div>
+                </group>
+                <group invisible="state == 'input'">
+                    <div class="alert alert-info" role="status"
+                         invisible="state != 'preview'">
+                        Toplam <field name="valid_line_count" readonly="1"
+                                      class="d-inline fw-bold"/> geçerli,
+                        <field name="error_line_count" readonly="1"
+                               class="d-inline fw-bold"/> hatalı satır.
+                        Yalnızca geçerli satırlar talebe eklenecektir.
+                    </div>
+                    <field name="line_ids" nolabel="1">
+                        <list decoration-danger="state == 'error'"
+                              decoration-muted="state == 'header'"
+                              decoration-success="state == 'ok'">
+                            <field name="row_no"/>
+                            <field name="raw_code"/>
+                            <field name="raw_qty"/>
+                            <field name="product_id"/>
+                            <field name="product_qty"/>
+                            <field name="state" column_invisible="1"/>
+                            <field name="message"/>
+                        </list>
+                    </field>
+                </group>
+                <footer>
+                    <button name="action_parse" type="object"
+                            string="Önizle" class="oe_highlight"
+                            data-hotkey="q"
+                            invisible="state != 'input'"/>
+                    <button name="action_apply" type="object"
+                            string="Satırları Ekle" class="oe_highlight"
+                            data-hotkey="w"
+                            invisible="state != 'preview' or valid_line_count == 0"/>
+                    <button name="action_back_to_input" type="object"
+                            string="Geri" data-hotkey="x"
+                            invisible="state != 'preview'"/>
+                    <button name="action_close" type="object" string="Kapat"
+                            invisible="state != 'done'"/>
+                    <button string="Vazgeç" special="cancel"
+                            invisible="state == 'done'"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
