@@ -40,13 +40,13 @@ class PurchaseRequestLinePasteWizard(models.TransientModel):
     # ------------------------------------------------------------------
 
     def _split_row(self, row):
-        """Bir satırı (kod, miktar) çiftine ayırır; ilk ve son hücre kullanılır."""
+        """Bir satırı (kod, miktar) çiftine ayırır; ilk hücre kod, dolu olan
+        son hücre miktar kabul edilir."""
         for sep in ('\t', ';'):
             if sep in row:
                 cells = [c.strip() for c in row.split(sep)]
-                cells = [c for c in cells if c]
-                if len(cells) >= 2:
-                    return cells[0], cells[-1]
+                non_empty = [c for c in cells if c]
+                return cells[0], (non_empty[-1] if non_empty else '')
         parts = row.split()
         if len(parts) >= 2:
             return parts[0], parts[-1]
@@ -138,7 +138,8 @@ class PurchaseRequestLinePasteWizard(models.TransientModel):
                 vals_list.append({
                     'row_no': row_no, 'raw_code': code, 'raw_qty': qty_text,
                     'state': 'error',
-                    'message': _('Miktar geçerli bir sayı değil.'),
+                    'message': (_('Miktar sütunu boş.') if not qty_text
+                                else _('Miktar geçerli bir sayı değil.')),
                 })
             elif qty <= 0:
                 vals_list.append({
