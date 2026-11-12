@@ -11,38 +11,37 @@
                 <group>
                     <field name="request_id"/>
                 </group>
-                <group invisible="state != 'input'">
-                    <field name="input_text" nolabel="1"
-                           placeholder="Ürün&#9;Miktar&#10;A000001&#9;10&#10;A000002&#9;20"/>
-                    <div class="text-muted">
-                        Her satıra ürün kodu ve miktar girin (Excel'den
-                        sekme ile ayrılmış olarak kopyalayabilirsiniz).
-                        İlk satır başlık ise otomatik atlanır.
-                    </div>
-                </group>
-                <group invisible="state == 'input'">
-                    <div class="alert alert-info" role="status"
-                         invisible="state != 'preview'">
-                        Toplam <field name="valid_line_count" readonly="1"
-                                      class="d-inline fw-bold"/> geçerli,
-                        <field name="error_line_count" readonly="1"
-                               class="d-inline fw-bold"/> hatalı satır.
-                        Yalnızca geçerli satırlar talebe eklenecektir.
-                    </div>
-                    <field name="line_ids" nolabel="1">
-                        <list decoration-danger="state == 'error'"
-                              decoration-muted="state == 'header'"
-                              decoration-success="state == 'ok'">
-                            <field name="row_no"/>
-                            <field name="raw_code"/>
-                            <field name="raw_qty"/>
-                            <field name="product_id"/>
-                            <field name="product_qty"/>
-                            <field name="state" column_invisible="1"/>
-                            <field name="message"/>
-                        </list>
-                    </field>
-                </group>
+                <div class="alert alert-info" role="status"
+                     invisible="state != 'input'">
+                    Her satıra ürün kodu ve miktar girin (Excel'den
+                    sekme ile ayrılmış olarak kopyalayabilirsiniz).
+                    İlk satır başlık ise otomatik atlanır.
+                </div>
+                <field name="input_text" nolabel="1"
+                       invisible="state != 'input'"
+                       placeholder="Ürün&#9;Miktar&#10;A000001&#9;10&#10;A000002&#9;20"/>
+                <div class="alert alert-info" role="status"
+                     invisible="state != 'preview'">
+                    Toplam <field name="valid_line_count" readonly="1"
+                                  class="d-inline fw-bold"/> geçerli,
+                    <field name="error_line_count" readonly="1"
+                           class="d-inline fw-bold"/> hatalı satır.
+                    Yalnızca geçerli satırlar talebe eklenecektir.
+                </div>
+                <field name="line_ids" nolabel="1"
+                       invisible="state != 'preview'">
+                    <list decoration-danger="state == 'error'"
+                          decoration-muted="state == 'header'"
+                          decoration-success="state == 'ok'">
+                        <field name="row_no"/>
+                        <field name="raw_code"/>
+                        <field name="raw_qty"/>
+                        <field name="product_id"/>
+                        <field name="product_qty"/>
+                        <field name="state" column_invisible="1"/>
+                        <field name="message"/>
+                    </list>
+                </field>
                 <footer>
                     <button name="action_parse" type="object"
                             string="Önizle" class="oe_highlight"
@@ -55,10 +54,7 @@
                     <button name="action_back_to_input" type="object"
                             string="Geri" data-hotkey="x"
                             invisible="state != 'preview'"/>
-                    <button name="action_close" type="object" string="Kapat"
-                            invisible="state != 'done'"/>
-                    <button string="Vazgeç" special="cancel"
-                            invisible="state == 'done'"/>
+                    <button string="Vazgeç" special="cancel"/>
                 </footer>
             </form>
         </field>

@@ -15,7 +15,7 @@ class PurchaseRequestLinePasteWizard(models.TransientModel):
         'purchase.request', string='Satınalma Talebi',
         required=True, readonly=True)
     state = fields.Selection(
-        [('input', 'Veri Girişi'), ('preview', 'Önizleme'), ('done', 'Tamamlandı')],
+        [('input', 'Veri Girişi'), ('preview', 'Önizleme')],
         default='input', readonly=True)
     input_text = fields.Text(
         string='Ürün / Miktar Listesi',
@@ -209,10 +209,6 @@ class PurchaseRequestLinePasteWizard(models.TransientModel):
             body += Markup(_(' %(skipped)s satır atlandı (hatalı/başlık).',
                              skipped=skipped))
         request.message_post(body=body)
-        self.state = 'done'
-        return self._reopen()
-
-    def action_close(self):
         return {'type': 'ir.actions.act_window_close'}
 
 
