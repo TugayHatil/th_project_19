@@ -17,7 +17,7 @@ ayarına göre ayrıştırılır.""",
     'website': "https://projet.solutions",
 
     'category': 'Inventory/Purchase',
-    'version': '19.0.1.6.0',
+    'version': '19.0.1.7.0',
 
     'depends': [
         'purchase_request',

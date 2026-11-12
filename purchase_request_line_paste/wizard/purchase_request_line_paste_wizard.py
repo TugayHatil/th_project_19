@@ -52,6 +52,15 @@ class PurchaseRequestLinePasteWizard(models.TransientModel):
             return parts[0], parts[-1]
         return row.strip(), ''
 
+    def _strip_thousands(self, text, sep):
+        """Binlik ayıracını yalnızca geçerli gruplamada kaldırır
+        (örn. "1.234" → "1234"; "1.2.3" → None)."""
+        if not sep or sep not in text:
+            return text
+        if re.match(r'^-?\d{1,3}(%s\d{3})+$' % re.escape(sep), text):
+            return text.replace(sep, '')
+        return None
+
     def _parse_qty(self, text):
         """Miktarı kullanıcının Odoo dil/biçim ayarına göre float'a çevirir."""
         raw = re.sub(r'\s', '', text or '')
@@ -60,15 +69,23 @@ class PurchaseRequestLinePasteWizard(models.TransientModel):
         lang = self.env['res.lang']._lang_get(self.env.user.lang)
         decimal_point = lang.decimal_point or '.'
         thousands_sep = lang.thousands_sep or ''
-        candidates = [raw]
-        if decimal_point != '.' and decimal_point in raw:
-            # "1.234,5" (tr_TR) → binlik ayıracını sil, ondalığı noktala
-            candidates.insert(
-                0, raw.replace(thousands_sep, '').replace(decimal_point, '.'))
-        elif thousands_sep and re.search(
-                r'^\d{1,3}(%s\d{3})+$' % re.escape(thousands_sep), raw):
-            # "1.234" gibi gruplanmış binlikler → tamamı binlik ayıracı
-            candidates.insert(0, raw.replace(thousands_sep, ''))
+        candidates = []
+        if decimal_point in raw:
+            # "1.234,5" (tr_TR) / "1,234.5" (en_US): ondalık ayıracından böl,
+            # tam kısımdaki binlikleri temizle
+            if raw.count(decimal_point) != 1:
+                return None
+            int_part, frac = raw.split(decimal_point, 1)
+            int_clean = self._strip_thousands(int_part, thousands_sep)
+            if int_clean is None:
+                return None
+            candidates.append('%s.%s' % (int_clean, frac))
+        elif thousands_sep:
+            # Ondalık yok: "1.234" gibi gruplanmış binlikler → tamamı binlik
+            grouped = self._strip_thousands(raw, thousands_sep)
+            if grouped:
+                candidates.append(grouped)
+        candidates.append(raw)
         for candidate in candidates:
             try:
                 return float(candidate)
