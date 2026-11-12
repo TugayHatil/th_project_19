@@ -9,7 +9,8 @@
                 <control>
                     <create name="add_line_control" string="Satır Ekle"/>
                     <button name="action_open_line_paste_wizard" type="object"
-                            string="Satır Yapıştır" class="px-4 btn-link"/>
+                            string="Satır Yapıştır" class="px-4 btn-link"
+                            context="{'request_id': parent.id}"/>
                 </control>
             </xpath>
         </field>
