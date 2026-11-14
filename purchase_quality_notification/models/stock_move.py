@@ -20,11 +20,15 @@ class StockMove(models.Model):
 
     def _action_confirm(self, merge=True, merge_into=False, create_proc=True):
         kk = self._qc_gated_moves()
-        if kk:
+        outer = self.env.context.get('qc_in_confirm')
+        if kk and not outer:
             self = self.with_context(qc_gate_off=True, qc_in_confirm=True)
         res = super()._action_confirm(
             merge=merge, merge_into=merge_into, create_proc=create_proc)
-        kk._clamp_quality_lines()
+        # When called inside picking.action_confirm the outer level clamps
+        # after the quality checks snapshot the line quantity.
+        if kk and not outer:
+            kk._clamp_quality_lines()
         return res
 
     def _action_assign(self, force_qty=False):
@@ -32,8 +36,8 @@ class StockMove(models.Model):
         if kk:
             self = self.with_context(qc_gate_off=True)
         res = super()._action_assign(force_qty=force_qty)
-        # Under _action_confirm the checks are created after assign and may
-        # read the line quantity, so the clamp runs there instead.
+        # During action_confirm the quality checks read the line quantity
+        # when created later; the clamp is deferred to picking.action_confirm.
         if not self.env.context.get('qc_in_confirm'):
             kk._clamp_quality_lines()
         return res

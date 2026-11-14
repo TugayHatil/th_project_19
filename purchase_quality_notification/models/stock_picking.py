@@ -47,6 +47,17 @@ class StockPicking(models.Model):
                 partners |= partner
         return partners
 
+    def action_confirm(self):
+        # Mark the whole confirm cycle so reservation-internal quantity
+        # writes are exempt and the clamp runs after quality checks are
+        # created (they snapshot the move line quantity).
+        kk = self.move_ids._qc_gated_moves()
+        if kk:
+            self = self.with_context(qc_gate_off=True, qc_in_confirm=True)
+        res = super().action_confirm()
+        kk._clamp_quality_lines()
+        return res
+
     def action_send_quality_notification(self):
         self.ensure_one()
         if not self.show_quality_notify:
