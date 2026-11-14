@@ -18,7 +18,11 @@ class StockMoveLine(models.Model):
             ('move_line_id', '=', self.id),
             ('quality_state', '=', 'pass'),
         ])
-        return sum(c.qty_tested or c.qty_to_test for c in checks)
+        # qty_to_test is a live compute of the line quantity (0 by design),
+        # so the approved credit is qty_tested or, when left empty, the
+        # move demand — a bare "Pass" approves the whole line.
+        return sum(
+            c.qty_tested or self.move_id.product_uom_qty for c in checks)
 
     @api.depends('quant_id')
     def _compute_quantity(self):

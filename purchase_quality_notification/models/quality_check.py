@@ -12,5 +12,6 @@ class QualityCheck(models.Model):
                 line = check.move_line_id
                 if (line and line.state not in ('done', 'cancel')
                         and line._is_quality_controlled_receipt_line()):
-                    line.quantity += check.qty_tested or check.qty_to_test
+                    line.quantity += (
+                        check.qty_tested or line.move_id.product_uom_qty)
         return res
