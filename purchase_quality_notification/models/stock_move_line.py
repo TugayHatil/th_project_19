@@ -10,6 +10,7 @@ class StockMoveLine(models.Model):
         return (
             self.picking_code == 'incoming'
             and self.product_id.product_tmpl_id.quality_purchase_ok
+            and not self.location_dest_id.is_failure_location
         )
 
     def _quality_approved_qty(self):
