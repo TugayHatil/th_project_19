@@ -75,5 +75,6 @@ class StockPicking(models.Model):
                 'message': _('Kalite ekibine bildirim gönderildi.'),
                 'type': 'success',
                 'sticky': False,
+                'next': {'type': 'ir.actions.client', 'tag': 'reload'},
             },
         }
