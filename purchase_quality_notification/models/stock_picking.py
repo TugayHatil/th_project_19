@@ -63,29 +63,9 @@ class StockPicking(models.Model):
                 'Main Quality Team için e-posta adresi tanımlı üye bulunamadı. '
                 'Kalite (Quality / User) grubundaki kullanıcıların e-posta '
                 'adreslerini kontrol edin.'))
-        mail_id = template.send_mail(
+        template.send_mail(
             self.id, force_send=True, raise_exception=False,
             email_values={'recipient_ids': [(6, 0, partners.ids)]})
-        mail = self.env['mail.mail'].sudo().browse(mail_id)
-        if mail.state == 'exception':
-            self.message_post(
-                body=_('Kalite bildirimi gönderilemedi: %s',
-                       mail.failure_reason or _('Bilinmeyen hata')),
-                message_type='comment',
-                subtype_xmlid='mail.mt_note',
-            )
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': _('Kalite bildirimi gönderilemedi'),
-                    'message': mail.failure_reason or _(
-                        'E-posta gönderimi başarısız oldu. Giden posta '
-                        'sunucusu ayarlarını kontrol edin.'),
-                    'type': 'warning',
-                    'sticky': True,
-                },
-            }
         self.quality_notified = True
         return {
             'type': 'ir.actions.client',
