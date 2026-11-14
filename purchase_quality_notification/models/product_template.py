@@ -25,29 +25,37 @@ class ProductTemplate(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
-        if 'quality_purchase_ok' in vals:
+        if 'quality_purchase_ok' in vals or 'active' in vals:
             self._sync_purchase_quality_point()
         return res
 
     def unlink(self):
-        auto_points = self.env['quality.point'].with_context(active_test=False).sudo().search(
-            [('auto_purchase_tmpl_id', 'in', self.ids)])
-        if auto_points:
-            auto_points.write({'active': False})
-        return super().unlink()
+        auto_point_ids = self.env['quality.point'].with_context(
+            active_test=False).sudo().search(
+                [('auto_purchase_tmpl_id', 'in', self.ids)]).ids
+        res = super().unlink()
+        if res and auto_point_ids:
+            self.env['quality.point'].sudo().browse(auto_point_ids).write(
+                {'active': False})
+        return res
 
     def _sync_purchase_quality_point(self):
         Point = self.env['quality.point'].with_context(active_test=False).sudo()
         for tmpl in self:
-            point = Point.search([('auto_purchase_tmpl_id', '=', tmpl.id)], limit=1)
-            if tmpl.quality_purchase_ok:
+            point = Point.search(
+                [('auto_purchase_tmpl_id', '=', tmpl.id)], limit=1)
+            if tmpl.quality_purchase_ok and tmpl.active:
+                vals = tmpl._prepare_purchase_quality_point_vals()
                 if point:
                     point.write({
                         'active': True,
-                        'product_ids': [(6, 0, tmpl.product_variant_ids.ids)],
+                        'product_ids': vals['product_ids'],
+                        'picking_type_ids': vals['picking_type_ids'],
+                        'failure_location_ids': vals['failure_location_ids'],
+                        'team_id': vals['team_id'],
                     })
                 else:
-                    Point.create(tmpl._prepare_purchase_quality_point_vals())
+                    Point.create(vals)
             elif point.active:
                 point.active = False
 
@@ -73,6 +81,7 @@ class ProductTemplate(models.Model):
             [('technical_name', '=', 'passfail')], limit=1)
         failure_locations = self.env['stock.location'].sudo().search([
             ('is_failure_location', '=', True),
+            ('active', '=', True),
             ('company_id', 'in', [company.id, False]),
         ])
         return {

@@ -34,7 +34,10 @@ class StockPicking(models.Model):
         group = self.env.ref('quality.group_quality_user',
                              raise_if_not_found=False)
         users = (group.all_user_ids if group else self.env['res.users'])
-        users = users.filtered(lambda u: not u.share)
+        company = self.company_id
+        users = users.filtered(
+            lambda u: u.active and not u.share
+            and (not u.company_ids or company in u.company_ids))
         partners = self.env['res.partner']
         seen_emails = set()
         for partner in users.mapped('partner_id'):

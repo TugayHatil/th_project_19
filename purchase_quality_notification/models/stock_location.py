@@ -26,7 +26,7 @@ class StockLocation(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
-        if {'is_failure_location', 'usage', 'company_id'} & vals.keys():
+        if {'is_failure_location', 'usage', 'company_id', 'active'} & vals.keys():
             self._resync_auto_quality_point_failure_locations()
         return res
 
@@ -36,6 +36,7 @@ class StockLocation(models.Model):
         for point in points:
             locations = self.env['stock.location'].sudo().search([
                 ('is_failure_location', '=', True),
+                ('active', '=', True),
                 ('company_id', 'in', [point.company_id.id, False]),
             ])
             if point.failure_location_ids != locations:

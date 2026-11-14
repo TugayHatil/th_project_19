@@ -8,8 +8,7 @@
         <field name="arch" type="xml">
             <field name="usage" position="after">
                 <field name="is_failure_location"
-                       invisible="usage != 'internal'"
-                       groups="stock.group_stock_multi_locations"/>
+                       invisible="usage != 'internal'"/>
             </field>
         </field>
     </record>
