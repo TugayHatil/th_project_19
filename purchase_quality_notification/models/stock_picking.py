@@ -58,6 +58,34 @@ class StockPicking(models.Model):
         kk._clamp_quality_lines()
         return res
 
+    def check_quality(self):
+        res = super().check_quality()
+        # The standard button only opens checks measured per operation /
+        # product; our gated lines use measure_on='move_line' checks that
+        # are otherwise reachable only via the per-line icon. Include them
+        # in the wizard so the header button stays a single entry point.
+        pending = self.check_ids.filtered(
+            lambda c: c.quality_state == 'none'
+            and c.measure_on == 'move_line'
+            and c.move_line_id._is_quality_controlled_receipt_line())
+        if not pending:
+            return res
+        if isinstance(res, dict) and res.get('res_model') == 'quality.check.wizard':
+            ctx = dict(res.get('context') or {})
+            ids = list(ctx.get('default_check_ids') or [])
+            ctx['default_check_ids'] = ids + [
+                i for i in pending.ids if i not in ids]
+            res['context'] = ctx
+            return res
+        action = self.env['ir.actions.actions']._for_xml_id(
+            'quality_control.action_quality_check_wizard')
+        action['context'] = {
+            'default_check_ids': pending.ids,
+            'default_current_check_id': pending[0].id,
+            'default_qty_tested': pending[0].qty_to_test,
+        }
+        return action
+
     def action_send_quality_notification(self):
         self.ensure_one()
         if not self.show_quality_notify:
