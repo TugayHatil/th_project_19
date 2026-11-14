@@ -13,9 +13,9 @@ class ProductTemplate(models.Model):
     _inherit = 'product.template'
 
     quality_purchase_ok = fields.Boolean(
-        string='Satınalma KK',
-        related='quality_inspection_purchase',
-        readonly=False, store=True, copy=True)
+        string='Satınalma KK', default=False, copy=True,
+        help='İşaretlendiğinde bu ürün için otomatik kalite kontrol noktası '
+             'oluşturulur ve gelen transferler kalite ekibine bildirilebilir.')
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -25,7 +25,7 @@ class ProductTemplate(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
-        if 'quality_inspection_purchase' in vals or 'quality_purchase_ok' in vals:
+        if 'quality_purchase_ok' in vals:
             self._sync_purchase_quality_point()
         return res
 

@@ -28,7 +28,6 @@ kalite kontrol mekanizmasını otomatikleştirir.
 
     'depends': [
         'mail',
-        'product_extra_fields',
         'purchase',
         'quality_control',
     ],

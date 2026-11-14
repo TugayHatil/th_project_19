@@ -6,12 +6,13 @@
         <field name="model">product.template</field>
         <field name="inherit_id" ref="product.product_template_only_form_view"/>
         <field name="arch" type="xml">
-            <field name="quality_inspection_purchase" position="attributes">
-                <attribute name="invisible">True</attribute>
-            </field>
-            <field name="quality_inspection_purchase" position="after">
-                <field name="quality_purchase_ok"/>
-            </field>
+            <xpath expr="//page[@name='purchase']/group[@name='purchase']" position="inside">
+                <group col="1">
+                    <group string="Kalite Kontrol" name="quality_control_purchase">
+                        <field name="quality_purchase_ok"/>
+                    </group>
+                </group>
+            </xpath>
         </field>
     </record>
 
