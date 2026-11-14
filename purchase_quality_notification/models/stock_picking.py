@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from odoo import _, api, fields, models
-from odoo.addons.mail.tools.discuss import Store
 from odoo.exceptions import UserError
 
 
@@ -64,13 +63,9 @@ class StockPicking(models.Model):
                 'Main Quality Team için e-posta adresi tanımlı üye bulunamadı. '
                 'Kalite (Quality / User) grubundaki kullanıcıların e-posta '
                 'adreslerini kontrol edin.'))
-        mail_id = template.send_mail(
+        template.send_mail(
             self.id, force_send=True, raise_exception=False,
             email_values={'recipient_ids': [(6, 0, partners.ids)]})
-        message = self.env['mail.mail'].sudo().browse(mail_id).mail_message_id
-        if message:
-            Store(bus_channel=self.env.user).add(
-                message.with_user(self.env.user)).bus_send()
         self.quality_notified = True
         return {
             'type': 'ir.actions.client',
@@ -80,5 +75,6 @@ class StockPicking(models.Model):
                 'message': _('Kalite ekibine bildirim gönderildi.'),
                 'type': 'success',
                 'sticky': False,
+                'next': {'type': 'ir.actions.act_window_close'},
             },
         }
