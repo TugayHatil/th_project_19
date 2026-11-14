@@ -23,6 +23,12 @@ class QualityCheck(models.Model):
             else:
                 check.qty_line = 0.0
 
+    def do_fail(self):
+        # Failure handling may move the failed quantity to the failure
+        # location via internal quantity writes — exempt them.
+        self = self.with_context(qc_gate_off=True)
+        return super().do_fail()
+
     def write(self, vals):
         # Capture the approvable credit before state flips to 'pass':
         # qty_tested when the operator tested a fraction, else qty_to_test

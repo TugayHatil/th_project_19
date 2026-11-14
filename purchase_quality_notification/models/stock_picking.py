@@ -58,6 +58,22 @@ class StockPicking(models.Model):
         kk._clamp_quality_lines()
         return res
 
+    def button_validate(self):
+        kk = self.move_ids._qc_gated_moves()
+        if kk:
+            self = self.with_context(qc_gate_off=True)
+        return super().button_validate()
+
+    def _action_done(self):
+        kk = self.move_ids._qc_gated_moves()
+        if kk:
+            self = self.with_context(qc_gate_off=True)
+        res = super()._action_done()
+        # Backorders created during validation may hold gated lines with
+        # freshly reserved quantities — clamp them too.
+        self.backorder_ids.move_ids._qc_gated_moves()._clamp_quality_lines()
+        return res
+
     def check_quality(self):
         res = super().check_quality()
         # The standard button only opens checks measured per operation /
