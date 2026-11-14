@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="stock_picking_form_quality_notify" model="ir.ui.view">
+        <field name="name">stock.picking.form.quality.notify</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header//field[@name='state' and @widget='statusbar']" position="before">
+                <button name="action_send_quality_notification"
+                        string="Kaliteye Gönder" type="object"
+                        icon="fa-check" class="oe_highlight"
+                        invisible="not show_quality_notify or quality_notified"/>
+                <button name="action_send_quality_notification"
+                        string="Kaliteye Tekrar Bildir" type="object"
+                        icon="fa-check"
+                        invisible="not show_quality_notify or not quality_notified"/>
+            </xpath>
+            <xpath expr="//sheet" position="inside">
+                <field name="show_quality_notify" invisible="1"/>
+                <field name="quality_notified" invisible="1"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
