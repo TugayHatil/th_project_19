@@ -35,6 +35,7 @@ kalite kontrol mekanizmasını otomatikleştirir.
 
     'data': [
         'data/mail_template_data.xml',
+        'views/product_template_views.xml',
         'views/stock_location_views.xml',
         'views/stock_picking_views.xml',
     ],

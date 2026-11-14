@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="product_template_form_quality_purchase" model="ir.ui.view">
+        <field name="name">product.template.form.quality.purchase</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml">
+            <field name="quality_inspection_purchase" position="attributes">
+                <attribute name="invisible">True</attribute>
+            </field>
+            <field name="quality_inspection_purchase" position="after">
+                <field name="quality_purchase_ok"/>
+            </field>
+        </field>
+    </record>
+
+</odoo>

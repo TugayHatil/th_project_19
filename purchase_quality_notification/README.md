@@ -6,7 +6,9 @@ Satınalma kalite kontrol ve transfer bildirim süreci.
 
 - **Satınalma KK (`quality_purchase_ok`)**: `product_extra_fields` modülündeki
   mevcut "Satınalma KK" (`quality_inspection_purchase`) işaretinin teknik
-  karşılığıdır; ürün formunda ayrı bir kutu gösterilmez, mevcut kutu kullanılır.
+  karşılığıdır. Ürün formunun "Diğer > Kalite Kontrol" grubunda eski alan
+  gizlenip yerine `quality_purchase_ok` gösterilir; kutu tektir ve iki alan
+  aynı değeri taşır.
 - İşaretlenen her ürün şablonu için tek bir otomatik `quality.point` oluşur
   (`auto_purchase_tmpl_id` ile işaretlenir; başlık "Bileşenler", kontrol bazı
   Miktar, sıklık Tümü, kısmi test %100, tip Geçti-Kaldı, ekip Main Quality
