@@ -29,6 +29,8 @@ class StockMoveLine(models.Model):
 
     @api.constrains('quantity')
     def _check_quality_approved_quantity(self):
+        if self.env.context.get('qc_gate_off'):
+            return
         for line in self:
             if (line.quantity and line.state not in ('done', 'cancel')
                     and line._is_quality_controlled_receipt_line()):
