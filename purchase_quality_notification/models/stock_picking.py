@@ -166,8 +166,9 @@ class StockPicking(models.Model):
                 lambda c: c.move_line_id
                 and c.move_line_id.picking_id == backorder
                 and c.picking_id != backorder)
-            if stray:
-                stray.picking_id = backorder.id
+            for check in stray:
+                check.picking_id = backorder.id
+                cap_line(check.move_line_id, check.pqn_sent_qty)
             open_lines = backorder.move_line_ids.filtered(
                 lambda l: l.state not in ('done', 'cancel'))
             # Checks deleted with their split lines are recreated on the
