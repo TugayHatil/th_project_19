@@ -50,10 +50,24 @@ class QualityCheck(models.Model):
         if not line_checks:
             return super().do_fail()
         first = line_checks[0]
+        qty = first.qty_to_test or first.move_line_id.quantity or 1
+        # The wizard record must exist before the dialog opens: the
+        # failure form's fields are chained related values
+        # (measure_on, potential_failure_location_ids, ...) that do
+        # not resolve on an unsaved record.
+        wizard = self.env['quality.check.wizard'].create({
+            'check_ids': [(6, 0, line_checks.ids)],
+            'current_check_id': first.id,
+            'qty_failed': qty,
+            'failure_location_id': (
+                first.point_id.failure_location_ids
+                or first.failure_location_id)[:1].id,
+        })
         return {
             'name': _('Quality Check Failed'),
             'type': 'ir.actions.act_window',
             'res_model': 'quality.check.wizard',
+            'res_id': wizard.id,
             'view_mode': 'form',
             'views': [(self.env.ref(
                 'quality_control.quality_check_wizard_form_failure').id,
@@ -61,10 +75,6 @@ class QualityCheck(models.Model):
             'target': 'new',
             'context': dict(
                 self.env.context,
-                default_check_ids=line_checks.ids,
-                default_current_check_id=first.id,
-                default_qty_tested=first.qty_to_test
-                or first.move_line_id.quantity or 1,
                 from_failure_form=True,
                 hide_back_button=True),
         }
