@@ -176,10 +176,10 @@ class StockPicking(models.Model):
             return value[0] if isinstance(value, (list, tuple)) else value
 
         def cap_line(line, sent_qty):
-            # A check already sent to quality keeps covering the
-            # quantity it was sent with; the backorder line comes
-            # back at demand qty and is lowered to the sent qty.
-            if line and sent_qty and line.quantity > sent_qty:
+            # The backorder line follows the quantity actually sent
+            # to quality — whether Odoo re-serves it at full demand
+            # or trims it down to the unsent remainder.
+            if line and sent_qty and line.quantity != sent_qty:
                 line.quantity = sent_qty
 
         for backorder in self.backorder_ids:

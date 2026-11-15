@@ -36,9 +36,13 @@ class QualityCheck(models.Model):
             if check.production_id:
                 check.qty_line = check.production_id.qty_producing
             elif check.move_line_id:
+                # A sent check always shows the quantity it was sent
+                # with — the line may revert to demand on a backorder
+                # or be re-served in parts; neither changes what was
+                # sent to quality.
                 qty = check.move_line_id.quantity
                 if check.pqn_sent and check.pqn_sent_qty:
-                    qty = min(qty, check.pqn_sent_qty)
+                    qty = check.pqn_sent_qty
                 check.qty_line = qty
             else:
                 # A detached check keeps the quantity it stands for —
