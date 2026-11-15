@@ -56,11 +56,29 @@ class StockPicking(models.Model):
         # Lines whose check is still pending are auto-zeroed here —
         # the warehouse user no longer blanks the quantity by hand;
         # the rows (with their pending checks) ride to the backorder.
-        for line in self.move_line_ids.filtered(
-                lambda l: l.quantity > 0
-                and l._is_quality_controlled_receipt_line()
-                and l.check_ids.filtered(
-                    lambda c: c.quality_state == 'none')):
+        pending_lines = self.move_line_ids.filtered(
+            lambda l: l.quantity > 0
+            and l._is_quality_controlled_receipt_line()
+            and l.check_ids.filtered(
+                lambda c: c.quality_state == 'none'))
+        # If every positive line is quality-pending, nothing can be
+        # received — name the blocking products instead of zeroing
+        # them into a misleading "zero quantity transfer" warning.
+        # The lines keep their quantity so a later pass/fail still
+        # has a line to settle on.
+        if (pending_lines
+                and not self.move_line_ids.filtered(
+                    lambda l: l.quantity > 0) - pending_lines):
+            raise UserError(_(
+                'Kalite onayı tamamlanmamış ürünler depoya '
+                'alınamaz: %s\n'
+                'Kontroller tamamlandığında miktar otomatik dolar. '
+                'Gönderilmemiş kontroller için satırı "KK\'ya Gönder" '
+                'ile işaretleyip "Kaliteye Gönder" butonuyla kaliteye '
+                'iletin.',
+                ', '.join(dict.fromkeys(
+                    pending_lines.mapped('product_id.display_name')))))
+        for line in pending_lines:
             line.quantity = 0
         lines = self.move_line_ids.filtered(
             lambda l: l.quantity > 0
