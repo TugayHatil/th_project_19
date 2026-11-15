@@ -8,11 +8,14 @@ class StockPicking(models.Model):
 
     show_quality_notify = fields.Boolean(
         compute='_compute_show_quality_notify')
+    has_quality_send_mark = fields.Boolean(
+        compute='_compute_show_quality_notify')
     quality_notified = fields.Boolean(
         string='Kaliteye Bildirildi', default=False, copy=False, readonly=True)
     quality_picking_url = fields.Char(compute='_compute_quality_picking_url')
 
     @api.depends('picking_type_code', 'state', 'move_ids.product_id',
+                 'move_ids.quality_send_ok', 'move_ids.state',
                  'move_ids.product_id.product_tmpl_id.quality_purchase_ok')
     def _compute_show_quality_notify(self):
         for picking in self:
@@ -22,6 +25,9 @@ class StockPicking(models.Model):
                 and any(picking.move_ids.mapped(
                     lambda m: m.product_id.product_tmpl_id.quality_purchase_ok))
             )
+            picking.has_quality_send_mark = any(picking.move_ids.filtered(
+                lambda m: m.quality_send_ok and m.quality_purchase_ok
+                and m.state not in ('done', 'cancel')))
 
     def _compute_quality_picking_url(self):
         base_url = self.get_base_url()
@@ -256,10 +262,15 @@ class StockPicking(models.Model):
             raise UserError(_(
                 'Bu transfer için kalite bildirimi gönderilemez.'))
         # Create quality checks only for the lines the warehouse user
-        # flagged with the per-row "Kaliteye Gönder" checkbox.
+        # flagged with the per-row "Kaliteye Gönder" checkbox — at
+        # least one row must be marked before the button does anything.
         marked = self.move_ids.filtered(
             lambda m: m.quality_send_ok and m.quality_purchase_ok
             and m.state not in ('done', 'cancel'))
+        if not marked:
+            raise UserError(_(
+                'Kaliteye gönderilecek en az bir satırı "KK\'ya Gönder" '
+                'ile işaretleyin.'))
         checks = marked._pqn_send_quality_checks()
         # The flag stays set — it marks which rows were sent to quality.
         if checks:

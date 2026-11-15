@@ -10,14 +10,17 @@
                 <button name="action_send_quality_notification"
                         string="Kaliteye Gönder" type="object"
                         icon="fa-check" class="oe_highlight"
-                        invisible="not show_quality_notify or quality_notified"/>
+                        invisible="not show_quality_notify or quality_notified
+                                   or not has_quality_send_mark"/>
                 <button name="action_send_quality_notification"
                         string="Kaliteye Tekrar Bildir" type="object"
                         icon="fa-check"
-                        invisible="not show_quality_notify or not quality_notified"/>
+                        invisible="not show_quality_notify or not quality_notified
+                                   or not has_quality_send_mark"/>
             </xpath>
             <xpath expr="//sheet" position="inside">
                 <field name="show_quality_notify" invisible="1"/>
+                <field name="has_quality_send_mark" invisible="1"/>
                 <field name="quality_notified" invisible="1"/>
             </xpath>
             <xpath expr="//field[@name='move_ids']/list/field[@name='quantity']"
