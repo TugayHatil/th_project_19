@@ -64,6 +64,41 @@ class QualityCheck(models.Model):
             check.pqn_receipt_label = (
                 ' / '.join(p for p in parts if p) or _('(Transfersiz)'))
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        checks = super().create(vals_list)
+        # Quantity edits before sending spawn extra move lines and
+        # Odoo makes a check per line — until anything is actually
+        # sent to quality a single unsent check per (product, lot)
+        # is enough. The fresh check is kept and repointed to the
+        # biggest line; older unsent duplicates are dropped. The
+        # sent/remainder split still happens only at send time.
+        for check in checks:
+            if (check.quality_state != 'none' or check.pqn_sent
+                    or check.pqn_remainder or not check.picking_id
+                    or check.picking_id.picking_type_code != 'incoming'
+                    or not check.product_id.product_tmpl_id
+                            .quality_purchase_ok):
+                continue
+            dup = self.search([
+                ('picking_id', '=', check.picking_id.id),
+                ('product_id', '=', check.product_id.id),
+                ('quality_state', '=', 'none'),
+                ('pqn_sent', '=', False),
+                ('pqn_remainder', '=', False),
+                ('id', '!=', check.id),
+            ]).filtered(
+                lambda c: (c.move_line_id.lot_id.id or 0)
+                == (check.move_line_id.lot_id.id or 0))
+            if dup:
+                big = (dup | check).filtered('move_line_id').sorted(
+                    key=lambda c: c.move_line_id.quantity,
+                    reverse=True)[:1]
+                if big and big.move_line_id != check.move_line_id:
+                    check.move_line_id = big.move_line_id
+                dup.unlink()
+        return checks
+
     def _pqn_needs_send(self):
         self.ensure_one()
         return (self.quality_state == 'none'
