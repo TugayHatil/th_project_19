@@ -23,6 +23,11 @@ class QualityCheck(models.Model):
             else:
                 check.qty_line = 0.0
 
+    def do_pass(self):
+        # Explicit user pass on a gated line credits the approved qty.
+        self = self.with_context(qc_gate_off=True, qc_user_pass=True)
+        return super().do_pass()
+
     def do_fail(self):
         # Failure handling may move the failed quantity to the failure
         # location via internal quantity writes — exempt them.
@@ -30,13 +35,14 @@ class QualityCheck(models.Model):
         return super().do_fail()
 
     def write(self, vals):
-        # Capture the approvable credit before state flips to 'pass':
-        # qty_tested when the operator tested a fraction, else qty_to_test
-        # (the remaining demand still awaiting approval).
-        credit = {}
-        if vals.get('quality_state') == 'pass':
-            for check in self:
-                credit[check.id] = check.qty_tested or check.qty_to_test
+        # Credit the approved quantity only for explicit user passes
+        # (qc_user_pass): passes auto-created by Odoo's partial-fail split
+        # must not add credit — the split already writes the good/failed
+        # quantities on the move lines itself.
+        if vals.get('quality_state') != 'pass' \
+                or not self.env.context.get('qc_user_pass'):
+            return super().write(vals)
+        credit = {c.id: c.qty_tested or c.qty_to_test for c in self}
         res = super().write(vals)
         for check in self:
             line = check.move_line_id
@@ -46,5 +52,5 @@ class QualityCheck(models.Model):
             if not check.qty_tested:
                 check.qty_tested = credit[check.id]
             if line.state not in ('done', 'cancel'):
-                line.quantity += credit[check.id]
+                line.quantity = line._quality_approved_qty()
         return res
