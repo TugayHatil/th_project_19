@@ -50,14 +50,21 @@ class QualityCheck(models.Model):
         if not line_checks:
             return super().do_fail()
         first = line_checks[0]
-        action = self.env['ir.actions.actions']._for_xml_id(
-            'quality_control.action_quality_check_wizard')
-        action['context'] = dict(
-            self.env.context,
-            default_check_ids=line_checks.ids,
-            default_current_check_id=first.id,
-            default_qty_tested=first.qty_to_test
-            or first.move_line_id.quantity or 1,
-            from_failure_form=True,
-        )
-        return action
+        return {
+            'name': _('Quality Check Failed'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'quality.check.wizard',
+            'view_mode': 'form',
+            'views': [(self.env.ref(
+                'quality_control.quality_check_wizard_form_failure').id,
+                'form')],
+            'target': 'new',
+            'context': dict(
+                self.env.context,
+                default_check_ids=line_checks.ids,
+                default_current_check_id=first.id,
+                default_qty_tested=first.qty_to_test
+                or first.move_line_id.quantity or 1,
+                from_failure_form=True,
+                hide_back_button=True),
+        }
