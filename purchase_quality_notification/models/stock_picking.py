@@ -47,6 +47,40 @@ class StockPicking(models.Model):
                 partners |= partner
         return partners
 
+    def _action_done(self):
+        res = super()._action_done()
+        self._pqn_sync_backorder_checks()
+        return res
+
+    def _pqn_sync_backorder_checks(self):
+        # When a partial validation creates a backorder, the pending
+        # quality check must follow its move line to the new picking —
+        # the warehouse user already sent it to quality, no re-marking.
+        Check = self.env['quality.check']
+        for backorder in self.backorder_ids:
+            stray = Check.search([
+                ('quality_state', '=', 'none'),
+                ('move_line_id.picking_id', '=', backorder.id),
+                ('picking_id', '!=', backorder.id)])
+            if stray:
+                stray.picking_id = backorder.id
+            # Product-level pending checks (no move line) follow the
+            # remainder move of the same product on the backorder.
+            for check in Check.search([
+                    ('picking_id', '=', self.id),
+                    ('quality_state', '=', 'none'),
+                    ('move_line_id', '=', False)]):
+                if backorder.move_ids.filtered(
+                        lambda m: m.product_id == check.product_id):
+                    check.picking_id = backorder.id
+            # A flag the user set but had not sent yet also carries to the
+            # remainder move created by the split.
+            for move in backorder.move_ids:
+                if not move.quality_send_ok and self.move_ids.filtered(
+                        lambda m: m.product_id == move.product_id
+                        and m.quality_send_ok):
+                    move.quality_send_ok = True
+
     def check_quality(self):
         res = super().check_quality()
         # The standard button only opens checks measured per operation /

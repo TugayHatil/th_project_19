@@ -6,7 +6,7 @@ class StockMove(models.Model):
     _inherit = 'stock.move'
 
     quality_send_ok = fields.Boolean(
-        string='Kaliteye Gönder', copy=False,
+        string='Kaliteye Gönder', copy=True,
         help='Kaliteye Gönder butonuna basıldığında bu satır için kalite '
              'kontrolü oluşturulur.')
     quality_purchase_ok = fields.Boolean(
