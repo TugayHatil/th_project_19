@@ -8,10 +8,19 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='point_id']" position="after">
                 <field name="pqn_sent" readonly="1"/>
-                <field name="pqn_remainder" readonly="1"
-                       invisible="not pqn_remainder"/>
-                <field name="qty_to_test" readonly="1"
-                       invisible="qty_to_test == 0"/>
+            </xpath>
+            <!-- The standard qty block hides when the check has no move
+                 line; detached remainder checks still carry a quantity
+                 (pqn_sent_qty via qty_line), so show it in the same
+                 left-column spot instead. -->
+            <xpath expr="//field[@name='failure_location_id']"
+                   position="before">
+                <label for="qty_line" invisible="move_line_id"/>
+                <div class="o_row" invisible="move_line_id">
+                    <field name="qty_line" readonly="1"/>
+                    <field name="uom_id" widget="many2one_uom"
+                           groups="uom.group_uom"/>
+                </div>
             </xpath>
         </field>
     </record>
