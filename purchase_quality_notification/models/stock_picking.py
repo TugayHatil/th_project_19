@@ -49,41 +49,9 @@ class StockPicking(models.Model):
 
     def _pqn_assert_quality_checked(self):
         # A quality-controlled product must not be received into stock
-        # without a quality check ever being created for its line.
-        # Pending checks are handled by the standard validation wizard;
-        # this guards lines that were never sent to quality.
-        #
-        # Lines whose check is still pending are auto-zeroed here —
-        # the warehouse user no longer blanks the quantity by hand;
-        # the rows (with their pending checks) ride to the backorder.
-        pending_lines = self.move_line_ids.filtered(
-            lambda l: l.quantity > 0
-            and l._is_quality_controlled_receipt_line()
-            and l.check_ids.filtered(
-                lambda c: c.quality_state == 'none'))
-        # If every positive line is quality-pending, nothing can be
-        # received — name the blocking products instead of zeroing
-        # them into a misleading "zero quantity transfer" warning.
-        # The lines keep their quantity so a later pass/fail still
-        # has a line to settle on.
-        if (pending_lines
-                and not self.move_line_ids.filtered(
-                    lambda l: l.quantity > 0) - pending_lines):
-            raise UserError(_(
-                'Kalite Onayı Eksik\n\n'
-                'Aşağıdaki ürünlerin kalite kontrolü henüz '
-                'tamamlanmadığı için depoya kabul işlemi yapılamaz:\n\n'
-                '%s\n\n'
-                'Kalite kontrolleri tamamlandığında kabul edilecek '
-                'miktar otomatik olarak güncellenir.\n\n'
-                'Henüz kaliteye gönderilmemiş ürünler için ilgili '
-                'satırda "KK\'ya Gönder" seçeneğini işaretleyin ve '
-                '"Kaliteye Gönder" butonuna tıklayarak kalite '
-                'ekibine iletin.',
-                '\n'.join('• %s' % n for n in dict.fromkeys(
-                    pending_lines.mapped('product_id.display_name')))))
-        for line in pending_lines:
-            line.quantity = 0
+        # while it has a pending check — and never without a check at
+        # all. Quantities are left untouched: the warehouse user
+        # blanks a line he wants to defer to the backorder himself.
         lines = self.move_line_ids.filtered(
             lambda l: l.quantity > 0
             and l._is_quality_controlled_receipt_line())
@@ -100,9 +68,7 @@ class StockPicking(models.Model):
             if detached:
                 detached.move_line_id = line.id
         missing = lines.filtered(
-            lambda l: l.check_state == 'no_checks'
-            or l.check_ids.filtered(
-                lambda c: c.quality_state == 'none' and not c.pqn_sent))
+            lambda l: l.check_state == 'no_checks')
         if missing:
             raise UserError(_(
                 'Kalite Kontrolü Eksik\n\n'
@@ -114,6 +80,23 @@ class StockPicking(models.Model):
                 'ya da satır miktarını sıfırlayın.',
                 '\n'.join('• %s' % n for n in dict.fromkeys(
                     missing.mapped('product_id.display_name')))))
+        pending = lines.filtered(
+            lambda l: l.check_ids.filtered(
+                lambda c: c.quality_state == 'none'))
+        if pending:
+            raise UserError(_(
+                'Kalite Onayı Eksik\n\n'
+                'Aşağıdaki ürünlerin kalite kontrolü henüz '
+                'tamamlanmadığı için depoya kabul işlemi yapılamaz:\n\n'
+                '%s\n\n'
+                'Kalite ekibi kontrolleri tamamladığında satırları '
+                'doğrulayabilirsiniz. Bekletmek istediğiniz ürünlerin '
+                'satır miktarını sıfırlayıp tekrar deneyin; '
+                'gönderilmemiş kontroller için ilgili satırda '
+                '"KK\'ya Gönder" seçeneğini işaretleyin ve '
+                '"Kaliteye Gönder" butonuna tıklayın.',
+                '\n'.join('• %s' % n for n in dict.fromkeys(
+                    pending.mapped('product_id.display_name')))))
 
     def _pre_action_done_hook(self):
         self._pqn_assert_quality_checked()
