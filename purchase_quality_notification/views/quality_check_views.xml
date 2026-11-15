@@ -8,6 +8,10 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='point_id']" position="after">
                 <field name="pqn_sent" readonly="1"/>
+                <field name="pqn_remainder" readonly="1"
+                       invisible="not pqn_remainder"/>
+                <field name="qty_to_test" readonly="1"
+                       invisible="qty_to_test == 0"/>
             </xpath>
         </field>
     </record>
@@ -32,6 +36,7 @@
             <list string="Depoda Onay Bekleyenler">
                 <field name="name"/>
                 <field name="product_id"/>
+                <field name="qty_to_test"/>
                 <field name="picking_id"/>
                 <field name="point_id" optional="hide"/>
                 <field name="control_date" optional="show"/>
