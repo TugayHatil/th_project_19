@@ -20,6 +20,27 @@ class StockMove(models.Model):
             ('fail', 'Başarısız Kontrol Var'),
         ],
         string='Kalite Kontrol', compute='_compute_quality_check_state')
+    pqn_display_qty = fields.Float(
+        string='Miktar', digits='Product Unit',
+        compute='_compute_pqn_display_qty',
+        inverse='_inverse_pqn_display_qty',
+        help='Kalite kontrolü bekleyen satırlarda 0 gösterir; '
+             'gerçek miktar alanına dokunmaz.')
+
+    @api.depends('quantity', 'move_line_ids.check_ids.quality_state',
+                 'check_id.quality_state')
+    def _compute_pqn_display_qty(self):
+        for move in self:
+            qc = (move.picking_id.picking_type_code == 'incoming'
+                  and move.quality_purchase_ok)
+            pending = (move.move_line_ids.check_ids | move.check_id).filtered(
+                lambda c: c.quality_state == 'none')
+            move.pqn_display_qty = (
+                0.0 if qc and pending else move.quantity)
+
+    def _inverse_pqn_display_qty(self):
+        for move in self:
+            move.quantity = move.pqn_display_qty
 
     @api.depends('move_line_ids.check_state',
                  'move_line_ids.check_ids.pqn_sent',

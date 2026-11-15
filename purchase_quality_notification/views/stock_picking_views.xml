@@ -21,7 +21,14 @@
                 <field name="quality_notified" invisible="1"/>
             </xpath>
             <xpath expr="//field[@name='move_ids']/list/field[@name='quantity']"
+                   position="attributes">
+                <attribute name="column_invisible">True</attribute>
+            </xpath>
+            <xpath expr="//field[@name='move_ids']/list/field[@name='quantity']"
                    position="after">
+                <field name="pqn_display_qty" string="Miktar"
+                       readonly="not is_quantity_done_editable
+                                 or quality_check_state in ('in_progress', 'not_sent')"/>
                 <field name="quality_purchase_ok" column_invisible="True"/>
                 <field name="quality_send_ok" string="KK'ya Gönder"
                        readonly="not quality_purchase_ok or state in ('done','cancel')"/>

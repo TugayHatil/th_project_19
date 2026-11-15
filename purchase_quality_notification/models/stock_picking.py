@@ -52,6 +52,16 @@ class StockPicking(models.Model):
         # without a quality check ever being created for its line.
         # Pending checks are handled by the standard validation wizard;
         # this guards lines that were never sent to quality.
+        #
+        # Lines whose check is still pending are auto-zeroed here —
+        # the warehouse user no longer blanks the quantity by hand;
+        # the rows (with their pending checks) ride to the backorder.
+        for line in self.move_line_ids.filtered(
+                lambda l: l.quantity > 0
+                and l._is_quality_controlled_receipt_line()
+                and l.check_ids.filtered(
+                    lambda c: c.quality_state == 'none')):
+            line.quantity = 0
         lines = self.move_line_ids.filtered(
             lambda l: l.quantity > 0
             and l._is_quality_controlled_receipt_line())
