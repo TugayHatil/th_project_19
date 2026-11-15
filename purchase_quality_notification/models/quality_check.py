@@ -16,6 +16,10 @@ class QualityCheck(models.Model):
         help='Depo "Kaliteye Gönder" dediği andaki satır miktarı. '
              'Ön teslimatta satır talep miktarına dönse bile '
              'kontrolün kapsamı bu miktar olarak korunur.')
+    pqn_remainder = fields.Boolean(
+        string='Kalan Miktar Kontrolü', readonly=True, copy=False,
+        help='Gönderilen miktarın talepten eksik kalan kısmını temsil '
+             'eden, henüz kaliteye gönderilmemiş bekleyen kontrol.')
     pqn_receipt_label = fields.Char(
         string='Tedarik', compute='_compute_pqn_receipt_label',
         store=True, index=True,
@@ -37,7 +41,9 @@ class QualityCheck(models.Model):
                     qty = min(qty, check.pqn_sent_qty)
                 check.qty_line = qty
             else:
-                check.qty_line = 0.0
+                # A detached check keeps the quantity it stands for —
+                # e.g. the unsent remainder of a partial receipt.
+                check.qty_line = check.pqn_sent_qty or 0.0
 
     @api.depends('picking_id', 'picking_id.name',
                  'picking_id.purchase_id.name', 'picking_id.origin',

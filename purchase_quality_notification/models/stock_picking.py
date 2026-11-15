@@ -70,7 +70,8 @@ class StockPicking(models.Model):
                 ('product_id', '=', line.product_id.id),
                 ('measure_on', '=', 'move_line'),
                 ('move_line_id', '=', False),
-                ('quality_state', '=', 'none')], limit=1)
+                ('quality_state', '=', 'none'),
+                ('pqn_remainder', '=', False)], limit=1)
             if detached:
                 detached.move_line_id = line.id
         missing = lines.filtered(
@@ -103,6 +104,26 @@ class StockPicking(models.Model):
                 '"Kaliteye Gönder" butonuna tıklayın.',
                 '\n'.join('• %s' % n for n in dict.fromkeys(
                     pending.mapped('product_id.display_name')))))
+        # A line may not receive more than what was actually sent to
+        # quality — e.g. 80 of 100 sent: receiving the full 100 after
+        # the check passes would bypass quality for the difference.
+        over = lines.filtered(
+            lambda l: l.quantity - sum(
+                (c.pqn_sent_qty or c.qty_to_test)
+                for c in l.check_ids
+                if c.quality_state != 'cancel') > 0.0001)
+        if over:
+            raise UserError(_(
+                'Kaliteye Gönderilen Miktar Aşıldı\n\n'
+                'Aşağıdaki ürünlerin satır miktarı, kaliteye '
+                'gönderilen miktardan fazla olduğu için depoya '
+                'kabul işlemi yapılamaz:\n\n'
+                '%s\n\n'
+                'Fark miktarı da kaliteye göndermek için "Kaliteye '
+                'Tekrar Bildir" butonunu kullanın, ya da satır '
+                'miktarını gönderilen değere indirin.',
+                '\n'.join('• %s' % n for n in dict.fromkeys(
+                    over.mapped('product_id.display_name')))))
 
     def _pre_action_done_hook(self):
         self._pqn_assert_quality_checked()
@@ -139,7 +160,7 @@ class StockPicking(models.Model):
         snapshot = pending.read([
             'product_id', 'test_type_id', 'team_id', 'company_id',
             'failure_location_id', 'measure_on', 'pqn_sent',
-            'pqn_sent_qty', 'point_id'])
+            'pqn_sent_qty', 'pqn_remainder', 'point_id'])
         res = super()._action_done()
         self._pqn_sync_backorder_checks(pending, snapshot)
         return res
@@ -182,8 +203,12 @@ class StockPicking(models.Model):
                 existing = Check.search([
                     ('picking_id', '=', backorder.id),
                     ('product_id', '=', product_id),
-                    ('quality_state', '=', 'none')], limit=1)
+                    ('quality_state', '=', 'none'),
+                    ('pqn_remainder', '=', row['pqn_remainder'])],
+                    limit=1)
                 if existing:
+                    if row['pqn_remainder']:
+                        continue
                     existing.pqn_sent = (
                         existing.pqn_sent or row['pqn_sent'])
                     if not existing.pqn_sent_qty:
@@ -193,11 +218,12 @@ class StockPicking(models.Model):
                     continue
                 line = open_lines.filtered(
                     lambda l: l.product_id.id == product_id)[:1]
-                if line:
+                if line or row['pqn_remainder']:
                     cap_line(line, row['pqn_sent_qty'])
                     Check.create({
                         'picking_id': backorder.id,
-                        'move_line_id': line.id,
+                        'move_line_id': (
+                            False if row['pqn_remainder'] else line.id),
                         'measure_on': 'move_line',
                         'product_id': product_id,
                         'point_id': m2o(row['point_id']),
@@ -207,6 +233,7 @@ class StockPicking(models.Model):
                         'failure_location_id': m2o(row['failure_location_id']),
                         'pqn_sent': row['pqn_sent'],
                         'pqn_sent_qty': row['pqn_sent_qty'],
+                        'pqn_remainder': row['pqn_remainder'],
                     })
             # Pending checks whose line was unlinked but survived get
             # re-attached to the backorder's line for the same product —
@@ -215,10 +242,16 @@ class StockPicking(models.Model):
             # absorbs the sent state and the stray check is dropped.
             for check in alive.exists().filtered(
                     lambda c: c.picking_id in self and not c.move_line_id):
+                if check.pqn_remainder:
+                    # The unsent remainder follows the backorder as a
+                    # detached check — it must not absorb into a line.
+                    check.picking_id = backorder.id
+                    continue
                 existing = Check.search([
                     ('picking_id', '=', backorder.id),
                     ('product_id', '=', check.product_id.id),
-                    ('quality_state', '=', 'none')], limit=1)
+                    ('quality_state', '=', 'none'),
+                    ('pqn_remainder', '=', False)], limit=1)
                 if existing:
                     existing.pqn_sent = (
                         existing.pqn_sent or check.pqn_sent)

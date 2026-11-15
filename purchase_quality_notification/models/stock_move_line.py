@@ -29,6 +29,7 @@ class StockMoveLine(models.Model):
                 ('measure_on', '=', 'move_line'),
                 ('move_line_id', '=', False),
                 ('quality_state', '=', 'none'),
+                ('pqn_remainder', '=', False),
             ], limit=1)
             if detached:
                 existing = line.check_ids.filtered(

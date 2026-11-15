@@ -76,46 +76,6 @@ class StockMove(models.Model):
                     keep.quantity = sum(group.mapped('quantity'))
                     (group - keep).unlink()
             lines = lines.exists()
-            pending = Check.search([
-                ('picking_id', '=', move.picking_id.id),
-                ('product_id', '=', move.product_id.id),
-                ('quality_state', '=', 'none'),
-                '|', ('move_line_id', 'in', lines.ids),
-                ('move_line_id', '=', False)])
-            if pending:
-                # After the line merge each lot has one line; keep
-                # a single pending check per surviving line and
-                # reattach the checks the removed lines left
-                # detached. Detached leftovers with no free line
-                # are duplicates — drop them so no zero-quantity
-                # rows reach the quality list.
-                merged = Check
-                for line in lines:
-                    group = pending.filtered(
-                        lambda c: c.move_line_id == line)
-                    if group:
-                        (group[1:]).unlink()
-                        merged |= group[0]
-                detached = pending.exists().filtered(
-                    lambda c: not c.move_line_id)
-                for check in detached:
-                    free = lines.filtered(
-                        lambda l: l not in merged.mapped(
-                            'move_line_id'))[:1]
-                    if free:
-                        check.move_line_id = free.id
-                        merged |= check
-                    else:
-                        check.unlink()
-                # Remember the quantity this send covers: on a
-                # backorder the move line reverts to demand qty
-                # and the check must keep showing what was sent.
-                for check in merged:
-                    check.pqn_sent_qty = check.qty_to_test
-                unsent = merged.filtered(lambda c: not c.pqn_sent)
-                unsent.pqn_sent = True
-                sent |= unsent
-                continue
             point = self.env['quality.point'].with_context(
                 active_test=False).search(
                     [('auto_purchase_tmpl_id', '=',
@@ -129,11 +89,74 @@ class StockMove(models.Model):
                 'company_id': move.company_id.id,
                 'failure_location_id': (
                     point.failure_location_ids[:1] or fail_loc).id,
-                'pqn_sent': True,
+                'measure_on': 'move_line',
             }
-            new_check = Check.create(
-                dict(base, measure_on='move_line',
-                     move_line_id=lines[0].id if lines else False))
-            new_check.pqn_sent_qty = new_check.qty_to_test
-            sent |= new_check
+            pending = Check.search([
+                ('picking_id', '=', move.picking_id.id),
+                ('product_id', '=', move.product_id.id),
+                ('quality_state', '=', 'none'),
+                '|', ('move_line_id', 'in', lines.ids),
+                ('move_line_id', '=', False)])
+            if pending:
+                # After the line merge each lot has one line; keep
+                # a single pending check per surviving line and
+                # reattach the checks the removed lines left
+                # detached. Detached leftovers with no free line
+                # are duplicates — drop them so no zero-quantity
+                # rows reach the quality list. Remainder checks
+                # stay detached by design.
+                merged = Check
+                for line in lines:
+                    group = pending.filtered(
+                        lambda c: c.move_line_id == line)
+                    if group:
+                        (group[1:]).unlink()
+                        merged |= group[0]
+                detached = pending.exists().filtered(
+                    lambda c: not c.move_line_id)
+                remainder = detached.filtered('pqn_remainder')
+                for check in detached - remainder:
+                    free = lines.filtered(
+                        lambda l: l not in merged.mapped(
+                            'move_line_id'))[:1]
+                    if free:
+                        check.move_line_id = free.id
+                        merged |= check
+                    else:
+                        check.unlink()
+                # Remember the quantity this send covers: on a
+                # backorder the move line reverts to demand qty
+                # and the check must keep showing what was sent.
+                for check in merged:
+                    check.pqn_sent_qty = check.move_line_id.quantity
+                unsent = merged.filtered(lambda c: not c.pqn_sent)
+                unsent.pqn_sent = True
+                sent |= unsent
+            else:
+                merged = Check
+                remainder = Check
+                new_check = Check.create(
+                    dict(base, pqn_sent=True,
+                         move_line_id=lines[0].id if lines else False))
+                new_check.pqn_sent_qty = new_check.qty_to_test
+                sent |= new_check
+                merged |= new_check
+            # The part of the demand the warehouse did not send gets
+            # its own unsent check — e.g. ordered 100, received 80:
+            # one sent check for 80 and one pending remainder for 20.
+            # Exceeding the demand (105) never splits.
+            rem_qty = move.product_uom_qty - sum(
+                lines.mapped('quantity'))
+            if rem_qty > 0:
+                rem = remainder[:1]
+                if rem:
+                    if rem.pqn_sent_qty != rem_qty:
+                        rem.pqn_sent_qty = rem_qty
+                    (remainder - rem).unlink()
+                else:
+                    Check.create(dict(
+                        base, move_line_id=False, pqn_sent=False,
+                        pqn_sent_qty=rem_qty, pqn_remainder=True))
+            elif remainder:
+                remainder.unlink()
         return sent
