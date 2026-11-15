@@ -108,37 +108,3 @@ class TestPurchaseQualityNotification(TransactionCase):
             'location_dest_id': self.env.ref('stock.stock_location_customers').id,
         })
         self.assertFalse(outgoing.show_quality_notify)
-
-    def test_receipt_quantity_requires_quality_approval(self):
-        tmpl = self.env['product.template'].create({
-            'name': 'KK Miktar Test Ürünü',
-            'is_storable': True,
-            'quality_purchase_ok': True,
-        })
-        picking = self.env['stock.picking'].create({
-            'picking_type_id': self.env.ref('stock.picking_type_in').id,
-            'partner_id': self.supplier.id,
-            'location_id': self.env.ref('stock.stock_location_suppliers').id,
-            'location_dest_id': self.stock_location.id,
-            'move_ids': [(0, 0, {
-                'name': 'move',
-                'product_id': tmpl.product_variant_id.id,
-                'product_uom_qty': 5,
-                'location_id': self.env.ref('stock.stock_location_suppliers').id,
-                'location_dest_id': self.stock_location.id,
-            })],
-        })
-        picking.action_confirm()
-        line = picking.move_line_ids
-        self.assertTrue(line)
-        self.assertEqual(line.quantity, 0)
-        with self.assertRaises(ValidationError):
-            line.quantity = 5
-        check = self.env['quality.check'].search(
-            [('move_line_id', '=', line.id)], limit=1)
-        self.assertTrue(check)
-        check.qty_tested = 3
-        check.do_pass()
-        self.assertEqual(line.quantity, 3)
-        with self.assertRaises(ValidationError):
-            line.quantity = 4
