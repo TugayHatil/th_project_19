@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import _, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 
@@ -11,6 +11,26 @@ class QualityCheck(models.Model):
         index=True, readonly=True,
         help='Depo "Kaliteye Gönder" ile kalite ekibine iletti. '
              'Yalnızca gönderilen kontroller işlem görebilir.')
+    pqn_receipt_label = fields.Char(
+        string='Tedarik', compute='_compute_pqn_receipt_label',
+        store=True, index=True,
+        help='Satınalma siparişi / transfer / tedarikçi etiketi — '
+             'depo bekleyen kontrolleri tek satırda gruplar.')
+
+    @api.depends('picking_id', 'picking_id.name',
+                 'picking_id.purchase_id.name', 'picking_id.origin',
+                 'picking_id.partner_id.name')
+    def _compute_pqn_receipt_label(self):
+        for check in self:
+            picking = check.picking_id
+            parts = [
+                (picking.purchase_id or self.env['purchase.order']).name
+                or picking.origin or '',
+                picking.name or '',
+                picking.partner_id.commercial_partner_id.name or '',
+            ]
+            check.pqn_receipt_label = (
+                ' / '.join(p for p in parts if p) or _('(Transfersiz)'))
 
     def _pqn_needs_send(self):
         self.ensure_one()
