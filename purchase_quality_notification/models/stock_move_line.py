@@ -30,7 +30,18 @@ class StockMoveLine(models.Model):
                 ('quality_state', '=', 'none'),
             ], limit=1)
             if detached:
-                detached.move_line_id = line.id
+                existing = line.check_ids.filtered(
+                    lambda c: c.quality_state == 'none'
+                    and c.product_id == detached.product_id)[:1]
+                if existing:
+                    # The new line already got a check from the quality
+                    # point — carry the sent state over instead of
+                    # attaching a duplicate.
+                    existing.pqn_sent = (
+                        existing.pqn_sent or detached.pqn_sent)
+                    detached.unlink()
+                else:
+                    detached.move_line_id = line.id
         return lines
 
     def unlink(self):

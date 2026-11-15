@@ -114,7 +114,7 @@ class StockPicking(models.Model):
             ('quality_state', '=', 'none')])
         snapshot = pending.read([
             'product_id', 'test_type_id', 'team_id', 'company_id',
-            'failure_location_id', 'measure_on', 'pqn_sent'])
+            'failure_location_id', 'measure_on', 'pqn_sent', 'point_id'])
         res = super()._action_done()
         self._pqn_sync_backorder_checks(pending, snapshot)
         return res
@@ -139,11 +139,21 @@ class StockPicking(models.Model):
             open_lines = backorder.move_line_ids.filtered(
                 lambda l: l.state not in ('done', 'cancel'))
             # Checks deleted with their split lines are recreated on the
-            # backorder's line for the same product.
+            # backorder's line for the same product — unless standard
+            # Odoo already re-created one from the quality point; then
+            # only the sent state is carried over.
             for row in snapshot:
                 if row['id'] in alive.ids:
                     continue
                 product_id = m2o(row['product_id'])
+                existing = Check.search([
+                    ('picking_id', '=', backorder.id),
+                    ('product_id', '=', product_id),
+                    ('quality_state', '=', 'none')], limit=1)
+                if existing:
+                    existing.pqn_sent = (
+                        existing.pqn_sent or row['pqn_sent'])
+                    continue
                 line = open_lines.filtered(
                     lambda l: l.product_id.id == product_id)[:1]
                 if line:
@@ -152,6 +162,7 @@ class StockPicking(models.Model):
                         'move_line_id': line.id,
                         'measure_on': 'move_line',
                         'product_id': product_id,
+                        'point_id': m2o(row['point_id']),
                         'test_type_id': m2o(row['test_type_id']),
                         'team_id': m2o(row['team_id']),
                         'company_id': m2o(row['company_id']),
@@ -159,20 +170,28 @@ class StockPicking(models.Model):
                         'pqn_sent': row['pqn_sent'],
                     })
             # Pending checks whose line was unlinked but survived get
-            # re-attached to the backorder's line for the same product.
-            for check in alive.filtered(
+            # re-attached to the backorder's line for the same product —
+            # unless the backorder already holds a pending check for
+            # that product (re-created from the point), which then
+            # absorbs the sent state and the stray check is dropped.
+            for check in alive.exists().filtered(
                     lambda c: c.picking_id in self and not c.move_line_id):
+                existing = Check.search([
+                    ('picking_id', '=', backorder.id),
+                    ('product_id', '=', check.product_id.id),
+                    ('quality_state', '=', 'none')], limit=1)
+                if existing:
+                    existing.pqn_sent = (
+                        existing.pqn_sent or check.pqn_sent)
+                    check.unlink()
+                    continue
                 line = open_lines.filtered(
                     lambda l: l.product_id == check.product_id)[:1]
                 if line:
                     check.write({
                         'picking_id': backorder.id,
                         'move_line_id': line.id})
-            # Product-level pending checks (no move line) follow the
-            # remainder move of the same product on the backorder.
-            for check in alive.filtered(
-                    lambda c: c.picking_id in self and not c.move_line_id):
-                if backorder.move_ids.filtered(
+                elif backorder.move_ids.filtered(
                         lambda m: m.product_id == check.product_id):
                     check.picking_id = backorder.id
             # A flag the user set but had not sent yet also carries to the
