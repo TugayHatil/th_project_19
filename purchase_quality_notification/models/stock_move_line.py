@@ -25,6 +25,19 @@ class StockMoveLine(models.Model):
         return sum(
             c.qty_tested or self.move_id.product_uom_qty for c in checks)
 
+    def _qc_release_tested_qty(self, checks):
+        # Standard Odoo splits the demand from the quantity present on the
+        # line at fail time; on gated lines that quantity is 0, which makes
+        # the split produce demand=0 failure moves and strand the surviving
+        # quantity. Temporarily restore the tested quantity so the split
+        # sees the standard input; callers re-clamp afterwards.
+        for line in self:
+            tested = max(checks.filtered(
+                lambda c, l=line: c.move_line_id == l
+            ).mapped('qty_tested') or [0.0])
+            if line.product_uom_id.compare(line.quantity, tested) < 0:
+                line.with_context(qc_gate_off=True).quantity = tested
+
     @api.depends('quant_id')
     def _compute_quantity(self):
         super()._compute_quantity()

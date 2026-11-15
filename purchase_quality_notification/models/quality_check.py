@@ -37,7 +37,12 @@ class QualityCheck(models.Model):
         # Failure handling may move the failed quantity to the failure
         # location via internal quantity writes — exempt them.
         self = self.with_context(qc_gate_off=True, qc_internal=True)
-        return super().do_fail()
+        lines = self.move_line_id.filtered(
+            '_is_quality_controlled_receipt_line')
+        lines._qc_release_tested_qty(self)
+        res = super().do_fail()
+        lines.move_id._clamp_quality_lines()
+        return res
 
     def write(self, vals):
         # Credit the approved quantity only for explicit user passes
