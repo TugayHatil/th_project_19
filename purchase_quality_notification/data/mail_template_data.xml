@@ -22,7 +22,7 @@
     <p><b>Ürünler:</b></p>
     <ul>
         <t t-foreach="object.move_ids" t-as="move">
-            <li t-if="move.state != 'cancel' and move.product_id.product_tmpl_id.quality_purchase_ok and move.quality_send_ok"><t t-out="move.product_id.display_name"/> – <t t-out="'{:g}'.format(move.quantity if object.state == 'done' else move.product_uom_qty)"/> <t t-out="move.product_uom.name"/></li>
+            <li t-if="move.state != 'cancel' and move.product_id.product_tmpl_id.quality_purchase_ok and move.quality_send_ok"><t t-out="move.product_id.display_name"/> – <t t-out="'{:g}'.format(move.quantity)"/> <t t-out="move.product_uom.name"/></li>
         </t>
     </ul>
     <p>İlgili ürünlerin uygunluk kontrollerinin gerçekleştirilmesini rica ederiz.</p>
