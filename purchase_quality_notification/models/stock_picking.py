@@ -56,7 +56,8 @@ class StockPicking(models.Model):
             ctx = res.get('context') or {}
             ids = ctx.get('default_check_ids') or []
             pending_lines = self.env['quality.check'].browse(ids).filtered(
-                lambda c: c.move_line_id and not c.move_line_id.quantity)
+                lambda c: c.measure_on == 'move_line'
+                and (not c.move_line_id or not c.move_line_id.quantity))
             keep = [i for i in ids if i not in pending_lines.ids]
             if not keep:
                 return True
@@ -153,7 +154,8 @@ class StockPicking(models.Model):
         pending = self.check_ids.filtered(
             lambda c: c.quality_state == 'none'
             and c.measure_on == 'move_line'
-            and c.move_line_id._is_quality_controlled_receipt_line())
+            and (not c.move_line_id
+                 or c.move_line_id._is_quality_controlled_receipt_line()))
         if not pending:
             return res
         if isinstance(res, dict) and res.get('res_model') == 'quality.check.wizard':

@@ -73,6 +73,17 @@ class StockMove(models.Model):
                         ('move_line_id', '=', line.id),
                         ('quality_state', '=', 'none')]):
                     continue
+                # A pending check that lost its line (quantity zeroed)
+                # is re-attached instead of duplicated.
+                detached = Check.search([
+                    ('picking_id', '=', move.picking_id.id),
+                    ('product_id', '=', move.product_id.id),
+                    ('measure_on', '=', 'move_line'),
+                    ('move_line_id', '=', False),
+                    ('quality_state', '=', 'none')], limit=1)
+                if detached:
+                    detached.move_line_id = line.id
+                    continue
                 created |= Check.create(
                     dict(base, measure_on='move_line', move_line_id=line.id))
         return created
