@@ -80,6 +80,21 @@ class QualityCheck(models.Model):
                     or not check.product_id.product_tmpl_id
                             .quality_purchase_ok):
                 continue
+            lot_key = check.move_line_id.lot_id.id or 0
+            # When a remainder already represents the not-sent part,
+            # an extra line's fresh check adds nothing — drop it so
+            # the split stays "sent qty + remainder" until resend.
+            rem = self.search([
+                ('picking_id', '=', check.picking_id.id),
+                ('product_id', '=', check.product_id.id),
+                ('quality_state', '=', 'none'),
+                ('pqn_remainder', '=', True),
+                ('id', '!=', check.id),
+            ]).filtered(
+                lambda c: (c.move_line_id.lot_id.id or 0) == lot_key)
+            if rem:
+                check.unlink()
+                continue
             dup = self.search([
                 ('picking_id', '=', check.picking_id.id),
                 ('product_id', '=', check.product_id.id),
@@ -88,8 +103,7 @@ class QualityCheck(models.Model):
                 ('pqn_remainder', '=', False),
                 ('id', '!=', check.id),
             ]).filtered(
-                lambda c: (c.move_line_id.lot_id.id or 0)
-                == (check.move_line_id.lot_id.id or 0))
+                lambda c: (c.move_line_id.lot_id.id or 0) == lot_key)
             if dup:
                 big = (dup | check).filtered('move_line_id').sorted(
                     key=lambda c: c.move_line_id.quantity,
