@@ -35,11 +35,12 @@ class StockMove(models.Model):
             else:
                 move.quality_check_state = 'no_checks'
 
-    def _create_quality_checks(self):
+    def _pqn_create_quality_checks(self):
         # Manual quality checks for the lines the warehouse user flagged
         # with "Kaliteye Gönder" — one move_line check per open line, or a
         # product-level check when the move has no lines yet. Lines that
-        # already have a pending check are skipped.
+        # already have a pending check are skipped. (Name kept distinct
+        # from the standard stock.move._create_quality_checks hook.)
         Check = self.env['quality.check']
         test_type = self.env['quality.point.test_type'].search(
             [('technical_name', '=', 'passfail')], limit=1)

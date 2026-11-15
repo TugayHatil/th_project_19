@@ -85,7 +85,7 @@ class StockPicking(models.Model):
         marked = self.move_ids.filtered(
             lambda m: m.quality_send_ok and m.quality_purchase_ok
             and m.state not in ('done', 'cancel'))
-        checks = marked._create_quality_checks()
+        checks = marked._pqn_create_quality_checks()
         marked.quality_send_ok = False
         if checks:
             self.message_post(body=_(

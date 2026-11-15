@@ -79,7 +79,7 @@ class TestPurchaseQualityNotification(TransactionCase):
         move1, move2 = picking.move_ids
         move2.quality_send_ok = True
         checks = picking.move_ids.filtered(
-            'quality_send_ok')._create_quality_checks()
+            'quality_send_ok')._pqn_create_quality_checks()
         self.assertTrue(checks)
         for check in checks:
             self.assertEqual(check.move_line_id.move_id, move2)
@@ -88,5 +88,5 @@ class TestPurchaseQualityNotification(TransactionCase):
         self.assertFalse(self.env['quality.check'].search_count(
             [('move_line_id', 'in', move1.move_line_ids.ids)]))
         # re-running does not duplicate pending checks
-        again = move2._create_quality_checks()
+        again = move2._pqn_create_quality_checks()
         self.assertFalse(again)
