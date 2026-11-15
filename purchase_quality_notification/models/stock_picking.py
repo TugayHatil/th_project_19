@@ -185,7 +185,7 @@ class StockPicking(models.Model):
             lambda m: m.quality_send_ok and m.quality_purchase_ok
             and m.state not in ('done', 'cancel'))
         checks = marked._pqn_create_quality_checks()
-        marked.quality_send_ok = False
+        # The flag stays set — it marks which rows were sent to quality.
         if checks:
             self.message_post(body=_(
                 '%(count)s satır için kalite kontrolü oluşturuldu: %(checks)s',
