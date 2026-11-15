@@ -67,7 +67,33 @@ class StockMove(models.Model):
                 '|', ('move_line_id', 'in', lines.ids),
                 ('move_line_id', '=', False)])
             if pending:
-                unsent = pending.filtered(lambda c: not c.pqn_sent)
+                # A quantity increase after confirmation adds a
+                # second move line and Odoo creates a second check
+                # (e.g. 100 + 5). Merge pending checks sharing the
+                # same lot into one so quality sees a single line
+                # per lot — an untracked product yields one check
+                # with the full quantity.
+                merged = Check
+                lot_keys = set(pending.mapped(
+                    lambda c: c.move_line_id.lot_id.id or 0))
+                for lot_key in lot_keys:
+                    group = pending.filtered(
+                        lambda c: (c.move_line_id.lot_id.id
+                                   or 0) == lot_key)
+                    keep = group.filtered(
+                        'move_line_id').sorted(
+                            key=lambda c: c.move_line_id.quantity,
+                            reverse=True)[:1] or group[:1]
+                    if len(group) > 1:
+                        keep.write({
+                            'qty_to_test': sum(group.mapped(
+                                'qty_to_test')),
+                            'qty_tested': sum(group.mapped(
+                                'qty_tested')),
+                        })
+                        (group - keep).unlink()
+                    merged |= keep
+                unsent = merged.filtered(lambda c: not c.pqn_sent)
                 unsent.pqn_sent = True
                 sent |= unsent
                 continue
