@@ -37,6 +37,7 @@ class QualityCheck(models.Model):
         return (self.quality_state == 'none'
                 and not self.pqn_sent
                 and self.picking_id
+                and self.picking_id.picking_type_code == 'incoming'
                 and self.product_id.product_tmpl_id.quality_purchase_ok)
 
     def _pqn_assert_sent(self):
@@ -66,7 +67,9 @@ class QualityCheck(models.Model):
         # failing the whole quantity — confirm_fail applies the split.
         line_checks = self.filtered(
             lambda c: c.quality_state == 'none'
-            and c.picking_id and c.measure_on == 'move_line')
+            and c.picking_id
+            and c.picking_id.picking_type_code == 'incoming'
+            and c.measure_on == 'move_line')
         if not line_checks:
             return super().do_fail()
         first = line_checks[0]
@@ -78,6 +81,7 @@ class QualityCheck(models.Model):
         wizard = self.env['quality.check.wizard'].create({
             'check_ids': [(6, 0, line_checks.ids)],
             'current_check_id': first.id,
+            'qty_tested': qty,
             'qty_failed': qty,
             'failure_location_id': (
                 first.point_id.failure_location_ids

@@ -20,7 +20,8 @@ class StockMoveLine(models.Model):
         # line appears for the same product on the same picking.
         Check = self.env['quality.check']
         for line in lines:
-            if line.state in ('done', 'cancel'):
+            if (line.state in ('done', 'cancel')
+                    or not line._is_quality_controlled_receipt_line()):
                 continue
             detached = Check.search([
                 ('picking_id', '=', line.picking_id.id),
@@ -50,10 +51,15 @@ class StockMoveLine(models.Model):
         # removes the pending checks on them. Detach the check first so
         # it survives on the picking and can follow the new line —
         # the warehouse user already sent it to quality.
-        pending = self.env['quality.check'].search([
-            ('move_line_id', 'in', self.ids),
-            ('quality_state', '=', 'none'),
-        ])
-        if pending:
-            pending.move_line_id = False
+        # Scoped to quality-controlled receipt lines: other picking
+        # types keep the standard delete-the-check behaviour.
+        receipt = self.filtered(
+            lambda l: l._is_quality_controlled_receipt_line())
+        if receipt:
+            pending = self.env['quality.check'].search([
+                ('move_line_id', 'in', receipt.ids),
+                ('quality_state', '=', 'none'),
+            ])
+            if pending:
+                pending.move_line_id = False
         return super().unlink()

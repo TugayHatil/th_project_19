@@ -40,6 +40,12 @@ class StockMove(models.Model):
 
     def _inverse_pqn_display_qty(self):
         for move in self:
+            # Writes on a quality-pending row are ignored: the real
+            # quantity must survive until validation auto-zeroes it.
+            pending = (move.move_line_ids.check_ids | move.check_id
+                       ).filtered(lambda c: c.quality_state == 'none')
+            if pending:
+                continue
             move.quantity = move.pqn_display_qty
 
     @api.depends('move_line_ids.check_state',
@@ -108,10 +114,7 @@ class StockMove(models.Model):
                     point.failure_location_ids[:1] or fail_loc).id,
                 'pqn_sent': True,
             }
-            if not lines:
-                sent |= Check.create(dict(base, measure_on='product'))
-            else:
-                sent |= Check.create(
-                    dict(base, measure_on='move_line',
-                         move_line_id=lines[0].id))
+            sent |= Check.create(
+                dict(base, measure_on='move_line',
+                     move_line_id=lines[0].id if lines else False))
         return sent
