@@ -37,6 +37,7 @@ kalite kontrol mekanizmasını otomatikleştirir.
         'views/product_template_views.xml',
         'views/stock_location_views.xml',
         'views/stock_picking_views.xml',
+        'views/quality_check_views.xml',
     ],
     'license': 'LGPL-3',
     'installable': True,

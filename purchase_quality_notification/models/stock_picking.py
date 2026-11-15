@@ -67,13 +67,16 @@ class StockPicking(models.Model):
                 ('quality_state', '=', 'none')], limit=1)
             if detached:
                 detached.move_line_id = line.id
-        missing = lines.filtered(lambda l: l.check_state == 'no_checks')
+        missing = lines.filtered(
+            lambda l: l.check_state == 'no_checks'
+            or l.check_ids.filtered(
+                lambda c: c.quality_state == 'none' and not c.pqn_sent))
         if missing:
             raise UserError(_(
                 'Kalite kontrolü gerektiren ürünler kontrol yapılmadan '
                 'depoya alınamaz: %s\n'
                 'Satırı "KK\'ya Gönder" ile işaretleyip "Kaliteye Gönder" '
-                'butonuyla kalite kontrolü oluşturun ve tamamlanmasını '
+                'butonuyla kaliteye iletin ve kontrolün tamamlanmasını '
                 'bekleyin ya da satır miktarını sıfırlayın.',
                 ', '.join(missing.mapped('product_id.display_name'))))
 
@@ -87,8 +90,10 @@ class StockPicking(models.Model):
             ctx = res.get('context') or {}
             ids = ctx.get('default_check_ids') or []
             pending_lines = self.env['quality.check'].browse(ids).filtered(
-                lambda c: c.measure_on == 'move_line'
-                and (not c.move_line_id or not c.move_line_id.quantity))
+                lambda c: (c.measure_on == 'move_line'
+                           and (not c.move_line_id
+                                or not c.move_line_id.quantity))
+                           or c._pqn_needs_send())
             keep = [i for i in ids if i not in pending_lines.ids]
             if not keep:
                 return True
@@ -109,7 +114,7 @@ class StockPicking(models.Model):
             ('quality_state', '=', 'none')])
         snapshot = pending.read([
             'product_id', 'test_type_id', 'team_id', 'company_id',
-            'failure_location_id', 'measure_on'])
+            'failure_location_id', 'measure_on', 'pqn_sent'])
         res = super()._action_done()
         self._pqn_sync_backorder_checks(pending, snapshot)
         return res
@@ -151,6 +156,7 @@ class StockPicking(models.Model):
                         'team_id': m2o(row['team_id']),
                         'company_id': m2o(row['company_id']),
                         'failure_location_id': m2o(row['failure_location_id']),
+                        'pqn_sent': row['pqn_sent'],
                     })
             # Pending checks whose line was unlinked but survived get
             # re-attached to the backorder's line for the same product.
@@ -186,6 +192,7 @@ class StockPicking(models.Model):
         pending = self.check_ids.filtered(
             lambda c: c.quality_state == 'none'
             and c.measure_on == 'move_line'
+            and c.pqn_sent
             and (not c.move_line_id
                  or c.move_line_id._is_quality_controlled_receipt_line()))
         if not pending:
@@ -216,11 +223,11 @@ class StockPicking(models.Model):
         marked = self.move_ids.filtered(
             lambda m: m.quality_send_ok and m.quality_purchase_ok
             and m.state not in ('done', 'cancel'))
-        checks = marked._pqn_create_quality_checks()
+        checks = marked._pqn_send_quality_checks()
         # The flag stays set — it marks which rows were sent to quality.
         if checks:
             self.message_post(body=_(
-                '%(count)s satır için kalite kontrolü oluşturuldu: %(checks)s',
+                '%(count)s satır kaliteye gönderildi: %(checks)s',
                 count=len(checks),
                 checks=', '.join(checks.mapped('display_name'))))
         template = self.env.ref(

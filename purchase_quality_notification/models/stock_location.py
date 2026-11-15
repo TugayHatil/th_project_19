@@ -16,3 +16,21 @@ class StockLocation(models.Model):
                 raise ValidationError(_(
                     'Arıza konumu yalnızca dahili stok konumları için '
                     'işaretlenebilir.'))
+
+    def write(self, vals):
+        res = super().write(vals)
+        if 'is_failure_location' in vals:
+            self._sync_failure_locations_to_points()
+        return res
+
+    def _sync_failure_locations_to_points(self):
+        # The standard check's failure dialog offers the locations listed
+        # on its quality point — keep the auto purchase points in sync
+        # with the locations flagged as failure locations.
+        locs = self.env['stock.location'].search(
+            [('is_failure_location', '=', True),
+             ('usage', '=', 'internal')])
+        points = self.env['quality.point'].with_context(
+            active_test=False).search(
+                [('auto_purchase_tmpl_id', '!=', False)])
+        points.failure_location_ids = [(6, 0, locs.ids)]

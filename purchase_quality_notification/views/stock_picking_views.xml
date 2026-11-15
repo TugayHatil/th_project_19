@@ -27,6 +27,7 @@
                        readonly="not quality_purchase_ok or state in ('done','cancel')"/>
                 <field name="quality_check_state" optional="show"
                        decoration-success="quality_check_state == 'pass'"
+                       decoration-warning="quality_check_state == 'not_sent'"
                        decoration-danger="quality_check_state == 'fail'"/>
             </xpath>
         </field>

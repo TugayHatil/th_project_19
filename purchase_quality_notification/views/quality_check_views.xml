@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="quality_check_view_form_pqn" model="ir.ui.view">
+        <field name="name">quality.check.form.pqn</field>
+        <field name="model">quality.check</field>
+        <field name="inherit_id" ref="quality_control.quality_check_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='point_id']" position="after">
+                <field name="pqn_sent" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="quality_check_view_tree_pqn" model="ir.ui.view">
+        <field name="name">quality.check.tree.pqn</field>
+        <field name="model">quality.check</field>
+        <field name="inherit_id" ref="quality_control.quality_check_view_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='quality_state']" position="before">
+                <field name="pqn_sent" optional="show"
+                       widget="boolean_toggle" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

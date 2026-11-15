@@ -53,13 +53,17 @@ class TestPurchaseQualityNotification(TransactionCase):
         })
         self.assertFalse(outgoing.show_quality_notify)
 
-    def test_no_automatic_check_on_confirm(self):
-        # Confirming a receipt must NOT create quality checks — they are
-        # only created via the per-line "Kaliteye Gönder" flag + button.
+    def test_checks_unsent_on_confirm(self):
+        # With an active auto quality point the standard confirmation
+        # hook creates pending checks — but they start unsent and can
+        # only be worked on after "Kaliteye Gönder".
         picking = self._incoming_picking()
         picking.action_confirm()
-        self.assertFalse(self.env['quality.check'].search(
-            [('picking_id', '=', picking.id)]))
+        checks = self.env['quality.check'].search(
+            [('picking_id', '=', picking.id)])
+        self.assertTrue(checks)
+        self.assertTrue(checks.point_id)
+        self.assertFalse(any(checks.mapped('pqn_sent')))
 
     def test_checks_created_only_for_marked_moves(self):
         other = self.env['product.template'].create({
@@ -78,15 +82,20 @@ class TestPurchaseQualityNotification(TransactionCase):
         picking.action_confirm()
         move1, move2 = picking.move_ids
         move2.quality_send_ok = True
-        checks = picking.move_ids.filtered(
-            'quality_send_ok')._pqn_create_quality_checks()
-        self.assertTrue(checks)
-        for check in checks:
-            self.assertEqual(check.move_line_id.move_id, move2)
-            self.assertEqual(check.quality_state, 'none')
-        # move1 untouched — no check on its line
-        self.assertFalse(self.env['quality.check'].search_count(
-            [('move_line_id', 'in', move1.move_line_ids.ids)]))
+        sent = picking.move_ids.filtered(
+            'quality_send_ok')._pqn_send_quality_checks()
+        self.assertTrue(sent)
+        self.assertTrue(all(sent.mapped('pqn_sent')))
+        # move1's check stays pending but unsent
+        check1 = self.env['quality.check'].search([
+            ('picking_id', '=', picking.id),
+            ('product_id', '=', move1.product_id.id),
+            ('quality_state', '=', 'none')])
+        self.assertFalse(any(check1.mapped('pqn_sent')))
         # re-running does not duplicate pending checks
-        again = move2._pqn_create_quality_checks()
+        before = self.env['quality.check'].search_count(
+            [('picking_id', '=', picking.id)])
+        again = move2._pqn_send_quality_checks()
         self.assertFalse(again)
+        self.assertEqual(self.env['quality.check'].search_count(
+            [('picking_id', '=', picking.id)]), before)

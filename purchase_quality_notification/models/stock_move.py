@@ -7,40 +7,49 @@ class StockMove(models.Model):
 
     quality_send_ok = fields.Boolean(
         string='Kaliteye Gönder', copy=True,
-        help='Kaliteye Gönder butonuna basıldığında bu satır için kalite '
-             'kontrolü oluşturulur.')
+        help='Kaliteye Gönder butonuna basıldığında bu satırın kontrolü '
+             'kalite ekibine iletilir.')
     quality_purchase_ok = fields.Boolean(
         related='product_id.product_tmpl_id.quality_purchase_ok')
     quality_check_state = fields.Selection(
         selection=[
             ('no_checks', 'Kontrol Yok'),
+            ('not_sent', 'Kaliteye Gönderilmedi'),
             ('in_progress', 'Yapılacak Kontroller Var'),
             ('pass', 'Tüm Kontroller Geçti'),
             ('fail', 'Başarısız Kontrol Var'),
         ],
         string='Kalite Kontrol', compute='_compute_quality_check_state')
 
-    @api.depends('move_line_ids.check_state', 'check_id.quality_state')
+    @api.depends('move_line_ids.check_state',
+                 'move_line_ids.check_ids.pqn_sent',
+                 'check_id.quality_state', 'check_id.pqn_sent')
     def _compute_quality_check_state(self):
         for move in self:
             states = set(move.move_line_ids.mapped('check_state'))
             states.discard('no_checks')
-            check_states = set(move.check_id.mapped('quality_state'))
+            checks = move.move_line_ids.check_ids | move.check_id
+            check_states = set(checks.mapped('quality_state'))
+            pending = checks.filtered(
+                lambda c: c.quality_state == 'none')
             if 'fail' in states or 'fail' in check_states:
                 move.quality_check_state = 'fail'
-            elif 'in_progress' in states or 'none' in check_states:
-                move.quality_check_state = 'in_progress'
+            elif 'in_progress' in states or pending:
+                move.quality_check_state = (
+                    'in_progress'
+                    if any(c.pqn_sent for c in pending)
+                    else 'not_sent')
             elif states or check_states:
                 move.quality_check_state = 'pass'
             else:
                 move.quality_check_state = 'no_checks'
 
-    def _pqn_create_quality_checks(self):
-        # Manual quality checks for the lines the warehouse user flagged
-        # with "Kaliteye Gönder" — one move_line check per open line, or a
-        # product-level check when the move has no lines yet. Lines that
-        # already have a pending check are skipped. (Name kept distinct
-        # from the standard stock.move._create_quality_checks hook.)
+    def _pqn_send_quality_checks(self):
+        # Send the flagged moves' pending checks to quality; create a
+        # check only when none exists (e.g. the product was flagged
+        # after confirmation). Created checks are linked to the
+        # product's auto quality point so the standard failure-location
+        # flow applies.
         Check = self.env['quality.check']
         test_type = self.env['quality.point.test_type'].search(
             [('technical_name', '=', 'passfail')], limit=1)
@@ -48,40 +57,40 @@ class StockMove(models.Model):
         fail_loc = self.env['stock.location'].search(
             [('is_failure_location', '=', True),
              ('usage', '=', 'internal')], limit=1)
-        created = Check
+        sent = Check
         for move in self:
+            lines = move.move_line_ids.filtered(
+                lambda l: l.state not in ('done', 'cancel'))
+            pending = Check.search([
+                ('picking_id', '=', move.picking_id.id),
+                ('product_id', '=', move.product_id.id),
+                ('quality_state', '=', 'none'),
+                '|', ('move_line_id', 'in', lines.ids),
+                ('move_line_id', '=', False)])
+            if pending:
+                unsent = pending.filtered(lambda c: not c.pqn_sent)
+                unsent.pqn_sent = True
+                sent |= unsent
+                continue
+            point = self.env['quality.point'].with_context(
+                active_test=False).search(
+                    [('auto_purchase_tmpl_id', '=',
+                      move.product_id.product_tmpl_id.id)], limit=1)
             base = {
-                'test_type_id': test_type.id,
-                'team_id': team.id,
+                'point_id': point.id,
+                'test_type_id': (point.test_type_id or test_type).id,
+                'team_id': (point.team_id or team).id,
                 'picking_id': move.picking_id.id,
                 'product_id': move.product_id.id,
                 'company_id': move.company_id.id,
-                'failure_location_id': fail_loc.id,
+                'failure_location_id': (
+                    point.failure_location_ids[:1] or fail_loc).id,
+                'pqn_sent': True,
             }
-            lines = move.move_line_ids.filtered(
-                lambda l: l.state not in ('done', 'cancel'))
             if not lines:
-                if not Check.search_count([
-                        ('picking_id', '=', move.picking_id.id),
-                        ('product_id', '=', move.product_id.id),
-                        ('measure_on', '=', 'product')]):
-                    created |= Check.create(
-                        dict(base, measure_on='product'))
-                continue
-            for line in lines:
-                if line.check_state != 'no_checks':
-                    continue
-                # A pending check that lost its line (quantity zeroed)
-                # is re-attached instead of duplicated.
-                detached = Check.search([
-                    ('picking_id', '=', move.picking_id.id),
-                    ('product_id', '=', move.product_id.id),
-                    ('measure_on', '=', 'move_line'),
-                    ('move_line_id', '=', False),
-                    ('quality_state', '=', 'none')], limit=1)
-                if detached:
-                    detached.move_line_id = line.id
-                    continue
-                created |= Check.create(
-                    dict(base, measure_on='move_line', move_line_id=line.id))
-        return created
+                sent |= Check.create(dict(base, measure_on='product'))
+            else:
+                sent |= Check.create(
+                    dict(base, measure_on='move_line',
+                         move_line_id=lines[0].id))
+        return sent
