@@ -64,14 +64,12 @@ class StockMove(models.Model):
                 if not Check.search_count([
                         ('picking_id', '=', move.picking_id.id),
                         ('product_id', '=', move.product_id.id),
-                        ('quality_state', '=', 'none')]):
+                        ('measure_on', '=', 'product')]):
                     created |= Check.create(
                         dict(base, measure_on='product'))
                 continue
             for line in lines:
-                if Check.search_count([
-                        ('move_line_id', '=', line.id),
-                        ('quality_state', '=', 'none')]):
+                if line.check_state != 'no_checks':
                     continue
                 # A pending check that lost its line (quantity zeroed)
                 # is re-attached instead of duplicated.
