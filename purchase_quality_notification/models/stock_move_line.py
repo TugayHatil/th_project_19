@@ -44,6 +44,23 @@ class StockMoveLine(models.Model):
                     detached.unlink()
                 else:
                     detached.move_line_id = line.id
+            # Quantity edits before sending spawn extra lines and
+            # Odoo makes a check per line — nothing is sent yet, so
+            # a single unsent check per (product, lot) is enough.
+            dup = Check.search([
+                ('picking_id', '=', line.picking_id.id),
+                ('product_id', '=', line.product_id.id),
+                ('quality_state', '=', 'none'),
+                ('pqn_sent', '=', False),
+                ('pqn_remainder', '=', False),
+            ]).filtered(
+                lambda c: (c.move_line_id.lot_id.id or 0)
+                == (line.lot_id.id or 0))
+            if len(dup) > 1:
+                keep = dup.filtered('move_line_id').sorted(
+                    key=lambda c: c.move_line_id.quantity,
+                    reverse=True)[:1] or dup[:1]
+                (dup - keep).unlink()
         return lines
 
     def unlink(self):
