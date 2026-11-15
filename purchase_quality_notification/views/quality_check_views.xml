@@ -53,12 +53,10 @@
                 <field name="name"/>
                 <field name="product_id"/>
                 <field name="picking_id"/>
-                <group expand="0" string="Grupla">
-                    <filter name="group_receipt" string="Transfer"
-                            context="{'group_by': 'pqn_receipt_label'}"/>
-                    <filter name="group_product" string="Ürün"
-                            context="{'group_by': 'product_id'}"/>
-                </group>
+                <filter name="group_receipt" string="Transfer" domain="[]"
+                        context="{'group_by': 'pqn_receipt_label'}"/>
+                <filter name="group_product" string="Ürün" domain="[]"
+                        context="{'group_by': 'product_id'}"/>
             </search>
         </field>
     </record>
