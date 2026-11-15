@@ -21,6 +21,23 @@ class QualityCheck(models.Model):
         store=True, index=True,
         help='Satınalma siparişi / transfer / tedarikçi etiketi — '
              'depo bekleyen kontrolleri tek satırda gruplar.')
+    # The line qty on a backorder reverts to demand; a check already
+    # sent to quality keeps covering the quantity it was sent with.
+    qty_line = fields.Float(compute='_compute_qty_line')
+
+    @api.depends('production_id.qty_producing', 'move_line_id.quantity',
+                 'pqn_sent', 'pqn_sent_qty')
+    def _compute_qty_line(self):
+        for check in self:
+            if check.production_id:
+                check.qty_line = check.production_id.qty_producing
+            elif check.move_line_id:
+                qty = check.move_line_id.quantity
+                if check.pqn_sent and check.pqn_sent_qty:
+                    qty = min(qty, check.pqn_sent_qty)
+                check.qty_line = qty
+            else:
+                check.qty_line = 0.0
 
     @api.depends('picking_id', 'picking_id.name',
                  'picking_id.purchase_id.name', 'picking_id.origin',
