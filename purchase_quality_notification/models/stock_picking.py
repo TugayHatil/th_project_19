@@ -47,6 +47,25 @@ class StockPicking(models.Model):
                 partners |= partner
         return partners
 
+    def _pre_action_done_hook(self):
+        res = super()._pre_action_done_hook()
+        # A pending check whose whole line is left unreceived (quantity 0)
+        # must ride to the backorder untouched — it was already sent to
+        # quality, so the validation wizard should not pop for it.
+        if isinstance(res, dict) and res.get('res_model') == 'quality.check.wizard':
+            ctx = res.get('context') or {}
+            ids = ctx.get('default_check_ids') or []
+            pending_lines = self.env['quality.check'].browse(ids).filtered(
+                lambda c: c.move_line_id and not c.move_line_id.quantity)
+            keep = [i for i in ids if i not in pending_lines.ids]
+            if not keep:
+                return True
+            if len(keep) != len(ids):
+                ctx = dict(ctx, default_check_ids=keep,
+                           default_current_check_id=keep[0])
+                res = dict(res, context=ctx)
+        return res
+
     def _action_done(self):
         # Snapshot pending checks before validation: the backorder split
         # can unlink the move lines they point at, and the checks are
