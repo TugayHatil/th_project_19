@@ -47,7 +47,38 @@ class StockPicking(models.Model):
                 partners |= partner
         return partners
 
+    def _pqn_assert_quality_checked(self):
+        # A quality-controlled product must not be received into stock
+        # without a quality check ever being created for its line.
+        # Pending checks are handled by the standard validation wizard;
+        # this guards lines that were never sent to quality.
+        lines = self.move_line_ids.filtered(
+            lambda l: l.quantity > 0
+            and l._is_quality_controlled_receipt_line())
+        # A check that lost its line when the quantity was zeroed is
+        # re-attached to the new line — it counts as sent.
+        Check = self.env['quality.check']
+        for line in lines.filtered(lambda l: l.check_state == 'no_checks'):
+            detached = Check.search([
+                ('picking_id', '=', line.picking_id.id),
+                ('product_id', '=', line.product_id.id),
+                ('measure_on', '=', 'move_line'),
+                ('move_line_id', '=', False),
+                ('quality_state', '=', 'none')], limit=1)
+            if detached:
+                detached.move_line_id = line.id
+        missing = lines.filtered(lambda l: l.check_state == 'no_checks')
+        if missing:
+            raise UserError(_(
+                'Kalite kontrolü gerektiren ürünler kontrol yapılmadan '
+                'depoya alınamaz: %s\n'
+                'Satırı "KK\'ya Gönder" ile işaretleyip "Kaliteye Gönder" '
+                'butonuyla kalite kontrolü oluşturun ve tamamlanmasını '
+                'bekleyin ya da satır miktarını sıfırlayın.',
+                ', '.join(missing.mapped('product_id.display_name'))))
+
     def _pre_action_done_hook(self):
+        self._pqn_assert_quality_checked()
         res = super()._pre_action_done_hook()
         # A pending check whose whole line is left unreceived (quantity 0)
         # must ride to the backorder untouched — it was already sent to
@@ -68,6 +99,7 @@ class StockPicking(models.Model):
         return res
 
     def _action_done(self):
+        self._pqn_assert_quality_checked()
         # Snapshot pending checks before validation: the backorder split
         # can unlink the move lines they point at, and the checks are
         # cascade-deleted with them. They are restored on the new lines.
