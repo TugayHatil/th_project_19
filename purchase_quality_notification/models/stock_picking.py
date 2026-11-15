@@ -70,13 +70,17 @@ class StockPicking(models.Model):
                 and not self.move_line_ids.filtered(
                     lambda l: l.quantity > 0) - pending_lines):
             raise UserError(_(
-                'Kalite onayı tamamlanmamış ürünler depoya '
-                'alınamaz: %s\n'
-                'Kontroller tamamlandığında miktar otomatik dolar. '
-                'Gönderilmemiş kontroller için satırı "KK\'ya Gönder" '
-                'ile işaretleyip "Kaliteye Gönder" butonuyla kaliteye '
-                'iletin.',
-                ', '.join(dict.fromkeys(
+                'Kalite Onayı Eksik\n\n'
+                'Aşağıdaki ürünlerin kalite kontrolü henüz '
+                'tamamlanmadığı için depoya kabul işlemi yapılamaz:\n\n'
+                '%s\n\n'
+                'Kalite kontrolleri tamamlandığında kabul edilecek '
+                'miktar otomatik olarak güncellenir.\n\n'
+                'Henüz kaliteye gönderilmemiş ürünler için ilgili '
+                'satırda "KK\'ya Gönder" seçeneğini işaretleyin ve '
+                '"Kaliteye Gönder" butonuna tıklayarak kalite '
+                'ekibine iletin.',
+                '\n'.join('• %s' % n for n in dict.fromkeys(
                     pending_lines.mapped('product_id.display_name')))))
         for line in pending_lines:
             line.quantity = 0
@@ -101,12 +105,15 @@ class StockPicking(models.Model):
                 lambda c: c.quality_state == 'none' and not c.pqn_sent))
         if missing:
             raise UserError(_(
-                'Kalite kontrolü gerektiren ürünler kontrol yapılmadan '
-                'depoya alınamaz: %s\n'
-                'Satırı "KK\'ya Gönder" ile işaretleyip "Kaliteye Gönder" '
-                'butonuyla kaliteye iletin ve kontrolün tamamlanmasını '
-                'bekleyin ya da satır miktarını sıfırlayın.',
-                ', '.join(missing.mapped('product_id.display_name'))))
+                'Kalite Kontrolü Eksik\n\n'
+                'Aşağıdaki ürünler için hiç kalite kontrolü bulunmadığından '
+                'depoya kabul işlemi yapılamaz:\n\n'
+                '%s\n\n'
+                'İlgili satırda "KK\'ya Gönder" seçeneğini işaretleyip '
+                '"Kaliteye Gönder" butonuyla kontrol başlatın, '
+                'ya da satır miktarını sıfırlayın.',
+                '\n'.join('• %s' % n for n in dict.fromkeys(
+                    missing.mapped('product_id.display_name')))))
 
     def _pre_action_done_hook(self):
         self._pqn_assert_quality_checked()
