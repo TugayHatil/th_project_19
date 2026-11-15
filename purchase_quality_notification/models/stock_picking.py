@@ -48,28 +48,72 @@ class StockPicking(models.Model):
         return partners
 
     def _action_done(self):
+        # Snapshot pending checks before validation: the backorder split
+        # can unlink the move lines they point at, and the checks are
+        # cascade-deleted with them. They are restored on the new lines.
+        Check = self.env['quality.check']
+        pending = Check.search([
+            ('picking_id', 'in', self.ids),
+            ('quality_state', '=', 'none')])
+        snapshot = pending.read([
+            'product_id', 'test_type_id', 'team_id', 'company_id',
+            'failure_location_id', 'measure_on'])
         res = super()._action_done()
-        self._pqn_sync_backorder_checks()
+        self._pqn_sync_backorder_checks(pending, snapshot)
         return res
 
-    def _pqn_sync_backorder_checks(self):
+    def _pqn_sync_backorder_checks(self, pending, snapshot):
         # When a partial validation creates a backorder, the pending
         # quality check must follow its move line to the new picking —
         # the warehouse user already sent it to quality, no re-marking.
         Check = self.env['quality.check']
+        alive = pending.exists()
+
+        def m2o(value):
+            return value[0] if isinstance(value, (list, tuple)) else value
+
         for backorder in self.backorder_ids:
-            stray = Check.search([
-                ('quality_state', '=', 'none'),
-                ('move_line_id.picking_id', '=', backorder.id),
-                ('picking_id', '!=', backorder.id)])
+            stray = alive.filtered(
+                lambda c: c.move_line_id
+                and c.move_line_id.picking_id == backorder
+                and c.picking_id != backorder)
             if stray:
                 stray.picking_id = backorder.id
+            open_lines = backorder.move_line_ids.filtered(
+                lambda l: l.state not in ('done', 'cancel'))
+            # Checks deleted with their split lines are recreated on the
+            # backorder's line for the same product.
+            for row in snapshot:
+                if row['id'] in alive.ids:
+                    continue
+                product_id = m2o(row['product_id'])
+                line = open_lines.filtered(
+                    lambda l: l.product_id.id == product_id)[:1]
+                if line:
+                    Check.create({
+                        'picking_id': backorder.id,
+                        'move_line_id': line.id,
+                        'measure_on': 'move_line',
+                        'product_id': product_id,
+                        'test_type_id': m2o(row['test_type_id']),
+                        'team_id': m2o(row['team_id']),
+                        'company_id': m2o(row['company_id']),
+                        'failure_location_id': m2o(row['failure_location_id']),
+                    })
+            # Pending checks whose line was unlinked but survived get
+            # re-attached to the backorder's line for the same product.
+            for check in alive.filtered(
+                    lambda c: c.picking_id in self and not c.move_line_id):
+                line = open_lines.filtered(
+                    lambda l: l.product_id == check.product_id)[:1]
+                if line:
+                    check.write({
+                        'picking_id': backorder.id,
+                        'move_line_id': line.id})
             # Product-level pending checks (no move line) follow the
             # remainder move of the same product on the backorder.
-            for check in Check.search([
-                    ('picking_id', '=', self.id),
-                    ('quality_state', '=', 'none'),
-                    ('move_line_id', '=', False)]):
+            for check in alive.filtered(
+                    lambda c: c.picking_id in self and not c.move_line_id):
                 if backorder.move_ids.filtered(
                         lambda m: m.product_id == check.product_id):
                     check.picking_id = backorder.id
