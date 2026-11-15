@@ -20,6 +20,12 @@
                 <field name="show_quality_notify" invisible="1"/>
                 <field name="quality_notified" invisible="1"/>
             </xpath>
+            <xpath expr="//field[@name='move_line_ids']/list/field[@name='quantity']"
+                   position="after">
+                <field name="check_state" optional="show"
+                       decoration-success="check_state == 'pass'"
+                       decoration-danger="check_state == 'fail'"/>
+            </xpath>
         </field>
     </record>
 
