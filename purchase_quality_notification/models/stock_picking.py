@@ -55,7 +55,8 @@ class StockPicking(models.Model):
         if kk:
             self = self.with_context(qc_gate_off=True, qc_in_confirm=True)
         res = super().action_confirm()
-        kk._clamp_quality_lines()
+        if not self.env.context.get('qc_internal'):
+            kk._clamp_quality_lines()
         return res
 
     def button_validate(self):

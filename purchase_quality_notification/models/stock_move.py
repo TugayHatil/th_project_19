@@ -26,8 +26,10 @@ class StockMove(models.Model):
         res = super()._action_confirm(
             merge=merge, merge_into=merge_into, create_proc=create_proc)
         # When called inside picking.action_confirm the outer level clamps
-        # after the quality checks snapshot the line quantity.
-        if kk and not outer:
+        # after the quality checks snapshot the line quantity. During an
+        # internal quality flow (qc_internal) the caller manages the split
+        # and clamps itself afterwards.
+        if kk and not outer and not self.env.context.get('qc_internal'):
             kk._clamp_quality_lines()
         return res
 
@@ -38,6 +40,7 @@ class StockMove(models.Model):
         res = super()._action_assign(force_qty=force_qty)
         # During action_confirm the quality checks read the line quantity
         # when created later; the clamp is deferred to picking.action_confirm.
-        if not self.env.context.get('qc_in_confirm'):
+        if not self.env.context.get('qc_in_confirm') and not self.env.context.get(
+                'qc_internal'):
             kk._clamp_quality_lines()
         return res

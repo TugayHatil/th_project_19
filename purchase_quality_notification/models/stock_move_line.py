@@ -41,6 +41,12 @@ class StockMoveLine(models.Model):
     @api.depends('quant_id')
     def _compute_quantity(self):
         super()._compute_quantity()
+        # Internal reservation / quality-flow writes handle quantities
+        # themselves; the clamp (or an explicit release) decides the
+        # final value afterwards.
+        if self.env.context.get('qc_gate_off') or self.env.context.get(
+                'qc_internal'):
+            return
         for line in self:
             if line.quantity and line._is_quality_controlled_receipt_line():
                 line.quantity = 0
