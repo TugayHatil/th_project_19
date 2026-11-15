@@ -82,18 +82,26 @@ class QualityCheck(models.Model):
                 continue
             lot_key = check.move_line_id.lot_id.id or 0
             # When a remainder already represents the not-sent part,
-            # an extra line's fresh check adds nothing — drop it so
-            # the split stays "sent qty + remainder" until resend.
+            # an extra line's fresh check adds nothing. Deleting the
+            # record being created breaks Odoo's post-create handling
+            # ("Kayıp Kayıt"), so turn the fresh check into the
+            # remainder and drop the old remainder instead.
             rem = self.search([
                 ('picking_id', '=', check.picking_id.id),
                 ('product_id', '=', check.product_id.id),
                 ('quality_state', '=', 'none'),
                 ('pqn_remainder', '=', True),
-                ('id', '!=', check.id),
+                ('id', 'not in', checks.ids),
             ]).filtered(
                 lambda c: (c.move_line_id.lot_id.id or 0) == lot_key)
             if rem:
-                check.unlink()
+                check.write({
+                    'pqn_remainder': True,
+                    'pqn_sent_qty': rem[0].pqn_sent_qty
+                    or rem[0].qty_to_test,
+                    'move_line_id': False,
+                })
+                rem.unlink()
                 continue
             dup = self.search([
                 ('picking_id', '=', check.picking_id.id),
@@ -101,7 +109,7 @@ class QualityCheck(models.Model):
                 ('quality_state', '=', 'none'),
                 ('pqn_sent', '=', False),
                 ('pqn_remainder', '=', False),
-                ('id', '!=', check.id),
+                ('id', 'not in', checks.ids),
             ]).filtered(
                 lambda c: (c.move_line_id.lot_id.id or 0) == lot_key)
             if dup:
