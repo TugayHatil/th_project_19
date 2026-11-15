@@ -138,7 +138,8 @@ class StockPicking(models.Model):
             ('quality_state', '=', 'none')])
         snapshot = pending.read([
             'product_id', 'test_type_id', 'team_id', 'company_id',
-            'failure_location_id', 'measure_on', 'pqn_sent', 'point_id'])
+            'failure_location_id', 'measure_on', 'pqn_sent',
+            'pqn_sent_qty', 'point_id'])
         res = super()._action_done()
         self._pqn_sync_backorder_checks(pending, snapshot)
         return res
@@ -152,6 +153,13 @@ class StockPicking(models.Model):
 
         def m2o(value):
             return value[0] if isinstance(value, (list, tuple)) else value
+
+        def cap_line(line, sent_qty):
+            # A check already sent to quality keeps covering the
+            # quantity it was sent with; the backorder line comes
+            # back at demand qty and is lowered to the sent qty.
+            if line and sent_qty and line.quantity > sent_qty:
+                line.quantity = sent_qty
 
         for backorder in self.backorder_ids:
             stray = alive.filtered(
@@ -177,10 +185,15 @@ class StockPicking(models.Model):
                 if existing:
                     existing.pqn_sent = (
                         existing.pqn_sent or row['pqn_sent'])
+                    if not existing.pqn_sent_qty:
+                        existing.pqn_sent_qty = row['pqn_sent_qty']
+                    cap_line(existing.move_line_id,
+                             existing.pqn_sent_qty)
                     continue
                 line = open_lines.filtered(
                     lambda l: l.product_id.id == product_id)[:1]
                 if line:
+                    cap_line(line, row['pqn_sent_qty'])
                     Check.create({
                         'picking_id': backorder.id,
                         'move_line_id': line.id,
@@ -192,6 +205,7 @@ class StockPicking(models.Model):
                         'company_id': m2o(row['company_id']),
                         'failure_location_id': m2o(row['failure_location_id']),
                         'pqn_sent': row['pqn_sent'],
+                        'pqn_sent_qty': row['pqn_sent_qty'],
                     })
             # Pending checks whose line was unlinked but survived get
             # re-attached to the backorder's line for the same product —
@@ -207,11 +221,16 @@ class StockPicking(models.Model):
                 if existing:
                     existing.pqn_sent = (
                         existing.pqn_sent or check.pqn_sent)
+                    if not existing.pqn_sent_qty:
+                        existing.pqn_sent_qty = check.pqn_sent_qty
+                    cap_line(existing.move_line_id,
+                             existing.pqn_sent_qty)
                     check.unlink()
                     continue
                 line = open_lines.filtered(
                     lambda l: l.product_id == check.product_id)[:1]
                 if line:
+                    cap_line(line, check.pqn_sent_qty)
                     check.write({
                         'picking_id': backorder.id,
                         'move_line_id': line.id})

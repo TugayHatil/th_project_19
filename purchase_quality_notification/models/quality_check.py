@@ -11,6 +11,11 @@ class QualityCheck(models.Model):
         index=True, readonly=True,
         help='Depo "Kaliteye Gönder" ile kalite ekibine iletti. '
              'Yalnızca gönderilen kontroller işlem görebilir.')
+    pqn_sent_qty = fields.Float(
+        string='Kaliteye Gönderilen Miktar', readonly=True, copy=False,
+        help='Depo "Kaliteye Gönder" dediği andaki satır miktarı. '
+             'Ön teslimatta satır talep miktarına dönse bile '
+             'kontrolün kapsamı bu miktar olarak korunur.')
     pqn_receipt_label = fields.Char(
         string='Tedarik', compute='_compute_pqn_receipt_label',
         store=True, index=True,

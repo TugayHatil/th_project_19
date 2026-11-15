@@ -107,6 +107,11 @@ class StockMove(models.Model):
                         merged |= check
                     else:
                         check.unlink()
+                # Remember the quantity this send covers: on a
+                # backorder the move line reverts to demand qty
+                # and the check must keep showing what was sent.
+                for check in merged:
+                    check.pqn_sent_qty = check.qty_to_test
                 unsent = merged.filtered(lambda c: not c.pqn_sent)
                 unsent.pqn_sent = True
                 sent |= unsent
@@ -126,7 +131,9 @@ class StockMove(models.Model):
                     point.failure_location_ids[:1] or fail_loc).id,
                 'pqn_sent': True,
             }
-            sent |= Check.create(
+            new_check = Check.create(
                 dict(base, measure_on='move_line',
                      move_line_id=lines[0].id if lines else False))
+            new_check.pqn_sent_qty = new_check.qty_to_test
+            sent |= new_check
         return sent
