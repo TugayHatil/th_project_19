@@ -80,6 +80,18 @@ class StockPicking(models.Model):
         if not self.show_quality_notify:
             raise UserError(_(
                 'Bu transfer için kalite bildirimi gönderilemez.'))
+        # Create quality checks only for the lines the warehouse user
+        # flagged with the per-row "Kaliteye Gönder" checkbox.
+        marked = self.move_ids.filtered(
+            lambda m: m.quality_send_ok and m.quality_purchase_ok
+            and m.state not in ('done', 'cancel'))
+        checks = marked._create_quality_checks()
+        marked.quality_send_ok = False
+        if checks:
+            self.message_post(body=_(
+                '%(count)s satır için kalite kontrolü oluşturuldu: %(checks)s',
+                count=len(checks),
+                checks=', '.join(checks.mapped('display_name'))))
         template = self.env.ref(
             'purchase_quality_notification.mail_template_purchase_quality_notify',
             raise_if_not_found=False)

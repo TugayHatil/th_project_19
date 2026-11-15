@@ -6,25 +6,34 @@ Satınalma kalite kontrol ve transfer bildirim süreci.
 
 - **Satınalma KK (`quality_purchase_ok`)**: bu modüle ait bağımsız Boolean
   alandır; ürün formunun standart **Satınalma** sekmesindeki "Kalite Kontrol"
-  grubunda gösterilir. `product_extra_fields` modülündeki benzer işaret
+  grubunda gösterilir. Ürünün kalite ekibine gönderilebilir olduğunu işaretler.
+  `product_extra_fields` modülündeki benzer işaret
   (`quality_inspection_purchase`) ile ilişkisi yoktur — iki modül birlikte
   kuruluysa iki ayrı kutu görünür.
-- İşaretlenen her ürün şablonu için tek bir otomatik `quality.point` oluşur
-  (`auto_purchase_tmpl_id` ile işaretlenir; başlık "Bileşenler", kontrol bazı
-  Miktar, sıklık Tümü, kısmi test %100, tip Geçti-Kaldı, ekip Main Quality
-  Team, operasyonlar şirketin tüm gelen transfer tipleri).
-- İşaret kaldırılınca nokta arşivlenir, tekrar işaretlenince etkinleşir;
-  yeni ürün varyantları noktaya otomatik eklenir.
-- `stock.location.is_failure_location` (yalnızca dahili konumlar): işaretli
-  tüm konumlar otomatik noktaların Arıza Lokasyonları alanına senkronize
-  edilir; işaret kaldırıldığında çıkarılır.
-- Gelen transferde KK kapsamlı ürün varsa "Kaliteye Gönder" butonu görünür.
-  Buton `mail_template_purchase_quality_notify` şablonuyla Quality / User
-  grubu üyelerine e-posta gönderir ve transfer chatter'ına kaydeder.
+- Transfer onaylandığında kalite kontrolü **otomatik oluşmaz**. Gelen
+  transferin Operasyonlar listesinde her KK ürünlü satırda "KK'ya Gönder"
+  (`quality_send_ok`) onay kutusu görünür; depocu istediği satırları
+  işaretler.
+- "Kaliteye Gönder" butonu yalnızca **işaretli** satırlar için standart
+  `quality.check` kaydı oluşturur (kontrol bazı Miktar/`move_line`, tip
+  Geçti-Kaldı, ekip Main Quality Team, ilk `is_failure_location` konumu
+  arıza lokasyonu olarak atanır). Satırın zaten bekleyen kontrolü varsa
+  yinelenmez; satırsız move için ürün bazlı kontrol açılır. İşaretler
+  gönderim sonrası temizlenir.
+- Aynı buton `mail_template_purchase_quality_notify` şablonuyla Quality /
+  User grubu üyelerine e-posta gönderir ve transfer chatter'ına kaydeder.
   İlk gönderimden sonra buton "Kaliteye Tekrar Bildir" olur.
+- `stock.location.is_failure_location` (yalnızca dahili konumlar):
+  oluşturulan kontrollerin Arıza Lokasyonu alanını belirler.
+- Operasyonlar listesindeki "Kalite Kontrol" (`quality_check_state`) kolonu
+  satırın toplu kontrol durumunu gösterir (yok / yapılacak / geçti /
+  başarısız).
 
 ## Notlar
 
+- `quality.point.auto_purchase_tmpl_id` alanı, eski otomatik senkron
+  döneminde oluşturulmuş noktaları tanımlamak için korunur; yeni nokta
+  artık oluşturulmaz.
 - E-posta alıcıları, `quality.alert.team` modelinde üye alanı bulunmadığından
   **Quality / User** yetki grubundaki kullanıcıların (e-posta adresi tanımlı,
   dahili) partner'larıdır; adresler tekilleştirilir.

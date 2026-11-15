@@ -22,6 +22,9 @@
             </xpath>
             <xpath expr="//field[@name='move_ids']/list/field[@name='quantity']"
                    position="after">
+                <field name="quality_purchase_ok" column_invisible="True"/>
+                <field name="quality_send_ok" string="KK'ya Gönder"
+                       readonly="not quality_purchase_ok or state in ('done','cancel')"/>
                 <field name="quality_check_state" optional="show"
                        decoration-success="quality_check_state == 'pass'"
                        decoration-danger="quality_check_state == 'fail'"/>

@@ -8,58 +8,29 @@ class TestPurchaseQualityNotification(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.Point = cls.env['quality.point'].with_context(active_test=False)
         cls.product = cls.env['product.template'].create({
             'name': 'KK Test Ürünü',
+            'is_storable': True,
+            'quality_purchase_ok': True,
         })
         cls.stock_location = cls.env.ref('stock.stock_location_stock')
         cls.supplier = cls.env['res.partner'].create({'name': 'KK Tedarikçi'})
 
-    def _auto_point(self, template):
-        return self.Point.search(
-            [('auto_purchase_tmpl_id', '=', template.id)], limit=1)
-
-    def test_point_created_when_flagged(self):
-        self.product.quality_purchase_ok = True
-        point = self._auto_point(self.product)
-        self.assertTrue(point)
-        self.assertTrue(point.active)
-        self.assertEqual(point.title, 'Bileşenler')
-        self.assertEqual(point.measure_on, 'move_line')
-        self.assertEqual(point.measure_frequency_type, 'all')
-        self.assertEqual(point.testing_percentage_within_lot, 100.0)
-        self.assertEqual(point.test_type_id.technical_name, 'passfail')
-        self.assertEqual(set(point.product_ids.ids),
-                         set(self.product.product_variant_ids.ids))
-        self.assertTrue(all(t.code == 'incoming' for t in point.picking_type_ids))
-
-    def test_no_duplicate_point_on_rewrite(self):
-        self.product.quality_purchase_ok = True
-        self.product.write({'name': 'KK Test Ürünü v2'})
-        self.assertEqual(
-            self.Point.search_count(
-                [('auto_purchase_tmpl_id', '=', self.product.id)]), 1)
-
-    def test_point_archived_and_reactivated(self):
-        self.product.quality_purchase_ok = True
-        point = self._auto_point(self.product)
-        self.product.quality_purchase_ok = False
-        self.assertFalse(point.active)
-        self.product.quality_purchase_ok = True
-        self.assertTrue(point.active)
-        self.assertEqual(
-            self.Point.search_count(
-                [('auto_purchase_tmpl_id', '=', self.product.id)]), 1)
-
-    def test_manual_points_not_touched(self):
-        manual = self.env['quality.point'].create({
-            'title': 'Manuel Nokta',
-            'product_ids': [(6, 0, self.product.product_variant_ids.ids)],
+    def _incoming_picking(self, tmpl=None):
+        tmpl = tmpl or self.product
+        return self.env['stock.picking'].create({
+            'picking_type_id': self.env.ref('stock.picking_type_in').id,
+            'partner_id': self.supplier.id,
+            'location_id': self.env.ref('stock.stock_location_suppliers').id,
+            'location_dest_id': self.stock_location.id,
+            'move_ids': [(0, 0, {
+                'name': 'move',
+                'product_id': tmpl.product_variant_id.id,
+                'product_uom_qty': 5,
+                'location_id': self.env.ref('stock.stock_location_suppliers').id,
+                'location_dest_id': self.stock_location.id,
+            })],
         })
-        self.product.quality_purchase_ok = True
-        self.product.quality_purchase_ok = False
-        self.assertTrue(manual.active)
-        manual.unlink()
 
     def test_failure_location_requires_internal(self):
         supplier_loc = self.env['stock.location'].create({
@@ -70,35 +41,8 @@ class TestPurchaseQualityNotification(TransactionCase):
         with self.assertRaises(ValidationError):
             supplier_loc.is_failure_location = True
 
-    def test_failure_location_sync(self):
-        self.product.quality_purchase_ok = True
-        point = self._auto_point(self.product)
-        loc = self.env['stock.location'].create({
-            'name': 'Arıza Konumu',
-            'usage': 'internal',
-            'location_id': self.stock_location.id,
-            'is_failure_location': True,
-        })
-        self.assertIn(loc, point.failure_location_ids)
-        loc.is_failure_location = False
-        self.assertNotIn(loc, point.failure_location_ids)
-
     def test_show_quality_notify_visibility(self):
-        self.product.quality_purchase_ok = True
-        picking = self.env['stock.picking'].create({
-            'picking_type_id': self.env.ref('stock.picking_type_in').id,
-            'partner_id': self.supplier.id,
-            'location_id': self.env.ref('stock.stock_location_suppliers').id,
-            'location_dest_id': self.stock_location.id,
-            'move_ids': [(0, 0, {
-                'name': 'move',
-                'product_id': self.product.product_variant_id.id,
-                'product_uom_qty': 5,
-                'product_uom': self.product.uom_id.id,
-                'location_id': self.env.ref('stock.stock_location_suppliers').id,
-                'location_dest_id': self.stock_location.id,
-            })],
-        })
+        picking = self._incoming_picking()
         self.assertTrue(picking.show_quality_notify)
         self.assertFalse(picking.quality_notified)
         outgoing = self.env['stock.picking'].create({
@@ -108,3 +52,41 @@ class TestPurchaseQualityNotification(TransactionCase):
             'location_dest_id': self.env.ref('stock.stock_location_customers').id,
         })
         self.assertFalse(outgoing.show_quality_notify)
+
+    def test_no_automatic_check_on_confirm(self):
+        # Confirming a receipt must NOT create quality checks — they are
+        # only created via the per-line "Kaliteye Gönder" flag + button.
+        picking = self._incoming_picking()
+        picking.action_confirm()
+        self.assertFalse(self.env['quality.check'].search(
+            [('picking_id', '=', picking.id)]))
+
+    def test_checks_created_only_for_marked_moves(self):
+        other = self.env['product.template'].create({
+            'name': 'KK Test Ürünü 2',
+            'is_storable': True,
+            'quality_purchase_ok': True,
+        })
+        picking = self._incoming_picking()
+        picking.write({'move_ids': [(0, 0, {
+            'name': 'move2',
+            'product_id': other.product_variant_id.id,
+            'product_uom_qty': 3,
+            'location_id': self.env.ref('stock.stock_location_suppliers').id,
+            'location_dest_id': self.stock_location.id,
+        })]})
+        picking.action_confirm()
+        move1, move2 = picking.move_ids
+        move2.quality_send_ok = True
+        checks = picking.move_ids.filtered(
+            'quality_send_ok')._create_quality_checks()
+        self.assertTrue(checks)
+        for check in checks:
+            self.assertEqual(check.move_line_id.move_id, move2)
+            self.assertEqual(check.quality_state, 'none')
+        # move1 untouched — no check on its line
+        self.assertFalse(self.env['quality.check'].search_count(
+            [('move_line_id', 'in', move1.move_line_ids.ids)]))
+        # re-running does not duplicate pending checks
+        again = move2._create_quality_checks()
+        self.assertFalse(again)
