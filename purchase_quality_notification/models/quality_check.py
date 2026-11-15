@@ -25,13 +25,18 @@ class QualityCheck(models.Model):
 
     def do_pass(self):
         # Explicit user pass on a gated line credits the approved qty.
-        self = self.with_context(qc_gate_off=True, qc_user_pass=True)
+        # Internal callers (the partial-fail split path calls do_pass for
+        # the surviving part) carry qc_internal and must not credit.
+        ctx = {'qc_gate_off': True}
+        if not self.env.context.get('qc_internal'):
+            ctx['qc_user_pass'] = True
+        self = self.with_context(**ctx)
         return super().do_pass()
 
     def do_fail(self):
         # Failure handling may move the failed quantity to the failure
         # location via internal quantity writes — exempt them.
-        self = self.with_context(qc_gate_off=True)
+        self = self.with_context(qc_gate_off=True, qc_internal=True)
         return super().do_fail()
 
     def write(self, vals):

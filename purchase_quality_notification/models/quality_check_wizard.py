@@ -11,20 +11,21 @@ class QualityCheckWizard(models.TransientModel):
     # actions also carry qc_user_pass so the check write hook knows the
     # pass is user-initiated and may credit the approved quantity —
     # auto-passes inside the fail/split path must not credit.
-    def _qc_gate_off(self, user_pass=False):
-        return self.with_context(qc_gate_off=True, qc_user_pass=user_pass)
+    def _qc_gate_off(self, user_pass=False, internal=False):
+        return self.with_context(
+            qc_gate_off=True, qc_user_pass=user_pass, qc_internal=internal)
 
     def do_pass(self):
         return super(QualityCheckWizard, self._qc_gate_off(True)).do_pass()
 
     def do_fail(self):
-        return super(QualityCheckWizard, self._qc_gate_off()).do_fail()
+        return super(QualityCheckWizard, self._qc_gate_off(internal=True)).do_fail()
 
     def do_measure(self):
         return super(QualityCheckWizard, self._qc_gate_off(True)).do_measure()
 
     def confirm_fail(self):
-        return super(QualityCheckWizard, self._qc_gate_off()).confirm_fail()
+        return super(QualityCheckWizard, self._qc_gate_off(internal=True)).confirm_fail()
 
     def confirm_measure(self):
         return super(QualityCheckWizard, self._qc_gate_off(True)).confirm_measure()
