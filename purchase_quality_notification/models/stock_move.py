@@ -60,6 +60,22 @@ class StockMove(models.Model):
         for move in self:
             lines = move.move_line_ids.filtered(
                 lambda l: l.state not in ('done', 'cancel'))
+            # Increasing the quantity after confirmation adds a
+            # second move line (e.g. 100 + 5) and Odoo creates a
+            # check per line. Merge lines that share the same lot
+            # so both the transfer and the quality list show a
+            # single line with the full quantity; serial-tracked
+            # products keep one line per serial number.
+            for lot_key in set(lines.mapped(
+                    lambda l: l.lot_id.id or 0)):
+                group = lines.filtered(
+                    lambda l: (l.lot_id.id or 0) == lot_key)
+                if len(group) > 1:
+                    keep = group.sorted(
+                        key=lambda l: l.quantity, reverse=True)[0]
+                    keep.quantity = sum(group.mapped('quantity'))
+                    (group - keep).unlink()
+            lines = lines.exists()
             pending = Check.search([
                 ('picking_id', '=', move.picking_id.id),
                 ('product_id', '=', move.product_id.id),
@@ -67,32 +83,30 @@ class StockMove(models.Model):
                 '|', ('move_line_id', 'in', lines.ids),
                 ('move_line_id', '=', False)])
             if pending:
-                # A quantity increase after confirmation adds a
-                # second move line and Odoo creates a second check
-                # (e.g. 100 + 5). Merge pending checks sharing the
-                # same lot into one so quality sees a single line
-                # per lot — an untracked product yields one check
-                # with the full quantity.
+                # After the line merge each lot has one line; keep
+                # a single pending check per surviving line and
+                # reattach the checks the removed lines left
+                # detached. Detached leftovers with no free line
+                # are duplicates — drop them so no zero-quantity
+                # rows reach the quality list.
                 merged = Check
-                lot_keys = set(pending.mapped(
-                    lambda c: c.move_line_id.lot_id.id or 0))
-                for lot_key in lot_keys:
+                for line in lines:
                     group = pending.filtered(
-                        lambda c: (c.move_line_id.lot_id.id
-                                   or 0) == lot_key)
-                    keep = group.filtered(
-                        'move_line_id').sorted(
-                            key=lambda c: c.move_line_id.quantity,
-                            reverse=True)[:1] or group[:1]
-                    if len(group) > 1:
-                        keep.write({
-                            'qty_to_test': sum(group.mapped(
-                                'qty_to_test')),
-                            'qty_tested': sum(group.mapped(
-                                'qty_tested')),
-                        })
-                        (group - keep).unlink()
-                    merged |= keep
+                        lambda c: c.move_line_id == line)
+                    if group:
+                        (group[1:]).unlink()
+                        merged |= group[0]
+                detached = pending.exists().filtered(
+                    lambda c: not c.move_line_id)
+                for check in detached:
+                    free = lines.filtered(
+                        lambda l: l not in merged.mapped(
+                            'move_line_id'))[:1]
+                    if free:
+                        check.move_line_id = free.id
+                        merged |= check
+                    else:
+                        check.unlink()
                 unsent = merged.filtered(lambda c: not c.pqn_sent)
                 unsent.pqn_sent = True
                 sent |= unsent
