@@ -27,7 +27,7 @@ class QualityCheckWizard(models.TransientModel):
     def confirm_fail(self):
         wiz = self._qc_gate_off(internal=True)
         lines = wiz.check_ids.move_line_id.filtered(
-            '_is_quality_controlled_receipt_line')
+            lambda l: l._is_quality_controlled_receipt_line())
         lines._qc_release_tested_qty(wiz.check_ids)
         res = super(QualityCheckWizard, wiz).confirm_fail()
         lines.move_id._clamp_quality_lines()

@@ -38,7 +38,7 @@ class QualityCheck(models.Model):
         # location via internal quantity writes — exempt them.
         self = self.with_context(qc_gate_off=True, qc_internal=True)
         lines = self.move_line_id.filtered(
-            '_is_quality_controlled_receipt_line')
+            lambda l: l._is_quality_controlled_receipt_line())
         lines._qc_release_tested_qty(self)
         res = super().do_fail()
         lines.move_id._clamp_quality_lines()
