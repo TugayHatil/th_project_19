@@ -31,6 +31,7 @@
     'data': [
         'views/purchase_request_views.xml',
     ],
+    'post_init_hook': 'post_init_hook',
     'license': 'LGPL-3',
     'installable': True,
     'auto_install': False,
