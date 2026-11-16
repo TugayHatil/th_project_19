@@ -6,6 +6,8 @@ TR_OVERRIDES = (
      'field_description', {'tr_TR': 'Onaylayacak'}),
     ('purchase_request.field_purchase_request_line__assigned_to',
      'field_description', {'tr_TR': 'Onaylayacak'}),
+    ('purchase_request.field_purchase_request__picking_type_id',
+     'field_description', {'tr_TR': 'Konum'}),
     ('purchase_request.action_purchase_request_line_make_purchase_order',
      'name', {'tr_TR': 'Sipariş Oluştur'}),
     ('purchase_request.view_purchase_request_form',

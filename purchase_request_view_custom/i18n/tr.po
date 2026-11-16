@@ -27,6 +27,11 @@ msgid "Assigned to"
 msgstr "Onaylayacak"
 
 #. module: purchase_request
+#: model:ir.model.fields,field_description:purchase_request.field_purchase_request__picking_type_id
+msgid "Picking Type"
+msgstr "Konum"
+
+#. module: purchase_request
 #: model:ir.actions.act_window,name:purchase_request.action_purchase_request_line_make_purchase_order
 msgid "Create RFQ"
 msgstr "Sipariş Oluştur"
