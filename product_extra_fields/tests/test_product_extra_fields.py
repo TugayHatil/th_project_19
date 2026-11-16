@@ -218,6 +218,28 @@ class TestProductExtraFields(TransactionCase):
         group.write({'name': 'MG-MGR-2'})
         self.assertTrue(group.unlink())
 
+    def test_planning_fields(self):
+        product = self._new_product(
+            moq=10.0, spq=5.0, leadtime=3, safety_stock=2.0,
+            purchase_load_group_id=self.location.id,
+            sale_load_group_id=self.location.id,
+            foreign_trade_group='import')
+        self.assertEqual(product.moq, 10.0)
+        self.assertEqual(product.spq, 5.0)
+        self.assertEqual(product.leadtime, 3)
+        self.assertEqual(product.safety_stock, 2.0)
+        self.assertEqual(product.purchase_load_group_id, self.location)
+        self.assertEqual(product.sale_load_group_id, self.location)
+        self.assertEqual(product.foreign_trade_group, 'import')
+        product.foreign_trade_group = 'export'
+        self.assertEqual(product.foreign_trade_group, 'export')
+
+    def test_negative_planning_values_rejected(self):
+        with self.assertRaises(ValidationError):
+            self._new_product(moq=-1.0)
+        with self.assertRaises(ValidationError):
+            self._new_product(leadtime=-5)
+
     def test_product_count_and_smartbutton_action(self):
         self._new_product(
             name='PA', material_group_id=self.material_group.id)

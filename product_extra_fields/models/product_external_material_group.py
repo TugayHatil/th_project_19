@@ -9,6 +9,7 @@ class ProductExternalMaterialGroup(models.Model):
     _product_field_name = 'external_material_group_id'
 
     name = fields.Char(string='Harici Mal Grubu')
+    description = fields.Char(string='Tanımı')
     product_count = fields.Integer(
         string='Ürünler', compute='_compute_product_count')
 

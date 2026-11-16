@@ -43,6 +43,26 @@ class ProductTemplate(models.Model):
     purchase_group = fields.Selection(
         [('direct', 'Direkt'), ('indirect', 'Endirekt')],
         string='Satınalma Grubu')
+    moq = fields.Float(string='MOQ')
+    spq = fields.Float(string='SPQ')
+    leadtime = fields.Integer(string='Leadtime')
+    safety_stock = fields.Float(string='Emniyet Stoğu')
+    purchase_load_group_id = fields.Many2one(
+        'stock.location', string='Satınalma Yük Grubu',
+        domain="[('usage', '=', 'internal')]", index=True, ondelete='restrict')
+    sale_load_group_id = fields.Many2one(
+        'stock.location', string='Satış Yük Grubu',
+        domain="[('usage', '=', 'internal')]", index=True, ondelete='restrict')
+    foreign_trade_group = fields.Selection(
+        [('import', 'İthalat'), ('export', 'İhracat')],
+        string='Dış Ticaret Grubu')
+
+    @api.constrains('moq', 'spq', 'leadtime', 'safety_stock')
+    def _check_planning_values(self):
+        for product in self:
+            if (product.moq < 0 or product.spq < 0
+                    or product.leadtime < 0 or product.safety_stock < 0):
+                raise ValidationError(_('Planlama değerleri negatif olamaz.'))
 
     @api.constrains('purchase_order_qty_rounding')
     def _check_purchase_order_qty_rounding(self):

@@ -11,7 +11,9 @@ Eklenen ürün alanları: Eski Malzeme No, Alt Ürün Türü, Mal Grubu, Harici
 Mal Grubu, Geçerlilik Başlangıç tarihi, MİP No ve MİP Sorumlusu (otomatik),
 Üretim Sorumlusu No ve Üretim Sorumlusu (otomatik), Üretim Depo Yeri,
 Dışarıdan Tedarik Depo Yeri, Üretim/Satınalma Kalite Kontrol işaretleri,
-Satınalma Katları ve Satınalma Grubu.
+Satınalma Katları ve Satınalma Grubu. Diğer sekmesinde ayrıca MOQ, SPQ,
+Leadtime, Emniyet Stoğu, Satınalma/Satış Yük Grubu (iç konumlar) ve
+Dış Ticaret Grubu (İthalat/İhracat) alanları bulunur.
 
 Tanım modelleri (Alt Ürün Türleri, Mal Grupları, Harici Mal Grupları,
 MİP Sorumluları, Üretim Sorumluları) Stok / Ayarlar / Ürünler menüsü
@@ -24,7 +26,7 @@ bütün ürün kartlarında otomatik olarak güncellenir.""",
     'website': "https://projet.solutions",
 
     'category': 'Inventory/Inventory',
-    'version': '19.0.1.2.0',
+    'version': '19.0.1.3.0',
 
     'depends': [
         'product',

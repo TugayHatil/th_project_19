@@ -40,6 +40,19 @@
                         </group>
                         <group/>
                     </group>
+                    <group name="planning" string="Planlama">
+                        <group>
+                            <field name="moq"/>
+                            <field name="spq"/>
+                            <field name="leadtime"/>
+                            <field name="safety_stock"/>
+                        </group>
+                        <group>
+                            <field name="purchase_load_group_id"/>
+                            <field name="sale_load_group_id"/>
+                            <field name="foreign_trade_group"/>
+                        </group>
+                    </group>
                 </page>
             </xpath>
             <xpath expr="//page[@name='purchase']/group[@name='purchase']" position="after">

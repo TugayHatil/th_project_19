@@ -10,7 +10,7 @@ class ProductSubType(models.Model):
     _product_field_name = 'sub_type_id'
 
     name = fields.Char(string='Alt Ürün Türü', tracking=True)
-    description = fields.Char(string='Açıklama', tracking=True)
+    description = fields.Char(string='Tanımı', tracking=True)
     product_count = fields.Integer(
         string='Ürünler', compute='_compute_product_count')
 
