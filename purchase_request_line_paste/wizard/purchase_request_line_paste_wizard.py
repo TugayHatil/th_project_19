@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import re
+from datetime import datetime
 
 from markupsafe import Markup
 
@@ -18,10 +19,11 @@ class PurchaseRequestLinePasteWizard(models.TransientModel):
         [('input', 'Veri Girişi'), ('preview', 'Önizleme')],
         default='input', readonly=True)
     input_text = fields.Text(
-        string='Ürün / Miktar Listesi',
-        help='Excel\'den kopyalanan liste: her satırda ürün kodu ve miktar '
-             '(sekme veya noktalı virgül ile ayrılmış). İlk satır başlık '
-             'olabilir, otomatik atlanır.')
+        string='Ürün / Miktar / Tarih Listesi',
+        help='Excel\'den kopyalanan liste: her satırda ürün kodu, miktar '
+             've istek tarihi (sekme veya noktalı virgül ile ayrılmış; '
+             'tarih boş bırakılabilir). İlk satır başlık olabilir, '
+             'otomatik atlanır.')
     line_ids = fields.One2many(
         'purchase.request.line.paste.wizard.line', 'wizard_id',
         string='Önizleme Satırları', readonly=True)
@@ -40,17 +42,16 @@ class PurchaseRequestLinePasteWizard(models.TransientModel):
     # ------------------------------------------------------------------
 
     def _split_row(self, row):
-        """Bir satırı (kod, miktar) çiftine ayırır; ilk hücre kod, dolu olan
-        son hücre miktar kabul edilir."""
+        """Bir satırı (kod, miktar, tarih) üçlüsüne ayırır; sütunlar
+        konumsal — ilk hücre kod, ikinci miktar, üçüncü tarihtir."""
         for sep in ('\t', ';'):
             if sep in row:
                 cells = [c.strip() for c in row.split(sep)]
-                non_empty = [c for c in cells if c]
-                return cells[0], (non_empty[-1] if non_empty else '')
+                cells += [''] * (3 - len(cells))
+                return cells[0], cells[1], cells[2]
         parts = row.split()
-        if len(parts) >= 2:
-            return parts[0], parts[-1]
-        return row.strip(), ''
+        parts += [''] * (3 - len(parts))
+        return parts[0], parts[1], parts[2]
 
     def _strip_thousands(self, text, sep):
         """Binlik ayıracını yalnızca geçerli gruplamada kaldırır
@@ -93,6 +94,28 @@ class PurchaseRequestLinePasteWizard(models.TransientModel):
                 continue
         return None
 
+    def _parse_date(self, text):
+        """Tarihi kullanıcının Odoo dil/biçim ayarına göre date'e çevirir."""
+        raw = re.sub(r'\s', '', text or '')
+        if not raw:
+            return None
+        lang = self.env['res.lang']._lang_get(self.env.user.lang)
+        lang_format = lang.date_format or '%d.%m.%Y'
+        dmy = ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y',
+               '%d.%m.%y', '%d/%m/%y', '%d-%m-%y']
+        mdy = ['%m/%d/%Y', '%m.%d.%Y', '%m-%d-%Y',
+               '%m/%d/%y', '%m.%d.%y', '%m-%d-%y']
+        ymd = ['%Y-%m-%d', '%Y/%m/%d', '%Y.%m.%d']
+        # Dil formatı öncelikli; sonra dilin ay/gün sırasına uygun fallback'ler
+        month_first = lang_format.index('%m') < lang_format.index('%d')
+        fmts = [lang_format] + (mdy + dmy if month_first else dmy + mdy) + ymd
+        for fmt in dict.fromkeys(fmts):
+            try:
+                return datetime.strptime(raw, fmt).date()
+            except ValueError:
+                continue
+        return None
+
     def _resolve_product(self, code, products_by_code):
         if not code:
             return False, _('Ürün kodu boş.')
@@ -129,47 +152,44 @@ class PurchaseRequestLinePasteWizard(models.TransientModel):
                 (self.input_text or '').splitlines(), start=1):
             if not row.strip():
                 continue
-            code, qty_text = self._split_row(row)
-            parsed_rows.append((idx, code, qty_text))
+            code, qty_text, date_text = self._split_row(row)
+            parsed_rows.append((idx, code, qty_text, date_text))
             if code:
                 codes.add(code)
         products_by_code = self._products_by_code(codes)
 
         vals_list = []
         first = True
-        for row_no, code, qty_text in parsed_rows:
+        for row_no, code, qty_text, date_text in parsed_rows:
             qty = self._parse_qty(qty_text)
             product, error = self._resolve_product(code, products_by_code)
+            base = {'row_no': row_no, 'raw_code': code, 'raw_qty': qty_text,
+                    'raw_date': date_text}
             if first and qty is None and error:
                 # İlk satır iki yönden de veri değilse başlık sayılır
-                vals_list.append({
-                    'row_no': row_no, 'raw_code': code, 'raw_qty': qty_text,
-                    'state': 'header', 'message': _('Başlık satırı atlandı.'),
-                })
+                vals_list.append(dict(
+                    base, state='header',
+                    message=_('Başlık satırı atlandı.')))
             elif error:
-                vals_list.append({
-                    'row_no': row_no, 'raw_code': code, 'raw_qty': qty_text,
-                    'state': 'error', 'message': error,
-                })
+                vals_list.append(dict(base, state='error', message=error))
             elif qty is None:
-                vals_list.append({
-                    'row_no': row_no, 'raw_code': code, 'raw_qty': qty_text,
-                    'state': 'error',
-                    'message': (_('Miktar sütunu boş.') if not qty_text
-                                else _('Miktar geçerli bir sayı değil.')),
-                })
+                vals_list.append(dict(
+                    base, state='error',
+                    message=(_('Miktar sütunu boş.') if not qty_text
+                             else _('Miktar geçerli bir sayı değil.'))))
             elif qty <= 0:
-                vals_list.append({
-                    'row_no': row_no, 'raw_code': code, 'raw_qty': qty_text,
-                    'state': 'error',
-                    'message': _('Miktar sıfırdan büyük olmalıdır.'),
-                })
+                vals_list.append(dict(
+                    base, state='error',
+                    message=_('Miktar sıfırdan büyük olmalıdır.')))
+            elif date_text and not self._parse_date(date_text):
+                vals_list.append(dict(
+                    base, state='error',
+                    message=_('Tarih geçerli değil.')))
             else:
-                vals_list.append({
-                    'row_no': row_no, 'raw_code': code, 'raw_qty': qty_text,
-                    'product_id': product.id, 'product_qty': qty,
-                    'state': 'ok',
-                })
+                vals_list.append(dict(
+                    base, state='ok', product_id=product.id,
+                    product_qty=qty,
+                    date_required=self._parse_date(date_text)))
             first = False
         return vals_list
 
@@ -228,6 +248,8 @@ class PurchaseRequestLinePasteWizard(models.TransientModel):
                 'product_qty': line.product_qty,
                 'product_uom_id': product.uom_id.id,
             })
+            if line.date_required:
+                line_vals[-1]['date_required'] = line.date_required
         self.env['purchase.request.line'].create(line_vals)
 
         skipped = len(self.line_ids) - len(ok_lines)
@@ -252,8 +274,10 @@ class PurchaseRequestLinePasteWizardLine(models.TransientModel):
     row_no = fields.Integer(string='Satır')
     raw_code = fields.Char(string='Ürün Kodu')
     raw_qty = fields.Char(string='Miktar (metin)')
+    raw_date = fields.Char(string='Tarih (metin)')
     product_id = fields.Many2one('product.product', string='Ürün')
     product_qty = fields.Float(string='Miktar', digits='Product Unit')
+    date_required = fields.Date(string='İstek Tarihi')
     state = fields.Selection(
         [('ok', 'Geçerli'), ('error', 'Hatalı'), ('header', 'Başlık')],
         default='ok')
