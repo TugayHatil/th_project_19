@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="product_sub_type_view_list" model="ir.ui.view">
+        <field name="name">product.sub.type.list</field>
+        <field name="model">product.sub.type</field>
+        <field name="arch" type="xml">
+            <list string="Alt Ürün Türleri">
+                <field name="name"/>
+                <field name="description"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="product_sub_type_view_form" model="ir.ui.view">
+        <field name="name">product.sub.type.form</field>
+        <field name="model">product.sub.type</field>
+        <field name="arch" type="xml">
+            <form string="Alt Ürün Türü">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button type="object" name="action_view_products"
+                                class="oe_stat_button" icon="fa-cube">
+                            <field name="product_count" widget="statinfo"
+                                   string="Ürünler"/>
+                        </button>
+                    </div>
+                    <group>
+                        <field name="name"/>
+                        <field name="description"/>
+                        <field name="active" invisible="1"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="product_sub_type_action" model="ir.actions.act_window">
+        <field name="name">Alt Ürün Türleri</field>
+        <field name="res_model">product.sub.type</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

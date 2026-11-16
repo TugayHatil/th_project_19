@@ -7,6 +7,9 @@ class ProductTemplate(models.Model):
     _inherit = 'product.template'
 
     old_default_code = fields.Char(string='Eski Malzeme No')
+    sub_type_id = fields.Many2one(
+        'product.sub.type', string='Alt Ürün Türü',
+        index=True, ondelete='restrict')
     material_group_id = fields.Many2one(
         'product.material.group', string='Mal Grubu',
         index=True, ondelete='restrict')

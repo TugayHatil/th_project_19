@@ -17,6 +17,13 @@
         <field name="arch" type="xml">
             <form string="Harici Mal Grubu">
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button type="object" name="action_view_products"
+                                class="oe_stat_button" icon="fa-cube">
+                            <field name="product_count" widget="statinfo"
+                                   string="Ürünler"/>
+                        </button>
+                    </div>
                     <group>
                         <field name="name"/>
                         <field name="active" invisible="1"/>

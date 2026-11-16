@@ -165,3 +165,73 @@ class TestProductExtraFields(TransactionCase):
             mip_as_user.browse(self.mip.id).write({'responsible': 'X'})
         with self.assertRaises(AccessError):
             mip_as_user.browse(self.mip.id).unlink()
+
+    def _new_user(self, login, *group_xmlids):
+        return self.env['res.users'].create({
+            'name': login,
+            'login': login,
+            'groups_id': [(6, 0, [
+                self.env.ref('base.group_user').id,
+                *[self.env.ref(xmlid).id for xmlid in group_xmlids],
+            ])],
+        })
+
+    def test_sub_type_field_on_product(self):
+        sub_type = self.env['product.sub.type'].create({
+            'name': 'AST-01', 'description': 'Test alt türü'})
+        product = self._new_product(sub_type_id=sub_type.id)
+        self.assertEqual(product.sub_type_id, sub_type)
+
+    def test_sub_type_code_unique(self):
+        self.env['product.sub.type'].create({'name': 'AST-DUP'})
+        with mute_logger('odoo.sql_db'), self.assertRaises(IntegrityError):
+            self.env['product.sub.type'].create({'name': 'AST-DUP'})
+
+    def test_sub_type_has_chatter(self):
+        self.assertIn('message_ids', self.env['product.sub.type']._fields)
+
+    def test_sub_type_access_rights(self):
+        user = self._new_user('pef_sub_type_reader')
+        sub_as_user = self.env['product.sub.type'].with_user(user)
+        self.assertTrue(sub_as_user.search([]))
+        with self.assertRaises(AccessError):
+            sub_as_user.create({'name': 'AST-FORBIDDEN'})
+        manager = self._new_user(
+            'pef_sub_type_manager',
+            'product_extra_fields.group_product_sub_type_manager')
+        sub_as_manager = self.env['product.sub.type'].with_user(manager)
+        sub_type = sub_as_manager.create({'name': 'AST-MGR'})
+        sub_type.write({'description': 'güncellendi'})
+        self.assertTrue(sub_type.unlink())
+
+    def test_material_group_manager_access_rights(self):
+        user = self._new_user('pef_mg_reader')
+        mg_as_user = self.env['product.material.group'].with_user(user)
+        self.assertTrue(mg_as_user.search([]))
+        with self.assertRaises(AccessError):
+            mg_as_user.create({'name': 'MG-FORBIDDEN'})
+        manager = self._new_user(
+            'pef_mg_manager',
+            'product_extra_fields.group_material_group_manager')
+        mg_as_manager = self.env['product.material.group'].with_user(manager)
+        group = mg_as_manager.create({'name': 'MG-MGR'})
+        group.write({'name': 'MG-MGR-2'})
+        self.assertTrue(group.unlink())
+
+    def test_product_count_and_smartbutton_action(self):
+        self._new_product(
+            name='PA', material_group_id=self.material_group.id)
+        self._new_product(
+            name='PB', material_group_id=self.material_group.id)
+        self._new_product(name='PC')
+        self.assertEqual(self.material_group.product_count, 2)
+        action = self.material_group.action_view_products()
+        self.assertEqual(action['res_model'], 'product.template')
+        self.assertIn(
+            ('material_group_id', '=', self.material_group.id),
+            action['domain'])
+        sub_type = self.env['product.sub.type'].create({'name': 'AST-CNT'})
+        self._new_product(name='PD', sub_type_id=sub_type.id)
+        self.assertEqual(sub_type.product_count, 1)
+        action = sub_type.action_view_products()
+        self.assertIn(('sub_type_id', '=', sub_type.id), action['domain'])

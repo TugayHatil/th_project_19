@@ -7,14 +7,16 @@
     'description': """Ürün kartına (product.template) operasyonel ihtiyaçlara göre ek
 alanlar ekler ve bu alanlarda kullanılan merkezi tanım modellerini sağlar.
 
-Eklenen ürün alanları: Eski Malzeme No, Mal Grubu, Harici Mal Grubu,
-Geçerlilik Başlangıç tarihi, MİP No ve MİP Sorumlusu (otomatik), Üretim
-Sorumlusu No ve Üretim Sorumlusu (otomatik), Üretim Depo Yeri, Dışarıdan
-Tedarik Depo Yeri, Üretim/Satınalma Kalite Kontrol işaretleri, Satınalma
-Katları ve Satınalma Grubu.
+Eklenen ürün alanları: Eski Malzeme No, Alt Ürün Türü, Mal Grubu, Harici
+Mal Grubu, Geçerlilik Başlangıç tarihi, MİP No ve MİP Sorumlusu (otomatik),
+Üretim Sorumlusu No ve Üretim Sorumlusu (otomatik), Üretim Depo Yeri,
+Dışarıdan Tedarik Depo Yeri, Üretim/Satınalma Kalite Kontrol işaretleri,
+Satınalma Katları ve Satınalma Grubu.
 
-Tanım modelleri (Mal Grupları, Harici Mal Grupları, MİP Sorumluları,
-Üretim Sorumluları) Stok / Ayarlar / Ürünler menüsü altında yönetilir.
+Tanım modelleri (Alt Ürün Türleri, Mal Grupları, Harici Mal Grupları,
+MİP Sorumluları, Üretim Sorumluları) Stok / Ayarlar / Ürünler menüsü
+altında yönetilir. Alt ürün türü, mal grubu ve harici mal grubu
+formlarındaki smartbuton üzerinden o tanıma bağlı ürünler listelenebilir.
 Sorumlu koduna bağlı sorumlu bilgisi değiştiğinde bu bilgi, kodu kullanan
 bütün ürün kartlarında otomatik olarak güncellenir.""",
 
@@ -22,16 +24,19 @@ bütün ürün kartlarında otomatik olarak güncellenir.""",
     'website': "https://projet.solutions",
 
     'category': 'Inventory/Inventory',
-    'version': '19.0.1.1.0',
+    'version': '19.0.1.2.0',
 
     'depends': [
         'product',
         'stock',
         'purchase',
+        'mail',
     ],
 
     'data': [
+        'security/product_extra_fields_groups.xml',
         'security/ir.model.access.csv',
+        'views/product_sub_type_views.xml',
         'views/product_material_group_views.xml',
         'views/product_external_material_group_views.xml',
         'views/mip_definition_views.xml',
