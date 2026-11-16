@@ -6,16 +6,22 @@
         <field name="sequence">55</field>
     </record>
 
-    <record id="group_material_group_manager" model="res.groups">
-        <field name="name">Mal Grupları Yöneticisi</field>
+    <record id="privilege_product_extra_fields" model="res.groups.privilege">
+        <field name="name">Ürün Kartı Ek Alanları</field>
         <field name="category_id"
                ref="product_extra_fields.module_category_product_extra_fields"/>
     </record>
 
+    <record id="group_material_group_manager" model="res.groups">
+        <field name="name">Mal Grupları Yöneticisi</field>
+        <field name="privilege_id"
+               ref="product_extra_fields.privilege_product_extra_fields"/>
+    </record>
+
     <record id="group_product_sub_type_manager" model="res.groups">
         <field name="name">Ürün Alt Türü Yöneticisi</field>
-        <field name="category_id"
-               ref="product_extra_fields.module_category_product_extra_fields"/>
+        <field name="privilege_id"
+               ref="product_extra_fields.privilege_product_extra_fields"/>
     </record>
 
     <record id="stock.group_stock_manager" model="res.groups">
