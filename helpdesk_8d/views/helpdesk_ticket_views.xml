@@ -10,16 +10,20 @@
             <xpath expr="//div[@class='d-flex']" position="before">
                 <group>
                     <group>
-                        <field name="noticed_location_id"/>
-                        <field name="noticed_date"/>
-                    </group>
-                    <group>
                         <field name="product_id"/>
                         <field name="serial_number"/>
                         <field name="hardware_version_id"/>
                         <field name="software_version_id"/>
                     </group>
+                    <group>
+                        <field name="noticed_location_id"/>
+                        <field name="noticed_date"/>
+                    </group>
                 </group>
+            </xpath>
+            <xpath expr="//field[@name='email_cc']" position="after">
+                <field name="priority" position="move"/>
+                <field name="tag_ids" position="move"/>
             </xpath>
             <xpath expr="//page[@name='description']" position="after">
                 <page string="Detaylar" name="luna_details">
