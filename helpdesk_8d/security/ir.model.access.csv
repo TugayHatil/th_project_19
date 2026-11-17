@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_luna_noticed_location_user,luna.noticed.location user,model_luna_noticed_location,helpdesk.group_helpdesk_user,1,1,1,0
+access_luna_noticed_location_manager,luna.noticed.location manager,model_luna_noticed_location,helpdesk.group_helpdesk_manager,1,1,1,1
+access_luna_hardware_version_user,luna.hardware.version user,model_luna_hardware_version,helpdesk.group_helpdesk_user,1,1,1,0
+access_luna_hardware_version_manager,luna.hardware.version manager,model_luna_hardware_version,helpdesk.group_helpdesk_manager,1,1,1,1
+access_luna_software_version_user,luna.software.version user,model_luna_software_version,helpdesk.group_helpdesk_user,1,1,1,0
+access_luna_software_version_manager,luna.software.version manager,model_luna_software_version,helpdesk.group_helpdesk_manager,1,1,1,1

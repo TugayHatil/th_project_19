@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_ticket_8d_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <div class="text-center border p-2 mb-2"
+                             style="background-color: #d9d9d9;">
+                            <strong style="font-size: 15px;">PROBLEM TAKİP VE KÖK NEDEN ANALİZİ FORMU (8D)</strong>
+                        </div>
+
+                        <table class="table table-sm table-bordered o_main_table mb-0">
+                            <tr>
+                                <th colspan="4" class="text-center"
+                                    style="background-color: #e9ecef;">GENEL BİLGİLER</th>
+                            </tr>
+                            <tr>
+                                <td style="width: 25%;"><strong>Ticket No</strong></td>
+                                <td style="width: 25%;">
+                                    <span>#</span><span t-field="o.id"/>
+                                </td>
+                                <td style="width: 25%;"><strong>Formun Açılış Tarihi</strong></td>
+                                <td style="width: 25%;"><span t-field="o.create_date"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Konu</strong></td>
+                                <td colspan="3"><span t-field="o.name"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Müşteri</strong></td>
+                                <td><span t-field="o.partner_id"/></td>
+                                <td><strong>Takım</strong></td>
+                                <td><span t-field="o.team_id"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Formu Açan</strong></td>
+                                <td><span t-field="o.create_uid"/></td>
+                                <td><strong>Sorumlu</strong></td>
+                                <td><span t-field="o.user_id"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Durum</strong></td>
+                                <td><span t-field="o.stage_id"/></td>
+                                <td><strong>Öncelik</strong></td>
+                                <td><span t-field="o.priority"/></td>
+                            </tr>
+                        </table>
+
+                        <table class="table table-sm table-bordered mb-0">
+                            <tr>
+                                <th colspan="4" class="text-center"
+                                    style="background-color: #e9ecef;">D2 – PROBLEMİN TANIMLANMASI</th>
+                            </tr>
+                            <tr>
+                                <td style="width: 25%;"><strong>Problem Tanımı</strong></td>
+                                <td colspan="3"><t t-out="o.description or ''"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Fark Edildiği Yer</strong></td>
+                                <td style="width: 25%;"><span t-field="o.noticed_location_id"/></td>
+                                <td style="width: 25%;"><strong>Ne Zaman</strong></td>
+                                <td style="width: 25%;"><span t-field="o.noticed_date"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ürün Modeli</strong></td>
+                                <td><span t-field="o.product_id"/></td>
+                                <td><strong>Seri Numarası</strong></td>
+                                <td><span t-field="o.serial_number"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Donanım Versiyonu</strong></td>
+                                <td><span t-field="o.hardware_version_id"/></td>
+                                <td><strong>Yazılım Versiyonu</strong></td>
+                                <td><span t-field="o.software_version_id"/></td>
+                            </tr>
+                            <tr t-if="o.complaint_detail">
+                                <td><strong>Şikayet Detayı</strong></td>
+                                <td colspan="3"><t t-out="o.complaint_detail"/></td>
+                            </tr>
+                            <tr t-if="o.environment_conditions">
+                                <td><strong>Nerede / Ortam Koşulları</strong></td>
+                                <td colspan="3"><t t-out="o.environment_conditions"/></td>
+                            </tr>
+                            <tr t-if="o.impact">
+                                <td><strong>Etki</strong></td>
+                                <td colspan="3"><t t-out="o.impact"/></td>
+                            </tr>
+                            <tr t-if="o.reproduction_steps">
+                                <td><strong>Sorunu Tekrarlama Adımları</strong></td>
+                                <td colspan="3"><t t-out="o.reproduction_steps"/></td>
+                            </tr>
+                            <tr t-if="o.classification">
+                                <td><strong>Sınıflandırma</strong></td>
+                                <td colspan="3"><t t-out="o.classification"/></td>
+                            </tr>
+                        </table>
+
+                        <table class="table table-sm table-bordered mb-0" t-if="o.temporary_action">
+                            <tr>
+                                <th colspan="4" class="text-center"
+                                    style="background-color: #e9ecef;">D3 – GEÇİCİ ÖNLEMLER (CONTAINMENT)</th>
+                            </tr>
+                            <tr>
+                                <td style="width: 25%;"><strong>Geçici Aksiyon</strong></td>
+                                <td colspan="3"><t t-out="o.temporary_action"/></td>
+                            </tr>
+                        </table>
+
+                        <table class="table table-sm table-bordered mb-0" t-if="o.root_cause">
+                            <tr>
+                                <th colspan="4" class="text-center"
+                                    style="background-color: #e9ecef;">D4 – KÖK NEDEN ANALİZİ</th>
+                            </tr>
+                            <tr>
+                                <td style="width: 25%;"><strong>Kök Neden</strong></td>
+                                <td colspan="3"><t t-out="o.root_cause"/></td>
+                            </tr>
+                        </table>
+
+                        <table class="table table-sm table-bordered mb-0" t-if="o.permanent_solution">
+                            <tr>
+                                <th colspan="4" class="text-center"
+                                    style="background-color: #e9ecef;">D5 – D6 – KALICI ÇÖZÜM</th>
+                            </tr>
+                            <tr>
+                                <td style="width: 25%;"><strong>Kalıcı Çözüm</strong></td>
+                                <td colspan="3"><t t-out="o.permanent_solution"/></td>
+                            </tr>
+                        </table>
+
+                        <table class="table table-sm table-bordered mb-0"
+                               t-if="o.validation or o.preventive_action_plan or o.other_products_impact">
+                            <tr>
+                                <th colspan="4" class="text-center"
+                                    style="background-color: #e9ecef;">D7 – DOĞRULAMA VE TEKRARINI ÖNLEME</th>
+                            </tr>
+                            <tr t-if="o.validation">
+                                <td style="width: 25%;"><strong>Doğrulama</strong></td>
+                                <td colspan="3"><t t-out="o.validation"/></td>
+                            </tr>
+                            <tr t-if="o.preventive_action_plan">
+                                <td><strong>Önleyici Aksiyon Planı</strong></td>
+                                <td colspan="3"><t t-out="o.preventive_action_plan"/></td>
+                            </tr>
+                            <tr t-if="o.other_products_impact">
+                                <td><strong>Diğer Ürünlere Etkisi Olabilir mi?</strong></td>
+                                <td colspan="3"><t t-out="o.other_products_impact"/></td>
+                            </tr>
+                        </table>
+
+                        <table class="table table-sm table-bordered">
+                            <tr>
+                                <th colspan="3" class="text-center"
+                                    style="background-color: #e9ecef;">KAPANIŞ VE ONAY</th>
+                            </tr>
+                            <tr class="text-center" style="font-weight: bold;">
+                                <td style="width: 34%;">Rol</td>
+                                <td style="width: 33%;">Ad Soyad / İmza</td>
+                                <td style="width: 33%;">Tarih</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Hazırlayan</strong></td>
+                                <td><span t-field="o.user_id"/></td>
+                                <td><span t-field="o.create_date"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Kapanış Onayı</strong></td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

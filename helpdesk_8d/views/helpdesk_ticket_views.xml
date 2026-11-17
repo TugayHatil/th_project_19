@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="helpdesk_ticket_view_form_inherit_8d" model="ir.ui.view">
+        <field name="name">helpdesk.ticket.form.inherit.8d</field>
+        <field name="model">helpdesk.ticket</field>
+        <field name="inherit_id" ref="helpdesk.helpdesk_ticket_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='email_cc']" position="after">
+                <field name="noticed_location_id"/>
+                <field name="noticed_date"/>
+                <field name="product_id"/>
+                <field name="serial_number"/>
+                <field name="hardware_version_id"/>
+                <field name="software_version_id"/>
+            </xpath>
+            <xpath expr="//page[@name='description']" position="after">
+                <page string="Detaylar" name="luna_details">
+                    <field name="complaint_detail"/>
+                    <field name="environment_conditions"/>
+                    <field name="impact"/>
+                    <field name="reproduction_steps"/>
+                    <field name="classification"/>
+                </page>
+                <page string="Detaylı Analiz ve Aksiyonlar" name="luna_analysis">
+                    <field name="temporary_action"/>
+                    <field name="root_cause"/>
+                    <field name="permanent_solution"/>
+                </page>
+                <page string="Doğrulama ve Önlem" name="luna_validation">
+                    <field name="validation"/>
+                    <field name="preventive_action_plan"/>
+                    <field name="other_products_impact"/>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

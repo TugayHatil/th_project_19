@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="luna_hardware_version_view_list" model="ir.ui.view">
+        <field name="name">luna.hardware.version.list</field>
+        <field name="model">luna.hardware.version</field>
+        <field name="arch" type="xml">
+            <list string="Donanım Versiyonları" editable="bottom">
+                <field name="name"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="luna_hardware_version_view_form" model="ir.ui.view">
+        <field name="name">luna.hardware.version.form</field>
+        <field name="model">luna.hardware.version</field>
+        <field name="arch" type="xml">
+            <form string="Donanım Versiyonu">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="luna_hardware_version_action" model="ir.actions.act_window">
+        <field name="name">Donanım Versiyonları</field>
+        <field name="res_model">luna.hardware.version</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <menuitem id="menu_luna_config"
+              name="Luna"
+              parent="helpdesk.helpdesk_menu_config"
+              sequence="100"/>
+
+    <menuitem id="menu_luna_noticed_location"
+              name="Farkedildiği Yerler"
+              parent="menu_luna_config"
+              action="luna_noticed_location_action"
+              sequence="10"/>
+
+    <menuitem id="menu_luna_hardware_version"
+              name="Donanım Versiyonları"
+              parent="menu_luna_config"
+              action="luna_hardware_version_action"
+              sequence="20"/>
+
+    <menuitem id="menu_luna_software_version"
+              name="Yazılım Versiyonları"
+              parent="menu_luna_config"
+              action="luna_software_version_action"
+              sequence="30"/>
+
+</odoo>
