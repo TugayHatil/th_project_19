@@ -11,7 +11,7 @@
                                      style="width: 95%;"/>
                             </div>
                             <div class="col-8 d-flex align-items-center justify-content-center text-center">
-                                <strong style="font-size: 15px;">PROBLEM TAKİP VE KÖK NEDEN ANALİZİ FORMU (8D)</strong>
+                                <strong style="font-size: 15px;">PROBLEM TAKİP VE KÖK NEDEN ANALİZİ FORMU</strong>
                             </div>
                         </div>
 
@@ -55,7 +55,7 @@
                         <table class="table table-sm table-bordered mb-0">
                             <tr>
                                 <th colspan="4" class="text-center"
-                                    style="background-color: #e9ecef;">D2 – PROBLEMİN TANIMLANMASI</th>
+                                    style="background-color: #e9ecef;">PROBLEMİN TANIMLANMASI</th>
                             </tr>
                             <tr>
                                 <td style="width: 25%;"><strong>Problem Tanımı</strong></td>
@@ -104,7 +104,7 @@
                         <table class="table table-sm table-bordered mb-0" t-if="o.temporary_action">
                             <tr>
                                 <th colspan="4" class="text-center"
-                                    style="background-color: #e9ecef;">D3 – GEÇİCİ ÖNLEMLER (CONTAINMENT)</th>
+                                    style="background-color: #e9ecef;">GEÇİCİ ÖNLEMLER (CONTAINMENT)</th>
                             </tr>
                             <tr>
                                 <td style="width: 25%;"><strong>Geçici Aksiyon</strong></td>
@@ -115,7 +115,7 @@
                         <table class="table table-sm table-bordered mb-0" t-if="o.root_cause">
                             <tr>
                                 <th colspan="4" class="text-center"
-                                    style="background-color: #e9ecef;">D4 – KÖK NEDEN ANALİZİ</th>
+                                    style="background-color: #e9ecef;">KÖK NEDEN ANALİZİ</th>
                             </tr>
                             <tr>
                                 <td style="width: 25%;"><strong>Kök Neden</strong></td>
@@ -126,7 +126,7 @@
                         <table class="table table-sm table-bordered mb-0" t-if="o.permanent_solution">
                             <tr>
                                 <th colspan="4" class="text-center"
-                                    style="background-color: #e9ecef;">D5 – D6 – KALICI ÇÖZÜM</th>
+                                    style="background-color: #e9ecef;">KALICI ÇÖZÜM</th>
                             </tr>
                             <tr>
                                 <td style="width: 25%;"><strong>Kalıcı Çözüm</strong></td>
@@ -138,7 +138,7 @@
                                t-if="o.validation or o.preventive_action_plan or o.other_products_impact">
                             <tr>
                                 <th colspan="4" class="text-center"
-                                    style="background-color: #e9ecef;">D7 – DOĞRULAMA VE TEKRARINI ÖNLEME</th>
+                                    style="background-color: #e9ecef;">DOĞRULAMA VE TEKRARINI ÖNLEME</th>
                             </tr>
                             <tr t-if="o.validation">
                                 <td style="width: 25%;"><strong>Doğrulama</strong></td>
