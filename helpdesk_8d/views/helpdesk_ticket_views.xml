@@ -12,9 +12,9 @@
                     <group>
                         <field name="noticed_location_id"/>
                         <field name="noticed_date"/>
-                        <field name="product_id"/>
                     </group>
                     <group>
+                        <field name="product_id"/>
                         <field name="serial_number"/>
                         <field name="hardware_version_id"/>
                         <field name="software_version_id"/>
