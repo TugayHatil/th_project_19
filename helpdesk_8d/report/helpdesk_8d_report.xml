@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="paperformat_8d" model="report.paperformat">
-        <field name="name">8D Form (Luna)</field>
+        <field name="name">Luna Problem Takip Formu</field>
         <field name="default" eval="False"/>
         <field name="format">A4</field>
         <field name="page_height">0</field>

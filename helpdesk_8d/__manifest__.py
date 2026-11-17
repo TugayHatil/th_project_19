@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 {
-    'name': "Helpdesk 8D - Problem Takip ve Kök Neden Analizi",
+    'name': "Helpdesk - Problem Takip ve Kök Neden Analizi",
 
-    'summary': "Ticket'a 8D detay alanları, Luna tanım tabloları ve 8D PDF çıktısı",
+    'summary': "Ticket'a problem takip detay alanları, Luna tanım tabloları ve PDF çıktısı",
 
-    'description': """Helpdesk ticket formuna 8D problem takip alanları ekler ve
-ticket üzerinden "Problem Takip ve Kök Neden Analiz Formu (8D)" PDF çıktısı
-alınmasını sağlar.
+    'description': """Helpdesk ticket formuna problem takip / kök neden analizi
+alanları ekler ve ticket üzerinden "Problem Takip ve Kök Neden Analiz Formu"
+PDF çıktısı alınmasını sağlar.
 
 Yardım Masası / Yapılandırma menüsü altındaki "Luna" ara menüsünde üç yeni
 tanım tablosu yönetilir: Farkedildiği Yerler, Donanım Versiyonları ve
 Yazılım Versiyonları.
 
 Ticket formuna eklenen alanlar: Farkedildiği Yer, Farketme Zamanı, Ürün
-(mevcut alan gösterilir), Seri Numarası, Donanım Versiyonu ve Yazılım
+(kısıtsız ürün seçimi), Seri Numarası, Donanım Versiyonu ve Yazılım
 Versiyonu. Açıklama sayfasından sonra "Detaylar", "Detaylı Analiz ve
 Aksiyonlar" ve "Doğrulama ve Önlem" adlı üç yeni sayfa eklenir; sayfalardaki
 tüm alanlar HTML türündedir.""",
@@ -22,11 +22,10 @@ tüm alanlar HTML türündedir.""",
     'website': "https://projet.solutions",
 
     'category': 'Services/Helpdesk',
-    'version': '19.0.1.0.2',
+    'version': '19.0.1.0.3',
 
     'depends': [
         'helpdesk',
-        'helpdesk_stock',
     ],
 
     'data': [

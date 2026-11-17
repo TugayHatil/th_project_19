@@ -26,7 +26,7 @@
                                     <span>#</span><span t-field="o.id"/>
                                 </td>
                                 <td style="width: 25%;"><strong>Formun Açılış Tarihi</strong></td>
-                                <td style="width: 25%;"><span t-field="o.create_date"/></td>
+                                <td style="width: 25%;"><span t-field="o.create_date" t-options="{'widget': 'date'}"/></td>
                             </tr>
                             <tr>
                                 <td><strong>Konu</strong></td>
@@ -167,7 +167,7 @@
                             <tr>
                                 <td><strong>Hazırlayan</strong></td>
                                 <td><span t-field="o.user_id"/></td>
-                                <td><span t-field="o.create_date"/></td>
+                                <td><span t-field="o.create_date" t-options="{'widget': 'date'}"/></td>
                             </tr>
                             <tr>
                                 <td><strong>Kapanış Onayı</strong></td>
