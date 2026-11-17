@@ -1,5 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <record id="paperformat_8d" model="report.paperformat">
+        <field name="name">8D Form (Luna)</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="page_height">0</field>
+        <field name="page_width">0</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">15</field>
+        <field name="margin_left">7</field>
+        <field name="margin_right">7</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">35</field>
+        <field name="dpi">90</field>
+    </record>
+
     <record id="action_report_ticket_8d" model="ir.actions.report">
         <field name="name">8D Problem Takip Formu</field>
         <field name="model">helpdesk.ticket</field>
@@ -9,5 +25,6 @@
         <field name="binding_model_id" ref="helpdesk.model_helpdesk_ticket"/>
         <field name="binding_type">report</field>
         <field name="print_report_name">'8D - %s' % (object.name or '')</field>
+        <field name="paperformat_id" ref="helpdesk_8d.paperformat_8d"/>
     </record>
 </odoo>
