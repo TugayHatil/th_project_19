@@ -22,10 +22,11 @@ tüm alanlar HTML türündedir.""",
     'website': "https://projet.solutions",
 
     'category': 'Services/Helpdesk',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.1',
 
     'depends': [
         'helpdesk',
+        'helpdesk_stock',
     ],
 
     'data': [
