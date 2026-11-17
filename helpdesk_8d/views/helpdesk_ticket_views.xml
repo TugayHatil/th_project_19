@@ -23,21 +23,32 @@
             </xpath>
             <xpath expr="//page[@name='description']" position="after">
                 <page string="Detaylar" name="luna_details">
-                    <field name="complaint_detail" placeholder="Müşterinin / bildirenin ifadesi, gözlenen belirtiler, arıza anında yapılan işlem"/>
-                    <field name="environment_conditions" placeholder="Saha lokasyonu, montaj şekli, sıcaklık, nem, su / toz teması, şebeke koşulları, kullanım süresi"/>
-                    <field name="impact" placeholder="Kaç cihaz, kaç müşteri, toplam sevk / kurulu adet, etki oranı"/>
-                    <field name="reproduction_steps" placeholder="Adım adım yazınız; ekipman, yazılım ve test koşullarını belirtiniz"/>
-                    <field name="classification" placeholder="Donanım, yazılım, üretim, kalite"/>
+                    <separator string="Şikayet Detayı"/>
+                    <field name="complaint_detail" nolabel="1" placeholder="Müşterinin / bildirenin ifadesi, gözlenen belirtiler, arıza anında yapılan işlem"/>
+                    <separator string="Nerede / Ortam Koşulları"/>
+                    <field name="environment_conditions" nolabel="1" placeholder="Saha lokasyonu, montaj şekli, sıcaklık, nem, su / toz teması, şebeke koşulları, kullanım süresi"/>
+                    <separator string="Etki"/>
+                    <field name="impact" nolabel="1" placeholder="Kaç cihaz, kaç müşteri, toplam sevk / kurulu adet, etki oranı"/>
+                    <separator string="Sorunu Tekrarlama Adımları"/>
+                    <field name="reproduction_steps" nolabel="1" placeholder="Adım adım yazınız; ekipman, yazılım ve test koşullarını belirtiniz"/>
+                    <separator string="Sınıflandırma"/>
+                    <field name="classification" nolabel="1" placeholder="Donanım, yazılım, üretim, kalite"/>
                 </page>
                 <page string="Detaylı Analiz ve Aksiyonlar" name="luna_analysis">
-                    <field name="temporary_action" placeholder="Müşteriye / sahaya yönelik acil önlem (cihaz değişimi, yazılım yaması, stok kontrolü, sevkiyat durdurma vb.)"/>
-                    <field name="root_cause" placeholder="Yapılan analiz, ölçümler, test sonuçları ve tespit edilen kök neden"/>
-                    <field name="permanent_solution" placeholder="Kök nedeni ortadan kaldıran seçilen çözüm ve gerekçesi"/>
+                    <separator string="Geçici Aksiyon"/>
+                    <field name="temporary_action" nolabel="1" placeholder="Müşteriye / sahaya yönelik acil önlem (cihaz değişimi, yazılım yaması, stok kontrolü, sevkiyat durdurma vb.)"/>
+                    <separator string="Kök Neden"/>
+                    <field name="root_cause" nolabel="1" placeholder="Yapılan analiz, ölçümler, test sonuçları ve tespit edilen kök neden"/>
+                    <separator string="Kalıcı Çözüm"/>
+                    <field name="permanent_solution" nolabel="1" placeholder="Kök nedeni ortadan kaldıran seçilen çözüm ve gerekçesi"/>
                 </page>
                 <page string="Doğrulama ve Önlem" name="luna_validation">
-                    <field name="validation" placeholder="Uygulama sonrası izleme: yöntem, süre ve sonuç (test, saha takibi, numune kontrolü)"/>
-                    <field name="preventive_action_plan" placeholder="Süreç, test, doküman, eğitim, tedarikçi vb. önleyici aksiyonlar"/>
-                    <field name="other_products_impact" placeholder="Etkilenebilecek ürünler / modeller / lotlar, benzer tasarım veya komponent kullanımı"/>
+                    <separator string="Doğrulama"/>
+                    <field name="validation" nolabel="1" placeholder="Uygulama sonrası izleme: yöntem, süre ve sonuç (test, saha takibi, numune kontrolü)"/>
+                    <separator string="Önleyici Aksiyon Planı"/>
+                    <field name="preventive_action_plan" nolabel="1" placeholder="Süreç, test, doküman, eğitim, tedarikçi vb. önleyici aksiyonlar"/>
+                    <separator string="Diğer Ürünlere Etkisi Olabilir mi?"/>
+                    <field name="other_products_impact" nolabel="1" placeholder="Etkilenebilecek ürünler / modeller / lotlar, benzer tasarım veya komponent kullanımı"/>
                 </page>
             </xpath>
         </field>
