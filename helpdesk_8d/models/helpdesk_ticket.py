@@ -13,6 +13,8 @@ class HelpdeskTicket(models.Model):
     software_version_id = fields.Many2one(
         'luna.software.version', string='Yazılım Versiyonu')
     serial_number = fields.Char(string='Seri Numarası')
+    luna_product_id = fields.Many2one(
+        'product.product', string='Ürün')
 
     complaint_detail = fields.Html(string='Şikayet Detayı')
     environment_conditions = fields.Html(string='Nerede / Ortam Koşulları')

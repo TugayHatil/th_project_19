@@ -64,7 +64,7 @@
                             </tr>
                             <tr>
                                 <td><strong>Ürün Modeli</strong></td>
-                                <td><span t-field="o.product_id"/></td>
+                                <td><span t-field="o.luna_product_id"/></td>
                                 <td><strong>Seri Numarası</strong></td>
                                 <td><span t-field="o.serial_number"/></td>
                             </tr>
