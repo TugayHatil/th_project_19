@@ -4,15 +4,7 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
                 <t t-call="web.basic_layout">
-                    <div class="page o_8d_form">
-                        <style>
-                            .o_8d_form table { font-size: 11.5px; }
-                            .o_8d_form table td, .o_8d_form table th {
-                                padding: 2px 6px;
-                                line-height: 1.25;
-                            }
-                            .o_8d_form td p { margin: 0; }
-                        </style>
+                    <div class="page">
                         <div class="row mx-0 border mb-2">
                             <div class="col-4 border-end text-center py-1">
                                 <img src="/helpdesk_8d/static/src/img/luna_logo.png"
