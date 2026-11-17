@@ -5,6 +5,7 @@
         <field name="name">helpdesk.ticket.form.inherit.8d</field>
         <field name="model">helpdesk.ticket</field>
         <field name="inherit_id" ref="helpdesk.helpdesk_ticket_view_form"/>
+        <field name="priority">25</field>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='email_cc']" position="after">
                 <field name="noticed_location_id"/>
