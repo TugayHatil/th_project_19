@@ -17,10 +17,19 @@ class PurchaseOrderLine(models.Model):
     @api.onchange('product_id')
     def _onchange_product_id_mpn(self):
         for line in self:
-            available = line.product_id.manufacturer_ids
+            product = line.product_id
+            pid = product.id if isinstance(product.id, int) else \
+                (product._origin.id if product._origin else False)
+            if not pid:
+                line.mpn_ids = False
+                continue
+            # Onchange baglaminda o2m okumasi cache'den bos donebiliyor;
+            # acik search kullan.
+            available = self.env['product.manufacturer'].search(
+                [('product_id', '=', pid)])
             if len(available) == 1:
                 line.mpn_ids = available
             else:
-                # ürün değişince eski ürünün MPN'leri kalmasın
+                # urun degisince eski urunun MPN'leri kalmasin
                 line.mpn_ids = line.mpn_ids.filtered(
                     lambda m: m.id in available.ids)
