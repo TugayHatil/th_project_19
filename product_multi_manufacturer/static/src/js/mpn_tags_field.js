@@ -5,6 +5,7 @@ import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { standardFieldProps } from "@web/views/fields/standard_field_props";
 import { useX2ManyCrud } from "@web/views/fields/relational_utils";
+import { useRecordObserver } from "@web/model/relational_model/utils";
 import { Dialog } from "@web/core/dialog/dialog";
 
 import { Component, useState } from "@odoo/owl";
@@ -61,6 +62,49 @@ export class MpnTagsField extends Component {
             () => this.props.record.data[this.props.name],
             true
         );
+        // Ürün değişimini izle: tek MPN otomatik eklenir, başka ürünün
+        // MPN'leri temizlenir. (Sunucu onchange'i new-record baglaminda
+        // guvenilmez oldugu icin istemci tarafinda uygulanir.)
+        this.lastPid = undefined;
+        useRecordObserver(async (record) => {
+            if (this.props.readonly) {
+                return;
+            }
+            const value = record.data.product_id;
+            const pid = Array.isArray(value)
+                ? value[0]
+                : ((value && typeof value === "object" && (value.id || value.resId)) || value) || false;
+            if (pid === this.lastPid) {
+                return;
+            }
+            this.lastPid = pid;
+            const current = record.data[this.props.name].records.map((r) => r.resId);
+            if (!pid) {
+                if (current.length) {
+                    await record.update({ [this.props.name]: [[6, 0, []]] });
+                }
+                return;
+            }
+            const ids = (
+                await this.orm.searchRead(
+                    "product.manufacturer",
+                    [["product_id", "=", pid]],
+                    ["id"]
+                )
+            ).map((m) => m.id);
+            let next = null;
+            if (ids.length === 1) {
+                next = ids;
+            } else {
+                const kept = current.filter((id) => ids.includes(id));
+                if (kept.length !== current.length) {
+                    next = kept;
+                }
+            }
+            if (next && (next.length !== current.length || next.some((v, i) => v !== current[i]))) {
+                await record.update({ [this.props.name]: [[6, 0, next]] });
+            }
+        });
     }
 
     get tags() {
