@@ -6,8 +6,9 @@
         <field name="model">product.product</field>
         <field name="inherit_id" ref="product.product_search_form_view"/>
         <field name="arch" type="xml">
-            <field name="name" position="attributes">
-                <attribute name="filter_domain">['|', '|', '|', ('default_code', 'ilike', self), ('name', 'ilike', self), ('barcode', 'ilike', self), ('manufacturer_ids.manufacturer_code', 'ilike', self)]</attribute>
+            <field name="name" position="after">
+                <field name="manufacturer_ids" string="MPN"
+                       filter_domain="[('manufacturer_ids.manufacturer_code', 'ilike', self)]"/>
             </field>
         </field>
     </record>
