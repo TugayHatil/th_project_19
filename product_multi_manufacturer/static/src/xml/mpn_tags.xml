@@ -4,13 +4,21 @@
     <t t-name="product_multi_manufacturer.MpnTags">
         <span class="o_mpn_tags">
             <t t-foreach="tags" t-as="tag" t-key="tag.id">
-                <span class="o_mpn_tag badge text-bg-secondary" t-att-title="tag.manufacturer_id and tag.manufacturer_id[1]">
-                    <t t-esc="tag.manufacturer_code"/>
-                    <i t-if="!props.readonly"
-                       class="fa fa-times o_mpn_tag_remove"
-                       role="img"
-                       t-att-title="'Kaldır'"
-                       t-on-click.stop.prevent="() => this.onRemove(tag.id)"/>
+                <span class="o_tag o_badge badge rounded-pill position-relative d-inline-flex align-items-center user-select-none mw-100 o_tag_color_0"
+                      tabindex="-1"
+                      t-att-data-color="0"
+                      t-att-aria-label="tag.manufacturer_code"
+                      t-att-data-tooltip="tag.manufacturer_id and tag.manufacturer_id[1] or tag.manufacturer_code">
+                    <div class="o_tag_badge_text text-truncate" t-out="tag.manufacturer_code"/>
+                    <a t-if="!props.readonly"
+                       class="o_delete d-flex align-items-center opacity-100-hover ps-1 opacity-75"
+                       data-tooltip="Kaldır"
+                       aria-label="Kaldır"
+                       tabindex="-1"
+                       href="#"
+                       t-on-click.stop.prevent="() => this.onRemove(tag.id)">
+                        <i class="oi oi-close align-text-top"/>
+                    </a>
                 </span>
             </t>
             <button t-if="!props.readonly and productId"

@@ -45,22 +45,6 @@
     flex-wrap: wrap;
     gap: 4px;
 
-    .o_mpn_tag {
-        display: inline-flex;
-        align-items: center;
-        font-weight: normal;
-    }
-
-    .o_mpn_tag_remove {
-        font-size: 0.7rem;
-        margin-left: 5px;
-        cursor: pointer;
-
-        &:hover {
-            color: $o-danger;
-        }
-    }
-
     .o_mpn_select_btn {
         padding: 0 4px;
         line-height: 1.2;
