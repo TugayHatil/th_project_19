@@ -13,6 +13,16 @@ class ProductProduct(models.Model):
     )
 
     @api.model
+    def _search_display_name(self, operator, value):
+        domain = super()._search_display_name(operator, value)
+        # display_name tabanlı aramalara (m2o filtreleri, varyant
+        # birleşimi vb.) üretici kodu (MPN) de dahil olsun
+        if value and operator not in Domain.NEGATIVE_OPERATORS:
+            domain = Domain(domain) | Domain(
+                'manufacturer_ids.manufacturer_code', operator, value)
+        return domain
+
+    @api.model
     def name_search(self, name='', domain=None, operator='ilike', limit=100):
         results = super().name_search(
             name=name, domain=domain, operator=operator, limit=limit)

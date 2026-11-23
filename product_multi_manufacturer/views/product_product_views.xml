@@ -1,6 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
+    <record id="product_search_form_view_manufacturers" model="ir.ui.view">
+        <field name="name">product.product.search.manufacturers</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_search_form_view"/>
+        <field name="arch" type="xml">
+            <field name="name" position="attributes">
+                <attribute name="filter_domain">['|', '|', '|', ('default_code', 'ilike', self), ('name', 'ilike', self), ('barcode', 'ilike', self), ('manufacturer_ids.manufacturer_code', 'ilike', self)]</attribute>
+            </field>
+        </field>
+    </record>
+
     <record id="product_product_form_view_manufacturers" model="ir.ui.view">
         <field name="name">product.product.form.manufacturers</field>
         <field name="model">product.product</field>
