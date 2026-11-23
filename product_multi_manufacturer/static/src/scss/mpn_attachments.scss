@@ -1,0 +1,40 @@
+.o_mpn_attachments {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+
+    .o_mpn_item {
+        display: inline-flex;
+        align-items: center;
+        margin-right: 6px;
+    }
+
+    .o_mpn_attachment {
+        font-size: 1.15rem;
+        line-height: 1;
+        padding: 0 2px;
+        color: $o-main-link-color;
+
+        &:hover {
+            color: $o-brand-primary;
+        }
+    }
+
+    .o_mpn_remove {
+        font-size: 0.7rem;
+        margin-left: -1px;
+        cursor: pointer;
+        color: $o-gray-600;
+
+        &:hover {
+            color: $o-danger;
+        }
+    }
+
+    .o_mpn_add_btn {
+        padding: 0 4px;
+        font-size: 1rem;
+        line-height: 1;
+        vertical-align: baseline;
+    }
+}

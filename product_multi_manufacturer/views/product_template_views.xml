@@ -27,6 +27,7 @@
                             <field name="manufacturer_id" options="{'no_create': True, 'no_quick_create': True, 'no_open': True}"/>
                             <field name="note" optional="hide"/>
                             <field name="state"/>
+                            <field name="attachment_ids" widget="mpn_attachments" optional="hide"/>
                         </list>
                     </field>
                 </page>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="product_multi_manufacturer.MpnAttachments">
+        <span class="o_mpn_attachments">
+            <t t-foreach="files" t-as="file" t-key="file.id">
+                <span class="o_mpn_item">
+                    <a t-att-href="urlFor(file)"
+                       t-att-target="isPdf(file) ? '_blank' : false"
+                       t-att-title="file.name"
+                       class="o_mpn_attachment">
+                        <i t-attf-class="fa {{ iconFor(file) }}" role="img"/>
+                    </a>
+                    <i t-if="!props.readonly"
+                       class="fa fa-times o_mpn_remove"
+                       role="img"
+                       t-att-title="'Kaldır'"
+                       t-on-click.stop.prevent="() => this.onFileRemove(file.id)"/>
+                </span>
+            </t>
+            <span t-if="!props.readonly" class="o_mpn_add">
+                <FileInput
+                    resModel="props.record.resModel"
+                    resId="props.record.resId or 0"
+                    multiUpload="true"
+                    onUpload.bind="onFileUploaded">
+                    <button class="btn btn-link o_mpn_add_btn" title="Doküman Ekle">
+                        <i class="fa fa-plus" role="img" aria-label="Doküman Ekle"/>
+                    </button>
+                </FileInput>
+            </span>
+        </span>
+    </t>
+
+</templates>

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields
+from odoo import api, fields, models
 
 
 class ProductManufacturer(models.Model):
@@ -37,8 +37,41 @@ class ProductManufacturer(models.Model):
         string='Durumu',
         required=True,
     )
+    attachment_ids = fields.Many2many(
+        'ir.attachment',
+        'product_manufacturer_attachment_rel',
+        'manufacturer_row_id',
+        'attachment_id',
+        string='Dokümanlar',
+    )
 
     _product_manufacturer_code_unique = models.Constraint(
         'unique(product_id, manufacturer_id, manufacturer_code)',
         'Aynı ürün, üretici ve üretici kodu kombinasyonu daha önce tanımlanmıştır.',
     )
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records._sync_document_attachments()
+        return records
+
+    def write(self, vals):
+        res = super().write(vals)
+        if 'attachment_ids' in vals:
+            self._sync_document_attachments()
+        return res
+
+    def _sync_document_attachments(self):
+        """Satır kaydedilmeden önce yüklenen eklerin res_model/res_id
+        bilgisini üretici satırına bağlar; böylece standart attachment
+        erişim kontrolü satır yetkileri üzerinden çalışır."""
+        for rec in self:
+            misplaced = rec.attachment_ids.filtered(
+                lambda a: a.res_model != 'product.manufacturer'
+                or a.res_id != rec.id)
+            if misplaced:
+                misplaced.sudo().write({
+                    'res_model': 'product.manufacturer',
+                    'res_id': rec.id,
+                })
