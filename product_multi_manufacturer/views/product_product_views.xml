@@ -7,7 +7,7 @@
         <field name="inherit_id" ref="product.product_normal_form_view"/>
         <field name="arch" type="xml">
             <xpath expr="//notebook" position="inside">
-                <page name="manufacturers" string="Üreticiler">
+                <page name="manufacturers" string="Üretici | P/N">
                     <field name="manufacturer_ids">
                         <list editable="bottom">
                             <field name="manufacturer_code"/>

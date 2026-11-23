@@ -15,7 +15,7 @@ class ProductTemplate(models.Model):
         readonly=False,
     )
 
-    @api.depends('product_variant_ids')
+    @api.depends('product_variant_ids.manufacturer_ids')
     def _compute_manufacturer_ids(self):
         for template in self:
             template.manufacturer_ids = template.product_variant_id.manufacturer_ids

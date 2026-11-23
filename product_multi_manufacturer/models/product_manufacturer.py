@@ -38,10 +38,7 @@ class ProductManufacturer(models.Model):
         required=True,
     )
 
-    _sql_constraints = [
-        (
-            'product_manufacturer_code_unique',
-            'unique(product_id, manufacturer_id, manufacturer_code)',
-            'Aynı ürün, üretici ve üretici kodu kombinasyonu daha önce tanımlanmıştır.'
-        ),
-    ]
+    _product_manufacturer_code_unique = models.Constraint(
+        'unique(product_id, manufacturer_id, manufacturer_code)',
+        'Aynı ürün, üretici ve üretici kodu kombinasyonu daha önce tanımlanmıştır.',
+    )
