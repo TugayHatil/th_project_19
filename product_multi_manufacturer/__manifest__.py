@@ -13,11 +13,12 @@ menüsü ekler.""",
     'website': "https://projet.solutions",
 
     'category': 'Inventory/Inventory',
-    'version': '19.0.1.3.0',
+    'version': '19.0.1.4.0',
 
     'depends': [
         'product',
         'stock',
+        'purchase',
     ],
 
     'data': [
@@ -27,11 +28,14 @@ menüsü ekler.""",
         'views/product_product_views.xml',
         'views/product_template_views.xml',
         'views/res_partner_views.xml',
+        'views/purchase_order_views.xml',
     ],
     'assets': {
         'web.assets_backend': [
             'product_multi_manufacturer/static/src/js/mpn_attachments_field.js',
+            'product_multi_manufacturer/static/src/js/mpn_tags_field.js',
             'product_multi_manufacturer/static/src/xml/mpn_attachments.xml',
+            'product_multi_manufacturer/static/src/xml/mpn_tags.xml',
             'product_multi_manufacturer/static/src/scss/mpn_attachments.scss',
         ],
     },

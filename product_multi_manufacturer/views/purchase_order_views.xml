@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="purchase_order_form_mpn" model="ir.ui.view">
+        <field name="name">purchase.order.form.mpn</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='order_line']/list/field[@name='product_qty']" position="before">
+                <field name="mpn_ids" widget="mpn_tags" optional="hide"/>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/form//group//field[@name='product_id']" position="after">
+                <field name="mpn_ids" widget="mpn_tags" domain="[('product_id', '=', product_id)]"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

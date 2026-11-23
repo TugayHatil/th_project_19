@@ -5,6 +5,7 @@ from odoo import api, fields, models
 class ProductManufacturer(models.Model):
     _name = 'product.manufacturer'
     _description = 'Ürün Üreticisi'
+    _rec_name = 'manufacturer_code'
     _order = 'product_id, manufacturer_id, manufacturer_code'
 
     product_id = fields.Many2one(

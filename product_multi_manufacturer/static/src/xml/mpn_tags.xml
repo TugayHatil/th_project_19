@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="product_multi_manufacturer.MpnTags">
+        <span class="o_mpn_tags">
+            <t t-foreach="tags" t-as="tag" t-key="tag.id">
+                <span class="o_mpn_tag badge text-bg-secondary" t-att-title="tag.manufacturer_id and tag.manufacturer_id[1]">
+                    <t t-esc="tag.manufacturer_code"/>
+                    <i t-if="!props.readonly"
+                       class="fa fa-times o_mpn_tag_remove"
+                       role="img"
+                       t-att-title="'Kaldır'"
+                       t-on-click.stop.prevent="() => this.onRemove(tag.id)"/>
+                </span>
+            </t>
+            <button t-if="!props.readonly and productId"
+                    type="button"
+                    class="btn btn-link btn-sm o_mpn_select_btn"
+                    t-on-click.stop.prevent="openDialog">Seç</button>
+        </span>
+    </t>
+
+    <t t-name="product_multi_manufacturer.MpnSelectDialog">
+        <Dialog title="props.title" size="'sm'">
+            <div t-if="props.options.length === 0" class="text-muted p-2">
+                Bu ürün için tanımlı MPN bulunmuyor.
+            </div>
+            <div t-else="" class="list-group o_mpn_dialog_list">
+                <label class="list-group-item d-flex align-items-center o_mpn_all">
+                    <input type="checkbox"
+                           class="form-check-input me-2"
+                           t-att-checked="allSelected"
+                           t-on-change="toggleAll"/>
+                    <b>Hepsi</b>
+                </label>
+                <t t-foreach="props.options" t-as="opt" t-key="opt.id">
+                    <label class="list-group-item d-flex align-items-center">
+                        <input type="checkbox"
+                               class="form-check-input me-2"
+                               t-att-checked="state.selected.has(opt.id)"
+                               t-on-change="() => this.toggle(opt.id)"/>
+                        <span>
+                            <b t-esc="opt.code"/>
+                            <span t-if="opt.manufacturer" class="text-muted ms-1" t-esc="'— ' + opt.manufacturer"/>
+                        </span>
+                    </label>
+                </t>
+            </div>
+            <t t-set-slot="footer">
+                <button class="btn btn-primary" t-on-click="onConfirm">Ok</button>
+                <button class="btn btn-secondary" t-on-click="props.close">Vazgeç</button>
+            </t>
+        </Dialog>
+    </t>
+
+</templates>
