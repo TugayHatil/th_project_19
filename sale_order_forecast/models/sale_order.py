@@ -253,6 +253,12 @@ class SaleOrder(models.Model):
             'origin': self.name,
         })[0]
         order_vals['order_line'] = []
+        # Revizyon/numara alanları kopyalanmasın; yeni sipariş kendi
+        # numarasını ve revizyon yaşam döngüsünü başlatsın (base_revision
+        # gibi numara+revizyon benzersizliği zorlayan modüllerle çakışmaz).
+        for key in ('name', 'unrevisioned_name', 'revision_number',
+                    'current_revision_id', 'old_revision_ids', 'state'):
+            order_vals.pop(key, None)
         new_order = self.create(order_vals)
         for line in lines:
             line_vals = line.copy_data(default={
