@@ -51,6 +51,15 @@ class SaleOrderLine(models.Model):
                     product=line.product_id.display_name,
                     ordered=line.product_uom_qty))
 
+    def _check_line_unlink(self):
+        """Standart koruma, onaylı sipariş satırının silinmesini fatura ve
+        teslimat izlenebilirliği için engeller. Öngörü sipariş satırlarında
+        teslimat ve fatura hiç oluşmadığından bu satırlar silinebilir;
+        Kesin siparişlerde standart koruma aynen geçerlidir."""
+        protected = super()._check_line_unlink()
+        return protected - protected.filtered(
+            lambda l: l.order_id.order_nature == 'forecast')
+
     def _action_launch_stock_rule(self, *, previous_product_uom_qty=False):
         """ Öngörü niteliğindeki siparişlerin satırları için tedarik/stok
         kuralı çalıştırılmaz; böylece onay veya satır güncellemesi sırasında
