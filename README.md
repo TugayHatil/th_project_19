@@ -68,12 +68,15 @@ or Öngörü. The field stays empty on quotations; pressing Confirm opens a
 selection dialog (Kesin / Öngörü) and orders cannot reach the `sale` state
 without a nature. Öngörü orders confirm to Sales Order without creating
 delivery orders, stock moves or reservations. A confirmed Öngörü order can be
-converted in place to Kesin from a header button (with confirmation dialog):
-the same order number and lines are kept, the standard stock-rule/delivery
-flow is launched and the conversion is logged to chatter. Conversion is
-one-way and can only happen once (tracked via `forecast_converted`, enforced
-server-side). Öngörü orders cannot be invoiced (`qty_to_invoice` forced to
-zero plus a `_create_invoices` guard) until converted. Works independently
+transferred to a NEW Kesin order: on the confirmed Öngörü order each line
+has an Aktar checkbox and Aktarım quantity (defaults to the remaining
+quantity), and pressing Kesin Siparişe Dönüştür creates a new confirmed
+sale order with the selected lines/quantities and launches the standard
+delivery flow. Transfers are partial and repeatable — transferred and
+remaining quantities are tracked per line, a smart button on the Öngörü
+order lists the created Kesin orders and both sides keep chatter logs.
+Öngörü orders cannot be invoiced (`qty_to_invoice` forced to
+zero plus a `_create_invoices` guard) until transferred. Works independently
 of the Sale Order Type field and does not touch stock forecast, reservation
 or MRP mechanics.
 

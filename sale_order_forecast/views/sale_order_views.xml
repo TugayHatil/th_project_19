@@ -10,17 +10,48 @@
                 </xpath>
                 <xpath expr="//header/button[@name='action_cancel']" position="before">
                     <button string="Kesin Siparişe Dönüştür"
-                            name="action_convert_to_normal"
+                            name="action_convert_to_confirmed"
                             type="object"
                             class="btn-primary"
-                            confirm="Bu Öngörü siparişini Kesin siparişe dönüştürmek istediğinize emin misiniz? Bu işlem sonrasında standart teslimat süreci başlatılacaktır."
-                            invisible="order_nature != 'forecast' or state != 'sale'"/>
+                            confirm="İşaretlediğiniz satırlar için yeni bir Kesin sipariş oluşturulup onaylanacaktır. Devam etmek istiyor musunuz?"
+                            invisible="order_nature != 'forecast' or state != 'sale' or not has_transferable_lines"/>
                 </xpath>
                 <xpath expr="//group[@name='order_details']/field[@name='payment_term_id']" position="after">
                     <field name="order_nature"
                            readonly="state in ['sale', 'cancel'] or locked or was_confirmed"/>
                     <field name="forecast_converted" invisible="1"/>
                     <field name="was_confirmed" invisible="1"/>
+                    <field name="forecast_order_id" invisible="1"/>
+                    <field name="confirmed_order_count" invisible="1"/>
+                    <field name="has_transferable_lines" invisible="1"/>
+                </xpath>
+                <xpath expr="//div[@name='button_box']" position="inside">
+                    <button name="action_view_confirmed_orders" type="object"
+                            class="oe_stat_button" icon="fa-check-square-o"
+                            invisible="confirmed_order_count == 0">
+                        <field name="confirmed_order_count" widget="statinfo"
+                               string="Kesin Siparişler"/>
+                    </button>
+                    <button name="action_view_forecast_source" type="object"
+                            class="oe_stat_button" icon="fa-hourglass-half"
+                            string="Öngörü Siparişi"
+                            invisible="not forecast_order_id"/>
+                </xpath>
+                <xpath expr="//field[@name='order_line']/list/field[@name='product_uom_qty']" position="before">
+                    <field name="to_transfer"
+                           column_invisible="parent.order_nature != 'forecast'"
+                           readonly="remaining_transfer_qty &lt;= 0"/>
+                </xpath>
+                <xpath expr="//field[@name='order_line']/list/field[@name='product_uom_qty']" position="after">
+                    <field name="transfer_qty" string="Aktarım"
+                           column_invisible="parent.order_nature != 'forecast'"
+                           readonly="not to_transfer or remaining_transfer_qty &lt;= 0"/>
+                    <field name="transferred_qty" string="Aktarılan"
+                           column_invisible="parent.order_nature != 'forecast'"
+                           readonly="1"/>
+                    <field name="remaining_transfer_qty" string="Kalan"
+                           column_invisible="parent.order_nature != 'forecast'"
+                           readonly="1"/>
                 </xpath>
             </field>
         </record>

@@ -2,7 +2,7 @@
 {
     'name': "Sale Order Forecast Nature",
 
-    'summary': "Satış siparişlerinde Kesin/Öngörü niteliği: onayda seçim penceresi, teslimatsiz öngörü onayı ve Kesin siparişe dönüştürme",
+    'summary': "Satış siparişlerinde Kesin/Öngörü niteliği: onayda seçim penceresi, teslimatsiz öngörü onayı ve satır bazında Kesin siparişe aktarım",
 
     'description': """Satış siparişlerine Sipariş Niteliği (Kesin / Öngörü) alanı ekler.
 
@@ -13,14 +13,16 @@ açar (Kesin / Öngörü). Seçim yapılmadan sipariş onaylanamaz.
 durumuna gelir ancak teslimat emri, stok rezervasyonu veya stok hareketi
 oluşturulmaz. Sipariş onaylandığında stok kuralları tetiklenmez.
 
-Onaylanmış Öngörü siparişi formundaki "Kesin Siparişe Dönüştür" butonu
-ile sipariş aynı numara ve satırlarla Kesin niteliğe çevrilir;
-dönüştürme anında standart Odoo teslimat süreci başlatılır ve işlem
-chatter'a yazılır. Dönüştürme tek yönlüdür ve her sipariş için yalnızca
-bir kez yapılabilir.
+Onaylanmış Öngörü siparişinde satırlar işaretlenip "Aktarım" miktarı
+belirlenerek "Kesin Siparişe Dönüştür" butonuyla yeni bir Kesin sipariş
+oluşturulur ve otomatik onaylanır. Aktarım parçalıdır; kalan miktarlar
+satır bazında izlenir ve sonraki aktarımlarda yeniden Kesin siparişlere
+dönüştürülebilir. Öngörü siparişinden oluşan Kesin siparişlere akıllı
+butonla erişilir; Kesin sipariş üzerinden de kaynak Öngörü siparişine
+dönülebilir. İşlemler chatter'a yazılır.
 
-Öngörü niteliğindeki siparişlerden fatura oluşturulamaz; dönüştürme
-sonrasında standart faturalama süreci kullanılır.
+Öngörü niteliğindeki siparişlerden fatura oluşturulamaz; aktarılan Kesin
+siparişlerde standart faturalama süreci kullanılır.
 
 Mevcut Satış Sipariş Türü (sale_order_type_journal) alanından bağımsız
 çalışır; stok tahmini, rezervasyon ve MRP mekanizmalarına müdahale etmez.""",
@@ -29,7 +31,7 @@ Mevcut Satış Sipariş Türü (sale_order_type_journal) alanından bağımsız
     'website': "https://projet.solutions",
 
     'category': 'Sales/Sales',
-    'version': '19.0.2.1.0',
+    'version': '19.0.3.0.0',
 
     'depends': [
         'sale_stock',

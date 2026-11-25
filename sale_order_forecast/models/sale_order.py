@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields, _
+from odoo import api, models, fields, _
 from odoo.exceptions import UserError
 from odoo.http import request
 from odoo.tools import format_datetime
@@ -19,18 +19,53 @@ class SaleOrder(models.Model):
         help="Kesin: standart satış siparişi süreci.\n"
              "Öngörü: teslimat emri oluşturulmadan onaylanabilen satış siparişi.")
     forecast_converted = fields.Boolean(
-        string='Öngörü\'den Dönüştürüldü',
+        string='Öngörü\'den Aktarım Yapıldı',
         default=False,
         copy=False,
         readonly=True,
-        help="Bu sipariş Öngörü niteliğinden Kesin niteliğe dönüştürülmüştür. "
-             "Dönüştürme tek yönlüdür ve tekrarlanamaz.")
+        help="Bu Öngörü siparişinden en az bir Kesin sipariş aktarımı "
+             "yapılmıştır.")
+    forecast_order_id = fields.Many2one(
+        'sale.order',
+        string='Kaynak Öngörü Siparişi',
+        copy=False,
+        readonly=True,
+        index=True,
+        ondelete='set null',
+        help="Bu Kesin siparişin aktarıldığı Öngörü siparişi.")
+    confirmed_order_ids = fields.One2many(
+        'sale.order', 'forecast_order_id',
+        string='Kesin Siparişler',
+        copy=False,
+        readonly=True,
+        help="Bu Öngörü siparişinden aktarılarak oluşturulan Kesin siparişler.")
+    confirmed_order_count = fields.Integer(
+        string='Kesin Sipariş Sayısı',
+        compute='_compute_confirmed_order_count')
+    has_transferable_lines = fields.Boolean(
+        string='Aktarılabilir Satır Var',
+        compute='_compute_has_transferable_lines')
     was_confirmed = fields.Boolean(
         string='Daha Önce Onaylandı',
         default=False,
         copy=False,
         readonly=True,
         help="Sipariş en az bir kez onaylandı; niteliği artık değiştirilemez.")
+
+    @api.depends('confirmed_order_ids')
+    def _compute_confirmed_order_count(self):
+        for order in self:
+            order.confirmed_order_count = len(order.confirmed_order_ids)
+
+    @api.depends('order_nature',
+                 'order_line.display_type',
+                 'order_line.remaining_transfer_qty')
+    def _compute_has_transferable_lines(self):
+        for order in self:
+            order.has_transferable_lines = (
+                order.order_nature == 'forecast'
+                and any(not l.display_type and l.remaining_transfer_qty > 0
+                        for l in order.order_line))
 
     def write(self, vals):
         if 'order_nature' in vals and not self.env.context.get('order_nature_change_allowed'):
@@ -114,56 +149,146 @@ class SaleOrder(models.Model):
             'forecast_converted': False,
             'was_confirmed': False,
         })
+        cancelled.order_line.write({
+            'to_transfer': False,
+            'transfer_qty': 0.0,
+        })
         return res
 
-    def action_convert_to_normal(self):
+    def action_convert_to_confirmed(self):
+        """İşaretli satırları yeni bir Kesin siparişe aktarır ve onaylar.
+
+        Öngörü siparişi yerinde kalır; aktarılan miktarlar satır bazında
+        `transferred_qty` üzerinden izlenir. İşlem parçalı olarak tekrar
+        edilebilir."""
+        new_orders = self.env['sale.order']
         for order in self:
             if order.order_nature != 'forecast':
                 raise UserError(_(
-                    "Yalnızca Öngörü niteliğindeki siparişler Kesin siparişe "
-                    "dönüştürülebilir."))
+                    "Yalnızca Öngörü niteliğindeki siparişlerden Kesin "
+                    "siparişe aktarım yapılabilir."))
             if order.state != 'sale':
                 raise UserError(_(
-                    "Yalnızca onaylanmış (Satış Siparişi) Öngörü siparişleri "
-                    "dönüştürülebilir."))
-            order._convert_forecast_to_normal()
-        return True
+                    "Yalnızca onaylanmış (Satış Siparişi) Öngörü "
+                    "siparişlerinden aktarım yapılabilir."))
+            new_orders |= order._transfer_selected_lines()
+        action = self.env['ir.actions.act_window']._for_xml_id(
+            'sale.action_orders')
+        if len(new_orders) == 1:
+            action.update({
+                'view_mode': 'form',
+                'views': [(False, 'form')],
+                'res_id': new_orders.id,
+            })
+        else:
+            action['domain'] = [('id', 'in', new_orders.ids)]
+        action['context'] = dict(self.env.context)
+        return action
 
-    def _convert_forecast_to_normal(self):
-        """ Öngörü siparişini Kesin niteliğe çevirir ve standart stok/tedarik
-        kuralı mekanizmasını çalıştırarak teslimat emrini oluşturur.
+    def _transfer_selected_lines(self):
+        """İşaretli satırlardan yeni bir Kesin sipariş oluşturup onaylar.
 
-        Tüm işlem tek transaction içinde yürür; herhangi bir adım hata verirse
-        nitelik değişikliği dahil her şey geri alınır.
+        Tüm işlem tek transaction içinde yürür; herhangi bir adım hata
+        verirse yeni sipariş dahil her şey geri alınır.
         """
         self.ensure_one()
-        # Daha önce stok hareketi oluşmuş satırları atlayarak mükerrer teslimatı engelle.
         lines = self.order_line.filtered(
-            lambda l: l.state == 'sale' and not l.move_ids.filtered(
-                lambda m: m.state != 'cancel'))
+            lambda l: l.to_transfer and not l.display_type)
         if not lines:
             raise UserError(_(
-                "Dönüştürülecek teslimat satırı bulunamadı. Siparişin stok "
-                "hareketleri zaten oluşturulmuş olabilir."))
-        was_locked = self.locked
-        if was_locked:
-            # Kilitli siparişler _action_launch_stock_rule tarafından atlanır;
-            # kural çalıştırılırken kilidi geçici olarak kaldır.
-            self.locked = False
-        self.with_context(order_nature_change_allowed=True).write({
-            'order_nature': 'confirmed',
-            'forecast_converted': True,
-        })
-        try:
-            lines._action_launch_stock_rule()
-        finally:
-            if was_locked:
-                self.locked = True
+                "Lütfen Kesin siparişe aktarılacak satırları işaretleyin."))
+        qty_map = {}
+        for line in lines:
+            qty = line.transfer_qty or line.remaining_transfer_qty
+            if qty <= 0:
+                raise UserError(_(
+                    "\"%(product)s\" satırında aktarılabilir miktar "
+                    "kalmamış.",
+                    product=line.product_id.display_name))
+            if qty > line.remaining_transfer_qty:
+                raise UserError(_(
+                    "\"%(product)s\" satırının aktarım miktarı (%(qty)s), "
+                    "kalan miktardan (%(remaining)s) büyük olamaz.",
+                    product=line.product_id.display_name,
+                    qty=qty,
+                    remaining=line.remaining_transfer_qty))
+            qty_map[line.id] = qty
+        new_order = self._create_transfer_order(lines, qty_map)
+        for line in lines:
+            line.write({
+                'transferred_qty': line.transferred_qty + qty_map[line.id],
+                'to_transfer': False,
+                'transfer_qty': 0.0,
+            })
+        self.forecast_converted = True
+        detail = ', '.join(
+            "%s (%s)" % (l.product_id.display_name, qty_map[l.id])
+            for l in lines)
         self.message_post(body=_(
-            "Öngörü siparişi Kesin siparişe dönüştürüldü. "
-            "İşlemi yapan: %(user)s – Tarih: %(date)s",
+            "%(count)s satır %(name)s Kesin siparişine aktarıldı: "
+            "%(detail)s. İşlemi yapan: %(user)s – Tarih: %(date)s",
+            count=len(lines),
+            name=new_order.name,
+            detail=detail,
             user=self.env.user.display_name,
             date=format_datetime(self.env, fields.Datetime.now())))
+        new_order.message_post(body=_(
+            "Sipariş, %(name)s Öngörü siparişinden aktarılarak "
+            "oluşturuldu. İşlemi yapan: %(user)s – Tarih: %(date)s",
+            name=self.name,
+            user=self.env.user.display_name,
+            date=format_datetime(self.env, fields.Datetime.now())))
+        return new_order
+
+    def _create_transfer_order(self, lines, qty_map):
+        """Aktarım için yeni bir Kesin satış siparişi oluşturur ve onaylar.
+
+        Başlık bilgileri kaynak siparişten kopyalanır; yalnızca işaretli
+        satırlar, aktarım miktarlarıyla yeni siparişe taşınır. Standart
+        `action_confirm` çağrısı teslimat/stok süreçlerini başlatır."""
+        self.ensure_one()
+        order_vals = self.copy_data(default={
+            'order_nature': 'confirmed',
+            'forecast_order_id': self.id,
+            'origin': self.name,
+        })[0]
+        order_vals['order_line'] = []
+        new_order = self.create(order_vals)
+        for line in lines:
+            line_vals = line.copy_data(default={
+                'order_id': new_order.id,
+                'product_uom_qty': qty_map[line.id],
+                'forecast_source_line_id': line.id,
+            })[0]
+            self.env['sale.order.line'].create(line_vals)
+        new_order.action_confirm()
+        return new_order
+
+    def action_view_confirmed_orders(self):
+        self.ensure_one()
+        action = self.env['ir.actions.act_window']._for_xml_id(
+            'sale.action_orders')
+        orders = self.confirmed_order_ids
+        if len(orders) == 1:
+            action.update({
+                'view_mode': 'form',
+                'views': [(False, 'form')],
+                'res_id': orders.id,
+            })
+        else:
+            action['domain'] = [('id', 'in', orders.ids)]
+        action['context'] = dict(self.env.context)
+        return action
+
+    def action_view_forecast_source(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'sale.order',
+            'res_id': self.forecast_order_id.id,
+            'view_mode': 'form',
+            'views': [(False, 'form')],
+        }
 
     def _create_invoices(self, grouped=False, final=False, date=None):
         forecast_orders = self.filtered(lambda o: o.order_nature == 'forecast')

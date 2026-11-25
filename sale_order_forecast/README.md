@@ -21,27 +21,38 @@ Satış siparişlerine **Sipariş Niteliği** (`order_nature`) alanı ekler:
 - Entegrasyonlar `order.with_context(order_nature='forecast')` ile
   niteliği önden iletebilir.
 
-## Dönüştürme
+## Aktarım (Kesin siparişe dönüştürme)
 
-- Onaylanmış Öngörü siparişi formundaki **Kesin Siparişe Dönüştür** butonu
-  (onay pencereli) siparişi aynı numara ve satırlarla Kesin niteliğe
-  çevirir ve standart teslimat sürecini başlatır. İşlem chatter'a yazılır,
-  tek yönlüdür ve her sipariş için bir kez yapılabilir.
-- Kilitli (`locked`) siparişlerde kural çalıştırılırken kilit geçici
-  kaldırılıp geri yüklenir.
+- Onaylanmış Öngörü siparişinin satır listesinde **Aktar** onay kutusu ve
+  **Aktarım** miktarı kolonu görünür (yalnızca Öngörü niteliğinde;
+  teklifte ve Kesin siparişlerde gizlidir). Satır işaretlendiğinde Aktarım
+  varsayılan olarak kalan miktarla dolar; boş/0 bırakılırsa kalanın
+  tamamı aktarılır.
+- **Kesin Siparişe Dönüştür** butonu işaretli satırları **yeni bir Kesin
+  siparişe** taşır: başlık bilgileri kopyalanır, satırlar aktarım
+  miktarlarıyla oluşturulur, sipariş otomatik onaylanır ve standart
+  teslimat/stok süreci başlar. Kaynak Öngörü siparişi yerinde kalır.
+- Aktarım **parçalıdır**: her satırda `Aktarılan` ve `Kalan` miktar
+  izlenir; kalan miktarlar sonraki dönüştürmelerde yeni Kesin siparişlere
+  aktarılabilir. Aktarım miktarı kalanı aşamaz.
+- Öngörü siparişindeki **Kesin Siparişler** akıllı butonu oluşan
+  siparişleri listeler; Kesin siparişteki **Öngörü Siparişi** butonu
+  kaynağa döner. Bağlantılar `forecast_order_id` ve
+  `forecast_source_line_id` alanlarıyla tutulur, her iki tarafın
+  chatter'ına işlem yazılır.
 - `was_confirmed` bayrağı onaylanmış siparişin niteliğini kilitler;
   onaylı/iptal siparişlerde nitelik `write` ile değiştirilemez (sunucu
   tarafı kontrol).
 - İptal edilen sipariş teklife döndürüldüğünde `order_nature`,
-  `forecast_converted` ve `was_confirmed` sıfırlanır; yeniden onayda
-  seçim penceresi tekrar açılır.
+  `forecast_converted`, `was_confirmed` ve satır işaretleri sıfırlanır;
+  yeniden onayda seçim penceresi tekrar açılır.
 
 ## Faturalama
 
 - Öngörü siparişlerde `qty_to_invoice` sıfırlanır (durum "Faturalandırılacak
   Bir Şey Yok") ve `_create_invoices` sunucu tarafında engellenir;
-  yüzdeli avans faturası butonu da gizlenir. Kesin'e dönüşünce standart
-  faturalama çalışır.
+  yüzdeli avans faturası butonu da gizlenir. Aktarılan Kesin siparişlerde
+  standart faturalama çalışır.
 
 ## Görünümler
 

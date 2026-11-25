@@ -20,10 +20,10 @@ msgstr ""
 #: model:ir.module.module,summary:sale_order_forecast.module_sale_order_forecast
 msgid ""
 "Satış siparişlerinde Kesin/Öngörü niteliği: onayda seçim penceresi, "
-"teslimatsiz öngörü onayı ve Kesin siparişe dönüştürme"
+"teslimatsiz öngörü onayı ve satır bazında Kesin siparişe aktarım"
 msgstr ""
 "Satış siparişlerinde Kesin/Öngörü niteliği: onayda seçim penceresi, "
-"teslimatsiz öngörü onayı ve Kesin siparişe dönüştürme"
+"teslimatsiz öngörü onayı ve satır bazında Kesin siparişe aktarım"
 
 #. module: sale_order_forecast
 #: model:ir.module.module,name:sale_order_forecast.module_sale_order_forecast
@@ -48,8 +48,8 @@ msgstr "Sipariş Niteliği"
 
 #. module: sale_order_forecast
 #: model:ir.model.fields,field_description:sale_order_forecast.field_sale_order__forecast_converted
-msgid "Öngörü'den Dönüştürüldü"
-msgstr "Öngörü'den Dönüştürüldü"
+msgid "Öngörü'den Aktarım Yapıldı"
+msgstr "Öngörü'den Aktarım Yapıldı"
 
 #. module: sale_order_forecast
 #: model:ir.model.fields,field_description:sale_order_forecast.field_sale_order__was_confirmed
@@ -87,11 +87,9 @@ msgstr ""
 #. module: sale_order_forecast
 #: model:ir.model.fields,help:sale_order_forecast.field_sale_order__forecast_converted
 msgid ""
-"Bu sipariş Öngörü niteliğinden Kesin niteliğe dönüştürülmüştür. "
-"Dönüştürme tek yönlüdür ve tekrarlanamaz."
+"Bu Öngörü siparişinden en az bir Kesin sipariş aktarımı yapılmıştır."
 msgstr ""
-"Bu sipariş Öngörü niteliğinden Kesin niteliğe dönüştürülmüştür. "
-"Dönüştürme tek yönlüdür ve tekrarlanamaz."
+"Bu Öngörü siparişinden en az bir Kesin sipariş aktarımı yapılmıştır."
 
 #. module: sale_order_forecast
 #: model:ir.model.fields,help:sale_order_forecast.field_sale_order__was_confirmed
@@ -129,41 +127,169 @@ msgstr "Sipariş Niteliğini Seçiniz"
 #: code:addons/sale_order_forecast/models/sale_order.py:0
 #, python-format
 msgid ""
-"Yalnızca Öngörü niteliğindeki siparişler Kesin siparişe "
-"dönüştürülebilir."
+"Yalnızca Öngörü niteliğindeki siparişlerden Kesin siparişe aktarım "
+"yapılabilir."
 msgstr ""
-"Yalnızca Öngörü niteliğindeki siparişler Kesin siparişe "
-"dönüştürülebilir."
+"Yalnızca Öngörü niteliğindeki siparişlerden Kesin siparişe aktarım "
+"yapılabilir."
 
 #. module: sale_order_forecast
 #: code:addons/sale_order_forecast/models/sale_order.py:0
 #, python-format
 msgid ""
-"Yalnızca onaylanmış (Satış Siparişi) Öngörü siparişleri "
-"dönüştürülebilir."
+"Yalnızca onaylanmış (Satış Siparişi) Öngörü siparişlerinden aktarım "
+"yapılabilir."
 msgstr ""
-"Yalnızca onaylanmış (Satış Siparişi) Öngörü siparişleri "
-"dönüştürülebilir."
+"Yalnızca onaylanmış (Satış Siparişi) Öngörü siparişlerinden aktarım "
+"yapılabilir."
+
+#. module: sale_order_forecast
+#: code:addons/sale_order_forecast/models/sale_order.py:0
+#, python-format
+msgid "Lütfen Kesin siparişe aktarılacak satırları işaretleyin."
+msgstr "Lütfen Kesin siparişe aktarılacak satırları işaretleyin."
+
+#. module: sale_order_forecast
+#: code:addons/sale_order_forecast/models/sale_order.py:0
+#, python-format
+msgid "\"%(product)s\" satırında aktarılabilir miktar kalmamış."
+msgstr "\"%(product)s\" satırında aktarılabilir miktar kalmamış."
 
 #. module: sale_order_forecast
 #: code:addons/sale_order_forecast/models/sale_order.py:0
 #, python-format
 msgid ""
-"Dönüştürülecek teslimat satırı bulunamadı. Siparişin stok hareketleri "
-"zaten oluşturulmuş olabilir."
+"\"%(product)s\" satırının aktarım miktarı (%(qty)s), kalan miktardan "
+"(%(remaining)s) büyük olamaz."
 msgstr ""
-"Dönüştürülecek teslimat satırı bulunamadı. Siparişin stok hareketleri "
-"zaten oluşturulmuş olabilir."
+"\"%(product)s\" satırının aktarım miktarı (%(qty)s), kalan miktardan "
+"(%(remaining)s) büyük olamaz."
 
 #. module: sale_order_forecast
 #: code:addons/sale_order_forecast/models/sale_order.py:0
 #, python-format
 msgid ""
-"Öngörü siparişi Kesin siparişe dönüştürüldü. İşlemi yapan: %(user)s – "
-"Tarih: %(date)s"
+"%(count)s satır %(name)s Kesin siparişine aktarıldı: %(detail)s. "
+"İşlemi yapan: %(user)s – Tarih: %(date)s"
 msgstr ""
-"Öngörü siparişi Kesin siparişe dönüştürüldü. İşlemi yapan: %(user)s – "
-"Tarih: %(date)s"
+"%(count)s satır %(name)s Kesin siparişine aktarıldı: %(detail)s. "
+"İşlemi yapan: %(user)s – Tarih: %(date)s"
+
+#. module: sale_order_forecast
+#: code:addons/sale_order_forecast/models/sale_order.py:0
+#, python-format
+msgid ""
+"Sipariş, %(name)s Öngörü siparişinden aktarılarak oluşturuldu. "
+"İşlemi yapan: %(user)s – Tarih: %(date)s"
+msgstr ""
+"Sipariş, %(name)s Öngörü siparişinden aktarılarak oluşturuldu. "
+"İşlemi yapan: %(user)s – Tarih: %(date)s"
+
+#. module: sale_order_forecast
+#: code:addons/sale_order_forecast/models/sale_order_line.py:0
+#, python-format
+msgid "Aktarım miktarı negatif olamaz."
+msgstr "Aktarım miktarı negatif olamaz."
+
+#. module: sale_order_forecast
+#: code:addons/sale_order_forecast/models/sale_order_line.py:0
+#, python-format
+msgid ""
+"Aktarım miktarı (%(qty)s), \"%(product)s\" satırının kalan miktarından "
+"(%(remaining)s) büyük olamaz."
+msgstr ""
+"Aktarım miktarı (%(qty)s), \"%(product)s\" satırının kalan miktarından "
+"(%(remaining)s) büyük olamaz."
+
+#. module: sale_order_forecast
+#: model:ir.model.fields,field_description:sale_order_forecast.field_sale_order__forecast_order_id
+msgid "Kaynak Öngörü Siparişi"
+msgstr "Kaynak Öngörü Siparişi"
+
+#. module: sale_order_forecast
+#: model:ir.model.fields,field_description:sale_order_forecast.field_sale_order__confirmed_order_ids
+#: model_terms:ir.ui.view,arch_db:sale_order_forecast.view_order_form_inherit_forecast
+msgid "Kesin Siparişler"
+msgstr "Kesin Siparişler"
+
+#. module: sale_order_forecast
+#: model:ir.model.fields,field_description:sale_order_forecast.field_sale_order__confirmed_order_count
+msgid "Kesin Sipariş Sayısı"
+msgstr "Kesin Sipariş Sayısı"
+
+#. module: sale_order_forecast
+#: model:ir.model.fields,field_description:sale_order_forecast.field_sale_order__has_transferable_lines
+msgid "Aktarılabilir Satır Var"
+msgstr "Aktarılabilir Satır Var"
+
+#. module: sale_order_forecast
+#: model:ir.model.fields,help:sale_order_forecast.field_sale_order__forecast_order_id
+msgid "Bu Kesin siparişin aktarıldığı Öngörü siparişi."
+msgstr "Bu Kesin siparişin aktarıldığı Öngörü siparişi."
+
+#. module: sale_order_forecast
+#: model:ir.model.fields,help:sale_order_forecast.field_sale_order__confirmed_order_ids
+msgid ""
+"Bu Öngörü siparişinden aktarılarak oluşturulan Kesin siparişler."
+msgstr ""
+"Bu Öngörü siparişinden aktarılarak oluşturulan Kesin siparişler."
+
+#. module: sale_order_forecast
+#: model:ir.model.fields,field_description:sale_order_forecast.field_sale_order_line__to_transfer
+msgid "Aktar"
+msgstr "Aktar"
+
+#. module: sale_order_forecast
+#: model:ir.model.fields,help:sale_order_forecast.field_sale_order_line__to_transfer
+msgid "Kesin siparişe aktarılacak satırı işaretler."
+msgstr "Kesin siparişe aktarılacak satırı işaretler."
+
+#. module: sale_order_forecast
+#: model:ir.model.fields,field_description:sale_order_forecast.field_sale_order_line__transfer_qty
+#: model_terms:ir.ui.view,arch_db:sale_order_forecast.view_order_form_inherit_forecast
+msgid "Aktarım"
+msgstr "Aktarım"
+
+#. module: sale_order_forecast
+#: model:ir.model.fields,help:sale_order_forecast.field_sale_order_line__transfer_qty
+msgid ""
+"Kesin siparişe aktarılacak miktar. Boş/0 bırakılırsa kalan miktarın "
+"tamamı aktarılır."
+msgstr ""
+"Kesin siparişe aktarılacak miktar. Boş/0 bırakılırsa kalan miktarın "
+"tamamı aktarılır."
+
+#. module: sale_order_forecast
+#: model:ir.model.fields,field_description:sale_order_forecast.field_sale_order_line__transferred_qty
+#: model_terms:ir.ui.view,arch_db:sale_order_forecast.view_order_form_inherit_forecast
+msgid "Aktarılan"
+msgstr "Aktarılan"
+
+#. module: sale_order_forecast
+#: model:ir.model.fields,help:sale_order_forecast.field_sale_order_line__transferred_qty
+msgid "Bu satırdan Kesin siparişlere aktarılmış toplam miktar."
+msgstr "Bu satırdan Kesin siparişlere aktarılmış toplam miktar."
+
+#. module: sale_order_forecast
+#: model:ir.model.fields,field_description:sale_order_forecast.field_sale_order_line__remaining_transfer_qty
+#: model_terms:ir.ui.view,arch_db:sale_order_forecast.view_order_form_inherit_forecast
+msgid "Kalan"
+msgstr "Kalan"
+
+#. module: sale_order_forecast
+#: model:ir.model.fields,field_description:sale_order_forecast.field_sale_order_line__forecast_source_line_id
+msgid "Kaynak Öngörü Satırı"
+msgstr "Kaynak Öngörü Satırı"
+
+#. module: sale_order_forecast
+#: model:ir.model.fields,help:sale_order_forecast.field_sale_order_line__forecast_source_line_id
+msgid "Bu satırın aktarıldığı Öngörü siparişi satırı."
+msgstr "Bu satırın aktarıldığı Öngörü siparişi satırı."
+
+#. module: sale_order_forecast
+#: model_terms:ir.ui.view,arch_db:sale_order_forecast.view_order_form_inherit_forecast
+msgid "Öngörü Siparişi"
+msgstr "Öngörü Siparişi"
 
 #. module: sale_order_forecast
 #: code:addons/sale_order_forecast/models/sale_order.py:0
@@ -195,11 +321,11 @@ msgstr "Kesin Siparişe Dönüştür"
 #. module: sale_order_forecast
 #: model_terms:ir.ui.view,arch_db:sale_order_forecast.view_order_form_inherit_forecast
 msgid ""
-"Bu Öngörü siparişini Kesin siparişe dönüştürmek istediğinize emin "
-"misiniz? Bu işlem sonrasında standart teslimat süreci başlatılacaktır."
+"İşaretlediğiniz satırlar için yeni bir Kesin sipariş oluşturulup "
+"onaylanacaktır. Devam etmek istiyor musunuz?"
 msgstr ""
-"Bu Öngörü siparişini Kesin siparişe dönüştürmek istediğinize emin "
-"misiniz? Bu işlem sonrasında standart teslimat süreci başlatılacaktır."
+"İşaretlediğiniz satırlar için yeni bir Kesin sipariş oluşturulup "
+"onaylanacaktır. Devam etmek istiyor musunuz?"
 
 #. module: sale_order_forecast
 #: model_terms:ir.ui.view,arch_db:sale_order_forecast.sale_order_nature_wizard_form
