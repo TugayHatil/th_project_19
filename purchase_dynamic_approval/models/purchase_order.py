@@ -174,10 +174,10 @@ class PurchaseOrder(models.Model):
                            if order.approval_tier_id else -1)
             remaining = order._approval_chain().filtered(
                 lambda t: t.amount_min > current_min)
-            pending.filtered(
-                lambda h: h.tier_id not in remaining).unlink()
-            have = pending.filtered(
-                lambda h: h.tier_id in remaining).mapped('tier_id')
+            stale = pending.filtered(
+                lambda h: h.tier_id not in remaining)
+            stale.unlink()
+            have = (pending - stale).mapped('tier_id')
             for tier in remaining.filtered(lambda t: t not in have):
                 History.create({
                     'order_id': order.id,
