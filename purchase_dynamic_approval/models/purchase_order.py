@@ -163,7 +163,7 @@ class PurchaseOrder(models.Model):
         silinir, yeni kalan aşamalar eklenir."""
         History = self.env['purchase.order.approval.history'].sudo()
         for order in self:
-            pending = order.approval_history_ids.filtered(
+            pending = order.approval_history_ids.sudo().filtered(
                 lambda h: h.action == 'pending')
             if not (order.state == 'to approve'
                     and order.approval_required
