@@ -40,7 +40,7 @@
                 <xpath expr="//field[@name='order_line']/list/field[@name='product_uom_qty']" position="before">
                     <field name="to_transfer"
                            column_invisible="parent.order_nature != 'forecast'"
-                           readonly="product_uom_qty &lt;= 0"/>
+                           readonly="display_type or product_uom_qty &lt;= 0"/>
                 </xpath>
                 <xpath expr="//field[@name='order_line']/list/field[@name='product_uom_qty']" position="after">
                     <field name="transfer_qty" string="Aktarım"

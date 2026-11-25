@@ -2,7 +2,7 @@
 from odoo import api, models, fields, _
 from odoo.exceptions import UserError
 from odoo.http import request
-from odoo.tools import format_datetime
+from odoo.tools import format_datetime, float_compare
 
 
 class SaleOrder(models.Model):
@@ -16,6 +16,7 @@ class SaleOrder(models.Model):
         string='Sipariş Niteliği',
         tracking=True,
         copy=False,
+        index=True,
         help="Kesin: standart satış siparişi süreci.\n"
              "Öngörü: teslimat emri oluşturulmadan onaylanabilen satış siparişi.")
     forecast_converted = fields.Boolean(
@@ -199,13 +200,15 @@ class SaleOrder(models.Model):
                 "Lütfen Kesin siparişe aktarılacak satırları işaretleyin."))
         qty_map = {}
         for line in lines:
+            precision = line.product_uom_id.rounding or 0.01
             qty = line.transfer_qty or line.product_uom_qty
-            if qty <= 0:
+            if float_compare(qty, 0.0, precision_rounding=precision) <= 0:
                 raise UserError(_(
                     "\"%(product)s\" satırında aktarılabilir miktar "
                     "kalmamış.",
                     product=line.product_id.display_name))
-            if qty > line.product_uom_qty:
+            if float_compare(qty, line.product_uom_qty,
+                             precision_rounding=precision) > 0:
                 raise UserError(_(
                     "\"%(product)s\" satırının aktarım miktarı (%(qty)s), "
                     "sipariş miktarından (%(ordered)s) büyük olamaz.",
@@ -217,17 +220,22 @@ class SaleOrder(models.Model):
             "%s (%s)" % (l.product_id.display_name, qty_map[l.id])
             for l in lines)
         new_order = self._create_transfer_order(lines, qty_map)
+        to_unlink = self.env['sale.order.line']
         for line in lines:
             qty = qty_map[line.id]
-            if qty >= line.product_uom_qty:
+            precision = line.product_uom_id.rounding or 0.01
+            if float_compare(qty, line.product_uom_qty,
+                             precision_rounding=precision) >= 0:
                 # Miktarın tamamı aktarıldı: satır Öngörü siparişinden kalkar.
-                line.unlink()
+                to_unlink |= line
             else:
                 line.write({
                     'product_uom_qty': line.product_uom_qty - qty,
                     'to_transfer': False,
                     'transfer_qty': 0.0,
                 })
+        if to_unlink:
+            to_unlink.unlink()
         self.forecast_converted = True
         self.message_post(body=_(
             "%(count)s satır %(name)s Kesin siparişine aktarıldı: "
