@@ -7,22 +7,26 @@
     'description': """Satınalma siparişlerinde dinamik tutar bazlı onay mekanizması.
 
 Tanımlanan tutar baremlerine göre her aralık için farklı bir Odoo
-kullanıcı grubunun onaylayıcı olarak atanmasını sağlar. Sipariş,
+kullanıcı grubunun onaylayıcı olarak atanmasını sağlar. Direkt Alım
+ve Endirekt Alım olmak üzere iki ayrı onay akışı tanımlanabilir;
+siparişin hangi akışa gireceği satırlardaki ilk gruplu ürünün
+"Satınalma Grubu" alanından belirlenir. Sipariş, kendi akışında
 tutarının denk geldiği bareme kadar alttaki tüm baremlerin
 gruplarından sırasıyla onay geçer (kademeli onay). Standart PO
 durum akışı korunur; onay standart "Onay Bekliyor" (to approve)
 durumu üzerinden yürütülür. Onay geçmişi, zorunlu red nedeni,
-aktivite bildirimleri ve tutar değişikliğinde yeniden onay
-desteği içerir.""",
+aktivite bildirimleri ve tutar/satınalma grubu değişikliğinde
+yeniden onay desteği içerir.""",
 
     'author': "Projet Solutions",
     'website': "https://projet.solutions",
 
     'category': 'Inventory/Purchase',
-    'version': '19.0.1.0.0',
+    'version': '19.0.2.0.0',
 
     'depends': [
         'purchase',
+        'product_extra_fields',
     ],
 
     'data': [

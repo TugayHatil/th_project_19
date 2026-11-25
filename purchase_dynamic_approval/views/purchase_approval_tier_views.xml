@@ -7,6 +7,7 @@
             <list string="Onay Baremleri" editable="bottom"
                   decoration-muted="not active">
                 <field name="sequence" widget="handle"/>
+                <field name="approval_flow"/>
                 <field name="amount_min"/>
                 <field name="unlimited"/>
                 <field name="amount_max" readonly="unlimited"/>
@@ -28,6 +29,7 @@
                     <group>
                         <group string="Tutar Aralığı">
                             <field name="sequence"/>
+                            <field name="approval_flow"/>
                             <field name="amount_min"/>
                             <field name="unlimited"/>
                             <field name="amount_max"
@@ -57,6 +59,8 @@
                 <field name="approval_group_id"/>
                 <filter name="inactive" string="Arşivlenmiş"
                         domain="[('active', '=', False)]"/>
+                <filter name="group_flow" string="Onay Akışı"
+                        context="{'group_by': 'approval_flow'}"/>
                 <filter name="group_company" string="Şirket"
                         context="{'group_by': 'company_id'}"
                         groups="base.group_multi_company"/>
@@ -75,13 +79,17 @@
             </p>
             <p>
                 Tutar aralıkları ve her aralık için onaylayıcı kullanıcı
-                grubu burada tanımlanır. Alt sınır dahil, üst sınır
-                hariçtir; aralıklar çakışamaz.
+                grubu burada tanımlanır; Direkt Alım ve Endirekt Alım
+                akışları için ayrı baremler tanımlanabilir. Alt sınır
+                dahil, üst sınır hariçtir; aynı akış içindeki aralıklar
+                çakışamaz.
             </p>
             <p>
-                Sipariş, tutarının denk geldiği bareme kadar alttaki tüm
-                baremlerin gruplarından sırasıyla onay geçer (kademeli
-                onay).
+                Siparişin hangi akışa gireceği "Satınalma Grubu"
+                alanından (satırlardaki ilk gruplu üründen gelir)
+                belirlenir. Sipariş, kendi akışında tutarının denk
+                geldiği bareme kadar alttaki tüm baremlerin
+                gruplarından sırasıyla onay geçer (kademeli onay).
             </p>
         </field>
     </record>

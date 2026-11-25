@@ -11,6 +11,14 @@ class PurchaseOrder(models.Model):
 
     approval_required = fields.Boolean(
         string='Onay Gerekiyor', readonly=True, copy=False, tracking=True)
+    purchase_group = fields.Selection([
+        ('direct', 'Direkt'),
+        ('indirect', 'Endirekt'),
+    ], string='Satınalma Grubu', compute='_compute_purchase_group',
+        store=True, readonly=True,
+        help="Sipariş satırlarında satınalma grubu tanımlı ilk üründen "
+             "alınır; siparişin hangi onay akışına (Direkt/Endirekt) "
+             "gireceğini belirler.")
     approval_state = fields.Selection([
         ('none', 'Onay Yok'),
         ('waiting', 'Onay Bekliyor'),
@@ -64,15 +72,27 @@ class PurchaseOrder(models.Model):
                      and order.approval_group_id in user.all_group_ids
                      or tier and tier.delegate_user_id == user))
 
+    @api.depends('order_line', 'order_line.product_id',
+                 'order_line.product_id.purchase_group')
+    def _compute_purchase_group(self):
+        for order in self:
+            order.purchase_group = next(
+                (line.product_id.purchase_group
+                 for line in order.order_line.sorted('sequence')
+                 if line.product_id.purchase_group), False)
+
     def _find_approval_tier(self):
         """Sipariş toplamının (şirket para birimine çevrilmiş) dahil
-        olduğu aktif onay baremini döndürür."""
+        olduğu aktif onay baremini, siparişin satınalma grubuna ait
+        akışta döndürür. Satınalma grubu yoksa barem uygulanmaz."""
         self.ensure_one()
+        if not self.purchase_group:
+            return self.env['purchase.approval.tier']
         amount = self.currency_id._convert(
             self.amount_total, self.company_id.currency_id,
             self.company_id, self.date_order or fields.Date.today())
         return self.env['purchase.approval.tier'].sudo()._find_for_amount(
-            self.company_id, amount)
+            self.company_id, amount, self.purchase_group)
 
     def _approval_chain(self, target=None):
         """Kademeli onay zinciri: hedef bareme (dahil) kadar olan aktif
@@ -85,6 +105,7 @@ class PurchaseOrder(models.Model):
             return self.env['purchase.approval.tier']
         return self.env['purchase.approval.tier'].sudo().search([
             ('company_id', '=', self.company_id.id),
+            ('approval_flow', '=', target.approval_flow),
             ('active', '=', True),
             ('amount_min', '<=', target.amount_min),
         ]).sorted('amount_min')
@@ -413,15 +434,22 @@ class PurchaseOrder(models.Model):
         geçerli aşamadan devam ettirir."""
         for order in self.filtered(
                 lambda o: o.state == 'to approve' and o.approval_required):
-            if order.currency_id.compare_amounts(
-                    order.amount_total, order.submitted_amount) == 0:
-                continue
-            old_amount = order.submitted_amount
             old_target = (order.approval_final_tier_id
                           or order.approval_tier_id)
+            same_amount = order.currency_id.compare_amounts(
+                order.amount_total, order.submitted_amount) == 0
+            same_flow = (old_target.approval_flow == order.purchase_group
+                         if old_target else not order.purchase_group)
+            if same_amount and same_flow:
+                continue
+            old_amount = order.submitted_amount
             new_target = order._find_approval_tier()
             old_fmt = order.currency_id.format(old_amount)
             new_fmt = order.currency_id.format(order.amount_total)
+            change_txt = (_('Satınalma grubu değişti')
+                          if same_amount else
+                          _('Tutar %(old)s → %(new)s olarak değişti',
+                            old=old_fmt, new=new_fmt))
 
             if new_target == old_target:
                 order.submitted_amount = order.amount_total
@@ -433,32 +461,40 @@ class PurchaseOrder(models.Model):
                     'onay baremi aynı kaldı (%(tier)s).',
                     old=old_fmt, new=new_fmt, tier=old_target.display_name))
             elif not new_target:
+                reason = (_('satınalma grubu değişti ve yeni akışta '
+                            'onay baremi bulunamadı')
+                          if same_amount else
+                          _('yeni tutara denk gelen onay baremi '
+                            'bulunamadı'))
                 order._close_approval_activities(feedback=_(
-                    'Tutar değişikliği sonrası onay gerekmedi.'))
+                    'Değişiklik sonrası onay gerekmedi.'))
                 order.write({
                     'submitted_amount': order.amount_total,
                     'approval_required': False,
                     'approval_state': 'approved',
                 })
                 order._log_approval_history('auto_approve', note=_(
-                    'Tutar %(old)s → %(new)s olarak değişti; yeni tutara '
-                    'denk gelen onay baremi bulunamadı, sipariş otomatik '
-                    'onaylandı.', old=old_fmt, new=new_fmt))
+                    '%(change)s; %(reason)s, sipariş otomatik onaylandı.',
+                    change=change_txt, reason=reason))
                 order.message_post(body=_(
-                    'Sipariş toplamı %(old)s → %(new)s olarak değişti; '
-                    'yeni tutar onay gerektirmiyor, sipariş otomatik '
-                    'onaylandı.', old=old_fmt, new=new_fmt))
+                    '%(change)s; %(reason)s, sipariş otomatik onaylandı.',
+                    change=change_txt, reason=reason))
                 order.with_context(
                     dynamic_approval_bypass=True).button_approve()
             else:
-                current_min = (order.approval_tier_id.amount_min
-                               if order.approval_tier_id else -1)
-                remaining = order._approval_chain(new_target).filtered(
-                    lambda t: t.amount_min > current_min)
+                chain = order._approval_chain(new_target)
+                if same_flow:
+                    current_min = (order.approval_tier_id.amount_min
+                                   if order.approval_tier_id else -1)
+                    remaining = chain.filtered(
+                        lambda t: t.amount_min > current_min)
+                else:
+                    # Akış değişti; önceki akışta tamamlanan aşamalar
+                    # yeni akışı karşılamaz — zincir baştan başlar.
+                    remaining = chain
                 order._log_approval_history('tier_change', note=_(
-                    'Tutar %(old)s → %(new)s olarak değişti; hedef barem '
-                    '%(oldt)s → %(newt)s olarak güncellendi.',
-                    old=old_fmt, new=new_fmt,
+                    '%(change)s; hedef barem %(oldt)s → %(newt)s '
+                    'olarak güncellendi.', change=change_txt,
                     oldt=old_target.display_name,
                     newt=new_target.display_name))
                 order.write({
@@ -477,16 +513,42 @@ class PurchaseOrder(models.Model):
                         'approve_date': fields.Datetime.now(),
                     })
                     order._log_approval_history('auto_approve', note=_(
-                        'Tutar %(old)s → %(new)s olarak değişti; yeni '
-                        'hedef barem tamamlanan aşamaların altında '
-                        'kaldığı için sipariş otomatik onaylandı.',
-                        old=old_fmt, new=new_fmt))
+                        '%(change)s; yeni hedef barem tamamlanan '
+                        'aşamaların altında kaldığı için sipariş '
+                        'otomatik onaylandı.', change=change_txt))
                     order.message_post(body=_(
-                        'Sipariş toplamı %(old)s → %(new)s olarak '
-                        'değişti; kalan onay aşaması kalmadı, sipariş '
-                        'otomatik onaylandı.', old=old_fmt, new=new_fmt))
+                        '%(change)s; kalan onay aşaması kalmadı, sipariş '
+                        'otomatik onaylandı.', change=change_txt))
                     order.with_context(
                         dynamic_approval_bypass=True).button_approve()
+                elif not same_flow:
+                    # Yeni akışta onay ilk baremden yeniden başlatılır.
+                    first = remaining[0]
+                    order._close_approval_activities(feedback=_(
+                        'Satınalma grubu değişti; onay yeni akışta '
+                        'yeniden başlatıldı.'))
+                    order.approval_tier_id = first.id
+                    order._log_approval_history('submit', tier=first)
+                    if (first.approval_group_id.all_user_ids.filtered(
+                            'active') or first.delegate_user_id):
+                        order._schedule_approval_activities()
+                    else:
+                        order.message_post(body=_(
+                            'UYARI: "%(group)s" grubunda uygun bir '
+                            'onaylayıcı bulunmamaktadır; onay '
+                            'tamamlanamaz.',
+                            group=first.approval_group_id.display_name))
+                    flow_label = dict(
+                        self.env['purchase.approval.tier']
+                        ._fields['approval_flow']
+                        ._description_selection(self.env)
+                    ).get(new_target.approval_flow)
+                    order.message_post(body=_(
+                        '%(change)s; onay %(total)s aşamalı "%(flow)s" '
+                        'akışında %(group)s grubundan yeniden '
+                        'başlatıldı.', change=change_txt,
+                        total=len(chain), flow=flow_label,
+                        group=first.approval_group_id.display_name))
                 else:
                     missing = remaining.filtered(
                         lambda t:
@@ -499,10 +561,9 @@ class PurchaseOrder(models.Model):
                             tiers=', '.join(
                                 missing.mapped('display_name'))))
                     order.message_post(body=_(
-                        'Sipariş toplamı %(old)s → %(new)s olarak '
-                        'değişti; hedef barem %(tier)s olarak '
+                        '%(change)s; hedef barem %(tier)s olarak '
                         'güncellendi. Onay, %(group)s grubundaki '
                         'aşamadan devam ediyor.',
-                        old=old_fmt, new=new_fmt,
+                        change=change_txt,
                         tier=new_target.display_name,
                         group=order.approval_group_id.display_name))

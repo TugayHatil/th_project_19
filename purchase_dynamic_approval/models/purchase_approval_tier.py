@@ -10,6 +10,12 @@ class PurchaseApprovalTier(models.Model):
     _check_company_auto = True
 
     sequence = fields.Integer(string='Sıra', default=10)
+    approval_flow = fields.Selection([
+        ('direct', 'Direkt Alım'),
+        ('indirect', 'Endirekt Alım'),
+    ], string='Onay Akışı', required=True, default='direct', index=True,
+        help="Bu baremin ait olduğu onay akışı. Siparişin satınalma "
+             "grubuna göre ilgili akışın baremleri uygulanır.")
     amount_min = fields.Monetary(
         string='Alt Tutar', required=True, default=0.0,
         currency_field='currency_id',
@@ -39,15 +45,20 @@ class PurchaseApprovalTier(models.Model):
         'res.currency', related='company_id.currency_id',
         store=True, readonly=True)
 
-    @api.depends('amount_min', 'amount_max', 'unlimited', 'currency_id')
+    @api.depends('amount_min', 'amount_max', 'unlimited', 'currency_id',
+                 'approval_flow')
     def _compute_display_name(self):
+        flow_labels = dict(
+            self._fields['approval_flow']._description_selection(self.env))
         for tier in self:
             fmt = tier.currency_id.format if tier.currency_id \
                 else lambda v: '%.2f' % v
-            tier.display_name = (
+            name = (
                 _('%s ve üzeri', fmt(tier.amount_min))
                 if tier.unlimited
                 else _('%s – %s', fmt(tier.amount_min), fmt(tier.amount_max)))
+            tier.display_name = _('%s (%s)', name,
+                                  flow_labels.get(tier.approval_flow) or '')
 
     def _upper_bound(self):
         self.ensure_one()
@@ -75,7 +86,7 @@ class PurchaseApprovalTier(models.Model):
             self.amount_max = 0.0
 
     @api.constrains('amount_min', 'amount_max', 'unlimited', 'active',
-                    'company_id')
+                    'company_id', 'approval_flow')
     def _check_amount_ranges(self):
         for tier in self:
             if tier.amount_min < 0:
@@ -83,9 +94,11 @@ class PurchaseApprovalTier(models.Model):
             if not tier.unlimited and tier.amount_max <= tier.amount_min:
                 raise ValidationError(_(
                     'Üst tutar, alt tutardan büyük olmalıdır.'))
-        for company in self.company_id:
+        for company, flow in {
+                (t.company_id, t.approval_flow) for t in self}:
             tiers = self.search([
                 ('company_id', '=', company.id),
+                ('approval_flow', '=', flow),
                 ('active', '=', True),
             ]).sorted('amount_min')
             previous = self.browse()
@@ -97,12 +110,13 @@ class PurchaseApprovalTier(models.Model):
                 previous = tier
 
     @api.model
-    def _find_for_amount(self, company, amount):
+    def _find_for_amount(self, company, amount, flow):
         """Alt sınır dahil, üst sınır hariç mantığıyla tutara denk gelen
-        aktif baremi döndürür. Aralıklar çakışmadığı için en fazla tek
-        kayıt eşleşir."""
+        aktif baremi verilen onay akışı içinde döndürür. Aralıklar
+        çakışmadığı için en fazla tek kayıt eşleşir."""
         tiers = self.search([
             ('company_id', '=', company.id),
+            ('approval_flow', '=', flow),
             ('active', '=', True),
             ('amount_min', '<=', amount),
         ])
