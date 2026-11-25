@@ -160,19 +160,25 @@ class PurchaseOrder(models.Model):
                 'note': order_note or False,
             })
 
+    def _current_cycle_boundary(self):
+        """Güncel onay döngüsünün başlangıç sınırı: son red / iptal /
+        taslağa alma geçmiş kaydının id'si; yoksa 0. Bu id'den küçük
+        kayıtlar önceki döngülere aittir ve güncel akışta yer almaz."""
+        self.ensure_one()
+        last_terminal = self.approval_history_ids.filtered(
+            lambda h: h.action in ('reject', 'cancel', 'reset'))[-1:]
+        return last_terminal.id if last_terminal else 0
+
     def _compute_current_approval_history(self):
         """Formda yalnızca güncel onay akışına ait geçmiş satırları
         gösterilir: son red / iptal / taslağa alma sonrasında başlayan
         akışın kayıtları. Önceki akışlara ait kayıtlar veritabanında
         denetim izi olarak korunur."""
-        terminal = ('reject', 'cancel', 'reset')
         for order in self:
-            hist = order.approval_history_ids
-            last_terminal = hist.filtered(
-                lambda h: h.action in terminal)[-1:]
-            boundary = last_terminal.id if last_terminal else 0
-            order.current_approval_history_ids = hist.filtered(
-                lambda h: h.id > boundary)
+            boundary = order._current_cycle_boundary()
+            order.current_approval_history_ids = \
+                order.approval_history_ids.filtered(
+                    lambda h: h.id > boundary)
 
     def _submit_approval_step(self, tier):
         """Bir baremin onayına geçişi geçmişe işler: o barem için
@@ -188,8 +194,11 @@ class PurchaseOrder(models.Model):
         her aşaması tek satırda izlenir."""
         self.ensure_one()
         tier = tier or self.approval_tier_id
+        # Yalnızca güncel döngünün satırları güncellenebilir; önceki
+        # döngülerin satırları denetim izidir, dokunulmaz.
+        boundary = self._current_cycle_boundary()
         row = self.approval_history_ids.sudo().filtered(
-            lambda h: h.tier_id == tier
+            lambda h: h.id > boundary and h.tier_id == tier
             and h.action in ('pending', 'submit'))[-1:]
         if row:
             if (action in ('approve', 'reject', 'step_approve')
@@ -223,8 +232,9 @@ class PurchaseOrder(models.Model):
                            if order.approval_tier_id else -1)
             remaining = order._approval_chain().filtered(
                 lambda t: t.amount_min > current_min)
+            boundary = order._current_cycle_boundary()
             stale = pending.filtered(
-                lambda h: h.tier_id not in remaining)
+                lambda h: h.id <= boundary or h.tier_id not in remaining)
             stale.unlink()
             have = (pending - stale).mapped('tier_id')
             for tier in remaining.filtered(lambda t: t not in have):
