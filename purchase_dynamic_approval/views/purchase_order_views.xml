@@ -71,7 +71,7 @@
                         </group>
                     </group>
                     <separator string="Onay Geçmişi"/>
-                    <field name="approval_history_ids" nolabel="1"
+                    <field name="current_approval_history_ids" nolabel="1"
                            options="{'no_create': True}">
                         <list decoration-muted="action == 'pending'">
                             <field name="date"/>

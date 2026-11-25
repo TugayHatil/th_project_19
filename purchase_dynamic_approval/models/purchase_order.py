@@ -58,6 +58,10 @@ class PurchaseOrder(models.Model):
     approval_history_ids = fields.One2many(
         'purchase.order.approval.history', 'order_id',
         string='Onay Geçmişi', readonly=True, copy=False)
+    current_approval_history_ids = fields.One2many(
+        'purchase.order.approval.history', 'order_id',
+        string='Onay Geçmişi', readonly=True,
+        compute='_compute_current_approval_history')
 
     # Hesaplamalar / yardımcılar
 
@@ -155,6 +159,20 @@ class PurchaseOrder(models.Model):
                 'amount_total': order.amount_total,
                 'note': order_note or False,
             })
+
+    def _compute_current_approval_history(self):
+        """Formda yalnızca güncel onay akışına ait geçmiş satırları
+        gösterilir: son red / iptal / taslağa alma sonrasında başlayan
+        akışın kayıtları. Önceki akışlara ait kayıtlar veritabanında
+        denetim izi olarak korunur."""
+        terminal = ('reject', 'cancel', 'reset')
+        for order in self:
+            hist = order.approval_history_ids
+            last_terminal = hist.filtered(
+                lambda h: h.action in terminal)[-1:]
+            boundary = last_terminal.id if last_terminal else 0
+            order.current_approval_history_ids = hist.filtered(
+                lambda h: h.id > boundary)
 
     def _sync_pending_approval_steps(self):
         """Onay zincirindeki gelecek aşamaları geçmiş listesinde
