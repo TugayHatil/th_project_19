@@ -179,17 +179,31 @@ class PurchaseOrder(models.Model):
         'Bekliyor' satırı varsa onu 'Onaya Gönderildi' olarak yerinde
         günceller (yeni satır eklenmez); yoksa yeni kayıt oluşturur."""
         self.ensure_one()
-        pending = self.approval_history_ids.sudo().filtered(
-            lambda h: h.action == 'pending' and h.tier_id == tier)
-        if pending:
-            pending.write({
-                'action': 'submit',
+        self._update_approval_step_row('submit', tier=tier)
+
+    def _update_approval_step_row(self, action, tier=None, note=False):
+        """Geçmiş listesinde bir bareme ait açık durum satırını
+        ('Bekliyor' veya 'Onaya Gönderildi') yeni duruma yerinde
+        günceller; satır yoksa yeni kayıt oluşturur. Böylece zincirin
+        her aşaması tek satırda izlenir."""
+        self.ensure_one()
+        tier = tier or self.approval_tier_id
+        row = self.approval_history_ids.sudo().filtered(
+            lambda h: h.tier_id == tier
+            and h.action in ('pending', 'submit'))[-1:]
+        if row:
+            if (action in ('approve', 'reject', 'step_approve')
+                    and tier and tier.delegate_user_id == self.env.user):
+                note = (note + ' ' if note else '') + _('(Vekil Onaycı)')
+            row.write({
+                'action': action,
                 'date': fields.Datetime.now(),
                 'user_id': self.env.user.id,
                 'amount_total': self.amount_total,
+                'note': note or False,
             })
         else:
-            self._log_approval_history('submit', tier=tier)
+            self._log_approval_history(action, tier=tier, note=note)
 
     def _sync_pending_approval_steps(self):
         """Onay zincirindeki gelecek aşamaları geçmiş listesinde
@@ -375,7 +389,7 @@ class PurchaseOrder(models.Model):
             if next_tier:
                 order._advance_approval_step(next_tier)
             else:
-                order._log_approval_history('approve')
+                order._update_approval_step_row('approve')
                 order.write({
                     'approval_state': 'approved',
                     'approver_id': self.env.user.id,
@@ -401,7 +415,7 @@ class PurchaseOrder(models.Model):
         chain = self._approval_chain()
         step = len(chain.filtered(
             lambda t: t.amount_min < current.amount_min)) + 1
-        self._log_approval_history('step_approve', note=_(
+        self._update_approval_step_row('step_approve', note=_(
             'Aşama %(step)s/%(total)s onaylandı.',
             step=step, total=len(chain)))
         self._close_approval_activities(feedback=_(
@@ -440,7 +454,7 @@ class PurchaseOrder(models.Model):
     def _do_reject(self, reason):
         self.ensure_one()
         self._check_approval_permission()
-        self._log_approval_history('reject', note=reason)
+        self._update_approval_step_row('reject', note=reason)
         self.write({
             'approval_state': 'rejected',
             'approver_id': self.env.user.id,
