@@ -78,6 +78,11 @@
                 grubu burada tanımlanır. Alt sınır dahil, üst sınır
                 hariçtir; aralıklar çakışamaz.
             </p>
+            <p>
+                Sipariş, tutarının denk geldiği bareme kadar alttaki tüm
+                baremlerin gruplarından sırasıyla onay geçer (kademeli
+                onay).
+            </p>
         </field>
     </record>
 </odoo>

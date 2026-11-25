@@ -30,6 +30,8 @@
                     <field name="approval_group_id" class="d-inline-block ms-1"/>
                     <strong class="ms-3">Onay Baremı:</strong>
                     <field name="approval_tier_id" class="d-inline-block ms-1"/>
+                    <strong class="ms-3">Aşama:</strong>
+                    <field name="approval_progress" class="d-inline-block ms-1"/>
                 </div>
                 <div class="alert alert-success" role="alert"
                      invisible="approval_state != 'approved'">
@@ -51,8 +53,10 @@
                     <group>
                         <group string="Onay Bilgileri">
                             <field name="approval_state"/>
+                            <field name="approval_progress"/>
                             <field name="approval_required"/>
                             <field name="approval_tier_id"/>
+                            <field name="approval_final_tier_id"/>
                             <field name="approval_group_id"/>
                             <field name="approval_delegate_id"/>
                             <field name="submitted_amount"/>
@@ -69,6 +73,7 @@
                             <field name="date"/>
                             <field name="action" widget="badge"
                                    decoration-info="action == 'submit'"
+                                   decoration-primary="action == 'step_approve'"
                                    decoration-success="action in ('approve', 'auto_approve')"
                                    decoration-danger="action in ('reject', 'cancel')"
                                    decoration-warning="action in ('tier_change', 'amount_change')"

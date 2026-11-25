@@ -18,6 +18,7 @@ class PurchaseOrderApprovalHistory(models.Model):
     action = fields.Selection([
         ('submit', 'Onaya Gönderildi'),
         ('approve', 'Onaylandı'),
+        ('step_approve', 'Aşama Onaylandı'),
         ('reject', 'Reddedildi'),
         ('tier_change', 'Barem Değişti'),
         ('amount_change', 'Tutar Değişti'),

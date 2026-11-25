@@ -7,7 +7,9 @@
     'description': """Satınalma siparişlerinde dinamik tutar bazlı onay mekanizması.
 
 Tanımlanan tutar baremlerine göre her aralık için farklı bir Odoo
-kullanıcı grubunun onaylayıcı olarak atanmasını sağlar. Standart PO
+kullanıcı grubunun onaylayıcı olarak atanmasını sağlar. Sipariş,
+tutarının denk geldiği bareme kadar alttaki tüm baremlerin
+gruplarından sırasıyla onay geçer (kademeli onay). Standart PO
 durum akışı korunur; onay standart "Onay Bekliyor" (to approve)
 durumu üzerinden yürütülür. Onay geçmişi, zorunlu red nedeni,
 aktivite bildirimleri ve tutar değişikliğinde yeniden onay
