@@ -77,11 +77,9 @@
                             <field name="date"/>
                             <field name="action" widget="badge"
                                    decoration-info="action == 'submit'"
-                                   decoration-primary="action == 'step_approve'"
-                                   decoration-success="action in ('approve', 'auto_approve')"
-                                   decoration-danger="action in ('reject', 'cancel')"
-                                   decoration-warning="action in ('tier_change', 'amount_change')"
-                                   decoration-muted="action in ('reset', 'pending')"/>
+                                   decoration-success="action == 'approve'"
+                                   decoration-danger="action == 'reject'"
+                                   decoration-muted="action == 'pending'"/>
                             <field name="tier_id"/>
                             <field name="approval_group_id"/>
                             <field name="user_id"/>

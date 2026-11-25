@@ -19,14 +19,12 @@ class PurchaseOrderApprovalHistory(models.Model):
         ('submit', 'Onaya Gönderildi'),
         ('pending', 'Bekliyor'),
         ('approve', 'Onaylandı'),
-        ('step_approve', 'Aşama Onaylandı'),
         ('reject', 'Reddedildi'),
-        ('tier_change', 'Barem Değişti'),
-        ('amount_change', 'Tutar Değişti'),
-        ('auto_approve', 'Otomatik Onaylandı'),
-        ('reset', 'Taslağa Alındı'),
-        ('cancel', 'İptal Edildi'),
     ], string='İşlem', required=True, readonly=True)
+    cycle = fields.Integer(
+        string='Onay Döngüsü', readonly=True, index=True,
+        help="Siparişin kaçıncı onay döngüsüne ait olduğu; red/iptal/"
+             "taslak sonrası başlayan her döngüde artar.")
     tier_id = fields.Many2one(
         'purchase.approval.tier', string='Onay Baremı', readonly=True,
         check_company=True)

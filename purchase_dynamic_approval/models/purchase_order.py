@@ -55,6 +55,11 @@ class PurchaseOrder(models.Model):
         string='Onay / Red Tarihi', readonly=True, copy=False)
     can_approve = fields.Boolean(
         string='Onay Yetkisi Var', compute='_compute_can_approve')
+    approval_cycle = fields.Integer(
+        string='Onay Döngüsü', readonly=True, copy=False, default=0,
+        help="Red/iptal/taslak sonrası yeniden başlayan her onay "
+             "sürecinde bir artar; geçmiş satırları döngüye göre "
+             "güncel akışa filtrelenir.")
     approval_history_ids = fields.One2many(
         'purchase.order.approval.history', 'order_id',
         string='Onay Geçmişi', readonly=True, copy=False)
@@ -144,7 +149,7 @@ class PurchaseOrder(models.Model):
         for order in self:
             order_tier = tier or order.approval_tier_id
             order_note = note
-            if (action in ('approve', 'reject', 'step_approve')
+            if (action in ('approve', 'reject')
                     and order_tier
                     and order_tier.delegate_user_id == self.env.user):
                 order_note = (note + ' ' if note else '') + '(Vekil Onaycı)'
@@ -158,27 +163,17 @@ class PurchaseOrder(models.Model):
                 'user_id': self.env.user.id,
                 'amount_total': order.amount_total,
                 'note': order_note or False,
+                'cycle': order.approval_cycle,
             })
 
-    def _current_cycle_boundary(self):
-        """Güncel onay döngüsünün başlangıç sınırı: son red / iptal /
-        taslağa alma geçmiş kaydının id'si; yoksa 0. Bu id'den küçük
-        kayıtlar önceki döngülere aittir ve güncel akışta yer almaz."""
-        self.ensure_one()
-        last_terminal = self.approval_history_ids.filtered(
-            lambda h: h.action in ('reject', 'cancel', 'reset'))[-1:]
-        return last_terminal.id if last_terminal else 0
-
     def _compute_current_approval_history(self):
-        """Formda yalnızca güncel onay akışına ait geçmiş satırları
-        gösterilir: son red / iptal / taslağa alma sonrasında başlayan
-        akışın kayıtları. Önceki akışlara ait kayıtlar veritabanında
-        denetim izi olarak korunur."""
+        """Formda yalnızca güncel onay döngüsüne ait geçmiş satırları
+        gösterilir. Önceki döngülere ait kayıtlar veritabanında denetim
+        izi olarak korunur."""
         for order in self:
-            boundary = order._current_cycle_boundary()
             order.current_approval_history_ids = \
                 order.approval_history_ids.filtered(
-                    lambda h: h.id > boundary)
+                    lambda h: h.cycle == order.approval_cycle)
 
     def _submit_approval_step(self, tier):
         """Bir baremin onayına geçişi geçmişe işler: o barem için
@@ -196,12 +191,11 @@ class PurchaseOrder(models.Model):
         tier = tier or self.approval_tier_id
         # Yalnızca güncel döngünün satırları güncellenebilir; önceki
         # döngülerin satırları denetim izidir, dokunulmaz.
-        boundary = self._current_cycle_boundary()
         row = self.approval_history_ids.sudo().filtered(
-            lambda h: h.id > boundary and h.tier_id == tier
+            lambda h: h.cycle == self.approval_cycle and h.tier_id == tier
             and h.action in ('pending', 'submit'))[-1:]
         if row:
-            if (action in ('approve', 'reject', 'step_approve')
+            if (action in ('approve', 'reject')
                     and tier and tier.delegate_user_id == self.env.user):
                 note = (note + ' ' if note else '') + _('(Vekil Onaycı)')
             row.write({
@@ -232,9 +226,9 @@ class PurchaseOrder(models.Model):
                            if order.approval_tier_id else -1)
             remaining = order._approval_chain().filtered(
                 lambda t: t.amount_min > current_min)
-            boundary = order._current_cycle_boundary()
             stale = pending.filtered(
-                lambda h: h.id <= boundary or h.tier_id not in remaining)
+                lambda h: h.cycle != order.approval_cycle
+                or h.tier_id not in remaining)
             stale.unlink()
             have = (pending - stale).mapped('tier_id')
             for tier in remaining.filtered(lambda t: t not in have):
@@ -245,6 +239,7 @@ class PurchaseOrder(models.Model):
                     'tier_id': tier.id,
                     'approval_group_id': tier.approval_group_id.id,
                     'amount_total': order.amount_total,
+                    'cycle': order.approval_cycle,
                 })
 
     def _schedule_approval_activities(self):
@@ -361,6 +356,7 @@ class PurchaseOrder(models.Model):
                 'Bu satınalma siparişinin onay zincirindeki şu '
                 'baremlerde uygun bir onaylayıcı bulunmamaktadır: %s',
                 ', '.join(missing.mapped('display_name'))))
+        self.approval_cycle += 1
         self.write({
             'approval_required': True,
             'approval_state': 'waiting',
@@ -425,7 +421,7 @@ class PurchaseOrder(models.Model):
         chain = self._approval_chain()
         step = len(chain.filtered(
             lambda t: t.amount_min < current.amount_min)) + 1
-        self._update_approval_step_row('step_approve', note=_(
+        self._update_approval_step_row('approve', note=_(
             'Aşama %(step)s/%(total)s onaylandı.',
             step=step, total=len(chain)))
         self._close_approval_activities(feedback=_(
@@ -484,8 +480,6 @@ class PurchaseOrder(models.Model):
                 lambda o: o.state == 'to approve' and o.approval_required):
             order._close_approval_activities(
                 feedback=_('Sipariş iptal edildi.'))
-            order._log_approval_history(
-                'cancel', note=_('Sipariş iptal edildi.'))
         res = super().button_cancel()
         self._sync_pending_approval_steps()
         return res
@@ -495,9 +489,6 @@ class PurchaseOrder(models.Model):
                 lambda o: o.state == 'to approve' and o.approval_required):
             order._close_approval_activities(
                 feedback=_('Onay süreci sonlandırıldı.'))
-            order._log_approval_history(
-                'reset', note=_('Onay süreci sonlandırıldı, sipariş '
-                                'taslağa alındı.'))
             order.message_post(body=_(
                 'Onay süreci sonlandırıldı, sipariş taslağa alındı.'))
             # Doğrudan state yazımı yerine standart akış: button_draft
@@ -551,9 +542,6 @@ class PurchaseOrder(models.Model):
 
             if new_target == old_target:
                 order.submitted_amount = order.amount_total
-                order._log_approval_history('amount_change', note=_(
-                    'Tutar %(old)s → %(new)s olarak değişti; onay baremi '
-                    'aynı kaldı.', old=old_fmt, new=new_fmt))
                 order.message_post(body=_(
                     'Sipariş toplamı %(old)s → %(new)s olarak değişti; '
                     'onay baremi aynı kaldı (%(tier)s).',
@@ -571,7 +559,7 @@ class PurchaseOrder(models.Model):
                     'approval_required': False,
                     'approval_state': 'approved',
                 })
-                order._log_approval_history('auto_approve', note=_(
+                order._update_approval_step_row('approve', note=_(
                     '%(change)s; %(reason)s, sipariş otomatik onaylandı.',
                     change=change_txt, reason=reason))
                 order.message_post(body=_(
@@ -590,11 +578,6 @@ class PurchaseOrder(models.Model):
                     # Akış değişti; önceki akışta tamamlanan aşamalar
                     # yeni akışı karşılamaz — zincir baştan başlar.
                     remaining = chain
-                order._log_approval_history('tier_change', note=_(
-                    '%(change)s; hedef barem %(oldt)s → %(newt)s '
-                    'olarak güncellendi.', change=change_txt,
-                    oldt=old_target.display_name,
-                    newt=new_target.display_name))
                 order.write({
                     'approval_final_tier_id': new_target.id,
                     'submitted_amount': order.amount_total,
@@ -610,7 +593,7 @@ class PurchaseOrder(models.Model):
                         'approver_id': self.env.user.id,
                         'approve_date': fields.Datetime.now(),
                     })
-                    order._log_approval_history('auto_approve', note=_(
+                    order._update_approval_step_row('approve', note=_(
                         '%(change)s; yeni hedef barem tamamlanan '
                         'aşamaların altında kaldığı için sipariş '
                         'otomatik onaylandı.', change=change_txt))
