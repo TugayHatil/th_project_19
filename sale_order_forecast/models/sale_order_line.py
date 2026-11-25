@@ -54,7 +54,7 @@ class SaleOrderLine(models.Model):
     @api.constrains('transfer_qty', 'product_uom_qty', 'transferred_qty')
     def _check_transfer_qty(self):
         for line in self:
-            precision = line.product_uom.rounding or 0.01
+            precision = line.product_uom_id.rounding or 0.01
             if float_compare(line.transfer_qty, 0.0,
                              precision_rounding=precision) < 0:
                 raise ValidationError(_(
