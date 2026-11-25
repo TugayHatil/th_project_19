@@ -174,6 +174,23 @@ class PurchaseOrder(models.Model):
             order.current_approval_history_ids = hist.filtered(
                 lambda h: h.id > boundary)
 
+    def _submit_approval_step(self, tier):
+        """Bir baremin onayına geçişi geçmişe işler: o barem için
+        'Bekliyor' satırı varsa onu 'Onaya Gönderildi' olarak yerinde
+        günceller (yeni satır eklenmez); yoksa yeni kayıt oluşturur."""
+        self.ensure_one()
+        pending = self.approval_history_ids.sudo().filtered(
+            lambda h: h.action == 'pending' and h.tier_id == tier)
+        if pending:
+            pending.write({
+                'action': 'submit',
+                'date': fields.Datetime.now(),
+                'user_id': self.env.user.id,
+                'amount_total': self.amount_total,
+            })
+        else:
+            self._log_approval_history('submit', tier=tier)
+
     def _sync_pending_approval_steps(self):
         """Onay zincirindeki gelecek aşamaları geçmiş listesinde
         'Bekliyor' satırı olarak gösterir. Her geçişte yeniden hesaplanır:
@@ -329,7 +346,7 @@ class PurchaseOrder(models.Model):
             'approver_id': False,
             'approve_date': False,
         })
-        self._log_approval_history('submit', tier=first)
+        self._submit_approval_step(first)
         self._schedule_approval_activities()
         if len(chain) > 1:
             self.message_post(body=_(
@@ -390,7 +407,7 @@ class PurchaseOrder(models.Model):
         self._close_approval_activities(feedback=_(
             'Onay aşaması tamamlandı, üst kademeye iletildi.'))
         self.approval_tier_id = next_tier.id
-        self._log_approval_history('submit', tier=next_tier)
+        self._submit_approval_step(next_tier)
         if (next_tier.approval_group_id.all_user_ids.filtered('active')
                 or next_tier.delegate_user_id):
             self._schedule_approval_activities()
@@ -585,7 +602,7 @@ class PurchaseOrder(models.Model):
                         'Satınalma grubu değişti; onay yeni akışta '
                         'yeniden başlatıldı.'))
                     order.approval_tier_id = first.id
-                    order._log_approval_history('submit', tier=first)
+                    order._submit_approval_step(first)
                     if (first.approval_group_id.all_user_ids.filtered(
                             'active') or first.delegate_user_id):
                         order._schedule_approval_activities()
