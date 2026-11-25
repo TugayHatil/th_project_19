@@ -26,15 +26,16 @@ Satış siparişlerine **Sipariş Niteliği** (`order_nature`) alanı ekler:
 - Onaylanmış Öngörü siparişinin satır listesinde **Aktar** onay kutusu ve
   **Aktarım** miktarı kolonu görünür (yalnızca Öngörü niteliğinde;
   teklifte ve Kesin siparişlerde gizlidir). Satır işaretlendiğinde Aktarım
-  varsayılan olarak kalan miktarla dolar; boş/0 bırakılırsa kalanın
-  tamamı aktarılır.
+  varsayılan olarak satır miktarıyla dolar; boş/0 bırakılırsa tamamı
+  aktarılır.
 - **Kesin Siparişe Dönüştür** butonu işaretli satırları **yeni bir Kesin
   siparişe** taşır: başlık bilgileri kopyalanır, satırlar aktarım
   miktarlarıyla oluşturulur, sipariş otomatik onaylanır ve standart
-  teslimat/stok süreci başlar. Kaynak Öngörü siparişi yerinde kalır.
-- Aktarım **parçalıdır**: her satırda `Aktarılan` ve `Kalan` miktar
-  izlenir; kalan miktarlar sonraki dönüştürmelerde yeni Kesin siparişlere
-  aktarılabilir. Aktarım miktarı kalanı aşamaz.
+  teslimat/stok süreci başlar.
+- Aktarılan miktar Öngörü siparişinin satırından **düşülür**; miktarının
+  tamamı aktarılan satır kaynaktan **silinir**. Aktarım parçalıdır —
+  kalan miktarlar sonraki dönüştürmelerde yeni Kesin siparişlere
+  aktarılabilir. Aktarım miktarı satır miktarını aşamaz.
 - Öngörü siparişindeki **Kesin Siparişler** akıllı butonu oluşan
   siparişleri listeler; Kesin siparişteki **Öngörü Siparişi** butonu
   kaynağa döner. Bağlantılar `forecast_order_id` ve

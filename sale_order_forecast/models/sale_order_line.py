@@ -17,19 +17,8 @@ class SaleOrderLine(models.Model):
         digits='Product Unit of Measure',
         default=0.0,
         copy=False,
-        help="Kesin siparişe aktarılacak miktar. Boş/0 bırakılırsa "
-             "kalan miktarın tamamı aktarılır.")
-    transferred_qty = fields.Float(
-        string='Aktarılan',
-        digits='Product Unit of Measure',
-        default=0.0,
-        copy=False,
-        readonly=True,
-        help="Bu satırdan Kesin siparişlere aktarılmış toplam miktar.")
-    remaining_transfer_qty = fields.Float(
-        string='Kalan',
-        digits='Product Unit of Measure',
-        compute='_compute_remaining_transfer_qty')
+        help="Kesin siparişe aktarılacak miktar. Boş/0 bırakılırsa satır "
+             "miktarının tamamı aktarılır ve satır silinir.")
     forecast_source_line_id = fields.Many2one(
         'sale.order.line',
         string='Kaynak Öngörü Satırı',
@@ -39,19 +28,13 @@ class SaleOrderLine(models.Model):
         ondelete='set null',
         help="Bu satırın aktarıldığı Öngörü siparişi satırı.")
 
-    @api.depends('product_uom_qty', 'transferred_qty')
-    def _compute_remaining_transfer_qty(self):
-        for line in self:
-            line.remaining_transfer_qty = (
-                line.product_uom_qty - line.transferred_qty)
-
     @api.onchange('to_transfer', 'product_uom_qty')
     def _onchange_to_transfer(self):
         for line in self:
             line.transfer_qty = (
-                line.remaining_transfer_qty if line.to_transfer else 0.0)
+                line.product_uom_qty if line.to_transfer else 0.0)
 
-    @api.constrains('transfer_qty', 'product_uom_qty', 'transferred_qty')
+    @api.constrains('transfer_qty', 'product_uom_qty')
     def _check_transfer_qty(self):
         for line in self:
             precision = line.product_uom_id.rounding or 0.01
@@ -59,14 +42,14 @@ class SaleOrderLine(models.Model):
                              precision_rounding=precision) < 0:
                 raise ValidationError(_(
                     "Aktarım miktarı negatif olamaz."))
-            if float_compare(line.transfer_qty, line.remaining_transfer_qty,
+            if float_compare(line.transfer_qty, line.product_uom_qty,
                              precision_rounding=precision) > 0:
                 raise ValidationError(_(
                     "Aktarım miktarı (%(qty)s), \"%(product)s\" satırının "
-                    "kalan miktarından (%(remaining)s) büyük olamaz.",
+                    "sipariş miktarından (%(ordered)s) büyük olamaz.",
                     qty=line.transfer_qty,
                     product=line.product_id.display_name,
-                    remaining=line.remaining_transfer_qty))
+                    ordered=line.product_uom_qty))
 
     def _action_launch_stock_rule(self, *, previous_product_uom_qty=False):
         """ Öngörü niteliğindeki siparişlerin satırları için tedarik/stok

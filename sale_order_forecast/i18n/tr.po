@@ -159,11 +159,11 @@ msgstr "\"%(product)s\" satırında aktarılabilir miktar kalmamış."
 #: code:addons/sale_order_forecast/models/sale_order.py:0
 #, python-format
 msgid ""
-"\"%(product)s\" satırının aktarım miktarı (%(qty)s), kalan miktardan "
-"(%(remaining)s) büyük olamaz."
+"\"%(product)s\" satırının aktarım miktarı (%(qty)s), sipariş miktarından "
+"(%(ordered)s) büyük olamaz."
 msgstr ""
-"\"%(product)s\" satırının aktarım miktarı (%(qty)s), kalan miktardan "
-"(%(remaining)s) büyük olamaz."
+"\"%(product)s\" satırının aktarım miktarı (%(qty)s), sipariş miktarından "
+"(%(ordered)s) büyük olamaz."
 
 #. module: sale_order_forecast
 #: code:addons/sale_order_forecast/models/sale_order.py:0
@@ -195,11 +195,11 @@ msgstr "Aktarım miktarı negatif olamaz."
 #: code:addons/sale_order_forecast/models/sale_order_line.py:0
 #, python-format
 msgid ""
-"Aktarım miktarı (%(qty)s), \"%(product)s\" satırının kalan miktarından "
-"(%(remaining)s) büyük olamaz."
+"Aktarım miktarı (%(qty)s), \"%(product)s\" satırının sipariş miktarından "
+"(%(ordered)s) büyük olamaz."
 msgstr ""
-"Aktarım miktarı (%(qty)s), \"%(product)s\" satırının kalan miktarından "
-"(%(remaining)s) büyük olamaz."
+"Aktarım miktarı (%(qty)s), \"%(product)s\" satırının sipariş miktarından "
+"(%(ordered)s) büyük olamaz."
 
 #. module: sale_order_forecast
 #: model:ir.model.fields,field_description:sale_order_forecast.field_sale_order__forecast_order_id
@@ -253,28 +253,11 @@ msgstr "Aktarım"
 #. module: sale_order_forecast
 #: model:ir.model.fields,help:sale_order_forecast.field_sale_order_line__transfer_qty
 msgid ""
-"Kesin siparişe aktarılacak miktar. Boş/0 bırakılırsa kalan miktarın "
-"tamamı aktarılır."
+"Kesin siparişe aktarılacak miktar. Boş/0 bırakılırsa satır miktarının "
+"tamamı aktarılır ve satır silinir."
 msgstr ""
-"Kesin siparişe aktarılacak miktar. Boş/0 bırakılırsa kalan miktarın "
-"tamamı aktarılır."
-
-#. module: sale_order_forecast
-#: model:ir.model.fields,field_description:sale_order_forecast.field_sale_order_line__transferred_qty
-#: model_terms:ir.ui.view,arch_db:sale_order_forecast.view_order_form_inherit_forecast
-msgid "Aktarılan"
-msgstr "Aktarılan"
-
-#. module: sale_order_forecast
-#: model:ir.model.fields,help:sale_order_forecast.field_sale_order_line__transferred_qty
-msgid "Bu satırdan Kesin siparişlere aktarılmış toplam miktar."
-msgstr "Bu satırdan Kesin siparişlere aktarılmış toplam miktar."
-
-#. module: sale_order_forecast
-#: model:ir.model.fields,field_description:sale_order_forecast.field_sale_order_line__remaining_transfer_qty
-#: model_terms:ir.ui.view,arch_db:sale_order_forecast.view_order_form_inherit_forecast
-msgid "Kalan"
-msgstr "Kalan"
+"Kesin siparişe aktarılacak miktar. Boş/0 bırakılırsa satır miktarının "
+"tamamı aktarılır ve satır silinir."
 
 #. module: sale_order_forecast
 #: model:ir.model.fields,field_description:sale_order_forecast.field_sale_order_line__forecast_source_line_id

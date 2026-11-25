@@ -203,37 +203,37 @@ class TestSaleOrderForecast(TransactionCase):
         self.assertEqual(len(new_order.order_line), 2)
         new_qtys = new_order.order_line.mapped("product_uom_qty")
         self.assertEqual(sorted(new_qtys), [60.0, 100.0])
-        # Kaynak satır miktarları korunur, aktarım izlenir
-        self.assertEqual(line_a.product_uom_qty, 100.0)
-        self.assertEqual(line_a.transferred_qty, 100.0)
-        self.assertEqual(line_a.remaining_transfer_qty, 0.0)
-        self.assertEqual(line_b.transferred_qty, 60.0)
-        self.assertEqual(line_b.remaining_transfer_qty, 40.0)
-        self.assertEqual(line_c.transferred_qty, 0.0)
-        # İşaretler sıfırlanır
-        self.assertFalse(order.order_line.mapped("to_transfer"))
-        self.assertFalse(order.order_line.mapped("transfer_qty"))
+        # Tamamı aktarılan A satırı kaynaktan silinir
+        self.assertFalse(line_a.exists())
+        # Kısmi aktarılan B satırının miktarı düşer
+        self.assertEqual(line_b.product_uom_qty, 40.0)
+        self.assertFalse(line_b.to_transfer)
+        self.assertEqual(line_b.transfer_qty, 0.0)
+        # Seçilmeyen C satırı korunur
+        self.assertEqual(line_c.product_uom_qty, 100.0)
 
     # Bağlantılar: child→parent, parent→children, satır→satır
     def test_11_transfer_links(self):
         order = self._create_order("forecast", qty=10.0)
         order.action_confirm()
-        new_order = self._transfer(order, {order.order_line: 4.0})
+        line = order.order_line
+        new_order = self._transfer(order, {line: 4.0})
         self.assertEqual(new_order.forecast_order_id, order)
         self.assertEqual(order.confirmed_order_ids, new_order)
         self.assertEqual(order.confirmed_order_count, 1)
         self.assertEqual(
-            new_order.order_line.forecast_source_line_id, order.order_line)
+            new_order.order_line.forecast_source_line_id, line)
         self.assertEqual(new_order.origin, order.name)
 
-    # Aktarım miktarı boş bırakılırsa kalan tamamı aktarılır
-    def test_12_empty_transfer_qty_uses_remaining(self):
+    # Aktarım miktarı boş bırakılırsa satırın tamamı aktarılır ve silinir
+    def test_12_empty_transfer_qty_transfers_all(self):
         order = self._create_order("forecast", qty=7.0)
         order.action_confirm()
-        new_order = self._transfer(order, {order.order_line: None})
+        line = order.order_line
+        new_order = self._transfer(order, {line: None})
         self.assertEqual(new_order.order_line.product_uom_qty, 7.0)
-        self.assertEqual(order.order_line.transferred_qty, 7.0)
-        self.assertEqual(order.order_line.remaining_transfer_qty, 0.0)
+        self.assertFalse(line.exists())
+        self.assertFalse(order.order_line)
 
     # Parçalı aktarım tekrar edilebilir
     def test_13_multiple_partial_transfers(self):
@@ -241,10 +241,10 @@ class TestSaleOrderForecast(TransactionCase):
         order.action_confirm()
         line = order.order_line
         first = self._transfer(order, {line: 4.0})
-        self.assertEqual(line.transferred_qty, 4.0)
+        self.assertEqual(line.product_uom_qty, 6.0)
         self.assertTrue(order.has_transferable_lines)
         second = self._transfer(order, {line: 6.0})
-        self.assertEqual(line.transferred_qty, 10.0)
+        self.assertFalse(line.exists())
         self.assertFalse(order.has_transferable_lines)
         self.assertEqual(order.confirmed_order_count, 2)
         self.assertEqual(order.confirmed_order_ids, first | second)
@@ -257,8 +257,8 @@ class TestSaleOrderForecast(TransactionCase):
             order.action_convert_to_confirmed()
         self.assertFalse(order.confirmed_order_ids)
 
-    # Aktarım miktarı kalanı aşamaz
-    def test_15_transfer_qty_over_remaining_blocked(self):
+    # Aktarım miktarı sipariş miktarını aşamaz
+    def test_15_transfer_qty_over_ordered_blocked(self):
         order = self._create_order("forecast", qty=5.0)
         order.action_confirm()
         order.order_line.to_transfer = True
@@ -267,12 +267,11 @@ class TestSaleOrderForecast(TransactionCase):
             order.action_convert_to_confirmed()
         self.assertFalse(order.confirmed_order_ids)
 
-    # Kalanı aşan ikinci aktarım engellenir
-    def test_16_second_transfer_capped(self):
+    # Tamamı aktarılan satır silindiğinden ikinci aktarım yapılamaz
+    def test_16_no_lines_left_blocked(self):
         order = self._create_order("forecast", qty=5.0)
         order.action_confirm()
         self._transfer(order, {order.order_line: 5.0})
-        order.order_line.to_transfer = True
         with self.assertRaises(UserError):
             order.action_convert_to_confirmed()
 

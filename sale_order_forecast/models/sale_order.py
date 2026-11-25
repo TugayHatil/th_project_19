@@ -59,12 +59,12 @@ class SaleOrder(models.Model):
 
     @api.depends('order_nature',
                  'order_line.display_type',
-                 'order_line.remaining_transfer_qty')
+                 'order_line.product_uom_qty')
     def _compute_has_transferable_lines(self):
         for order in self:
             order.has_transferable_lines = (
                 order.order_nature == 'forecast'
-                and any(not l.display_type and l.remaining_transfer_qty > 0
+                and any(not l.display_type and l.product_uom_qty > 0
                         for l in order.order_line))
 
     def write(self, vals):
@@ -158,8 +158,8 @@ class SaleOrder(models.Model):
     def action_convert_to_confirmed(self):
         """İşaretli satırları yeni bir Kesin siparişe aktarır ve onaylar.
 
-        Öngörü siparişi yerinde kalır; aktarılan miktarlar satır bazında
-        `transferred_qty` üzerinden izlenir. İşlem parçalı olarak tekrar
+        Öngörü siparişi yerinde kalır; aktarılan miktar satırdan düşülür,
+        tamamı aktarılan satır silinir. İşlem parçalı olarak tekrar
         edilebilir."""
         new_orders = self.env['sale.order']
         for order in self:
@@ -199,31 +199,36 @@ class SaleOrder(models.Model):
                 "Lütfen Kesin siparişe aktarılacak satırları işaretleyin."))
         qty_map = {}
         for line in lines:
-            qty = line.transfer_qty or line.remaining_transfer_qty
+            qty = line.transfer_qty or line.product_uom_qty
             if qty <= 0:
                 raise UserError(_(
                     "\"%(product)s\" satırında aktarılabilir miktar "
                     "kalmamış.",
                     product=line.product_id.display_name))
-            if qty > line.remaining_transfer_qty:
+            if qty > line.product_uom_qty:
                 raise UserError(_(
                     "\"%(product)s\" satırının aktarım miktarı (%(qty)s), "
-                    "kalan miktardan (%(remaining)s) büyük olamaz.",
+                    "sipariş miktarından (%(ordered)s) büyük olamaz.",
                     product=line.product_id.display_name,
                     qty=qty,
-                    remaining=line.remaining_transfer_qty))
+                    ordered=line.product_uom_qty))
             qty_map[line.id] = qty
-        new_order = self._create_transfer_order(lines, qty_map)
-        for line in lines:
-            line.write({
-                'transferred_qty': line.transferred_qty + qty_map[line.id],
-                'to_transfer': False,
-                'transfer_qty': 0.0,
-            })
-        self.forecast_converted = True
         detail = ', '.join(
             "%s (%s)" % (l.product_id.display_name, qty_map[l.id])
             for l in lines)
+        new_order = self._create_transfer_order(lines, qty_map)
+        for line in lines:
+            qty = qty_map[line.id]
+            if qty >= line.product_uom_qty:
+                # Miktarın tamamı aktarıldı: satır Öngörü siparişinden kalkar.
+                line.unlink()
+            else:
+                line.write({
+                    'product_uom_qty': line.product_uom_qty - qty,
+                    'to_transfer': False,
+                    'transfer_qty': 0.0,
+                })
+        self.forecast_converted = True
         self.message_post(body=_(
             "%(count)s satır %(name)s Kesin siparişine aktarıldı: "
             "%(detail)s. İşlemi yapan: %(user)s – Tarih: %(date)s",

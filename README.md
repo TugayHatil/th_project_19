@@ -69,11 +69,12 @@ selection dialog (Kesin / Öngörü) and orders cannot reach the `sale` state
 without a nature. Öngörü orders confirm to Sales Order without creating
 delivery orders, stock moves or reservations. A confirmed Öngörü order can be
 transferred to a NEW Kesin order: on the confirmed Öngörü order each line
-has an Aktar checkbox and Aktarım quantity (defaults to the remaining
+has an Aktar checkbox and Aktarım quantity (defaults to the line
 quantity), and pressing Kesin Siparişe Dönüştür creates a new confirmed
 sale order with the selected lines/quantities and launches the standard
-delivery flow. Transfers are partial and repeatable — transferred and
-remaining quantities are tracked per line, a smart button on the Öngörü
+delivery flow. Transferred quantities are deducted from the Öngörü lines
+— a fully transferred line is removed from the source order — so
+transfers are partial and repeatable; a smart button on the Öngörü
 order lists the created Kesin orders and both sides keep chatter logs.
 Öngörü orders cannot be invoiced (`qty_to_invoice` forced to
 zero plus a `_create_invoices` guard) until transferred. Works independently
