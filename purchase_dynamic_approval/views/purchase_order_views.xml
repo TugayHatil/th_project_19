@@ -47,9 +47,13 @@
                     <field name="approver_id" class="d-inline-block ms-1"/>
                 </div>
             </xpath>
-            <xpath expr="//page[@name='other_information']//field[@name='partner_ref']"
-                   position="after">
-                <field name="purchase_group"/>
+            <xpath expr="//page[@name='other_information']"
+                   position="inside">
+                <group>
+                    <group string="Onay Akışı">
+                        <field name="purchase_group"/>
+                    </group>
+                </group>
             </xpath>
             <xpath expr="//notebook" position="inside">
                 <page name="dynamic_approval" string="Onay"
