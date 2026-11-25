@@ -103,12 +103,16 @@ class PurchaseOrder(models.Model):
         for order in self:
             chain = order._approval_chain()
             current = order.approval_tier_id
-            if current and chain:
+            if not current or not chain:
+                order.approval_progress = False
+                continue
+            if order.approval_state == 'approved':
+                step = len(chain)
+            else:
                 step = len(chain.filtered(
                     lambda t: t.amount_min < current.amount_min)) + 1
-                order.approval_progress = '%d / %d' % (step, len(chain))
-            else:
-                order.approval_progress = False
+            order.approval_progress = '%d / %d' % (min(step, len(chain)),
+                                                 len(chain))
 
     def _log_approval_history(self, action, tier=None, note=False):
         History = self.env['purchase.order.approval.history'].sudo()
