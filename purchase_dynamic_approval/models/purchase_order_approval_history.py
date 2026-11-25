@@ -17,6 +17,7 @@ class PurchaseOrderApprovalHistory(models.Model):
     date = fields.Datetime(string='Tarih', required=True, readonly=True)
     action = fields.Selection([
         ('submit', 'Onaya Gönderildi'),
+        ('pending', 'Bekliyor'),
         ('approve', 'Onaylandı'),
         ('step_approve', 'Aşama Onaylandı'),
         ('reject', 'Reddedildi'),

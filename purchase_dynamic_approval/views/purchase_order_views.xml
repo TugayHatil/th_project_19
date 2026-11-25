@@ -73,7 +73,7 @@
                     <separator string="Onay Geçmişi"/>
                     <field name="approval_history_ids" nolabel="1"
                            options="{'no_create': True}">
-                        <list>
+                        <list decoration-muted="action == 'pending'">
                             <field name="date"/>
                             <field name="action" widget="badge"
                                    decoration-info="action == 'submit'"
@@ -81,7 +81,7 @@
                                    decoration-success="action in ('approve', 'auto_approve')"
                                    decoration-danger="action in ('reject', 'cancel')"
                                    decoration-warning="action in ('tier_change', 'amount_change')"
-                                   decoration-muted="action == 'reset'"/>
+                                   decoration-muted="action in ('reset', 'pending')"/>
                             <field name="tier_id"/>
                             <field name="approval_group_id"/>
                             <field name="user_id"/>

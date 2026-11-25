@@ -156,6 +156,38 @@ class PurchaseOrder(models.Model):
                 'note': order_note or False,
             })
 
+    def _sync_pending_approval_steps(self):
+        """Onay zincirindeki gelecek aşamaları geçmiş listesinde
+        'Bekliyor' satırı olarak gösterir. Her geçişte yeniden hesaplanır:
+        zincirde kalması gereken satırlar korunur, kapsam dışı kalanlar
+        silinir, yeni kalan aşamalar eklenir."""
+        History = self.env['purchase.order.approval.history'].sudo()
+        for order in self:
+            pending = order.approval_history_ids.filtered(
+                lambda h: h.action == 'pending')
+            if not (order.state == 'to approve'
+                    and order.approval_required
+                    and order.approval_state == 'waiting'):
+                pending.unlink()
+                continue
+            current_min = (order.approval_tier_id.amount_min
+                           if order.approval_tier_id else -1)
+            remaining = order._approval_chain().filtered(
+                lambda t: t.amount_min > current_min)
+            pending.filtered(
+                lambda h: h.tier_id not in remaining).unlink()
+            have = pending.filtered(
+                lambda h: h.tier_id in remaining).mapped('tier_id')
+            for tier in remaining.filtered(lambda t: t not in have):
+                History.create({
+                    'order_id': order.id,
+                    'date': fields.Datetime.now(),
+                    'action': 'pending',
+                    'tier_id': tier.id,
+                    'approval_group_id': tier.approval_group_id.id,
+                    'amount_total': order.amount_total,
+                })
+
     def _schedule_approval_activities(self):
         self.ensure_one()
         approvers = (
@@ -297,6 +329,7 @@ class PurchaseOrder(models.Model):
                 group=first.approval_group_id.display_name,
                 tier=first.display_name,
                 amount=self.currency_id.format(self.amount_total)))
+        self._sync_pending_approval_steps()
 
     # Onay / red / taslak aksiyonları
 
@@ -322,6 +355,7 @@ class PurchaseOrder(models.Model):
                     group=order.approval_group_id.display_name))
                 order.with_context(
                     dynamic_approval_bypass=True).button_approve()
+            order._sync_pending_approval_steps()
         return True
 
     def _advance_approval_step(self, next_tier):
@@ -354,6 +388,7 @@ class PurchaseOrder(models.Model):
             step=step, total=len(chain), user=self.env.user.name,
             group=current.approval_group_id.display_name,
             next=next_tier.approval_group_id.display_name))
+        self._sync_pending_approval_steps()
 
     def action_dynamic_reject(self):
         self.ensure_one()
@@ -382,6 +417,7 @@ class PurchaseOrder(models.Model):
             'Satınalma siparişi %(user)s tarafından reddedildi. '
             'Red nedeni: %(reason)s',
             user=self.env.user.name, reason=reason))
+        self._sync_pending_approval_steps()
         self.button_draft()
 
     def button_cancel(self):
@@ -391,7 +427,9 @@ class PurchaseOrder(models.Model):
                 feedback=_('Sipariş iptal edildi.'))
             order._log_approval_history(
                 'cancel', note=_('Sipariş iptal edildi.'))
-        return super().button_cancel()
+        res = super().button_cancel()
+        self._sync_pending_approval_steps()
+        return res
 
     def action_reset_to_draft(self):
         for order in self.filtered(
@@ -416,6 +454,7 @@ class PurchaseOrder(models.Model):
                 'approver_id': False,
                 'approve_date': False,
             })
+            order._sync_pending_approval_steps()
         return True
 
     # Tutar değişikliği kontrolü
@@ -567,3 +606,4 @@ class PurchaseOrder(models.Model):
                         change=change_txt,
                         tier=new_target.display_name,
                         group=order.approval_group_id.display_name))
+            order._sync_pending_approval_steps()
