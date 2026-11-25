@@ -34,6 +34,13 @@ class SaleOrderLine(models.Model):
             line.transfer_qty = (
                 line.product_uom_qty if line.to_transfer else 0.0)
 
+    def write(self, vals):
+        # Onay kutusu kaldırıldığında aktarım miktarı da sıfırlanır;
+        # satırın aktarılacak değeri her zaman işarete bağlıdır.
+        if vals.get('to_transfer') is False:
+            vals['transfer_qty'] = 0.0
+        return super().write(vals)
+
     @api.constrains('transfer_qty', 'product_uom_qty')
     def _check_transfer_qty(self):
         for line in self:
