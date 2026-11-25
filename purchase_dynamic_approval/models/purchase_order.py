@@ -481,7 +481,43 @@ class PurchaseOrder(models.Model):
             order._close_approval_activities(
                 feedback=_('Sipariş iptal edildi.'))
         res = super().button_cancel()
+        # İptal edilen siparişte karar bilgisi kalmasın: onaylıyken
+        # iptal edilip revize/taslağa dönen kayıtta eski "Onaylandı"
+        # şeridi görünmeye devam ederdi. Geçmiş satırları korunur.
+        stale = self.filtered(
+            lambda o: o.state == 'cancel'
+            and (o.approval_required or o.approval_state != 'none'))
+        if stale:
+            stale.write({
+                'approval_required': False,
+                'approval_state': 'none',
+                'approval_tier_id': False,
+                'approval_final_tier_id': False,
+                'submitted_amount': 0.0,
+                'approver_id': False,
+                'approve_date': False,
+            })
         self._sync_pending_approval_steps()
+        return res
+
+    def button_draft(self):
+        res = super().button_draft()
+        # İptal yolundan geçmeden taslağa dönen akışlarda da eski
+        # "Onaylandı" bilgisi kalmasın (ör. revizyon addon'u).
+        # 'rejected' bilinçli korunur: reddedilen taslakta kırmızı
+        # şerit görünür.
+        stale = self.filtered(
+            lambda o: o.state == 'draft' and o.approval_state == 'approved')
+        if stale:
+            stale.write({
+                'approval_required': False,
+                'approval_state': 'none',
+                'approval_tier_id': False,
+                'approval_final_tier_id': False,
+                'submitted_amount': 0.0,
+                'approver_id': False,
+                'approve_date': False,
+            })
         return res
 
     def action_reset_to_draft(self):
