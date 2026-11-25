@@ -234,6 +234,8 @@ class TestSaleOrderForecast(TransactionCase):
         self.assertEqual(new_order.order_line.product_uom_qty, 7.0)
         self.assertFalse(line.exists())
         self.assertFalse(order.order_line)
+        # Tüm satırlar aktarıldı: boşalan Öngörü siparişi iptal edilir
+        self.assertEqual(order.state, "cancel")
 
     # Parçalı aktarım tekrar edilebilir
     def test_13_multiple_partial_transfers(self):
@@ -246,6 +248,7 @@ class TestSaleOrderForecast(TransactionCase):
         second = self._transfer(order, {line: 6.0})
         self.assertFalse(line.exists())
         self.assertFalse(order.has_transferable_lines)
+        self.assertEqual(order.state, "cancel")
         self.assertEqual(order.confirmed_order_count, 2)
         self.assertEqual(order.confirmed_order_ids, first | second)
 

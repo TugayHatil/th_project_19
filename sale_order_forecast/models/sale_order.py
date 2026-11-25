@@ -243,6 +243,12 @@ class SaleOrder(models.Model):
             name=self.name,
             user=self.env.user.display_name,
             date=format_datetime(self.env, fields.Datetime.now())))
+        if not self.order_line:
+            # Tüm satırlar aktarıldı; boşalan Öngörü siparişi iptal edilir.
+            self.message_post(body=_(
+                "Tüm satırlar Kesin siparişlere aktarıldı; sipariş "
+                "iptal edildi."))
+            self.action_cancel()
         return new_order
 
     def _create_transfer_order(self, lines, qty_map):
