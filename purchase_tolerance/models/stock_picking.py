@@ -165,12 +165,14 @@ class StockPicking(models.Model):
         return exceeded
 
     def _apply_conditional_tolerance_split(self):
-        """Koşullu onaylı satırlarda onaylı kısmı normal konuma, fazlayı
-        tolerans dışı konuma yönlendirecek şekilde miktarı böler.
+        """Koşullu onaylı satırlarda onaylanan kısmı normal konuma, fazlayı
+        tolerans dışı konuma yönlendirecek şekilde hareketleri dengeler.
 
-        Tolerans dışı hareketler sistem tarafından üretilir; yöntem
-        idempotenttir — önceki bölme hareketleri silinip fiili miktarlara
-        göre yeniden oluşturulur. Onay anında ve doğrulamada çağrılabilir.
+        Her satır için beklenen fazla = (normal + tolerans dışı hareket
+        toplamı) − onaylı kapasitedir. Normal hareketler kapasiteyle
+        sınırlanır; tolerans dışı hareket havuzu beklenen fazlaya göre
+        ölçeklenir (eksikse oluşturulur, fazlaysa kısılır/silinir).
+        Yöntem idempotenttir — onay anında ve doğrulamada çağrılabilir.
         {request_id: fiili fazla (PO satırı birimi)} döner.
         """
         moves_by_picking = {}
@@ -192,73 +194,116 @@ class StockPicking(models.Model):
         excess_loc = self._get_tolerance_excess_location()
         Move = self.env['stock.move']
         actual_excess = {r.id: 0.0 for r in cond_requests.values()}
+
+        def line_qty(move, uom):
+            return move.product_uom._compute_quantity(
+                move.quantity, uom, rounding_method='HALF-UP')
+
         for picking in self:
             if picking.id not in moves_by_picking:
                 continue
             moves, excess_moves = moves_by_picking[picking.id]
-            # Önceki bölme hareketlerini sil; fiili miktarlarla yeniden
-            # hesaplanır (onay sonrası miktar değiştiyse doğru sonuç çıkar).
-            stale = excess_moves.filtered(
-                lambda m: m.purchase_line_id.id in cond_requests)
-            if stale:
-                # unlink yalnız draft/cancel hareketlere izin verir
-                stale._action_cancel()
-                stale.unlink()
-            caps = {}
-            for move in moves.sorted('id'):
+            # Koşullu onaylı satırları grupla
+            lines_data = {}
+            for move in (moves | excess_moves).sorted('id'):
                 line = move.purchase_line_id
-                request = cond_requests.get(line.id)
-                if not request:
+                if line.id not in cond_requests:
                     continue
-                if line.id not in caps:
-                    max_qty = line.product_qty * (
-                        1 + line.purchase_tolerance / 100.0)
-                    caps[line.id] = max(max_qty - line.qty_received, 0.0)
-                qty = move.product_uom._compute_quantity(
-                    move.quantity, line.product_uom_id,
-                    rounding_method='HALF-UP')
-                if line.product_uom_id.compare(qty, 0) <= 0:
+                data = lines_data.setdefault(line.id, {
+                    'line': line,
+                    'normal': Move.browse(),
+                    'excess': Move.browse(),
+                })
+                key = 'excess' if move.is_tolerance_excess_move else 'normal'
+                data[key] |= move
+
+            for data in lines_data.values():
+                line = data['line']
+                request = cond_requests[line.id]
+                uom = line.product_uom_id
+                rounding = uom.rounding
+                cap = max(
+                    line.product_qty * (1 + line.purchase_tolerance / 100.0)
+                    - line.qty_received, 0.0)
+                total = sum(
+                    line_qty(m, uom) for m in data['normal'] | data['excess'])
+                expected = max(total - cap, 0.0)
+                pool = data['excess']
+
+                # Normal hareketleri onaylı kapasiteyle sınırla;
+                # kapasitesi sıfırlanan hareket tamamen fazlaya çevrilir.
+                remaining_allowed = min(total, cap)
+                for move in data['normal'].sorted('id'):
+                    qty = line_qty(move, uom)
+                    if uom.compare(qty, 0) <= 0:
+                        continue
+                    allowed = min(qty, remaining_allowed)
+                    remaining_allowed -= allowed
+                    allowed_move_qty = uom._compute_quantity(
+                        allowed, move.product_uom, rounding_method='HALF-UP')
+                    if move.product_uom.compare(allowed_move_qty, 0) <= 0:
+                        move.write({
+                            'location_dest_id': excess_loc.id,
+                            'is_tolerance_excess_move': True,
+                        })
+                        request.sudo().move_ids = [Command.link(move.id)]
+                        pool |= move
+                    else:
+                        move.write(
+                            {'quantity': allowed_move_qty, 'picked': True})
+
+                # Tolerans dışı havuzu beklenen fazlaya denkle
+                if float_compare(expected, 0.0,
+                                 precision_rounding=rounding) <= 0:
+                    if pool:
+                        pool._action_cancel()
+                        pool.unlink()
                     continue
-                allowed = min(qty, caps[line.id])
-                caps[line.id] -= allowed
-                excess_qty = qty - allowed
-                if float_compare(
-                        excess_qty, 0.0,
-                        precision_rounding=line.product_uom_id.rounding) <= 0:
-                    continue
-                actual_excess[request.id] += excess_qty
-                allowed_move_qty = line.product_uom_id._compute_quantity(
-                    allowed, move.product_uom, rounding_method='HALF-UP')
-                if move.product_uom.compare(allowed_move_qty, 0) <= 0:
-                    # Hareketin tamamı tolerans dışı: aynı hareketi tolerans
-                    # dışı konuma yönlendir (iptal satır bırakmaz).
-                    move.write({
+                actual_excess[request.id] += expected
+                remaining = expected
+                for move in pool.sorted('id'):
+                    qty = line_qty(move, uom)
+                    keep = min(qty, remaining)
+                    remaining -= keep
+                    if float_compare(keep, 0.0,
+                                     precision_rounding=rounding) <= 0:
+                        move._action_cancel()
+                        move.unlink()
+                        continue
+                    if float_compare(keep, qty,
+                                     precision_rounding=rounding) < 0:
+                        keep_move_qty = uom._compute_quantity(
+                            keep, move.product_uom,
+                            rounding_method='HALF-UP')
+                        move.write({
+                            'product_uom_qty': keep_move_qty,
+                            'quantity': keep_move_qty,
+                        })
+                if float_compare(remaining, 0.0,
+                                 precision_rounding=rounding) > 0:
+                    src_move = (data['normal'] or pool)[:1]
+                    extra_move_qty = uom._compute_quantity(
+                        remaining, src_move.product_uom,
+                        rounding_method='HALF-UP')
+                    extra_move = Move.create({
+                        'name': src_move.product_id.display_name,
+                        'product_id': src_move.product_id.id,
+                        'product_uom_qty': extra_move_qty,
+                        'product_uom': src_move.product_uom.id,
+                        'picking_id': picking.id,
+                        'location_id': src_move.location_id.id,
                         'location_dest_id': excess_loc.id,
+                        'purchase_line_id': line.id,
                         'is_tolerance_excess_move': True,
+                        'company_id': picking.company_id.id,
+                        'partner_id': picking.partner_id.id,
                     })
-                    request.sudo().move_ids = [Command.link(move.id)]
-                    continue
-                excess_move_qty = move.quantity - allowed_move_qty
-                move.write({'quantity': allowed_move_qty, 'picked': True})
-                excess_move = Move.create({
-                    'name': move.product_id.display_name,
-                    'product_id': move.product_id.id,
-                    'product_uom_qty': excess_move_qty,
-                    'product_uom': move.product_uom.id,
-                    'picking_id': picking.id,
-                    'location_id': move.location_id.id,
-                    'location_dest_id': excess_loc.id,
-                    'purchase_line_id': line.id,
-                    'is_tolerance_excess_move': True,
-                    'company_id': picking.company_id.id,
-                    'partner_id': picking.partner_id.id,
-                })
-                excess_move._action_confirm(merge=False)
-                excess_move.write({
-                    'quantity': excess_move_qty,
-                    'picked': True,
-                })
-                request.sudo().move_ids = [Command.link(excess_move.id)]
+                    extra_move._action_confirm(merge=False)
+                    extra_move.write({
+                        'quantity': extra_move_qty,
+                        'picked': True,
+                    })
+                    request.sudo().move_ids = [Command.link(extra_move.id)]
         return actual_excess
 
     def _create_tolerance_return_pickings(self, actual_excess):
