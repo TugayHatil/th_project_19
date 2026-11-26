@@ -189,7 +189,7 @@ class PurchaseToleranceRequest(models.Model):
             lines.append(_('Onaylayan: %s', self.approver_id.name or ''))
         decision_dt = self.approve_date or fields.Datetime.now()
         lines.append(_('Karar tarihi: %s', fields.Datetime.context_timestamp(
-            self.env, decision_dt).strftime('%d.%m.%Y %H:%M')))
+            self, decision_dt).strftime('%d.%m.%Y %H:%M')))
         if decision == 'reddedildi' and self.reject_reason:
             lines.append(_('Açıklama: %s', self.reject_reason))
         # Düz str gövde message_post'ta escape edilir; satırlar escape
