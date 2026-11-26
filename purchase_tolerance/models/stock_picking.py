@@ -270,6 +270,8 @@ class StockPicking(models.Model):
                     continue
                 actual_excess[request.id] += expected
                 remaining = expected
+                last_move = Move.browse()
+                last_qty = 0.0
                 for move in pool.sorted('id'):
                     qty = line_qty(move, uom)
                     keep = min(qty, remaining)
@@ -288,9 +290,22 @@ class StockPicking(models.Model):
                             'product_uom_qty': keep_move_qty,
                             'quantity': keep_move_qty,
                         })
+                    last_move = move
+                    last_qty = keep
                 if float_compare(remaining, 0.0,
                                  precision_rounding=rounding) > 0:
-                    src_move = (data['normal'] or pool)[:1]
+                    if last_move:
+                        # Eksik kalan fazlayı yeni satır açmak yerine son
+                        # havuz hareketine ekle (tek satır görünür).
+                        new_move_qty = uom._compute_quantity(
+                            last_qty + remaining, last_move.product_uom,
+                            rounding_method='HALF-UP')
+                        last_move.write({
+                            'product_uom_qty': new_move_qty,
+                            'quantity': new_move_qty,
+                        })
+                        continue
+                    src_move = data['normal'][:1]
                     extra_move_qty = uom._compute_quantity(
                         remaining, src_move.product_uom,
                         rounding_method='HALF-UP')
