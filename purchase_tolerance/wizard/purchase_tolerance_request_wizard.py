@@ -47,7 +47,9 @@ class PurchaseToleranceRequestWizard(models.TransientModel):
         Request = self.env['purchase.tolerance.request']
         requests = Request.browse()
         for line in self.line_ids:
-            existing = Request.search([
+            # Kayıt kuralı başka kullanıcının bekleyen talebini gizler;
+            # mükerrer talep açılmaması için sudo ile aranır.
+            existing = Request.sudo().search([
                 ('order_line_id', '=', line.order_line_id.id),
                 ('state', '=', 'pending'),
             ], limit=1)
@@ -66,6 +68,7 @@ class PurchaseToleranceRequestWizard(models.TransientModel):
                 'incoming_qty': line.incoming_qty,
                 'current_tolerance': line.current_tolerance,
                 'requested_tolerance': line.requested_tolerance,
+                'approved_tolerance': line.requested_tolerance,
             })
             request.sudo()._schedule_review_activity()
             request.order_id.sudo().message_post(body=_(
@@ -78,6 +81,10 @@ class PurchaseToleranceRequestWizard(models.TransientModel):
                     name=request._get_html_link()), message_type='comment')
             requests |= request
 
+        # Başka kullanıcıya ait bekleyen talep varsa yalnızca görülebilenler açılır
+        requests = requests.with_env(self.env)._filtered_access('read')
+        if not requests:
+            return {'type': 'ir.actions.act_window_close'}
         action = {
             'type': 'ir.actions.act_window',
             'name': _('Tolerans Talepleri'),

@@ -14,4 +14,20 @@
             </xpath>
         </field>
     </record>
+
+    <record id="res_config_settings_view_form_stock_tolerance" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.stock.tolerance</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="stock.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@name='operations_setting_container']" position="inside">
+                <setting id="tolerance_excess_location_setting"
+                         title="Tolerans Dışı Miktar Konumu"
+                         help="Koşullu onaylanan tolerans taleplerinde, onaylanan miktarın üzerindeki tolerans dışı miktar bu konuma alınır ve buradan tedarikçiye iade transferi oluşturulur.">
+                    <field name="tolerance_excess_location_id"
+                           options="{'no_create': True}"/>
+                </setting>
+            </xpath>
+        </field>
+    </record>
 </odoo>

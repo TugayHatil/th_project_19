@@ -13,9 +13,14 @@ class StockMove(models.Model):
     tolerance_state = fields.Selection(
         [('pending', 'Onay Bekliyor'),
          ('approved', 'Onaylandı'),
+         ('conditional', 'Koşullu'),
          ('rejected', 'Reddedildi')],
         string='Tolerans Durumu', compute='_compute_tolerance_state',
         compute_sudo=True)
+    is_tolerance_excess_move = fields.Boolean(
+        string='Tolerans Dışı Hareket', readonly=True, copy=False,
+        help="Koşullu onay sonrası tolerans dışı miktar için iade edilecek "
+             "konuma yönlendirilen hareket.")
 
     @api.depends('tolerance_request_ids.state')
     def _compute_tolerance_state(self):

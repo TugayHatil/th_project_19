@@ -12,12 +12,19 @@
                     <field name="tolerance_request_count" widget="statinfo"
                            string="Tolerans Talepleri"/>
                 </button>
+                <button name="action_view_tolerance_returns" type="object"
+                        class="oe_stat_button" icon="fa-rotate-left"
+                        invisible="tolerance_return_count == 0">
+                    <field name="tolerance_return_count" widget="statinfo"
+                           string="İade Transferi"/>
+                </button>
             </xpath>
             <xpath expr="//page[@name='operations']//field[@name='move_ids']/list/field[@name='quantity']" position="after">
                 <field name="tolerance_state" string="Tolerans" optional="show"
                        widget="badge" readonly="1"
                        decoration-warning="tolerance_state == 'pending'"
                        decoration-success="tolerance_state == 'approved'"
+                       decoration-info="tolerance_state == 'conditional'"
                        decoration-danger="tolerance_state == 'rejected'"/>
             </xpath>
         </field>

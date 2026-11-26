@@ -7,6 +7,7 @@
             <list string="Tolerans Talepleri"
                   decoration-warning="state == 'pending'"
                   decoration-success="state == 'approved'"
+                  decoration-info="state == 'conditional'"
                   decoration-danger="state == 'rejected'">
                 <field name="name"/>
                 <field name="order_id"/>
@@ -25,6 +26,7 @@
                 <field name="state" widget="badge"
                        decoration-warning="state == 'pending'"
                        decoration-success="state == 'approved'"
+                       decoration-info="state == 'conditional'"
                        decoration-danger="state == 'rejected'"
                        decoration-muted="state == 'cancel'"/>
             </list>
@@ -47,7 +49,7 @@
                     <button name="action_cancel" type="object" string="İptal"
                             invisible="state != 'pending'"/>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="pending,approved"/>
+                           statusbar_visible="pending,approved,conditional"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
@@ -85,6 +87,14 @@
                             <field name="current_tolerance"/>
                             <field name="max_accepted_qty"/>
                             <field name="requested_tolerance"/>
+                            <field name="approved_tolerance"
+                                   readonly="state != 'pending'"/>
+                            <field name="approved_qty"
+                                   invisible="state == 'rejected'"/>
+                            <field name="return_qty"
+                                   invisible="state == 'rejected'"/>
+                            <field name="return_picking_id"
+                                   invisible="not return_picking_id"/>
                         </group>
                     </group>
                     <group string="Red Nedeni"
@@ -111,6 +121,8 @@
                         domain="[('state', '=', 'pending')]"/>
                 <filter name="approved" string="Onaylandı"
                         domain="[('state', '=', 'approved')]"/>
+                <filter name="conditional" string="Koşullu"
+                        domain="[('state', '=', 'conditional')]"/>
                 <filter name="rejected" string="Reddedildi"
                         domain="[('state', '=', 'rejected')]"/>
                 <filter name="cancel" string="İptal"

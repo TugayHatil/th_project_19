@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import _, api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tools.float_utils import float_compare
 
 TOLERANCE_PRECISION = 2
@@ -15,7 +15,10 @@ class PurchaseOrderLine(models.Model):
         compute='_compute_purchase_tolerance',
         store=True,
         readonly=False,
-        copy=True,
+        # Kopyada ürün varsayılanından yeniden hesaplanır; yönetici onaylı
+        # tolerans kopyalanırsa yönetici olmayan kullanıcı siparişi
+        # çoğaltamaz (create kontrolü hata verir).
+        copy=False,
         help="Sipariş miktarının üzerinde mal kabul edilebilecek fazla teslimat "
              "yüzdesi. Sipariş oluşturulurken ürün / genel ayardan otomatik gelir; "
              "yalnızca Satınalma Yöneticisi değiştirebilir.",
@@ -61,7 +64,7 @@ class PurchaseOrderLine(models.Model):
     def _check_purchase_tolerance(self):
         for line in self:
             if line.purchase_tolerance < 0:
-                raise UserError(_('Satınalma toleransı negatif olamaz.'))
+                raise ValidationError(_('Satınalma toleransı negatif olamaz.'))
 
     def _check_purchase_tolerance_change(self, tolerance, product):
         """Varsayılan değer dışında bir tolerans ancak Satınalma Yöneticisi
