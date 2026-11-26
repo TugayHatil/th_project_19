@@ -168,8 +168,8 @@ class StockPicking(models.Model):
         """Koşullu onaylı satırlarda onaylı kısmı normal konuma, fazlayı
         tolerans dışı konuma yönlendirecek şekilde miktarı böler.
 
-        Bölünen fiili tolerans dışı miktarı talebe bağlı iade transferinin
-        miktarına senkronlar; fiili fazla kalmazsa iade iptal edilir.
+        Fiili tolerans dışı miktar için iade transferi bu doğrulama
+        sırasında oluşturulur; fazla kalmayan talep için iade oluşmaz.
         """
         moves_by_picking = {}
         order_lines = self.env['purchase.order.line']
@@ -246,28 +246,27 @@ class StockPicking(models.Model):
                 })
                 request.sudo().move_ids = [Command.link(excess_move.id)]
 
-        # Fiili fazlalığı iade transferlerinin miktarıyla senkronla;
-        # fazla hiç kalmadıysa iade iptal edilir.
+        # Mal kabul doğrulanırken gerçekleşen tolerans dışı miktar için
+        # iade transferi oluştur (tolerans onayı anında değil).
         Request = self.env['purchase.tolerance.request'].sudo()
         for request in Request.browse(
                 {r.id for r in cond_requests.values()}):
-            return_picking = request.return_picking_id
-            if not return_picking \
-                    or return_picking.state in ('done', 'cancel'):
-                continue
             excess_qty = actual_excess.get(request.id, 0.0)
             if float_compare(excess_qty, 0.0, precision_digits=2) <= 0:
-                return_picking.action_cancel()
-                return_picking.message_post(body=_(
-                    'Fiili girişte tolerans dışı miktar kalmadığı için bu '
-                    'iade transferi iptal edildi.'))
-            else:
-                for move in return_picking.move_ids.filtered(
-                        lambda m: m.state not in ('done', 'cancel')):
-                    move.write({
-                        'product_uom_qty': excess_qty,
-                        'quantity': excess_qty,
-                    })
+                request.picking_id.message_post(body=_(
+                    '%(name)s: fiili giriş onaylanan tolerans içinde kaldı; '
+                    'iade transferi oluşturulmadı.', name=request.name),
+                    message_type='comment')
+                continue
+            return_picking = request._create_return_picking(excess_qty)
+            if return_picking:
+                request.picking_id.message_post(body=_(
+                    '%(qty)s %(uom)s tolerans dışı miktar %(loc)s konumuna '
+                    'yönlendirildi; iade transferi: %(link)s',
+                    qty=excess_qty, uom=request.uom_id.name or '',
+                    loc=excess_loc.display_name,
+                    link=return_picking._get_html_link()),
+                    message_type='comment')
 
     def button_validate(self):
         if not self.env.context.get('skip_purchase_tolerance_check'):

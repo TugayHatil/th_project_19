@@ -61,8 +61,9 @@ class PurchaseToleranceRequest(models.Model):
     approved_tolerance = fields.Float(
         string='Onaylanan Tolerans (%)', digits='Discount',
         help="Talep edilenden düşük girilirse talep Koşullu onaylanır; "
-             "onaylanan kısmın üzerindeki miktar tolerans dışı konuma "
-             "yönlendirilir ve iade transferi oluşturulur.")
+             "onaylanan kısmın üzerindeki miktar mal kabulde tolerans dışı "
+             "konuma yönlendirilir ve iade transferi mal kabul "
+             "doğrulandığında oluşturulur.")
     approved_qty = fields.Float(
         string='Onaylanan Miktar', digits='Product Unit',
         compute='_compute_approved_quantities')
@@ -213,7 +214,6 @@ class PurchaseToleranceRequest(models.Model):
                 'approve_date': fields.Datetime.now(),
             })
             if is_conditional:
-                request._create_return_picking()
                 request.activity_ids.action_feedback(
                     feedback=_('Talep koşullu onaylandı.'))
                 request.order_id.message_post(body=_(
@@ -242,11 +242,15 @@ class PurchaseToleranceRequest(models.Model):
                         message_type='comment')
         return True
 
-    def _create_return_picking(self):
-        """Onaylanan miktarın üzerindeki tolerans dışı miktar için
-        tolerans dışı konumdan tedarikçiye iade transferi oluşturur."""
+    def _create_return_picking(self, qty):
+        """Fiili tolerans dışı miktar için tolerans dışı konumdan
+        tedarikçiye iade transferi oluşturur.
+
+        Mal kabul doğrulanırken (`_apply_conditional_tolerance_split`)
+        gerçekleşen fazla miktarla çağrılır; tolerans onayı anında
+        değil."""
         self.ensure_one()
-        if self.return_picking_id or self.return_qty <= 0:
+        if self.return_picking_id or qty <= 0:
             return self.return_picking_id
         receipt = self.picking_id
         excess_loc = receipt._get_tolerance_excess_location()
@@ -271,7 +275,7 @@ class PurchaseToleranceRequest(models.Model):
             'move_ids': [(0, 0, {
                 'name': self.product_id.display_name,
                 'product_id': self.product_id.id,
-                'product_uom_qty': self.return_qty,
+                'product_uom_qty': qty,
                 'product_uom': self.uom_id.id,
                 'location_id': excess_loc.id,
                 'location_dest_id': receipt.location_id.id,
