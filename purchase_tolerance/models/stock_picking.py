@@ -169,11 +169,13 @@ class StockPicking(models.Model):
         tolerans dışı konuma yönlendirecek şekilde hareketleri dengeler.
 
         Her satır için beklenen fazla = normal hareket toplamı − onaylı
-        kapasitedir (tolerans dışı havuz bu hesaba girmez — havuz split'in
-        artefaktıdır, gerçek teslimat miktarı normal hareketlerdedir).
-        Normal hareketler kapasiteyle sınırlanır; tolerans dışı hareket
-        havuzu beklenen fazlaya göre ölçeklenir (eksikse oluşturulur,
-        fazlaysa kısılır/silinir).
+        kapasitedir. Tolerans dışı havuz split'in artefaktıdır: depo
+        normal satırın miktarını değiştirirse gerçek teslimat o satırla
+        yeniden tanımlanır ve havuz baştan hesaplanır; normal satır
+        tam kapasitede bırakılmışsa (depo dokunmamış) mevcut havuz
+        korunur. Normal hareketler kapasiteyle sınırlanır; havuz beklenen
+        fazlaya göre ölçeklenir (eksikse oluşturulur, fazlaysa
+        kısılır/silinir).
         Yöntem idempotenttir — onay anında ve doğrulamada çağrılabilir.
         {request_id: fiili fazla (PO satırı birimi)} döner.
         """
@@ -230,6 +232,12 @@ class StockPicking(models.Model):
                 total = sum(line_qty(m, uom) for m in data['normal'])
                 expected = max(total - cap, 0.0)
                 pool = data['excess']
+                if (pool and expected <= 0.0
+                        and float_compare(total, cap,
+                                          precision_rounding=rounding) == 0):
+                    # Normal satır kapasitede bırakılmış: depo miktarı
+                    # değiştirmemiş, onaydaki bölünmüş fazla geçerli.
+                    expected = sum(line_qty(m, uom) for m in pool)
 
                 # Normal hareketleri onaylı kapasiteyle sınırla;
                 # kapasitesi sıfırlanan hareket tamamen fazlaya çevrilir.
