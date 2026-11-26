@@ -214,6 +214,11 @@ class PurchaseToleranceRequest(models.Model):
                 'approve_date': fields.Datetime.now(),
             })
             if is_conditional:
+                # Satır ayrımı onay anında görünsün; iade transferi ise mal
+                # kabul doğrulanırken fiili fazla ile oluşturulur.
+                if request.picking_id:
+                    request.picking_id.sudo() \
+                        ._apply_conditional_tolerance_split()
                 request.activity_ids.action_feedback(
                     feedback=_('Talep koşullu onaylandı.'))
                 request.order_id.message_post(body=_(

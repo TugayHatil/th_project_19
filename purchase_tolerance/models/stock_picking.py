@@ -168,8 +168,10 @@ class StockPicking(models.Model):
         """Koşullu onaylı satırlarda onaylı kısmı normal konuma, fazlayı
         tolerans dışı konuma yönlendirecek şekilde miktarı böler.
 
-        Fiili tolerans dışı miktar için iade transferi bu doğrulama
-        sırasında oluşturulur; fazla kalmayan talep için iade oluşmaz.
+        Tolerans dışı hareketler sistem tarafından üretilir; yöntem
+        idempotenttir — önceki bölme hareketleri silinip fiili miktarlara
+        göre yeniden oluşturulur. Onay anında ve doğrulamada çağrılabilir.
+        {request_id: fiili fazla (PO satırı birimi)} döner.
         """
         moves_by_picking = {}
         order_lines = self.env['purchase.order.line']
@@ -177,21 +179,33 @@ class StockPicking(models.Model):
             if picking.state in ('done', 'cancel'):
                 continue
             moves = picking._get_tolerance_moves()
-            if moves:
-                moves_by_picking[picking.id] = moves
-                order_lines |= moves.purchase_line_id
+            excess_moves = picking.move_ids.filtered(
+                lambda m: m.is_tolerance_excess_move
+                and m.purchase_line_id
+                and m.state not in ('done', 'cancel'))
+            if moves or excess_moves:
+                moves_by_picking[picking.id] = (moves, excess_moves)
+                order_lines |= (moves | excess_moves).purchase_line_id
         cond_requests = self._get_conditional_tolerance_requests(order_lines)
         if not cond_requests:
-            return
-
+            return {}
         excess_loc = self._get_tolerance_excess_location()
         Move = self.env['stock.move']
-        actual_excess = {}  # request_id -> fiili fazla (PO satırı birimi)
+        actual_excess = {r.id: 0.0 for r in cond_requests.values()}
         for picking in self:
             if picking.id not in moves_by_picking:
                 continue
+            moves, excess_moves = moves_by_picking[picking.id]
+            # Önceki bölme hareketlerini sil; fiili miktarlarla yeniden
+            # hesaplanır (onay sonrası miktar değiştiyse doğru sonuç çıkar).
+            stale = excess_moves.filtered(
+                lambda m: m.purchase_line_id.id in cond_requests)
+            if stale:
+                # unlink yalnız draft/cancel hareketlere izin verir
+                stale._action_cancel()
+                stale.unlink()
             caps = {}
-            for move in moves_by_picking[picking.id].sorted('id'):
+            for move in moves.sorted('id'):
                 line = move.purchase_line_id
                 request = cond_requests.get(line.id)
                 if not request:
@@ -212,8 +226,7 @@ class StockPicking(models.Model):
                         excess_qty, 0.0,
                         precision_rounding=line.product_uom_id.rounding) <= 0:
                     continue
-                actual_excess[request.id] = \
-                    actual_excess.get(request.id, 0.0) + excess_qty
+                actual_excess[request.id] += excess_qty
                 allowed_move_qty = line.product_uom_id._compute_quantity(
                     allowed, move.product_uom, rounding_method='HALF-UP')
                 if move.product_uom.compare(allowed_move_qty, 0) <= 0:
@@ -223,6 +236,7 @@ class StockPicking(models.Model):
                         'location_dest_id': excess_loc.id,
                         'is_tolerance_excess_move': True,
                     })
+                    request.sudo().move_ids = [Command.link(move.id)]
                     continue
                 excess_move_qty = move.quantity - allowed_move_qty
                 move.write({'quantity': allowed_move_qty, 'picked': True})
@@ -245,12 +259,15 @@ class StockPicking(models.Model):
                     'picked': True,
                 })
                 request.sudo().move_ids = [Command.link(excess_move.id)]
+        return actual_excess
 
-        # Mal kabul doğrulanırken gerçekleşen tolerans dışı miktar için
-        # iade transferi oluştur (tolerans onayı anında değil).
+    def _create_tolerance_return_pickings(self, actual_excess):
+        """Mal kabul doğrulanırken, koşullu onaylı taleplerin fiili tolerans
+        dışı miktarları için iade transferi oluşturur (onay anında değil)."""
+        if not actual_excess:
+            return
         Request = self.env['purchase.tolerance.request'].sudo()
-        for request in Request.browse(
-                {r.id for r in cond_requests.values()}):
+        for request in Request.browse(actual_excess.keys()):
             excess_qty = actual_excess.get(request.id, 0.0)
             if float_compare(excess_qty, 0.0, precision_digits=2) <= 0:
                 request.picking_id.message_post(body=_(
@@ -264,7 +281,7 @@ class StockPicking(models.Model):
                     '%(qty)s %(uom)s tolerans dışı miktar %(loc)s konumuna '
                     'yönlendirildi; iade transferi: %(link)s',
                     qty=excess_qty, uom=request.uom_id.name or '',
-                    loc=excess_loc.display_name,
+                    loc=return_picking.location_id.display_name,
                     link=return_picking._get_html_link()),
                     message_type='comment')
 
@@ -275,7 +292,8 @@ class StockPicking(models.Model):
                 wizard = self.env['purchase.tolerance.request.wizard'] \
                     .create_from_exceeded(self, exceeded)
                 return wizard._get_open_action()
-            self._apply_conditional_tolerance_split()
+            actual_excess = self._apply_conditional_tolerance_split()
+            self._create_tolerance_return_pickings(actual_excess)
         # _action_done aynı çağrı zincirinde tekrar kontrol yapmasın;
         # farklı istekten gelen _action_done çağrıları (ör. iade
         # sihirbazı process()) kendi kontrolünü yapar.
@@ -308,5 +326,6 @@ class StockPicking(models.Model):
             exceeded = self._get_purchase_tolerance_exceeded_lines()
             if exceeded:
                 raise UserError(self._get_exceeded_tolerance_message(exceeded))
-            self._apply_conditional_tolerance_split()
+            actual_excess = self._apply_conditional_tolerance_split()
+            self._create_tolerance_return_pickings(actual_excess)
         return super()._action_done()
