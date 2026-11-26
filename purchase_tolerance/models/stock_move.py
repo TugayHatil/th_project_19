@@ -25,6 +25,6 @@ class StockMove(models.Model):
     @api.depends('tolerance_request_ids.state')
     def _compute_tolerance_state(self):
         for move in self:
-            requests = move.sudo().tolerance_request_ids.filtered(
+            requests = move.tolerance_request_ids.filtered(
                 lambda r: r.state != 'cancel').sorted('id')
             move.tolerance_state = requests[-1].state if requests else False

@@ -2,7 +2,7 @@
 from markupsafe import Markup
 
 from odoo import _, api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tools.float_utils import float_compare
 
 
@@ -111,7 +111,16 @@ class PurchaseToleranceRequest(models.Model):
             if vals.get('name', _('Yeni')) == _('Yeni'):
                 vals['name'] = self.env['ir.sequence'].next_by_code(
                     'purchase.tolerance.request') or _('Yeni')
+            vals.setdefault('approved_tolerance',
+                            vals.get('requested_tolerance'))
         return super().create(vals_list)
+
+    @api.constrains('requested_tolerance', 'approved_tolerance')
+    def _check_tolerances(self):
+        for request in self:
+            if request.requested_tolerance < 0 \
+                    or request.approved_tolerance < 0:
+                raise ValidationError(_('Tolerans oranı negatif olamaz.'))
 
     def _check_manager(self):
         if not self.env.user.has_group('purchase.group_purchase_manager'):
@@ -179,8 +188,8 @@ class PurchaseToleranceRequest(models.Model):
         else:
             lines.append(_('Onaylayan: %s', self.approver_id.name or ''))
         decision_dt = self.approve_date or fields.Datetime.now()
-        lines.append(_('Karar tarihi: %s',
-                       decision_dt.strftime('%d.%m.%Y %H:%M')))
+        lines.append(_('Karar tarihi: %s', fields.Datetime.context_timestamp(
+            self.env, decision_dt).strftime('%d.%m.%Y %H:%M')))
         if decision == 'reddedildi' and self.reject_reason:
             lines.append(_('Açıklama: %s', self.reject_reason))
         # Düz str gövde message_post'ta escape edilir; satırlar escape
@@ -195,7 +204,8 @@ class PurchaseToleranceRequest(models.Model):
             is_conditional = float_compare(
                 approved, request.requested_tolerance,
                 precision_digits=2) < 0
-            request.order_line_id.write(
+            request.order_line_id.with_context(
+                skip_tolerance_change_log=True).write(
                 {'purchase_tolerance': approved})
             request.write({
                 'state': 'conditional' if is_conditional else 'approved',

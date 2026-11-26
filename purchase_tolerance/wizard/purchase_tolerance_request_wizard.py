@@ -47,6 +47,9 @@ class PurchaseToleranceRequestWizard(models.TransientModel):
         Request = self.env['purchase.tolerance.request']
         requests = Request.browse()
         for line in self.line_ids:
+            moves = self.picking_ids.move_ids.filtered(
+                lambda m: m.purchase_line_id == line.order_line_id
+                and m.state not in ('done', 'cancel'))
             # Kayıt kuralı başka kullanıcının bekleyen talebini gizler;
             # mükerrer talep açılmaması için sudo ile aranır.
             existing = Request.sudo().search([
@@ -54,10 +57,15 @@ class PurchaseToleranceRequestWizard(models.TransientModel):
                 ('state', '=', 'pending'),
             ], limit=1)
             if existing:
+                # Bu transferin satırlarını da talebe bağla ki satır
+                # üzerindeki tolerans durumu görünsün.
+                new_moves = moves - existing.move_ids
+                if new_moves:
+                    existing.sudo().write(
+                        {'move_ids': [Command.link(m.id)
+                                      for m in new_moves]})
                 requests |= existing
                 continue
-            moves = line.picking_id.move_ids.filtered(
-                lambda m: m.purchase_line_id == line.order_line_id)
             request = Request.create({
                 'order_id': line.order_id.id,
                 'order_line_id': line.order_line_id.id,

@@ -13,8 +13,15 @@ class PurchaseOrder(models.Model):
 
     @api.depends('tolerance_request_ids')
     def _compute_tolerance_request_count(self):
+        counts = {
+            order.id: count
+            for order, count in self.env['purchase.tolerance.request']
+            .sudo()._read_group(
+                [('order_id', 'in', self.ids)],
+                groupby=['order_id'], aggregates=['__count'])
+        }
         for order in self:
-            order.tolerance_request_count = len(order.tolerance_request_ids)
+            order.tolerance_request_count = counts.get(order.id, 0)
 
     def action_view_tolerance_requests(self):
         self.ensure_one()

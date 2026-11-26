@@ -96,6 +96,8 @@ class PurchaseOrderLine(models.Model):
                 line._check_purchase_tolerance_change(vals['purchase_tolerance'], product)
                 old_tolerance[line.id] = line.purchase_tolerance
         res = super().write(vals)
+        if self.env.context.get('skip_tolerance_change_log'):
+            return res
         for line_id, old_value in old_tolerance.items():
             line = self.browse(line_id)
             new_value = float(vals['purchase_tolerance'] or 0.0)

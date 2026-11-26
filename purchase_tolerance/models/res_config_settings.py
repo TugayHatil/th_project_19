@@ -24,10 +24,18 @@ class ResConfigSettings(models.TransientModel):
              "konum. Bu konumdan tedarikçiye otomatik iade transferi oluşturulur.",
     )
 
-    def _compute_tolerance_excess_location_id(self):
+    def _get_excess_location_param(self):
+        """ir.config_parameter'daki konum id'sini döner; geçersiz/boş
+        değerlerde (ör. alan temizlendiğinde 'False' string'i) None döner."""
         param = self.env['ir.config_parameter'].sudo().get_param(
             'purchase_tolerance.excess_location_id')
-        location_id = int(param) if param else False
+        try:
+            return int(param) if param else None
+        except (TypeError, ValueError):
+            return None
+
+    def _compute_tolerance_excess_location_id(self):
+        location_id = self._get_excess_location_param() or False
         for settings in self:
             settings.tolerance_excess_location_id = location_id
 
