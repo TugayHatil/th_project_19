@@ -168,10 +168,12 @@ class StockPicking(models.Model):
         """Koşullu onaylı satırlarda onaylanan kısmı normal konuma, fazlayı
         tolerans dışı konuma yönlendirecek şekilde hareketleri dengeler.
 
-        Her satır için beklenen fazla = (normal + tolerans dışı hareket
-        toplamı) − onaylı kapasitedir. Normal hareketler kapasiteyle
-        sınırlanır; tolerans dışı hareket havuzu beklenen fazlaya göre
-        ölçeklenir (eksikse oluşturulur, fazlaysa kısılır/silinir).
+        Her satır için beklenen fazla = normal hareket toplamı − onaylı
+        kapasitedir (tolerans dışı havuz bu hesaba girmez — havuz split'in
+        artefaktıdır, gerçek teslimat miktarı normal hareketlerdedir).
+        Normal hareketler kapasiteyle sınırlanır; tolerans dışı hareket
+        havuzu beklenen fazlaya göre ölçeklenir (eksikse oluşturulur,
+        fazlaysa kısılır/silinir).
         Yöntem idempotenttir — onay anında ve doğrulamada çağrılabilir.
         {request_id: fiili fazla (PO satırı birimi)} döner.
         """
@@ -225,8 +227,7 @@ class StockPicking(models.Model):
                 cap = max(
                     line.product_qty * (1 + line.purchase_tolerance / 100.0)
                     - line.qty_received, 0.0)
-                total = sum(
-                    line_qty(m, uom) for m in data['normal'] | data['excess'])
+                total = sum(line_qty(m, uom) for m in data['normal'])
                 expected = max(total - cap, 0.0)
                 pool = data['excess']
 
