@@ -18,13 +18,24 @@
         </xpath>
     </template>
 
-    <!-- Teklif Talebi (RFQ) çıktısı -->
+    <!-- Teklif Talebi (RFQ) çıktısı: 'Requested Ship Date' bloğu hem temel
+         template'te (dest_address_id dalı) hem de purchase_stock inherit'inin
+         eklediği t-else dalında var; ikisi de hedeflenmeli -->
     <template id="report_purchasequotation_document_inherit_loading"
               inherit_id="purchase.report_purchasequotation_document">
-        <xpath expr="//span[@t-field='o.date_planned']/preceding-sibling::strong" position="replace">
+        <xpath expr="//t[@t-if='o.dest_address_id']//span[@t-field='o.date_planned']/preceding-sibling::strong" position="replace">
             <strong>Beklenen Yükleme:</strong>
         </xpath>
-        <xpath expr="//span[@t-field='o.date_planned']" position="replace">
+        <xpath expr="//t[@t-if='o.dest_address_id']//span[@t-field='o.date_planned']" position="replace">
+            <span t-if="o.expected_loading_date" t-field="o.expected_loading_date"
+                  t-options="{'date_only': 'true'}"/>
+            <span t-else="" t-field="o.date_planned"
+                  t-options="{'date_only': 'true'}"/>
+        </xpath>
+        <xpath expr="//t[@t-else]//span[@t-field='o.date_planned']/preceding-sibling::strong" position="replace">
+            <strong>Beklenen Yükleme:</strong>
+        </xpath>
+        <xpath expr="//t[@t-else]//span[@t-field='o.date_planned']" position="replace">
             <span t-if="o.expected_loading_date" t-field="o.expected_loading_date"
                   t-options="{'date_only': 'true'}"/>
             <span t-else="" t-field="o.date_planned"
