@@ -32,13 +32,12 @@ class ProductSupplierinfo(models.Model):
 
     def _recompute_po_loading_dates(self):
         """Sevk süresi değişiminde ilgili taslak sipariş satırlarını yeniden hesaplat."""
-        lines = self.env['purchase.order.line']
-        for supplierinfo in self:
-            products = supplierinfo.product_id | supplierinfo.product_tmpl_id.product_variant_ids
-            lines |= self.env['purchase.order.line'].search([
-                ('product_id', 'in', products.ids),
-                ('order_id.state', 'in', ['draft', 'sent', 'to approve']),
-                ('order_id.partner_id', '=', supplierinfo.partner_id.id),
-                ('order_id.shipping_type', '!=', False),
-            ])
+        products = self.product_id | self.product_tmpl_id.product_variant_ids
+        partners = self.partner_id.commercial_partner_id
+        lines = self.env['purchase.order.line'].search([
+            ('product_id', 'in', products.ids),
+            ('order_id.state', 'in', ['draft', 'sent', 'to approve']),
+            ('order_id.partner_id', 'child_of', partners.ids),
+            ('order_id.shipping_type', '!=', False),
+        ])
         lines._compute_expected_loading_date()

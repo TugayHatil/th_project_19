@@ -54,11 +54,11 @@ class PurchaseOrder(models.Model):
             .onchange(values, field_names, fields_spec)
         if 'order_line' in field_names and 'value' in result:
             touched = {
-                cmd[1] for cmd in values.get('order_line', [])
+                cmd[1] for cmd in (values.get('order_line') or [])
                 if isinstance(cmd, (list, tuple)) and len(cmd) > 2
                 and cmd[0] == Command.UPDATE and isinstance(cmd[2], dict)
             }
-            for cmd in result['value'].get('order_line', []):
+            for cmd in (result['value'].get('order_line') or []):
                 if cmd[0] == Command.UPDATE and isinstance(cmd[2], dict) \
                         and 'expected_loading_date' in cmd[2] and cmd[1] not in touched:
                     del cmd[2]['expected_loading_date']

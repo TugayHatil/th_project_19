@@ -26,6 +26,8 @@ class ProductSupplierinfoShippingDelay(models.Model):
     _supplierinfo_shipping_type_uniq = models.Constraint(
         'unique(supplierinfo_id, shipping_type)',
         'Her sevk türü için yalnızca bir süre satırı tanımlanabilir.')
+    _days_positive = models.Constraint(
+        'check(days >= 0)', 'Süre negatif olamaz.')
 
     @api.model_create_multi
     def create(self, vals_list):
