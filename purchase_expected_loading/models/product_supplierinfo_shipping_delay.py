@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import fields, models
+from odoo import api, fields, models
 
 SHIPPING_TYPES = [
     ('sea', 'Denizyolu'),
@@ -26,3 +26,21 @@ class ProductSupplierinfoShippingDelay(models.Model):
     _supplierinfo_shipping_type_uniq = models.Constraint(
         'unique(supplierinfo_id, shipping_type)',
         'Her sevk türü için yalnızca bir süre satırı tanımlanabilir.')
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records.supplierinfo_id._recompute_po_loading_dates()
+        return records
+
+    def write(self, vals):
+        res = super().write(vals)
+        if 'days' in vals or 'shipping_type' in vals:
+            self.supplierinfo_id._recompute_po_loading_dates()
+        return res
+
+    def unlink(self):
+        supplierinfos = self.supplierinfo_id
+        res = super().unlink()
+        supplierinfos._recompute_po_loading_dates()
+        return res
