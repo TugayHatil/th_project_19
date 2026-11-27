@@ -11,10 +11,11 @@
                t-options="{'date_only': 'true'}" class="m-0"/>
         </xpath>
         <xpath expr="//div[@t-if='o.date_planned']/strong" position="replace">
-            <strong>Beklenen Yükleme:</strong>
+            <strong>Expected Loading:</strong>
         </xpath>
         <xpath expr="//div[@t-if='o.date_planned']" position="attributes">
             <attribute name="t-if">o.expected_loading_date or o.date_planned</attribute>
+            <attribute name="class">col-2 bm-2 text-nowrap</attribute>
         </xpath>
     </template>
 
@@ -24,7 +25,7 @@
     <template id="report_purchasequotation_document_inherit_loading"
               inherit_id="purchase.report_purchasequotation_document">
         <xpath expr="//t[@t-if='o.dest_address_id']//span[@t-field='o.date_planned']/preceding-sibling::strong" position="replace">
-            <strong>Beklenen Yükleme:</strong>
+            <strong>Expected Loading:</strong>
         </xpath>
         <xpath expr="//t[@t-if='o.dest_address_id']//span[@t-field='o.date_planned']" position="replace">
             <span t-if="o.expected_loading_date" t-field="o.expected_loading_date"
@@ -33,7 +34,7 @@
                   t-options="{'date_only': 'true'}"/>
         </xpath>
         <xpath expr="//t[@t-else]//span[@t-field='o.date_planned']/preceding-sibling::strong" position="replace">
-            <strong>Beklenen Yükleme:</strong>
+            <strong>Expected Loading:</strong>
         </xpath>
         <xpath expr="//t[@t-else]//span[@t-field='o.date_planned']" position="replace">
             <span t-if="o.expected_loading_date" t-field="o.expected_loading_date"
@@ -41,8 +42,11 @@
             <span t-else="" t-field="o.date_planned"
                   t-options="{'date_only': 'true'}"/>
         </xpath>
+        <xpath expr="//th[@name='th_expected_date']" position="attributes">
+            <attribute name="class">text-center text-nowrap</attribute>
+        </xpath>
         <xpath expr="//th[@name='th_expected_date']/strong" position="replace">
-            <strong>Beklenen Yükleme</strong>
+            <strong>Expected Loading</strong>
         </xpath>
         <xpath expr="//span[@t-field='order_line.date_planned']" position="replace">
             <span t-if="order_line.expected_loading_date" t-field="order_line.expected_loading_date"

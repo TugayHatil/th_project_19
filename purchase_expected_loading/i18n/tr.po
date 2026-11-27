@@ -1,0 +1,28 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# * purchase_expected_loading
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-01-14 00:00+0000\n"
+"PO-Revision-Date: 2026-01-14 00:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: tr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. module: purchase_expected_loading
+#: model_terms:ir.ui.view,arch_db:purchase_expected_loading.report_purchaseorder_document_inherit_loading
+#: model_terms:ir.ui.view,arch_db:purchase_expected_loading.report_purchasequotation_document_inherit_loading
+msgid "<strong>Expected Loading:</strong>"
+msgstr "<strong>Beklenen Yükleme:</strong>"
+
+#. module: purchase_expected_loading
+#: model_terms:ir.ui.view,arch_db:purchase_expected_loading.report_purchasequotation_document_inherit_loading
+msgid "<strong>Expected Loading</strong>"
+msgstr "<strong>Beklenen Yükleme</strong>"
