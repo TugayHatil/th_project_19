@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="purchase_order_form_inherit_expected_loading" model="ir.ui.view">
+        <field name="name">purchase.order.form.inherit.expected.loading</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//label[@for='date_planned']" position="before">
+                <label for="expected_loading_date"/>
+                <div class="o_row">
+                    <field name="expected_loading_date" readonly="state not in ('draft', 'sent', 'to approve', 'purchase')"/>
+                </div>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/list/field[@name='date_planned']" position="before">
+                <field name="expected_loading_date" optional="show" force_save="1"
+                       readonly="is_downpayment"/>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/form//field[@name='date_planned']" position="before">
+                <field name="expected_loading_date"/>
+            </xpath>
+            <xpath expr="//group[@name='other_info']" position="inside">
+                <field name="shipping_type"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

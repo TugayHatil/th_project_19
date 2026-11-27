@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="product_supplierinfo_form_inherit_shipping_delay" model="ir.ui.view">
+        <field name="name">product.supplierinfo.form.inherit.shipping.delay</field>
+        <field name="model">product.supplierinfo</field>
+        <field name="inherit_id" ref="product.product_supplierinfo_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="/form/sheet/group" position="after">
+                <group string="Sevk Süreleri" name="shipping_delays">
+                    <field name="shipping_delay_ids" nolabel="1">
+                        <list editable="bottom">
+                            <field name="shipping_type"/>
+                            <field name="days"/>
+                        </list>
+                    </field>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

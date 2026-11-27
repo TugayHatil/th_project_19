@@ -50,6 +50,19 @@ External Material Groups, MIP Responsibles, Production Supervisors) managed
 under Inventory → Configuration → Products; changing the responsible on a
 definition record automatically updates every linked product card.
 
+## `purchase_expected_loading`
+
+Adds a **Sevk Türü** (Shipping Type: Denizyolu, Havayolu, Karayolu,
+Demiryolu) field on the purchase order's Other Information tab and an
+**Expected Loading** (Beklenen Yükleme) date right above Expected Arrival —
+both on the order header and on each order line, behaving like Expected
+Arrival (header value cascades to lines, a line-level edit wins). Vendor
+pricelist lines (`product.supplierinfo`) get a per-shipping-type transit-days
+table; when a shipping type is selected on the order, each line's expected
+loading date is computed as `expected arrival − transit days`. The expected
+loading date is also carried onto transfer (stock move) lines like the
+scheduled date.
+
 ## `purchase_request_line_paste`
 
 Adds a **Satır Yapıştır** (Paste Lines) button on draft purchase requests.
