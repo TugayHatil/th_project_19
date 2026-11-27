@@ -17,7 +17,7 @@
             </xpath>
             <xpath expr="//field[@name='order_line']/list/field[@name='date_planned']" position="before">
                 <field name="expected_loading_date" optional="hide" force_save="1"
-                       readonly="is_downpayment" column_invisible="not parent.shipping_type"/>
+                       readonly="is_downpayment"/>
             </xpath>
             <xpath expr="//field[@name='order_line']/form//field[@name='date_planned']" position="before">
                 <field name="expected_loading_date" invisible="not parent.shipping_type"/>

@@ -30,6 +30,17 @@ class ProductSupplierinfo(models.Model):
         if vals_list:
             Delay.create(vals_list)
 
+    def action_open_supplierinfo(self):
+        """Ürün kartındaki editable listeden fiyat satırı formunu dialog olarak aç."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'product.supplierinfo',
+            'res_id': self.id,
+            'view_mode': 'form',
+            'target': 'new',
+        }
+
     def _recompute_po_loading_dates(self):
         """Sevk süresi değişiminde ilgili taslak sipariş satırlarını yeniden hesaplat."""
         products = self.product_id | self.product_tmpl_id.product_variant_ids

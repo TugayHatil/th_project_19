@@ -17,4 +17,18 @@
             </xpath>
         </field>
     </record>
+
+    <!-- Ürün kartı satınalma sekmesindeki liste editable olduğundan satıra
+         tıklayınca form açılmıyor; form dialog için açma butonu -->
+    <record id="product_supplierinfo_list_view2_inherit_open" model="ir.ui.view">
+        <field name="name">product.supplierinfo.list.view2.inherit.open</field>
+        <field name="model">product.supplierinfo</field>
+        <field name="inherit_id" ref="purchase.product_supplierinfo_tree_view2"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='delay']" position="after">
+                <button name="action_open_supplierinfo" type="object"
+                        icon="fa-external-link" title="Formu Aç"/>
+            </xpath>
+        </field>
+    </record>
 </odoo>
