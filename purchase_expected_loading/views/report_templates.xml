@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Satınalma Siparişi çıktısı: Beklenen Geliş yerine Beklenen Yükleme
+         (seçilmemişse geliş tarihi fallback olarak kullanılır) -->
+    <template id="report_purchaseorder_document_inherit_loading"
+              inherit_id="purchase.report_purchaseorder_document">
+        <xpath expr="//strong[text()='Expected Arrival:']" position="replace">
+            <strong>Beklenen Yükleme:</strong>
+        </xpath>
+        <xpath expr="//div[@t-if='o.date_planned']" position="attributes">
+            <attribute name="t-if">o.expected_loading_date or o.date_planned</attribute>
+        </xpath>
+        <xpath expr="//p[@t-field='o.date_planned']" position="replace">
+            <p t-if="o.expected_loading_date" t-field="o.expected_loading_date"
+               t-options="{'date_only': 'true'}" class="m-0"/>
+            <p t-else="" t-field="o.date_planned"
+               t-options="{'date_only': 'true'}" class="m-0"/>
+        </xpath>
+    </template>
+
+    <!-- Teklif Talebi (RFQ) çıktısı -->
+    <template id="report_purchasequotation_document_inherit_loading"
+              inherit_id="purchase.report_purchasequotation_document">
+        <xpath expr="//span[@t-field='o.date_planned']" position="replace">
+            <span t-if="o.expected_loading_date" t-field="o.expected_loading_date"
+                  t-options="{'date_only': 'true'}"/>
+            <span t-else="" t-field="o.date_planned"
+                  t-options="{'date_only': 'true'}"/>
+        </xpath>
+        <xpath expr="//th[@name='th_expected_date']" position="replace">
+            <th name="th_expected_date" class="text-center"><strong>Beklenen Yükleme</strong></th>
+        </xpath>
+        <xpath expr="//span[@t-field='order_line.date_planned']" position="replace">
+            <span t-if="order_line.expected_loading_date" t-field="order_line.expected_loading_date"
+                  t-options="{'date_only': 'true'}"/>
+            <span t-else="" t-field="order_line.date_planned"
+                  t-options="{'date_only': 'true'}"/>
+        </xpath>
+    </template>
+</odoo>

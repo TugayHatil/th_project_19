@@ -6,20 +6,21 @@
         <field name="inherit_id" ref="purchase.purchase_order_form"/>
         <field name="arch" type="xml">
             <xpath expr="//label[@for='date_planned']" position="before">
-                <label for="expected_loading_date"/>
+                <label for="shipping_type"/>
                 <div class="o_row">
+                    <field name="shipping_type" readonly="state not in ('draft', 'sent', 'to approve', 'purchase')"/>
+                </div>
+                <label for="expected_loading_date" invisible="not shipping_type"/>
+                <div class="o_row" invisible="not shipping_type">
                     <field name="expected_loading_date" readonly="state not in ('draft', 'sent', 'to approve', 'purchase')"/>
                 </div>
             </xpath>
             <xpath expr="//field[@name='order_line']/list/field[@name='date_planned']" position="before">
-                <field name="expected_loading_date" optional="show" force_save="1"
-                       readonly="is_downpayment"/>
+                <field name="expected_loading_date" optional="hide" force_save="1"
+                       readonly="is_downpayment" column_invisible="not parent.shipping_type"/>
             </xpath>
             <xpath expr="//field[@name='order_line']/form//field[@name='date_planned']" position="before">
-                <field name="expected_loading_date"/>
-            </xpath>
-            <xpath expr="//group[@name='other_info']" position="inside">
-                <field name="shipping_type"/>
+                <field name="expected_loading_date" invisible="not parent.shipping_type"/>
             </xpath>
         </field>
     </record>
