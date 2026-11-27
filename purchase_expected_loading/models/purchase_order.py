@@ -14,7 +14,6 @@ class PurchaseOrder(models.Model):
     expected_loading_date = fields.Datetime(
         string='Beklenen Yükleme', index=True, copy=False,
         compute='_compute_expected_loading_date',
-        inverse='_inverse_expected_loading_date',
         store=True, readonly=False)
 
     @api.depends('order_line.expected_loading_date')
@@ -25,13 +24,6 @@ class PurchaseOrder(models.Model):
                 lambda line: not line.display_type and line.expected_loading_date
             ).mapped('expected_loading_date')
             order.expected_loading_date = min(dates_list) if dates_list else False
-
-    def _inverse_expected_loading_date(self):
-        for order in self:
-            if order.expected_loading_date:
-                order.order_line.filtered(
-                    lambda line: not line.display_type
-                ).expected_loading_date = order.expected_loading_date
 
     @api.onchange('expected_loading_date')
     def _onchange_expected_loading_date(self):
